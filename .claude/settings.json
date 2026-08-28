@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm install -g eas-cli)",
+      "PowerShell(eas --version)",
+      "PowerShell(eas whoami)",
+      "PowerShell(eas init --help)",
+      "PowerShell(eas init --account panos_alepis --non-interactive)",
+      "PowerShell(eas build:configure --help)",
+      "PowerShell(eas config --platform ios --profile preview)",
+      "PowerShell(eas config --platform android --profile preview)"
+    ]
+  },
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  }
+}

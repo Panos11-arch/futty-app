@@ -1,0 +1,91 @@
+diff --git a/node_modules/expo-router/build/getRoutesCore.js b/node_modules/expo-router/build/getRoutesCore.js
+index 500bec9..548b87d 100644
+--- a/node_modules/expo-router/build/getRoutesCore.js
++++ b/node_modules/expo-router/build/getRoutesCore.js
+@@ -221,16 +221,55 @@ function getDirectoryTree(contextModule, options) {
+             type: meta.isApi ? 'api' : meta.isLayout ? 'layout' : 'route',
+             loadRoute() {
+                 let routeModule;
+-                if (options.ignoreRequireErrors) {
+-                    try {
+-                        routeModule = contextModule(filePath);
++                const diagInFlight = (globalThis.__diagInFlight ??= new Set());
++                if (diagInFlight.has(filePath)) {
++                    throw new Error(`DIAG REENTRANT contextModule call for ${filePath}`);
++                }
++                diagInFlight.add(filePath);
++                try {
++                    if (options.ignoreRequireErrors) {
++                        try {
++                            routeModule = contextModule(filePath);
++                        }
++                        catch (e) {
++                            throw new Error(`DIAG contextModule threw for ${filePath}: ${e && e.message}`);
++                        }
+                     }
+-                    catch {
+-                        routeModule = {};
++                    else {
++                        routeModule = contextModule(filePath);
+                     }
+                 }
+-                else {
+-                    routeModule = contextModule(filePath);
++                finally {
++                    diagInFlight.delete(filePath);
++                }
++                if (!routeModule) {
++                    let diagKeys = 'ERR';
++                    let diagHasKey = 'ERR';
++                    let diagResolve = 'ERR';
++                    let diagAltNoDotSlash = 'ERR';
++                    try {
++                        const keys = contextModule.keys ? contextModule.keys() : null;
++                        diagKeys = keys ? `n=${keys.length} sample=${keys.slice(0, 8).join('|')}` : 'no-keys-fn';
++                        diagHasKey = keys ? String(keys.includes(filePath)) : 'n/a';
++                    }
++                    catch (e) {
++                        diagKeys = `throw:${e && e.message}`;
++                    }
++                    try {
++                        diagResolve = contextModule.resolve ? String(contextModule.resolve(filePath)) : 'no-resolve-fn';
++                    }
++                    catch (e) {
++                        diagResolve = `throw:${e && e.message}`;
++                    }
++                    try {
++                        const alt = filePath.replace(/^\.\//, '');
++                        const res2 = contextModule(alt);
++                        diagAltNoDotSlash = res2 ? 'truthy' : 'falsy';
++                    }
++                    catch (e) {
++                        diagAltNoDotSlash = `throw:${e && e.message}`;
++                    }
++                    throw new Error(`DIAG falsy detail: filePath=${filePath} typeofCtx=${typeof contextModule} keys=[${diagKeys}] hasKey=${diagHasKey} resolve=${diagResolve} altNoDotSlash=${diagAltNoDotSlash}`);
+                 }
+                 if (process.env.NODE_ENV === 'development' && importMode === 'sync') {
+                     // In development mode, when async routes are disabled, add some extra error handling to improve the developer experience.
+diff --git a/node_modules/expo-router/build/useScreens.js b/node_modules/expo-router/build/useScreens.js
+index 2bf82b8..09bad66 100644
+--- a/node_modules/expo-router/build/useScreens.js
++++ b/node_modules/expo-router/build/useScreens.js
+@@ -179,6 +179,9 @@ function getQualifiedRouteComponent(value) {
+     if (import_mode_1.default === 'lazy') {
+         ScreenComponent = react_1.default.lazy(async () => {
+             const res = value.loadRoute();
++            if (!res) {
++                throw new Error(`DIAG lazy loadRoute() falsy: contextKey=${value.contextKey} route=${value.route}`);
++            }
+             return fromLoadedRoute(value, res);
+         });
+         if (__DEV__) {
+@@ -187,6 +190,9 @@ function getQualifiedRouteComponent(value) {
+     }
+     else {
+         const res = value.loadRoute();
++        if (!res) {
++            throw new Error(`DIAG sync loadRoute() falsy: contextKey=${value.contextKey} route=${value.route}`);
++        }
+         ScreenComponent = fromImport(value, res).default;
+     }
+     const WrappedScreenComponent = (props) => {
