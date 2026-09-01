@@ -17,7 +17,7 @@ const SKILL_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
   Beginner: { bg: FuttyColors.stone200, text: FuttyColors.stone700 },
   Casual: { bg: FuttyColors.emerald200, text: FuttyColors.emerald800 },
   Intermediate: { bg: FuttyColors.emerald600, text: FuttyColors.white },
-  Advanced: { bg: FuttyColors.amber400, text: FuttyColors.emerald950 },
+  Advanced: { bg: FuttyColors.amber400, text: FuttyColors.stone900 },
   Elite: { bg: FuttyColors.rose600, text: FuttyColors.white },
 };
 
@@ -60,7 +60,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function ProfileCard({ profile }: { profile: Profile }) {
+export function ProfileCard({ profile, editable = true }: { profile: Profile; editable?: boolean }) {
   const name = profile.full_name || profile.username || 'Player';
   const initial = name[0]?.toUpperCase() ?? '?';
   const tier = tierFor(profile.xp);
@@ -91,12 +91,14 @@ function ProfileCard({ profile }: { profile: Profile }) {
             </ThemedText>
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/edit-profile')}
-          style={styles.editButton}>
-          <IconSymbol name="pencil" size={14} color={FuttyColors.emerald950} />
-        </Pressable>
+        {editable ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/edit-profile')}
+            style={styles.editButton}>
+            <IconSymbol name="pencil" size={14} color={FuttyColors.emerald950} />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.statsGrid}>
@@ -170,6 +172,17 @@ function ProfileStatus() {
               </Pressable>
             </View>
           </View>
+
+          {profile.profile.role === 'venue_owner' ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/venue-dashboard')}
+              style={styles.accountLinkRow}>
+              <IconSymbol name="building.columns.fill" size={16} color={FuttyColors.stone500} />
+              <ThemedText style={styles.accountLinkText}>Venue Dashboard</ThemedText>
+              <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} />
+            </Pressable>
+          ) : null}
 
           {/* App lock and push-notification toggles live under Account >
               Settings now (app/account/settings/*) — Profile stays focused
@@ -263,7 +276,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: FuttyFonts.sansSemiBold,
     fontSize: 15,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   username: {
     fontFamily: FuttyFonts.sans,
@@ -317,7 +330,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontFamily: FuttyFonts.monoSemiBold,
     fontSize: 16,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   statLabel: {
     fontFamily: FuttyFonts.sans,
@@ -360,7 +373,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   premiumBadgeText: {
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -368,7 +381,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FuttyFonts.sansMedium,
     fontSize: 13,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   accountLinkRow: {
     flexDirection: 'row',
@@ -384,7 +397,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: FuttyFonts.sansMedium,
     fontSize: 13,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   signOutRow: {
     flexDirection: 'row',

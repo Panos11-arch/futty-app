@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   heading: {
     fontFamily: FuttyFonts.sansSemiBold,
     fontSize: 16,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
     marginTop: 8,
   },
   paragraph: {
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   faqQuestion: {
     flex: 1,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   faqAnswer: {
     fontFamily: FuttyFonts.sans,

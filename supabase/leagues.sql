@@ -139,9 +139,24 @@ begin
     raise exception 'already_joined';
   end;
 
+  -- Item 4 (payment-auth batch) — an Open League filling up used to require
+  -- a manual "Start season" trigger with no real production equivalent, so a
+  -- full league could sit in 'signup' forever. Standard leagues (capacity =
+  -- 0) are excluded — they have no fixed roster of teams to close signup on.
+  if v_league.stage = 'signup' and v_league.capacity > 0 then
+    select count(*) into v_count from public.league_teams where league_id = p_league_id;
+    if v_count >= v_league.capacity then
+      update public.leagues
+      set stage = 'season', start_date = coalesce(start_date, current_date)
+      where id = p_league_id;
+    end if;
+  end if;
+
   -- supabase/league-fixtures.sql — fills in this team's pairing against
   -- every other team already in the league. Must run after leagues.sql for
-  -- this call to succeed at invocation time (fine either way at CREATE time).
+  -- this call to succeed at invocation time (fine either way at CREATE time),
+  -- and after the stage flip above so a capacity-filling registration
+  -- generates the whole round-robin the moment the season actually starts.
   perform public.sync_league_fixtures(p_league_id);
 
   return v_row;

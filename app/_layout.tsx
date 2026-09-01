@@ -10,6 +10,8 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { FuttyAiChat } from '@/components/futty-ai-chat';
@@ -35,8 +37,8 @@ SplashScreen.preventAutoHideAsync();
 // without a real device in front of me.
 const brandedHeaderOptions = {
   headerStyle: { backgroundColor: FuttyColors.stone50 },
-  headerTintColor: FuttyColors.emerald950,
-  headerTitleStyle: { fontFamily: FuttyFonts.sansSemiBold, color: FuttyColors.emerald950 },
+  headerTintColor: FuttyColors.stone900,
+  headerTitleStyle: { fontFamily: FuttyFonts.sansSemiBold, color: FuttyColors.stone900 },
   // Chevron only, no previous screen's title next to it — the default
   // shows e.g. "< Profile" beside the back arrow on every pushed screen,
   // which reads as clutter rather than useful context.
@@ -60,7 +62,12 @@ function RootNavigator() {
   const signedIn = !!session && !isRecovering;
 
   return (
-    <>
+    // Explicit flex:1, not a bare Fragment — FuttyAiChat's launcher is
+    // absolutely positioned against this box (item 9: it was rendering too
+    // high, overlapping the status bar). <Stack>'s screens are native-screens
+    // views that don't reliably hand a bare Fragment ancestor a full-height
+    // box to measure "bottom" against; a real flex:1 View guarantees it.
+    <View style={{ flex: 1 }}>
       <Stack>
         <Stack.Protected guard={signedIn}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -71,6 +78,14 @@ function RootNavigator() {
           <Stack.Screen
             name="premium-plan"
             options={{ presentation: 'modal', headerShown: false }}
+          />
+          {/* transparentModal + animation:'none': the screen itself renders
+              PopupModal (item 3), which already slides in on its own — this
+              avoids a jarring double-transition (native push, then the
+              popup's own slide) stacked on top of it. */}
+          <Stack.Screen
+            name="fixture-confirmed"
+            options={{ presentation: 'transparentModal', animation: 'none', headerShown: false }}
           />
           <Stack.Screen name="book" options={{ title: 'Book a pitch', ...brandedHeaderOptions }} />
           <Stack.Screen
@@ -168,6 +183,18 @@ function RootNavigator() {
             name="venue-dashboard"
             options={{ title: 'Venue Dashboard', ...brandedHeaderOptions }}
           />
+          <Stack.Screen
+            name="join-squad-post"
+            options={{ title: 'Join as Player', ...brandedHeaderOptions }}
+          />
+          <Stack.Screen
+            name="player-profile"
+            options={{ title: 'Player', ...brandedHeaderOptions }}
+          />
+          <Stack.Screen
+            name="team-profile"
+            options={{ title: 'Team', ...brandedHeaderOptions }}
+          />
         </Stack.Protected>
 
         <Stack.Protected guard={!signedIn}>
@@ -181,7 +208,7 @@ function RootNavigator() {
           screen rather than needing its own route. Signed-in only, since it
           calls an authenticated Edge Function. */}
       {signedIn ? <FuttyAiChat /> : null}
-    </>
+    </View>
   );
 }
 
@@ -218,18 +245,30 @@ export default Sentry.wrap(function RootLayout() {
   if (!fontsLoaded || !minDelayElapsed) return null;
 
   return (
-    <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}>
-      <AuthProvider>
-        <AppLockProvider>
-          <ThemeProvider value={FuttyNavigationTheme}>
-            <RootNavigator />
-            {/* Fixed, not "auto": the background is always the light stone-50
-                brand color now, so status bar content should always be dark,
-                regardless of system light/dark mode. */}
-            <StatusBar style="dark" />
-          </ThemeProvider>
-        </AppLockProvider>
-      </AuthProvider>
-    </StripeProvider>
+    // Root cause of the recurring "close button unreachable" reports (items
+    // 1 & 2): react-native-gesture-handler is a dependency of React
+    // Navigation's native-stack, but nothing ever wrapped the app in
+    // GestureHandlerRootView — required at the app root per React
+    // Navigation's own setup docs. Without it, gesture-handler's native
+    // responder system isn't initialized, which is documented to cause
+    // exactly this class of bug (unreliable/dropped touches on nested
+    // Pressables, especially Android) no matter how the button itself is
+    // styled — restyling/z-index/hitSlop changes alone could never have
+    // fixed it.
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}>
+        <AuthProvider>
+          <AppLockProvider>
+            <ThemeProvider value={FuttyNavigationTheme}>
+              <RootNavigator />
+              {/* Fixed, not "auto": the background is always the light stone-50
+                  brand color now, so status bar content should always be dark,
+                  regardless of system light/dark mode. */}
+              <StatusBar style="dark" />
+            </ThemeProvider>
+          </AppLockProvider>
+        </AuthProvider>
+      </StripeProvider>
+    </GestureHandlerRootView>
   );
 });

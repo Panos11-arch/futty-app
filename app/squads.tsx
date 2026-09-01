@@ -1,6 +1,6 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError } from '@/components/auth-form';
@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { describeSquadError } from '@/lib/squad-errors';
-import { cancelOppositionOffer, joinSquadPost, leaveSquadPost, offerOpposition } from '@/lib/squads';
+import { cancelOppositionOffer, leaveSquadPost, offerOpposition } from '@/lib/squads';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useSquadPosts, type SquadPostWithDetails } from '@/lib/use-squad-posts';
 
@@ -48,15 +48,6 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
   const spotsLeft = (post.players_needed ?? 0) - post.joined_count;
   const full = spotsLeft <= 0;
 
-  async function join() {
-    setBusy(true);
-    setError(null);
-    const { error: joinError } = await joinSquadPost(post.id);
-    setBusy(false);
-    if (joinError) setError(describeSquadError(joinError));
-    else onChanged();
-  }
-
   async function leave() {
     setBusy(true);
     setError(null);
@@ -74,6 +65,25 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
         {post.level ? ` · ${post.level}` : ''}
       </ThemedText>
 
+      {post.position_needed || post.level_needed ? (
+        <View style={styles.wrapRow}>
+          {post.position_needed ? (
+            <View style={[styles.tag, { borderColor: FuttyColors.violet500 }]}>
+              <ThemedText style={[styles.tagText, { color: FuttyColors.violet500 }]}>
+                {post.position_needed}
+              </ThemedText>
+            </View>
+          ) : null}
+          {post.level_needed ? (
+            <View style={[styles.tag, { borderColor: FuttyColors.amber400 }]}>
+              <ThemedText style={[styles.tagText, { color: FuttyColors.stone700 }]}>
+                {post.level_needed} needed
+              </ThemedText>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.infoRow}>
         <InfoBox label="When" value={formatWhen(post.scheduled_at)} tint={FuttyColors.sky500} />
         <InfoBox label="Needed" value={String(post.players_needed ?? 0)} tint={FuttyColors.coral500} />
@@ -84,12 +94,28 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
         />
       </View>
 
+      {post.roster.length > 0 ? (
+        <View style={styles.roster}>
+          {post.roster.map((player) => (
+            <View key={player.profileId} style={styles.rosterRow}>
+              <ThemedText style={styles.rosterName}>{player.name}</ThemedText>
+              <ThemedText style={styles.rosterTier}>{player.tier}</ThemedText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {error ? <AuthError>{error}</AuthError> : null}
 
       {post.joined_by_me ? (
-        <AuthButton label="Cancel" variant="secondary" onPress={leave} busy={busy} />
+        <AuthButton label="Cancel" variant="secondary" onPress={leave} busy={busy} compact />
       ) : (
-        <AuthButton label={full ? 'Full' : 'Join squad'} onPress={join} disabled={full} busy={busy} />
+        <AuthButton
+          label={full ? 'Full' : 'Join & Pay My Share'}
+          onPress={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
+          disabled={full}
+          compact
+        />
       )}
     </ThemedView>
   );
@@ -146,7 +172,14 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 
   return (
     <ThemedView style={[styles.card, { borderColor: border }]}>
-      <ThemedText type="defaultSemiBold">{post.team_name}</ThemedText>
+      <View style={styles.teamNameRow}>
+        <ThemedText type="defaultSemiBold">{post.team_name}</ThemedText>
+        {post.team_level ? (
+          <View style={[styles.tag, { borderColor: FuttyColors.amber400 }]}>
+            <ThemedText style={[styles.tagText, { color: FuttyColors.stone700 }]}>{post.team_level}</ThemedText>
+          </View>
+        ) : null}
+      </View>
       <ThemedText style={styles.note}>
         {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
         {post.level ? ` · ${post.level}` : ''}
@@ -164,11 +197,17 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 
       {post.status === 'matched' ? (
         <>
-          <ThemedText style={styles.note}>Matched vs {post.matched_team_name}</ThemedText>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: post.id } })}>
+            <ThemedText type="link" style={styles.note}>
+              Matched vs {post.matched_team_name} — view fixture
+            </ThemedText>
+          </Pressable>
           {error ? <AuthError>{error}</AuthError> : null}
           {isMyMatch ? (
             canCancel ? (
-              <AuthButton label="Cancel" variant="secondary" onPress={cancelMatch} busy={busy} />
+              <AuthButton label="Cancel" variant="secondary" onPress={cancelMatch} busy={busy} compact />
             ) : (
               <ThemedText style={styles.note}>Too close to kickoff to cancel now.</ThemedText>
             )
@@ -208,7 +247,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           </View>
         </>
       ) : (
-        <AuthButton label="Offer to play them" onPress={() => setOffering(true)} />
+        <AuthButton label="Offer to play them" onPress={() => setOffering(true)} compact />
       )}
     </ThemedView>
   );
@@ -308,5 +347,39 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     flex: 1,
+  },
+  tag: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  teamNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  roster: {
+    gap: 4,
+    borderTopWidth: 1,
+    borderTopColor: FuttyColors.stone200,
+    paddingTop: 8,
+  },
+  rosterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  rosterName: {
+    fontSize: 13,
+  },
+  rosterTier: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: FuttyColors.stone500,
   },
 });

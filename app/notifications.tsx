@@ -10,6 +10,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { markNotificationRead, type AppNotification, type NotificationType } from '@/lib/notifications';
+import { supabase } from '@/lib/supabase';
 import { useNotifications } from '@/lib/use-notifications';
 
 const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSymbol>['name']> = {
@@ -17,6 +18,7 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   squad_post: 'person.2.fill',
   booking_slot: 'calendar',
   booking_cancelled: 'exclamationmark.triangle.fill',
+  fixture_agreed: 'flag.checkered',
 };
 
 function timeAgo(iso: string) {
@@ -31,17 +33,36 @@ function timeAgo(iso: string) {
 }
 
 /** Where tapping a notification goes, per the `data` payload each trigger in
- *  supabase/notifications.sql writes. */
-function openNotification(notification: AppNotification) {
+ *  supabase/notifications.sql (and supabase/fixture-confirmed-notifications.sql)
+ *  writes. */
+async function openNotification(notification: AppNotification) {
   const data = notification.data as Record<string, unknown>;
 
   if (notification.type === 'fixture_message' && typeof data.fixtureId === 'string') {
     router.push({ pathname: '/fixture-chat', params: { fixtureId: data.fixtureId } });
-  } else if (notification.type === 'squad_post') {
+  } else if (notification.type === 'squad_post' && typeof data.postId === 'string') {
+    // Both "someone joined your post" and "your post got matched" share this
+    // notification type/payload shape — only the second should open Fixture
+    // Confirmed (item 3), and only for a matched "need opposition" post
+    // (a matched "need players" post has no second team to show), so check
+    // the post's current state rather than trusting which trigger fired.
+    if (data.postType === 'opposition') {
+      const { data: post } = await supabase
+        .from('squad_posts')
+        .select('status')
+        .eq('id', data.postId)
+        .maybeSingle();
+      if (post?.status === 'matched') {
+        router.push({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: data.postId } });
+        return;
+      }
+    }
     router.push({
       pathname: '/squads',
       params: { view: data.postType === 'opposition' ? 'opposition' : 'players' },
     });
+  } else if (notification.type === 'fixture_agreed' && typeof data.fixtureId === 'string') {
+    router.push({ pathname: '/fixture-confirmed', params: { kind: 'league', id: data.fixtureId } });
   } else if (notification.type === 'booking_slot') {
     router.push('/book');
   } else if (notification.type === 'booking_cancelled') {
@@ -56,7 +77,7 @@ function NotificationRow({ notification, onOpened }: { notification: AppNotifica
   async function press() {
     if (unread) await markNotificationRead(notification.id);
     onOpened();
-    openNotification(notification);
+    await openNotification(notification);
   }
 
   return (
@@ -160,7 +181,7 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   rowText: {
     fontFamily: FuttyFonts.sans,

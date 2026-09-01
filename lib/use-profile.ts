@@ -90,3 +90,46 @@ export function useProfile() {
 export async function updateProfile(userId: string, fields: Partial<EditableProfileFields>) {
   return supabase.from('profiles').update(fields).eq('id', userId);
 }
+
+export type PublicProfile = Pick<
+  Profile,
+  'id' | 'username' | 'full_name' | 'city' | 'position' | 'preferred_foot' | 'xp' | 'played' | 'won' | 'drawn' | 'lost' | 'goals'
+>;
+
+/** Another user's public stats only (item 5) — via a security-definer RPC
+ *  (supabase/public-profiles.sql), since profiles' RLS only lets you read
+ *  your own row. Never includes email/phone/gender/date_of_birth/bio. */
+export async function getPublicProfile(profileId: string) {
+  const { data, error } = await supabase.rpc('get_public_profile', { p_profile_id: profileId }).maybeSingle();
+  return { data: data as PublicProfile | null, error };
+}
+
+/** Widens a PublicProfile to the full Profile shape so it can be passed to
+ *  components (e.g. ProfileCard) that expect one — the fields that aren't
+ *  fetched are never rendered by a read-only view, so a safe placeholder is
+ *  fine rather than plumbing a second, narrower prop type through them. */
+export function publicProfileAsProfile(p: PublicProfile): Profile {
+  return {
+    id: p.id,
+    email: null,
+    username: p.username,
+    full_name: p.full_name,
+    phone: null,
+    gender: null,
+    date_of_birth: null,
+    bio: null,
+    city: p.city,
+    position: p.position,
+    preferred_foot: p.preferred_foot,
+    show_phone_publicly: false,
+    role: 'player',
+    is_premium: false,
+    xp: p.xp,
+    played: p.played,
+    won: p.won,
+    drawn: p.drawn,
+    lost: p.lost,
+    goals: p.goals,
+    created_at: '',
+  };
+}

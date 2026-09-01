@@ -5,10 +5,18 @@
 // ever create a PaymentIntent for their OWN share — there is no "pay for
 // someone else" path.
 //
+// capture_method: 'manual' (item 6) — this only ever authorizes a hold on
+// the card, never actually charges it. stripe-webhook captures every share's
+// intent together, all at once, only once the whole booking's roster is
+// full — see that function for why, and cancel-unpaid-bookings for what
+// happens if it never fills before kickoff.
+//
 // Same never-trust-the-client principle as create-booking-payment: this
 // only creates the payment intent. Only stripe-webhook, once Stripe itself
-// confirms the charge, marks the share 'paid' (and, if it's the booker's own
-// share, flips the booking to 'confirmed').
+// confirms the authorization, marks the share 'authorized' (and, if it's the
+// booker's own share, flips the booking to 'confirmed' — the pitch is held
+// as soon as the booker's card is authorized, well before anyone's actually
+// charged).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
@@ -65,6 +73,7 @@ Deno.serve(async (req) => {
   const paymentIntent = await stripe.paymentIntents.create({
     amount: share.amount_cents,
     currency: 'eur',
+    capture_method: 'manual',
     automatic_payment_methods: { enabled: true },
     metadata: { share_id: share.id, booking_id: share.booking_id, profile_id: userData.user.id },
   });

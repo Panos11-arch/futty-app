@@ -163,7 +163,7 @@ export default function PremiumPlanScreen() {
         accessibilityRole="button"
         accessibilityLabel="Close"
         onPress={() => router.back()}
-        hitSlop={10}
+        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         style={styles.closeButton}>
         <IconSymbol name="xmark" size={20} color={FuttyColors.white} />
       </Pressable>
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   subscribeButtonText: {
     fontFamily: FuttyFonts.sansBold,
     fontSize: 16,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   secondaryButton: {
     marginTop: 12,

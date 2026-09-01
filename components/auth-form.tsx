@@ -16,6 +16,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { getPasswordStrength } from '@/lib/password';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
@@ -73,6 +74,13 @@ type AuthButtonProps = {
   variant?: 'primary' | 'secondary';
   /** Trailing icon — e.g. a checkmark on a toggle button that's currently on. */
   icon?: IconName;
+  /** Sizes to its label instead of stretching to fill its container (item
+   *  9) — for a single standalone action in a card/row (e.g. "Join squad",
+   *  "Cancel"), not a full-screen primary CTA or one half of a paired
+   *  confirm/cancel row (those still want to fill their own flex:1 cell).
+   *  Default is unchanged (stretches) so no existing call site is affected
+   *  by adding this. */
+  compact?: boolean;
 };
 
 export function AuthButton({
@@ -82,6 +90,7 @@ export function AuthButton({
   busy,
   variant = 'primary',
   icon,
+  compact,
 }: AuthButtonProps) {
   const tint = useThemeColor({}, 'tint');
   // A filled button's label needs to invert against tint (emerald-950) rather
@@ -98,6 +107,7 @@ export function AuthButton({
       style={[
         styles.button,
         isPrimary ? { backgroundColor: tint } : { borderWidth: 1, borderColor: tint },
+        compact && styles.buttonCompact,
         (disabled || busy) && styles.buttonDisabled,
       ]}>
       {busy ? (
@@ -116,6 +126,36 @@ export function AuthButton({
 
 export function AuthError({ children }: PropsWithChildren) {
   return <ThemedText style={{ color: FuttyColors.rose600 }}>{children}</ThemedText>;
+}
+
+const STRENGTH_CONFIG = {
+  weak: { label: 'Weak', color: FuttyColors.rose600, filled: 1 },
+  medium: { label: 'Medium', color: FuttyColors.amber400, filled: 2 },
+  strong: { label: 'Strong', color: FuttyColors.emerald700, filled: 3 },
+} as const;
+
+/** Live weak/medium/strong indicator, based on length + character variety. */
+export function PasswordStrengthMeter({ password }: { password: string }) {
+  const strength = getPasswordStrength(password);
+  if (!strength) return null;
+  const config = STRENGTH_CONFIG[strength];
+
+  return (
+    <View style={styles.strengthWrap}>
+      <View style={styles.strengthBars}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={[
+              styles.strengthBar,
+              { backgroundColor: i < config.filled ? config.color : FuttyColors.stone200 },
+            ]}
+          />
+        ))}
+      </View>
+      <ThemedText style={[styles.strengthLabel, { color: config.color }]}>{config.label}</ThemedText>
+    </View>
+  );
 }
 
 export function AuthNotice({ children }: PropsWithChildren) {
@@ -173,6 +213,10 @@ const styles = StyleSheet.create({
     minHeight: 50,
     paddingHorizontal: 16,
   },
+  buttonCompact: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 22,
+  },
   buttonDisabled: {
     opacity: 0.5,
   },
@@ -187,5 +231,25 @@ const styles = StyleSheet.create({
   },
   link: {
     textAlign: 'center',
+  },
+  strengthWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: -4,
+  },
+  strengthBars: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+  },
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

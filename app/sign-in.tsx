@@ -10,10 +10,12 @@ import {
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  PasswordStrengthMeter,
 } from '@/components/auth-form';
 import { ThemedText } from '@/components/themed-text';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
+import { getPasswordLengthError } from '@/lib/password';
 import { preferences } from '@/lib/preferences';
 import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
 
@@ -34,8 +36,12 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const isSignUp = mode === 'sign-up';
+  const passwordLengthError = isSignUp ? getPasswordLengthError(password) : null;
   const canSubmit =
-    email.trim().length > 0 && password.length > 0 && (!isSignUp || username.trim().length > 0);
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    !passwordLengthError &&
+    (!isSignUp || username.trim().length > 0);
 
   function switchMode() {
     setMode(isSignUp ? 'sign-in' : 'sign-up');
@@ -58,6 +64,11 @@ export default function SignInScreen() {
 
         if (!USERNAME_PATTERN.test(trimmedUsername)) {
           setError(USERNAME_RULES_MESSAGE);
+          return;
+        }
+
+        if (passwordLengthError) {
+          setError(passwordLengthError);
           return;
         }
 
@@ -153,6 +164,9 @@ export default function SignInScreen() {
         onSubmitEditing={submit}
         returnKeyType="go"
       />
+
+      {isSignUp ? <PasswordStrengthMeter password={password} /> : null}
+      {passwordLengthError ? <AuthError>{passwordLengthError}</AuthError> : null}
 
       <View style={styles.toggleRow}>
         <ThemedText>Remember my email</ThemedText>

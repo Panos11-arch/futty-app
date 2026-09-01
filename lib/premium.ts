@@ -19,7 +19,7 @@ export const PERSONAL_PREMIUM_SKU = 'premium_monthly_v2';
 // on screens like the Go Premium list that don't open a StoreKit connection
 // just to show a price) — app/premium-plan.tsx still prefers the live price
 // from useIAP once it's mounted.
-export const PERSONAL_PREMIUM_PRICE_LABEL = '€5.99';
+export const PERSONAL_PREMIUM_PRICE_LABEL = '€4.99';
 
 // There is deliberately no client-side setPremium() here anymore.
 // profiles.is_premium is now locked down (supabase/premium-payments.sql

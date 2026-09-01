@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,8 +10,9 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PopupModal } from '@/components/popup-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
@@ -80,86 +80,62 @@ export function FuttyAiChat() {
           accessibilityRole="button"
           accessibilityLabel="Open Futty AI"
           onPress={() => setOpen(true)}
-          hitSlop={6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={({ pressed }) => [styles.launcher, pressed && styles.launcherPressed]}>
           <IconSymbol name="bubble.left.fill" size={24} color={FuttyColors.white} />
         </Pressable>
       </View>
 
-      <Modal visible={open} animationType="slide" onRequestClose={close}>
-        <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
-          <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={styles.header}>
-              <View style={styles.headerTitleRow}>
-                <IconSymbol name="bubble.left.fill" size={16} color={FuttyColors.emerald950} />
-                <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
-                  Futty AI
+      <PopupModal visible={open} onClose={close} title="Futty AI">
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
+            {messages.length === 0 ? (
+              <View style={styles.emptyRow}>
+                <IconSymbol name="hand.wave.fill" size={14} color={FuttyColors.stone400} />
+                <ThemedText style={styles.emptyNote}>
+                  Ask me anything about Futty — booking a pitch, leagues, XP, Premium, and more.
                 </ThemedText>
               </View>
-              {/* Its own full-size touchable, not just an icon glyph, and
-                  raised in z-order above the ScrollView below it — the
-                  previous version's close button sat in the same stacking
-                  context as the message list and lost touches to it on
-                  Android. */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                onPress={close}
-                hitSlop={12}
-                style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}>
-                <IconSymbol name="xmark" size={20} color={FuttyColors.stone700} />
-              </Pressable>
-            </View>
-
-            <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
-              {messages.length === 0 ? (
-                <View style={styles.emptyRow}>
-                  <IconSymbol name="hand.wave.fill" size={14} color={FuttyColors.stone400} />
-                  <ThemedText style={styles.emptyNote}>
-                    Ask me anything about Futty — booking a pitch, leagues, XP, Premium, and more.
+            ) : null}
+            {messages.map((message, index) => (
+              <View
+                key={index}
+                style={[styles.bubbleRow, message.role === 'user' && styles.bubbleRowMine]}>
+                <View style={[styles.bubble, message.role === 'user' ? styles.bubbleMine : styles.bubbleTheirs]}>
+                  <ThemedText style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextMine]}>
+                    {message.content}
                   </ThemedText>
                 </View>
-              ) : null}
-              {messages.map((message, index) => (
-                <View
-                  key={index}
-                  style={[styles.bubbleRow, message.role === 'user' && styles.bubbleRowMine]}>
-                  <View style={[styles.bubble, message.role === 'user' ? styles.bubbleMine : styles.bubbleTheirs]}>
-                    <ThemedText style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextMine]}>
-                      {message.content}
-                    </ThemedText>
-                  </View>
-                </View>
-              ))}
-              {busy ? <ActivityIndicator style={styles.loading} /> : null}
-            </ScrollView>
+              </View>
+            ))}
+            {busy ? <ActivityIndicator style={styles.loading} /> : null}
+          </ScrollView>
 
-            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+          {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
 
-            <View style={styles.inputRow}>
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Ask Futty AI…"
-                placeholderTextColor={FuttyColors.stone400}
-                style={styles.input}
-                onSubmitEditing={send}
-                returnKeyType="send"
-                editable={!busy}
-                multiline
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Send"
-                onPress={send}
-                disabled={!input.trim() || busy}
-                style={[styles.sendButton, (!input.trim() || busy) && styles.sendButtonDisabled]}>
-                <IconSymbol name="paperplane.circle.fill" size={30} color={FuttyColors.emerald700} />
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </Modal>
+          <View style={styles.inputRow}>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask Futty AI…"
+              placeholderTextColor={FuttyColors.stone400}
+              style={styles.input}
+              onSubmitEditing={send}
+              returnKeyType="send"
+              editable={!busy}
+              multiline
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Send"
+              onPress={send}
+              disabled={!input.trim() || busy}
+              style={[styles.sendButton, (!input.trim() || busy) && styles.sendButtonDisabled]}>
+              <IconSymbol name="paperplane.circle.fill" size={30} color={FuttyColors.emerald700} />
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </PopupModal>
     </>
   );
 }
@@ -191,34 +167,6 @@ const styles = StyleSheet.create({
   },
   launcherPressed: {
     opacity: 0.85,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: FuttyColors.stone200,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: {
-    fontFamily: FuttyFonts.sansSemiBold,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.stone50,
-  },
-  closeButtonPressed: {
-    opacity: 0.6,
   },
   messages: {
     padding: 16,

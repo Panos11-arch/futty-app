@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -179,7 +180,10 @@ function MatchedContactRow({
   return (
     <ThemedView style={[styles.card, { borderColor: border }]}>
       <View style={styles.row}>
-        <View style={styles.rowMain}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push({ pathname: '/player-profile', params: { profileId: contact.match.profileId } })}
+          style={styles.rowMain}>
           <Avatar initial={contact.name[0]?.toUpperCase() ?? '?'} />
           <View>
             <ThemedText type="defaultSemiBold">{contact.name}</ThemedText>
@@ -187,7 +191,7 @@ function MatchedContactRow({
               <ThemedText style={styles.note}>@{contact.match.username}</ThemedText>
             ) : null}
           </View>
-        </View>
+        </Pressable>
         <View style={styles.rowActions}>
           <FollowButton targetType="player" targetId={contact.match.profileId} follows={follows} />
           <Pressable
@@ -327,13 +331,16 @@ function TeamsTab() {
       {teams?.map((team) => (
         <ThemedView key={team.id} style={[styles.card, { borderColor: border }]}>
           <View style={styles.row}>
-            <View style={styles.rowMain}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push({ pathname: '/team-profile', params: { teamId: team.id } })}
+              style={styles.rowMain}>
               <Avatar initial={team.name[0]?.toUpperCase() ?? '?'} />
               <View>
                 <ThemedText type="defaultSemiBold">{team.name}</ThemedText>
                 {team.city ? <ThemedText style={styles.note}>{team.city}</ThemedText> : null}
               </View>
-            </View>
+            </Pressable>
             <FollowButton targetType="team" targetId={team.id} follows={follows} />
           </View>
         </ThemedView>
@@ -344,6 +351,19 @@ function TeamsTab() {
 
 export default function CommunityScreen() {
   const [view, setView] = useState<CommunityView>('contacts');
+  // Once a tab has been opened, its component stays mounted for the rest of
+  // the screen's lifetime (toggled with display:none below) instead of
+  // being unmounted on every switch. Unmounting was the actual bug: each
+  // tab reads its data in its own useEffect(..., []) — device contacts +
+  // matching for Contacts, a table query for Teams, plus a follows/blocks
+  // fetch either way — so remounting re-ran all of that from scratch on
+  // every single switch back, which is what made switching feel slow.
+  const [openedTeams, setOpenedTeams] = useState(false);
+
+  function selectTeams() {
+    setOpenedTeams(true);
+    setView('teams');
+  }
 
   return (
     <SafeAreaView style={styles.flex} edges={['top']}>
@@ -352,16 +372,26 @@ export default function CommunityScreen() {
 
         <View style={styles.wrapRow}>
           <Chip icon="person.2.fill" label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
-          <Chip icon="shield.fill" label="Teams" selected={view === 'teams'} onPress={() => setView('teams')} />
+          <Chip icon="shield.fill" label="Teams" selected={view === 'teams'} onPress={selectTeams} />
         </View>
 
-        {view === 'contacts' ? <ContactsTab /> : <TeamsTab />}
+        <View style={view === 'contacts' ? undefined : styles.hidden}>
+          <ContactsTab />
+        </View>
+        {openedTeams ? (
+          <View style={view === 'teams' ? undefined : styles.hidden}>
+            <TeamsTab />
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  hidden: {
+    display: 'none',
+  },
   flex: {
     flex: 1,
   },

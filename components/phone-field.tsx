@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { PopupModal } from '@/components/popup-modal';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors } from '@/constants/futty-theme';
@@ -46,38 +46,25 @@ export function PhoneField({
         style={[styles.input, { borderColor: border, color: textColor }]}
       />
 
-      <Modal visible={pickerOpen} animationType="slide" onRequestClose={() => setPickerOpen(false)}>
-        <SafeAreaView style={styles.modalFlex} edges={['top', 'bottom']}>
-          <View style={styles.modalHeader}>
-            <ThemedText type="defaultSemiBold">Select country</ThemedText>
+      <PopupModal visible={pickerOpen} onClose={() => setPickerOpen(false)} title="Select country">
+        <FlatList
+          data={COUNTRIES}
+          keyExtractor={(item) => item.iso2}
+          renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={() => setPickerOpen(false)}
-              hitSlop={10}
-              style={styles.modalClose}>
-              <IconSymbol name="xmark" size={18} color={FuttyColors.stone700} />
+              onPress={() => {
+                onChangeCountry(item);
+                setPickerOpen(false);
+              }}
+              style={[styles.countryRow, item.iso2 === country.iso2 && styles.countryRowSelected]}>
+              <ThemedText style={styles.flag}>{item.flag}</ThemedText>
+              <ThemedText style={styles.countryName}>{item.name}</ThemedText>
+              <ThemedText style={styles.countryDial}>{item.dialCode}</ThemedText>
             </Pressable>
-          </View>
-          <FlatList
-            data={COUNTRIES}
-            keyExtractor={(item) => item.iso2}
-            renderItem={({ item }) => (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  onChangeCountry(item);
-                  setPickerOpen(false);
-                }}
-                style={[styles.countryRow, item.iso2 === country.iso2 && styles.countryRowSelected]}>
-                <ThemedText style={styles.flag}>{item.flag}</ThemedText>
-                <ThemedText style={styles.countryName}>{item.name}</ThemedText>
-                <ThemedText style={styles.countryDial}>{item.dialCode}</ThemedText>
-              </Pressable>
-            )}
-          />
-        </SafeAreaView>
-      </Modal>
+          )}
+        />
+      </PopupModal>
     </View>
   );
 }
@@ -108,26 +95,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
     fontSize: 16,
-  },
-  modalFlex: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: FuttyColors.stone200,
-  },
-  modalClose: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.stone50,
   },
   countryRow: {
     flexDirection: 'row',

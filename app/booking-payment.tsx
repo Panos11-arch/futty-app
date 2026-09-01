@@ -14,7 +14,9 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useAuth } from '@/lib/auth';
 import { addBookingPlayer, createSharePayment, listBookingShares, type BookingShare } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { PostSquadNeed } from '@/app/my-bookings';
 import { supabase } from '@/lib/supabase';
+import type { MyBooking } from '@/lib/use-my-bookings';
 
 function centsToLabel(cents: number) {
   return `€${(cents / 100).toFixed(2)}`;
@@ -22,23 +24,42 @@ function centsToLabel(cents: number) {
 
 const STATUS_ICON: Record<BookingShare['status'], React.ComponentProps<typeof IconSymbol>['name']> = {
   pending: 'clock.fill',
+  authorized: 'lock.fill',
   paid: 'checkmark.circle.fill',
   refunded: 'exclamationmark.triangle.fill',
   cancelled: 'xmark',
 };
 
+const STATUS_LABEL: Record<BookingShare['status'], string> = {
+  pending: 'Awaiting payment',
+  authorized: 'Card held — charged once everyone joins',
+  paid: 'Charged',
+  refunded: 'Refunded',
+  cancelled: 'Cancelled',
+};
+
 /** Shown right after a priced booking is created, replacing the old
- *  "pay the full amount now" screen — the booker pays their own share here
- *  (which is what actually reserves the pitch), other players show as
- *  pending until they each pay their own via their own device. */
+ *  "pay the full amount now" screen — the booker authorizes their own share
+ *  here (which is what actually reserves the pitch), other players show as
+ *  pending until they each authorize their own via their own device.
+ *
+ *  Item 6 — nobody is actually charged here. This only places a hold; every
+ *  authorized share in the booking is captured together, all at once, the
+ *  moment the last spot fills (see supabase/functions/stripe-webhook). If
+ *  the roster never fills before kickoff, the hold is released, never
+ *  charged (supabase/functions/cancel-unpaid-bookings). */
 export default function BookingPaymentScreen() {
-  const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const { bookingId, needChoice } = useLocalSearchParams<{
+    bookingId: string;
+    needChoice?: 'players' | 'opposition' | 'neither';
+  }>();
   const { user } = useAuth();
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [shares, setShares] = useState<BookingShare[] | null>(null);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
+  const [booking, setBooking] = useState<MyBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingShareId, setPayingShareId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
@@ -47,13 +68,18 @@ export default function BookingPaymentScreen() {
 
   const load = useCallback(async () => {
     if (!bookingId) return;
-    const [{ data: shareRows, error: shareError }, { data: booking }] = await Promise.all([
+    const [{ data: shareRows, error: shareError }, { data: bookingRow }] = await Promise.all([
       listBookingShares(bookingId),
-      supabase.from('venue_bookings').select('status').eq('id', bookingId).maybeSingle(),
+      supabase
+        .from('venue_bookings')
+        .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format, status')
+        .eq('id', bookingId)
+        .maybeSingle(),
     ]);
     if (shareError) setError(shareError.message);
     else setShares(shareRows ?? []);
-    if (booking) setBookingStatus(booking.status);
+    if (bookingRow) setBooking(bookingRow);
+    if (bookingRow) setBookingStatus(bookingRow.status);
   }, [bookingId]);
 
   useFocusEffect(
@@ -65,6 +91,12 @@ export default function BookingPaymentScreen() {
 
   const myShare = shares?.find((s) => s.profile_id === user?.id) ?? null;
   const isBooker = myShare?.is_booker ?? false;
+  // No share at all means a free venue — nothing to authorize. Otherwise
+  // "Done" must not be reachable until this player's own hold has actually
+  // succeeded (item 2) — leaving this screen with a still-'pending' share
+  // was exactly the bug: the wizard/this screen could be closed as if the
+  // booking were real when no payment had ever gone through.
+  const myShareSettled = !myShare || myShare.status === 'authorized' || myShare.status === 'paid';
 
   async function payShare(share: BookingShare) {
     setPayingShareId(share.id);
@@ -134,14 +166,19 @@ export default function BookingPaymentScreen() {
 
         {bookingStatus === 'confirmed' ? (
           <IconLabel icon="checkmark.circle.fill" iconColor={FuttyColors.emerald700} style={styles.note}>
-            Pitch reserved — your share is paid.
+            Pitch reserved — your card is held, not charged. Everyone's charged together once the roster
+            is full.
           </IconLabel>
         ) : (
           <ThemedText style={styles.note}>
-            The pitch is reserved once your own share is paid. Everyone else pays their own share
-            independently.
+            The pitch is reserved once your own card is authorized. No one is charged until every spot is
+            filled — if it never fills before kickoff, the hold is simply released.
           </ThemedText>
         )}
+
+        {bookingStatus === 'confirmed' && booking && needChoice && needChoice !== 'neither' ? (
+          <PostSquadNeed booking={booking} initialMode={needChoice} />
+        ) : null}
 
         {shares.map((share) => (
           <ThemedView key={share.id} style={[styles.shareCard, { borderColor: border }]}>
@@ -156,15 +193,17 @@ export default function BookingPaymentScreen() {
                   {share.profile_id === user?.id ? 'You' : (share.username ?? 'Player')}
                   {share.is_booker ? ' · Booker' : ''}
                 </ThemedText>
-                <ThemedText style={styles.shareStatus}>
-                  {share.status === 'paid' ? 'Paid' : share.status === 'pending' ? 'Awaiting payment' : share.status}
-                </ThemedText>
+                <ThemedText style={styles.shareStatus}>{STATUS_LABEL[share.status] ?? share.status}</ThemedText>
               </View>
               <ThemedText style={styles.shareAmount}>{centsToLabel(share.amount_cents)}</ThemedText>
             </View>
 
             {share.profile_id === user?.id && share.status === 'pending' ? (
-              <AuthButton label="Pay your share" onPress={() => payShare(share)} busy={payingShareId === share.id} />
+              <AuthButton
+                label="Authorize your share"
+                onPress={() => payShare(share)}
+                busy={payingShareId === share.id}
+              />
             ) : null}
           </ThemedView>
         ))}
@@ -192,7 +231,16 @@ export default function BookingPaymentScreen() {
           </View>
         ) : null}
 
-        <AuthButton label="Done" variant="secondary" onPress={() => router.back()} />
+        {!myShareSettled ? (
+          <ThemedText style={styles.note}>Authorize your share above to finish booking this pitch.</ThemedText>
+        ) : null}
+        <AuthButton
+          label="Done"
+          variant="secondary"
+          onPress={() => router.back()}
+          disabled={!myShareSettled}
+          compact
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,7 +290,7 @@ const styles = StyleSheet.create({
   shareAmount: {
     fontFamily: FuttyFonts.monoSemiBold,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   addPlayerSection: {
     gap: 8,
@@ -254,7 +302,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   addPlayerRow: {
     flexDirection: 'row',

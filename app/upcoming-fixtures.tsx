@@ -72,6 +72,13 @@ function FixtureRow({
     (fixture.status === 'unscheduled' || fixture.status === 'proposed') &&
     Date.now() > new Date(fixture.created_at).getTime() + RESOLVE_WINDOW_MS;
 
+  // A captain can't do anything with an unscheduled/proposed fixture from
+  // this read-only list — actually proposing or agreeing a date only happens
+  // in Matchmaking (app/matchmaking.tsx), which already lists every fixture
+  // of theirs that needsScheduling(). Without this link, "Not yet scheduled"
+  // reads as a dead end even though the real next step is one tab away.
+  const needsAction = isCaptain && (fixture.status === 'unscheduled' || fixture.status === 'proposed');
+
   return (
     <View style={styles.fixtureRow}>
       <ThemedText type="defaultSemiBold">
@@ -84,6 +91,14 @@ function FixtureRow({
         </IconLabel>
       ) : null}
       {canLogScore ? <FixtureScoreForm fixture={fixture} onSubmitted={onChanged} /> : null}
+      {needsAction ? (
+        <AuthButton
+          label="Go to matchmaking"
+          variant="secondary"
+          onPress={() => router.push('/matchmaking')}
+          compact
+        />
+      ) : null}
       {canResolve ? <ResolveOutcomeButton fixtureId={fixture.id} onChanged={onChanged} /> : null}
       {isCaptain ? (
         <Pressable

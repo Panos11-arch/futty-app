@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '700',
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   sublabel: {
     fontSize: 12,

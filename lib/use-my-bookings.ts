@@ -38,7 +38,16 @@ export function useMyBookings() {
       .from('venue_bookings')
       .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format')
       .eq('created_by', user.id)
-      .neq('status', 'cancelled')
+      // A venue owner's own recurring training blocks (booking_type =
+      // 'owner_block') also have created_by = their own id, so without this
+      // they'd show up as if they were a real game the owner had booked to
+      // play — this is "your next game", not the venue's internal schedule.
+      .eq('booking_type', 'user_booking')
+      // Only 'confirmed' (item 2) — a booking still 'pending_payment' never
+      // had its own authorization succeed (or it's free and was confirmed
+      // outright at creation), so it isn't a real game yet and shouldn't
+      // show here as if it were, even though the row already exists.
+      .eq('status', 'confirmed')
       .gte('booking_day', toDateKey(new Date()))
       .order('booking_day')
       .order('start_time');
@@ -91,7 +100,8 @@ export function useMyUnscoredBookings() {
       .from('venue_bookings')
       .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format')
       .eq('created_by', user.id)
-      .neq('status', 'cancelled')
+      .eq('booking_type', 'user_booking')
+      .eq('status', 'confirmed')
       .is('result', null)
       .order('booking_day')
       .order('start_time');

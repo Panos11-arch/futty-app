@@ -63,7 +63,7 @@ XP AND SCORING
 - There is no reward for winning or drawing a match — winning/drawing does not add XP. If asked "how much XP do I get for winning", say clearly that wins/draws are tracked for your record but don't currently add XP, and that XP only moves via the dispute penalty above.
 
 PERSONAL PREMIUM
-- €5.99/month subscription via Apple. Unlocks booking up to 21 days ahead and a verified badge.
+- €4.99/month subscription via Apple. Unlocks booking up to 21 days ahead and a verified badge.
 - Cancel via Settings > Apple ID > Subscriptions on the device (the app links there) — access continues until the paid period ends.
 
 TEAM PREMIUM

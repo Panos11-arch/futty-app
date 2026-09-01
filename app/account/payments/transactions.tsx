@@ -1,26 +1,24 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconLabel } from '@/components/icon-label';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useVenues } from '@/lib/use-venues';
 
-type ShareTransaction = {
+type Transaction = {
   id: string;
   booking_id: string;
   amount_cents: number;
   status: string;
   paid_at: string | null;
   is_booker: boolean;
-};
-
-type BookingInfo = {
   venue_id: string;
   booking_day: string;
   start_time: string;
@@ -38,45 +36,26 @@ const STATUS_LABEL: Record<string, string> = {
  *  booking_payment_shares row that's theirs, whether they booked it or just
  *  joined it (see supabase/booking-payment-splits.sql). This is genuinely
  *  "your" transactions now that a booking's total is split across players,
- *  unlike a plain list of venue_bookings you created. */
+ *  unlike a plain list of venue_bookings you created.
+ *
+ *  Fetched via list_my_transactions() (supabase/transactions-list.sql)
+ *  rather than a client-side join+filter: it already excludes expired
+ *  'pending' shares (kickoff passed, display-layer safeguard alongside the
+ *  real cancel-unpaid-bookings cleanup) while always returning every paid/
+ *  refunded/cancelled share regardless of age — filtering that lives in one
+ *  place instead of being re-derived here. */
 export default function TransactionsScreen() {
-  const { user } = useAuth();
   const venuesState = useVenues();
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const [shares, setShares] = useState<ShareTransaction[] | null>(null);
-  const [bookings, setBookings] = useState<Record<string, BookingInfo>>({});
+  const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-
-    (async () => {
-      const { data: shareRows, error: shareError } = await supabase
-        .from('booking_payment_shares')
-        .select('id, booking_id, amount_cents, status, paid_at, is_booker')
-        .eq('profile_id', user.id)
-        .order('paid_at', { ascending: false, nullsFirst: false });
-
-      if (shareError) {
-        setError(shareError.message);
-        return;
-      }
-
-      setShares(shareRows ?? []);
-
-      const bookingIds = [...new Set((shareRows ?? []).map((s) => s.booking_id))];
-      if (bookingIds.length === 0) return;
-
-      const { data: bookingRows } = await supabase
-        .from('venue_bookings')
-        .select('id, venue_id, booking_day, start_time, format')
-        .in('id', bookingIds);
-
-      const map: Record<string, BookingInfo> = {};
-      for (const row of bookingRows ?? []) map[row.id] = row;
-      setBookings(map);
-    })();
-  }, [user]);
+    supabase.rpc('list_my_transactions').then(({ data, error: fetchError }) => {
+      if (fetchError) setError(fetchError.message);
+      else setTransactions((data ?? []) as Transaction[]);
+    });
+  }, []);
 
   function venueName(venueId: string) {
     return venuesState.status === 'ready'
@@ -87,31 +66,40 @@ export default function TransactionsScreen() {
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {!shares && !error ? <ActivityIndicator /> : null}
+        {!transactions && !error ? <ActivityIndicator /> : null}
         {error ? <ThemedText style={styles.note}>Could not load: {error}</ThemedText> : null}
-        {shares && shares.length === 0 ? (
+        {transactions && transactions.length === 0 ? (
           <IconLabel icon="doc.text.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
             No booking payments yet.
           </IconLabel>
         ) : null}
-        {shares?.map((share) => {
-          const booking = bookings[share.booking_id];
-          return (
-            <ThemedView key={share.id} style={[styles.card, { borderColor: border }]}>
-              <View style={styles.rowMain}>
-                <ThemedText type="defaultSemiBold" style={styles.venue}>
-                  {booking ? venueName(booking.venue_id) : 'Venue'}
-                  {share.is_booker ? ' (your booking)' : ''}
-                </ThemedText>
-                <ThemedText style={styles.amount}>€{(share.amount_cents / 100).toFixed(2)}</ThemedText>
-              </View>
-              <ThemedText style={styles.meta}>
-                {booking ? `${booking.booking_day} · ${booking.start_time.slice(0, 5)} · ${booking.format} · ` : ''}
-                {STATUS_LABEL[share.status] ?? share.status}
+        {transactions?.map((tx) => (
+          <ThemedView key={tx.id} style={[styles.card, { borderColor: border }]}>
+            <View style={styles.rowMain}>
+              <ThemedText type="defaultSemiBold" style={styles.venue}>
+                {venueName(tx.venue_id)}
+                {tx.is_booker ? ' (your booking)' : ''}
               </ThemedText>
-            </ThemedView>
-          );
-        })}
+              <ThemedText style={styles.amount}>€{(tx.amount_cents / 100).toFixed(2)}</ThemedText>
+            </View>
+            <ThemedText style={styles.meta}>
+              {tx.booking_day} · {tx.start_time.slice(0, 5)} · {tx.format} · {STATUS_LABEL[tx.status] ?? tx.status}
+            </ThemedText>
+
+            {tx.status === 'pending' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push({ pathname: '/booking-payment', params: { bookingId: tx.booking_id } })}
+                style={styles.finishRow}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <ThemedText type="link" style={styles.finishText}>
+                  Finish payment
+                </ThemedText>
+                <IconSymbol name="arrow.right" size={12} color={FuttyColors.emerald700} />
+              </Pressable>
+            ) : null}
+          </ThemedView>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -146,11 +134,21 @@ const styles = StyleSheet.create({
   amount: {
     fontFamily: FuttyFonts.monoSemiBold,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   meta: {
     fontFamily: FuttyFonts.sans,
     fontSize: 12,
     color: FuttyColors.stone500,
+  },
+  finishRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  finishText: {
+    fontSize: 13,
   },
 });

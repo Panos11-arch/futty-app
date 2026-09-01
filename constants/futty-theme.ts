@@ -34,6 +34,9 @@ export const FuttyColors = {
   stone400: '#a8a29e',
   stone500: '#78716c',
   stone700: '#44403c',
+  // Near-black — bold/heading text (item 6: high-contrast Playtomic look).
+  // Green (emerald950 etc.) stays reserved for buttons/highlights/icons.
+  stone900: '#1c1917',
   white: '#ffffff',
 } as const;
 
@@ -57,7 +60,7 @@ export const FuttyNavigationTheme = {
     primary: FuttyColors.emerald950,
     background: FuttyColors.stone50,
     card: FuttyColors.white,
-    text: FuttyColors.emerald950,
+    text: FuttyColors.stone900,
     border: FuttyColors.stone200,
     notification: FuttyColors.amber400,
   },

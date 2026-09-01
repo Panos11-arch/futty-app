@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { WizardModal } from '@/components/wizard-modal';
 import { FuttyColors } from '@/constants/futty-theme';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { dayLabel, toDateKey, useDays } from '@/lib/days';
 import {
   FIXTURE_SCHEDULING_WINDOW_DAYS,
@@ -24,41 +26,47 @@ import { useVenues } from '@/lib/use-venues';
 // is picked in this same form.
 const KICKOFF_TIMES = Array.from({ length: 14 }, (_, i) => `${String(9 + i).padStart(2, '0')}:00`);
 
+type WizardStep = 'date' | 'time' | 'venue';
+const WIZARD_STEPS: WizardStep[] = ['date', 'time', 'venue'];
+const STEP_META: Record<WizardStep, { title: string; name: string; subtitle: string }> = {
+  date: { title: 'Pick a date', name: 'Date', subtitle: `Within the next ${FIXTURE_SCHEDULING_WINDOW_DAYS} days.` },
+  time: { title: 'Kickoff time', name: 'Time', subtitle: 'When should the match start?' },
+  venue: { title: 'Which pitch?', name: 'Venue', subtitle: 'Propose a venue for this fixture.' },
+};
+
 function needsScheduling(fixture: Fixture) {
   return fixture.status === 'unscheduled' || fixture.status === 'proposed';
 }
 
-function FixtureScheduleCard({
+/** Item 8 — the same WizardModal shell Book uses (title, thin progress bar,
+ *  "Step X of Y", full-width Continue, back chevron only), so scheduling a
+ *  league fixture feels like the same product as booking a pitch instead of
+ *  a separate, differently-styled flow. */
+function ScheduleWizard({
   fixture,
-  myCaptainTeamIds,
-  onChanged,
+  opponentName,
+  theirLatest,
+  onClose,
+  onScheduled,
 }: {
   fixture: Fixture;
-  myCaptainTeamIds: Set<string>;
-  onChanged: () => void;
+  opponentName: string;
+  theirLatest: FixtureProposal | null;
+  onClose: () => void;
+  onScheduled: () => void;
 }) {
   const venuesState = useVenues();
   const schedulingDays = useDays(FIXTURE_SCHEDULING_WINDOW_DAYS + 1);
-  const [proposals, setProposals] = useState<FixtureProposal[] | null>(null);
+  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
+
+  const [step, setStep] = useState<WizardStep>('date');
   const [dateKey, setDateKey] = useState(toDateKey(schedulingDays[0]));
   const [time, setTime] = useState(KICKOFF_TIMES[9]);
   const [venueId, setVenueId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProposals = useCallback(async () => {
-    const { data, error: loadError } = await listFixtureProposals(fixture.id);
-    if (loadError) setError(loadError.message);
-    else setProposals((data ?? []) as unknown as FixtureProposal[]);
-  }, [fixture.id]);
-
-  useEffect(() => {
-    loadProposals();
-  }, [loadProposals]);
-
-  const opponent = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team : fixture.home_team;
-  const theirTeamId = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team_id : fixture.home_team_id;
-  const theirLatest = proposals?.find((p) => p.proposed_by_team_id === theirTeamId) ?? null;
+  const stepIndex = WIZARD_STEPS.indexOf(step);
 
   async function propose(day: string, kickoff: string, venue: string) {
     if (busy) return;
@@ -69,78 +77,168 @@ function FixtureScheduleCard({
     if (proposeError) {
       setError(describeLeagueError(proposeError));
     } else {
-      onChanged();
-      loadProposals();
+      onScheduled();
+      onClose();
     }
   }
 
-  return (
-    <View style={styles.card}>
-      <ThemedText type="defaultSemiBold">vs {opponent?.name ?? 'Unknown team'}</ThemedText>
+  function canAdvance() {
+    if (step === 'date') return !!dateKey;
+    if (step === 'time') return !!time;
+    return !!venueId;
+  }
 
-      {theirLatest ? (
-        <>
-          <ThemedText style={styles.note}>
+  function goNext() {
+    if (step === 'venue') {
+      if (venueId) propose(dateKey, time, venueId);
+      return;
+    }
+    setStep(WIZARD_STEPS[stepIndex + 1]);
+  }
+
+  function goBack() {
+    if (stepIndex === 0) {
+      onClose();
+      return;
+    }
+    setStep(WIZARD_STEPS[stepIndex - 1]);
+  }
+
+  const meta = STEP_META[step];
+
+  return (
+    <WizardModal
+      visible
+      title={`vs ${opponentName}`}
+      stepIndex={stepIndex}
+      stepCount={WIZARD_STEPS.length}
+      stepName={meta.name}
+      onBack={goBack}
+      continueLabel={step === 'venue' ? 'Propose to opponent' : 'Continue'}
+      onContinue={goNext}
+      continueDisabled={!canAdvance()}
+      continueBusy={busy}>
+      <ThemedText type="title" style={styles.stepTitle}>
+        {meta.title}
+      </ThemedText>
+      <ThemedText style={styles.stepSubtitle}>{meta.subtitle}</ThemedText>
+
+      {theirLatest && step === 'date' ? (
+        <ThemedView style={[styles.theirProposalCard, { borderColor: border }]}>
+          <ThemedText style={styles.theirProposalText}>
             They proposed {theirLatest.proposed_day} at {theirLatest.proposed_time.slice(0, 5)},{' '}
             {theirLatest.venue?.name ?? 'a pitch'}.
           </ThemedText>
-          <AuthButton
-            label="Agree to this"
+          <Pressable
+            accessibilityRole="button"
             onPress={() =>
               propose(theirLatest.proposed_day, theirLatest.proposed_time.slice(0, 5), theirLatest.venue_id)
             }
-            busy={busy}
-          />
-          <ThemedText style={styles.note}>Or propose something different:</ThemedText>
-        </>
-      ) : (
-        <ThemedText style={styles.note}>Pick a date within the next week:</ThemedText>
-      )}
-
-      <View style={styles.wrapRow}>
-        {schedulingDays.map((day) => {
-          const key = toDateKey(day);
-          return (
-            <Chip key={key} label={dayLabel(day)} selected={dateKey === key} onPress={() => setDateKey(key)} />
-          );
-        })}
-      </View>
-
-      <ThemedText style={styles.note}>Kickoff time:</ThemedText>
-      <View style={styles.wrapRow}>
-        {KICKOFF_TIMES.map((t) => (
-          <Chip key={t} label={t} selected={time === t} onPress={() => setTime(t)} />
-        ))}
-      </View>
-
-      <ThemedText style={styles.note}>Pitch:</ThemedText>
-      {venuesState.status === 'loading' ? <ActivityIndicator /> : null}
-      {venuesState.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load pitches: {venuesState.message}</ThemedText>
+            style={styles.agreeButton}>
+            <ThemedText style={styles.agreeButtonText}>Agree to this instead</ThemedText>
+          </Pressable>
+        </ThemedView>
       ) : null}
-      {venuesState.status === 'ready' ? (
+
+      {step === 'date' ? (
         <View style={styles.wrapRow}>
-          {venuesState.venues.map((venue) => (
-            <Chip
-              key={venue.id}
-              label={venue.name}
-              sublabel={venue.city}
-              selected={venueId === venue.id}
-              onPress={() => setVenueId(venue.id)}
-            />
+          {schedulingDays.map((day) => {
+            const key = toDateKey(day);
+            return (
+              <Chip key={key} label={dayLabel(day)} selected={dateKey === key} onPress={() => setDateKey(key)} />
+            );
+          })}
+        </View>
+      ) : null}
+
+      {step === 'time' ? (
+        <View style={styles.wrapRow}>
+          {KICKOFF_TIMES.map((t) => (
+            <Chip key={t} label={t} selected={time === t} onPress={() => setTime(t)} />
           ))}
         </View>
       ) : null}
 
-      {error ? <AuthError>{error}</AuthError> : null}
+      {step === 'venue' ? (
+        <View style={styles.wrapRow}>
+          {venuesState.status === 'loading' ? <ActivityIndicator /> : null}
+          {venuesState.status === 'error' ? (
+            <ThemedText style={styles.note}>Could not load pitches: {venuesState.message}</ThemedText>
+          ) : null}
+          {venuesState.status === 'ready'
+            ? venuesState.venues.map((venue) => (
+                <Chip
+                  key={venue.id}
+                  label={venue.name}
+                  sublabel={venue.city}
+                  selected={venueId === venue.id}
+                  onPress={() => setVenueId(venue.id)}
+                />
+              ))
+            : null}
+        </View>
+      ) : null}
 
-      <AuthButton
-        label={theirLatest ? 'Propose different time' : 'Propose to opponent'}
-        onPress={() => venueId && propose(dateKey, time, venueId)}
-        disabled={!venueId}
-        busy={busy}
-      />
-    </View>
+      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+    </WizardModal>
+  );
+}
+
+function FixtureRow({
+  fixture,
+  myCaptainTeamIds,
+  onChanged,
+}: {
+  fixture: Fixture;
+  myCaptainTeamIds: Set<string>;
+  onChanged: () => void;
+}) {
+  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
+  const [proposals, setProposals] = useState<FixtureProposal[] | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const loadProposals = useCallback(async () => {
+    const { data } = await listFixtureProposals(fixture.id);
+    setProposals((data ?? []) as unknown as FixtureProposal[]);
+  }, [fixture.id]);
+
+  useEffect(() => {
+    loadProposals();
+  }, [loadProposals]);
+
+  const opponent = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team : fixture.home_team;
+  const theirTeamId = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team_id : fixture.home_team_id;
+  const theirLatest = proposals?.find((p) => p.proposed_by_team_id === theirTeamId) ?? null;
+
+  return (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setWizardOpen(true)}
+        style={[styles.row, { borderColor: border }]}>
+        <View style={styles.rowText}>
+          <ThemedText type="defaultSemiBold">vs {opponent?.name ?? 'Unknown team'}</ThemedText>
+          <ThemedText style={styles.note}>
+            {theirLatest
+              ? `They proposed ${theirLatest.proposed_day} at ${theirLatest.proposed_time.slice(0, 5)}`
+              : 'Not scheduled yet'}
+          </ThemedText>
+        </View>
+        <ThemedText type="link" style={styles.scheduleLink}>
+          Schedule
+        </ThemedText>
+      </Pressable>
+
+      {wizardOpen ? (
+        <ScheduleWizard
+          fixture={fixture}
+          opponentName={opponent?.name ?? 'Unknown team'}
+          theirLatest={theirLatest}
+          onClose={() => setWizardOpen(false)}
+          onScheduled={onChanged}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -182,7 +280,7 @@ export default function MatchmakingScreen() {
         ) : null}
 
         {actionable.map((fixture) => (
-          <FixtureScheduleCard
+          <FixtureRow
             key={fixture.id}
             fixture={fixture}
             myCaptainTeamIds={myCaptainTeamIds}
@@ -216,12 +314,55 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  card: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     backgroundColor: FuttyColors.white,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: FuttyColors.stone200,
     padding: 14,
+  },
+  rowText: {
+    flex: 1,
+    gap: 2,
+  },
+  scheduleLink: {
+    fontSize: 13,
+  },
+  stepTitle: {
+    fontSize: 26,
+  },
+  stepSubtitle: {
+    fontSize: 13,
+    opacity: 0.7,
+    marginBottom: 16,
+  },
+  theirProposalCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
     gap: 8,
+    marginBottom: 16,
+  },
+  theirProposalText: {
+    fontSize: 13,
+  },
+  agreeButton: {
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: FuttyColors.emerald950,
+  },
+  agreeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: FuttyColors.white,
+  },
+  errorText: {
+    fontSize: 13,
+    color: FuttyColors.rose600,
+    marginTop: 12,
   },
 });

@@ -4,6 +4,13 @@ import { useAuth } from '@/lib/auth';
 import { useRealtimeChannelName } from '@/lib/realtime';
 import type { SquadPost } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
+import { xpTier, type XpTier } from '@/lib/xp-tier';
+
+export type SquadPostRosterEntry = {
+  profileId: string;
+  name: string;
+  tier: XpTier;
+};
 
 export type SquadPostWithDetails = SquadPost & {
   venue_name: string;
@@ -12,6 +19,10 @@ export type SquadPostWithDetails = SquadPost & {
   matched_team_name: string | null;
   joined_count: number;
   joined_by_me: boolean;
+  /** 'players' posts only — each already-joined player, with their XP tier. */
+  roster: SquadPostRosterEntry[];
+  /** 'opposition' posts only — the requesting (post.team_id) team's XP tier. */
+  team_level: XpTier | null;
 };
 
 type PostsState =
@@ -44,7 +55,7 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     const { data: posts, error } = await supabase
       .from('squad_posts')
       .select(
-        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, created_at, venues(name, city)'
+        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, created_at, position_needed, level_needed, venues(name, city)'
       )
       .eq('type', postType)
       .neq('status', 'cancelled')
@@ -71,8 +82,8 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     const [{ data: teams, error: teamsError }, { data: joiners, error: joinersError }] =
       await Promise.all([
         teamIds.length > 0
-          ? supabase.from('teams').select('id, name').in('id', teamIds)
-          : Promise.resolve({ data: [] as { id: string; name: string }[], error: null }),
+          ? supabase.from('teams').select('id, name, xp').in('id', teamIds)
+          : Promise.resolve({ data: [] as { id: string; name: string; xp: number }[], error: null }),
         postType === 'players' && rows.length > 0
           ? supabase
               .from('squad_post_joiners')
@@ -95,22 +106,48 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
       return;
     }
 
-    const teamNameById = new Map((teams ?? []).map((team) => [team.id, team.name]));
+    const joinerProfileIds = [...new Set((joiners ?? []).map((j) => j.profile_id))];
+    // profiles' RLS only allows reading your own row — a plain
+    // .from('profiles') select here would silently come back empty for
+    // every joiner except the signed-in user. get_public_profiles is the
+    // security-definer RPC (supabase/public-profiles.sql) that exists
+    // specifically to read other users' public fields.
+    const { data: joinerProfiles } =
+      joinerProfileIds.length > 0
+        ? ((await supabase.rpc('get_public_profiles', { p_profile_ids: joinerProfileIds })) as unknown as {
+            data: { id: string; username: string | null; full_name: string | null; xp: number }[] | null;
+          })
+        : { data: [] as { id: string; username: string | null; full_name: string | null; xp: number }[] };
+
+    if (requestIdRef.current !== requestId) return;
+
+    const teamById = new Map((teams ?? []).map((team) => [team.id, team]));
+    const joinerProfileById = new Map((joinerProfiles ?? []).map((p) => [p.id, p]));
 
     const result: SquadPostWithDetails[] = rows.map((row) => {
       const venue = row.venues as unknown as { name: string; city: string | null } | null;
       const postJoiners = (joiners ?? []).filter((j) => j.post_id === row.id);
+      const team = row.team_id ? teamById.get(row.team_id) : null;
 
       return {
         ...row,
         venue_name: venue?.name ?? 'Unknown venue',
         venue_city: venue?.city ?? null,
-        team_name: row.team_id ? (teamNameById.get(row.team_id) ?? 'Unknown team') : null,
+        team_name: team?.name ?? (row.team_id ? 'Unknown team' : null),
         matched_team_name: row.matched_team_id
-          ? (teamNameById.get(row.matched_team_id) ?? 'Unknown team')
+          ? (teamById.get(row.matched_team_id)?.name ?? 'Unknown team')
           : null,
         joined_count: postJoiners.length,
         joined_by_me: !!user && postJoiners.some((j) => j.profile_id === user.id),
+        roster: postJoiners.map((j) => {
+          const profile = joinerProfileById.get(j.profile_id);
+          return {
+            profileId: j.profile_id,
+            name: profile?.full_name || profile?.username || 'Player',
+            tier: xpTier(profile?.xp ?? 0),
+          };
+        }),
+        team_level: team ? xpTier(team.xp) : null,
       };
     });
 

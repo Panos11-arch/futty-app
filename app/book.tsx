@@ -1,16 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
-import { AuthButton, AuthError, AuthLink } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { WizardModal } from '@/components/wizard-modal';
+import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { bookSlot } from '@/lib/booking-actions';
 import { describeBookingError } from '@/lib/booking-errors';
 import {
@@ -18,546 +15,513 @@ import {
   CAPACITY_OPTIONS,
   canFitFormat,
   DURATIONS,
-  durationLabel,
   formatForCapacity,
   pitchesForCapacity,
   timeToMin,
   type DurationHours,
   type Slot,
 } from '@/lib/booking';
-import {
-  dateKeyToDate,
-  dayLabel,
-  dayNumberLabel,
-  isToday,
-  monthLabel,
-  toDateKey,
-  useDays,
-  weekdayLabel,
-} from '@/lib/days';
+import { DAY_PICKER_LENGTH, dayNumberLabel, isToday, toDateKey, useDays, weekdayLabel } from '@/lib/days';
+import { PostSquadNeed } from '@/app/my-bookings';
 import { useDayBookings } from '@/lib/use-day-bookings';
+import type { MyBooking } from '@/lib/use-my-bookings';
 import { isDayLocked, STANDARD_ADVANCE_DAYS } from '@/lib/premium';
 import { useProfile } from '@/lib/use-profile';
-import { mapsUrlForVenue, useVenues, type Venue } from '@/lib/use-venues';
+import { useVenues, type Venue } from '@/lib/use-venues';
 
 const ALL_CITIES = 'All';
+const DEFAULT_DURATION: DurationHours = DURATIONS[0];
 
-/** The "confirm this slot?" card shown after tapping an available slot. */
-function BookingConfirm({
-  venue,
-  dateKey,
+type NeedChoice = 'players' | 'opposition' | 'neither';
+type WizardStep = 'location' | 'venue' | 'quantity' | 'date' | 'time' | 'need';
+// Location→Venue→Quantity come before Date/Time (rather than the more
+// obvious "when, then where" order) because a real time-slot grid — struck-
+// through, unavailable slots disabled, not just a rough time-of-day guess —
+// needs a specific venue, format and day already known to compute actual
+// availability against. Picking the pitch first is what makes that grid real
+// instead of another abstract preference step.
+const WIZARD_STEPS: WizardStep[] = ['location', 'venue', 'quantity', 'date', 'time', 'need'];
+const STEP_META: Record<WizardStep, { title: string; name: string; subtitle: string }> = {
+  location: { title: 'Where?', name: 'Location', subtitle: 'Which city should we search in?' },
+  venue: { title: 'Pick a pitch', name: 'Venue', subtitle: 'Choose which venue you want to play at.' },
+  quantity: { title: 'How many players?', name: 'Quantity', subtitle: 'Pick the format you need a pitch for.' },
+  date: { title: 'When are you playing?', name: 'Date', subtitle: 'Pick a day to check availability.' },
+  time: { title: 'What time?', name: 'Time', subtitle: 'Already-booked slots are shown struck through.' },
+  need: { title: 'Need anyone else?', name: 'Squad', subtitle: "Let other players know if you're short, or skip it." },
+};
+
+/** A single real time-slot button — struck-through and disabled when
+ *  unavailable, highlighted when selected (item 3). */
+function TimeSlotButton({
   slot,
-  capacity,
-  duration,
-  onDone,
-  onCancel,
+  selected,
+  onPress,
 }: {
-  venue: Venue;
-  dateKey: string;
-  slot: Slot;
-  capacity: number;
-  duration: DurationHours;
-  onDone: () => void;
-  onCancel: () => void;
+  slot: Slot & { isPast?: boolean };
+  selected: boolean;
+  onPress: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const tint = useThemeColor({}, 'tint');
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled: !slot.available }}
+      disabled={!slot.available}
+      onPress={onPress}
+      style={[styles.timeSlot, selected && styles.timeSlotSelected, !slot.available && styles.timeSlotDisabled]}>
+      <ThemedText
+        style={[
+          styles.timeSlotText,
+          selected && styles.timeSlotTextSelected,
+          !slot.available && styles.timeSlotTextDisabled,
+        ]}>
+        {slot.start}
+      </ThemedText>
+    </Pressable>
+  );
+}
 
-  async function confirm() {
-    setBusy(true);
-    setError(null);
+export default function BookScreen() {
+  const { cities, ...venuesState } = useVenues();
+  const profile = useProfile();
+  const isPremium = profile.status === 'ready' && profile.profile.is_premium;
 
-    const { data: bookingData, error: bookError } = await bookSlot({
+  const [dayCount, setDayCount] = useState(DAY_PICKER_LENGTH);
+  const days = useDays(dayCount);
+
+  const [city, setCity] = useState<string | null>(null);
+  const [venueId, setVenueId] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [needChoice, setNeedChoice] = useState<NeedChoice | null>(null);
+  const [step, setStep] = useState<WizardStep>('location');
+  const [bookBusy, setBookBusy] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+  const [dayLockedPrompt, setDayLockedPrompt] = useState(false);
+  const [completed, setCompleted] = useState<MyBooking | null>(null);
+
+  const venues = venuesState.status === 'ready' ? venuesState.venues : [];
+  const venuesInCity = city === ALL_CITIES ? venues : venues.filter((v) => v.city === city);
+  const venue: Venue | null = venues.find((v) => v.id === venueId) ?? null;
+  const dayBookings = useDayBookings(venueId, selectedDay ?? '');
+
+  const stepIndex = WIZARD_STEPS.indexOf(step);
+  const selectedDayIndex = selectedDay ? days.findIndex((d) => toDateKey(d) === selectedDay) : -1;
+  const dayLocked = isDayLocked(selectedDayIndex, isPremium);
+
+  const slots: (Slot & { isPast: boolean })[] =
+    venue && selectedDay && capacity && dayBookings.status === 'ready'
+      ? (() => {
+          const nowMinutes = isToday(new Date(selectedDay))
+            ? new Date().getHours() * 60 + new Date().getMinutes()
+            : -1;
+          return buildSlotGrid({
+            openTime: venue.open_time,
+            closeTime: venue.close_time,
+            basePitches: venue.base_pitches,
+            bookings: dayBookings.bookings,
+            capacity,
+            durationHours: DEFAULT_DURATION,
+          }).map((slot) => {
+            const isPast = nowMinutes >= 0 && timeToMin(slot.start) <= nowMinutes;
+            return { ...slot, available: slot.available && !isPast, isPast };
+          });
+        })()
+      : [];
+
+  function canAdvance() {
+    switch (step) {
+      case 'location':
+        return !!city;
+      case 'venue':
+        return !!venueId;
+      case 'quantity':
+        return !!capacity;
+      case 'date':
+        return !!selectedDay;
+      case 'time':
+        return !!selectedSlot;
+      case 'need':
+        return !!needChoice;
+    }
+  }
+
+  function goNext() {
+    if (step === 'need') {
+      confirmBooking();
+      return;
+    }
+    const next = WIZARD_STEPS[stepIndex + 1];
+    if (next) setStep(next);
+  }
+
+  function goBack() {
+    if (stepIndex === 0) {
+      router.back();
+      return;
+    }
+    setStep(WIZARD_STEPS[stepIndex - 1]);
+  }
+
+  async function confirmBooking() {
+    if (!venue || !selectedDay || !selectedSlot || !capacity || bookBusy) return;
+
+    if (dayLocked) {
+      setDayLockedPrompt(true);
+      return;
+    }
+
+    setBookBusy(true);
+    setBookError(null);
+
+    const { data: bookingData, error } = await bookSlot({
       venueId: venue.id,
-      day: dateKey,
-      start: slot.start,
-      end: slot.end,
+      day: selectedDay,
+      start: selectedSlot.start,
+      end: selectedSlot.end,
       pitches: pitchesForCapacity(capacity),
       capacity,
       format: formatForCapacity(capacity),
     });
 
-    setBusy(false);
+    setBookBusy(false);
 
-    if (bookError || !bookingData) {
-      setError(bookError ? describeBookingError(bookError) : 'Could not create booking.');
+    if (error || !bookingData) {
+      setBookError(error ? describeBookingError(error) : 'Could not create booking.');
       return;
     }
 
-    const booking = bookingData as unknown as { id: string; amount_cents: number };
-    onDone();
+    const booking = bookingData as unknown as MyBooking & { amount_cents: number };
 
-    // Free venue — book_slot already confirmed it directly, no payment step
-    // (and so nothing to split). A priced booking instead goes to the split
-    // payment screen: the pitch is only actually reserved once the BOOKER's
-    // own share is paid there — see supabase/booking-payment-splits.sql.
     if (booking.amount_cents) {
-      router.push({ pathname: '/booking-payment', params: { bookingId: booking.id } });
+      // Priced venue — authorizing (not charging, item 6) the booker's own
+      // share is what actually reserves it, and happens on that screen.
+      router.replace({
+        pathname: '/booking-payment',
+        params: { bookingId: booking.id, needChoice: needChoice ?? 'neither' },
+      });
+      return;
+    }
+
+    if (needChoice && needChoice !== 'neither') {
+      setCompleted(booking);
+    } else {
+      router.replace({ pathname: '/fixture-confirmed', params: { kind: 'booking', id: booking.id } });
     }
   }
 
-  return (
-    <ThemedView style={[styles.confirmCard, { borderColor: tint }]}>
-      <IconLabel icon="sportscourt.fill" type="defaultSemiBold" iconSize={18}>
-        Book {venue.name}, {dayLabel(dateKeyToDate(dateKey))} {slot.start}–{slot.end}?
-      </IconLabel>
-      <ThemedText style={styles.note}>
-        {formatForCapacity(capacity)} · {durationLabel(duration)}
-        {venue.price_per_pitch_hour
-          ? ` · €${Math.round(venue.price_per_pitch_hour * pitchesForCapacity(capacity) * duration)} total`
-          : ''}
-      </ThemedText>
-
-      {error ? <AuthError>{error}</AuthError> : null}
-
-      <View style={styles.confirmRow}>
-        <View style={styles.confirmButton}>
-          <AuthButton label="Confirm booking" onPress={confirm} busy={busy} />
-        </View>
-        <View style={styles.confirmButton}>
-          <AuthButton label="Cancel" variant="secondary" onPress={onCancel} disabled={busy} />
-        </View>
-      </View>
-    </ThemedView>
-  );
-}
-
-/** Shown instead of the booking confirm card when the tapped slot is on a day
- *  beyond what a standard account can reach. */
-function PremiumPrompt({ onDismiss }: { onDismiss: () => void }) {
-  const tint = useThemeColor({}, 'tint');
-
-  return (
-    <ThemedView style={[styles.confirmCard, { borderColor: tint }]}>
-      <ThemedText type="defaultSemiBold">This day needs Premium</ThemedText>
-      <ThemedText style={styles.note}>
-        Standard accounts can book up to {STANDARD_ADVANCE_DAYS} days ahead. Premium unlocks the
-        full 21-day calendar.
-      </ThemedText>
-      <View style={styles.confirmRow}>
-        <View style={styles.confirmButton}>
-          <AuthButton label="See Premium" onPress={() => router.push('/account/premium')} />
-        </View>
-        <View style={styles.confirmButton}>
-          <AuthButton label="Cancel" variant="secondary" onPress={onDismiss} />
-        </View>
-      </View>
-    </ThemedView>
-  );
-}
-
-function SlotGrid({
-  venue,
-  dateKey,
-  capacity,
-  duration,
-  dayLocked,
-  onBooked,
-}: {
-  venue: Venue;
-  dateKey: string;
-  capacity: number;
-  duration: DurationHours;
-  dayLocked: boolean;
-  onBooked: () => void;
-}) {
-  const bookings = useDayBookings(venue.id, dateKey);
-  const needed = pitchesForCapacity(capacity);
-  const [pending, setPending] = useState<Slot | 'locked' | null>(null);
-
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const okBorder = useThemeColor({ light: FuttyColors.emerald600, dark: FuttyColors.emerald600 }, 'text');
-
-  if (!canFitFormat(venue.base_pitches, capacity)) {
+  if (completed) {
     return (
-      <ThemedText style={styles.note}>
-        This venue can&apos;t fit {formatForCapacity(capacity)} ({needed} pitches needed, has{' '}
-        {venue.base_pitches}).
-      </ThemedText>
+      <View style={styles.completedWrap}>
+        <IconLabel icon="checkmark.circle.fill" type="defaultSemiBold" iconColor={FuttyColors.emerald700}>
+          Booked! {completed.start_time.slice(0, 5)}–{completed.end_time.slice(0, 5)}
+        </IconLabel>
+        {needChoice && needChoice !== 'neither' ? <PostSquadNeed booking={completed} initialMode={needChoice} /> : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace({ pathname: '/fixture-confirmed', params: { kind: 'booking', id: completed.id } })}
+          style={styles.doneButton}>
+          <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+        </Pressable>
+      </View>
     );
   }
 
-  if (bookings.status === 'loading' || bookings.status === 'idle') {
-    return <ActivityIndicator style={styles.note} />;
-  }
-
-  if (bookings.status === 'error') {
-    return <ThemedText style={styles.note}>Could not load bookings: {bookings.message}</ThemedText>;
-  }
-
-  // Only relevant for today — every other day in the picker is already in
-  // the future. A slot starting at or before the current time is treated as
-  // unavailable, same as book_slot's server-side "slot_in_past" check.
-  const nowMinutes = isToday(dateKeyToDate(dateKey))
-    ? new Date().getHours() * 60 + new Date().getMinutes()
-    : -1;
-
-  const slots = buildSlotGrid({
-    openTime: venue.open_time,
-    closeTime: venue.close_time,
-    basePitches: venue.base_pitches,
-    bookings: bookings.bookings,
-    capacity,
-    durationHours: duration,
-  }).map((slot) => {
-    const isPast = nowMinutes >= 0 && timeToMin(slot.start) <= nowMinutes;
-    return { ...slot, available: slot.available && !isPast, isPast };
-  });
-
-  if (slots.length === 0) {
-    return (
-      <ThemedText style={styles.note}>
-        No {durationLabel(duration)} slot fits between {venue.open_time.slice(0, 5)} and{' '}
-        {venue.close_time.slice(0, 5)}.
-      </ThemedText>
-    );
-  }
+  const meta = STEP_META[step];
 
   return (
-    <>
-      <View style={styles.slotGrid}>
-        {slots.map((slot) => {
-          // Greyed out the instant it's pressed, rather than waiting for the
-          // booking to confirm and the day's bookings to reload — otherwise
-          // tapping a slot gives no feedback until the network round-trip lands.
-          const isSelected = pending !== 'locked' && pending?.start === slot.start;
-          return (
-            <Pressable
-              key={slot.start}
-              accessibilityRole="button"
-              disabled={!slot.available}
-              onPress={() => setPending(dayLocked ? 'locked' : slot)}
-              style={[
-                styles.slot,
-                { borderColor: slot.available && !isSelected ? okBorder : border },
-                (!slot.available || isSelected) && styles.dimmed,
-              ]}>
-              <ThemedText style={styles.slotLabel}>{slot.start}</ThemedText>
-              <ThemedText style={styles.slotFree}>
-                {isSelected ? 'selected' : slot.available ? `${slot.free} free` : slot.isPast ? 'passed' : 'full'}
-              </ThemedText>
-            </Pressable>
-          );
-        })}
-      </View>
-      <ThemedText style={styles.note}>
-        {venue.price_per_pitch_hour ? `€${venue.price_per_pitch_hour}/pitch/hour · ` : ''}
-        needs {needed} of {venue.base_pitches} pitches · dimmed slots are booked out for{' '}
-        {formatForCapacity(capacity)}
+    <WizardModal
+      visible
+      title="Book a pitch"
+      stepIndex={stepIndex}
+      stepCount={WIZARD_STEPS.length}
+      stepName={meta.name}
+      onBack={goBack}
+      continueLabel={step === 'need' ? 'Confirm booking' : 'Continue'}
+      onContinue={goNext}
+      continueDisabled={!canAdvance()}
+      continueBusy={bookBusy}>
+      <ThemedText type="title" style={styles.stepTitle}>
+        {meta.title}
       </ThemedText>
+      <ThemedText style={styles.stepSubtitle}>{meta.subtitle}</ThemedText>
 
-      {pending === 'locked' ? (
-        <PremiumPrompt onDismiss={() => setPending(null)} />
-      ) : pending ? (
-        <BookingConfirm
-          venue={venue}
-          dateKey={dateKey}
-          slot={pending}
-          capacity={capacity}
-          duration={duration}
-          onCancel={() => setPending(null)}
-          onDone={() => {
-            setPending(null);
-            bookings.reload();
-            onBooked();
-          }}
-        />
+      {step === 'location' ? (
+        <View style={styles.wrapRow}>
+          {[ALL_CITIES, ...cities].map((name) => (
+            <Chip
+              key={name}
+              label={name}
+              selected={name === city}
+              onPress={() => {
+                setCity(name);
+                setVenueId(null);
+              }}
+            />
+          ))}
+        </View>
       ) : null}
-    </>
-  );
-}
 
-export default function BookScreen() {
-  const { cities, reload, ...venuesState } = useVenues();
-  const profile = useProfile();
-  const isPremium = profile.status === 'ready' && profile.profile.is_premium;
-  const DAYS = useDays();
-
-  // Each step starts unpicked — the one after it doesn't render at all until
-  // this one has a value. Picking an EARLIER step resets everything after it
-  // (see the setters below), so changing your mind about, say, the city
-  // re-collapses duration/format/venue rather than leaving stale picks that
-  // no longer make sense together.
-  const [selectedDay, setSelectedDayState] = useState<string | null>(null);
-  const [city, setCityState] = useState<string | null>(null);
-  const [duration, setDurationState] = useState<DurationHours | null>(null);
-  const [capacity, setCapacityState] = useState<number | null>(null);
-  const [openVenueId, setOpenVenueId] = useState<string | null>(null);
-  // Bumped on every successful book/cancel so an open slot grid remounts and
-  // refetches — otherwise it would keep showing stale availability after a
-  // booking made elsewhere on this screen.
-  const [bookingsVersion, setBookingsVersion] = useState(0);
-  const refresh = () => setBookingsVersion((v) => v + 1);
-
-  function setSelectedDay(key: string) {
-    setSelectedDayState(key);
-    setCityState(null);
-    setDurationState(null);
-    setCapacityState(null);
-    setOpenVenueId(null);
-  }
-  function setCity(name: string) {
-    setCityState(name);
-    setDurationState(null);
-    setCapacityState(null);
-    setOpenVenueId(null);
-  }
-  function setDuration(hours: DurationHours) {
-    setDurationState(hours);
-    setCapacityState(null);
-    setOpenVenueId(null);
-  }
-  function setCapacity(cap: number) {
-    setCapacityState(cap);
-    setOpenVenueId(null);
-  }
-
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const tint = useThemeColor({}, 'tint');
-
-  const venues = venuesState.status === 'ready' ? venuesState.venues : [];
-  const visibleVenues = city === ALL_CITIES ? venues : venues.filter((v) => v.city === city);
-  const selectedDayIndex = selectedDay ? DAYS.findIndex((day) => toDateKey(day) === selectedDay) : -1;
-  const selectedDayLocked = isDayLocked(selectedDayIndex, isPremium);
-
-  return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.titleRow}>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/my-bookings')}>
-            <IconLabel icon="calendar" type="link" iconColor={FuttyColors.emerald700}>
-              Your bookings
-            </IconLabel>
-          </Pressable>
+      {step === 'venue' ? (
+        <View style={styles.wrapRow}>
+          {venuesState.status === 'loading' ? <ActivityIndicator /> : null}
+          {venuesInCity.length === 0 && venuesState.status === 'ready' ? (
+            <ThemedText style={styles.note}>No venues found for this city.</ThemedText>
+          ) : null}
+          {venuesInCity.map((v) => (
+            <Chip
+              key={v.id}
+              label={v.name}
+              sublabel={`${v.surface ?? 'Pitch'} · ${v.base_pitches} pitches`}
+              selected={v.id === venueId}
+              onPress={() => setVenueId(v.id)}
+            />
+          ))}
         </View>
+      ) : null}
 
-        <IconLabel icon="calendar" type="subtitle">Day</IconLabel>
-        {!isPremium ? (
-          <View style={styles.premiumBanner}>
-            <ThemedText style={styles.note}>
-              Standard: book up to {STANDARD_ADVANCE_DAYS} days ahead.
-            </ThemedText>
-            <AuthLink label="See Premium" onPress={() => router.push('/account/premium')} />
-          </View>
-        ) : null}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.row}>
-            {DAYS.map((day, index) => {
+      {step === 'quantity' ? (
+        <View style={styles.wrapRow}>
+          {CAPACITY_OPTIONS.map((option) => (
+            <Chip
+              key={option.capacity}
+              label={option.format}
+              sublabel={`${option.capacity}p · ${option.pitches} pitch${option.pitches > 1 ? 'es' : ''}`}
+              selected={option.capacity === capacity}
+              disabled={!!venue && !canFitFormat(venue.base_pitches, option.capacity)}
+              onPress={() => setCapacity(option.capacity)}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {step === 'date' ? (
+        <>
+          {!isPremium ? (
+            <View style={styles.premiumNote}>
+              <IconSymbol name="crown.fill" size={13} color={FuttyColors.amber400} />
+              <ThemedText style={styles.premiumNoteText}>
+                Standard: book up to {STANDARD_ADVANCE_DAYS} days ahead.
+              </ThemedText>
+            </View>
+          ) : null}
+          <View style={styles.dayRow}>
+            {days.map((day, index) => {
               const key = toDateKey(day);
+              const selected = key === selectedDay;
+              const locked = isDayLocked(index, isPremium);
               return (
-                <Chip
+                <Pressable
                   key={key}
-                  label={isToday(day) ? 'Today' : weekdayLabel(day)}
-                  sublabel={`${dayNumberLabel(day)} ${monthLabel(day)}`}
-                  selected={key === selectedDay}
-                  locked={isDayLocked(index, isPremium)}
-                  onPress={() => setSelectedDay(key)}
-                />
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    setSelectedDay(key);
+                    setSelectedSlot(null);
+                  }}
+                  style={[styles.dayCard, selected && styles.dayCardSelected]}>
+                  {locked ? <IconSymbol name="lock.fill" size={10} color={selected ? FuttyColors.white : FuttyColors.stone400} /> : null}
+                  <ThemedText style={[styles.dayCardName, selected && styles.dayCardTextSelected]}>
+                    {isToday(day) ? 'Today' : weekdayLabel(day)}
+                  </ThemedText>
+                  <ThemedText style={[styles.dayCardNumber, selected && styles.dayCardTextSelected]}>
+                    {dayNumberLabel(day)}
+                  </ThemedText>
+                </Pressable>
               );
             })}
           </View>
-        </ScrollView>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setDayCount((c) => c + DAY_PICKER_LENGTH)}
+            style={styles.showMoreButton}>
+            <ThemedText type="link" style={styles.showMoreText}>
+              Show more days
+            </ThemedText>
+          </Pressable>
+        </>
+      ) : null}
 
-        {selectedDay ? (
-          <>
-            <IconLabel icon="mappin.and.ellipse" type="subtitle">City</IconLabel>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.row}>
-                {[ALL_CITIES, ...cities].map((name) => (
-                  <Chip key={name} label={name} selected={name === city} onPress={() => setCity(name)} />
-                ))}
-              </View>
-            </ScrollView>
-          </>
-        ) : null}
-
-        {city ? (
-          <>
-            <IconLabel icon="clock.fill" type="subtitle">Duration</IconLabel>
-            <View style={styles.wrapRow}>
-              {DURATIONS.map((hours) => (
-                <Chip
-                  key={hours}
-                  label={durationLabel(hours)}
-                  selected={hours === duration}
-                  onPress={() => setDuration(hours)}
+      {step === 'time' ? (
+        <>
+          {dayBookings.status === 'loading' || dayBookings.status === 'idle' ? <ActivityIndicator /> : null}
+          {dayBookings.status === 'error' ? (
+            <ThemedText style={styles.note}>Could not load availability: {dayBookings.message}</ThemedText>
+          ) : null}
+          {dayBookings.status === 'ready' && slots.length === 0 ? (
+            <ThemedText style={styles.note}>No slot fits between opening and closing time.</ThemedText>
+          ) : null}
+          {dayBookings.status === 'ready' && slots.length > 0 ? (
+            <View style={styles.timeGrid}>
+              {slots.map((slot) => (
+                <TimeSlotButton
+                  key={slot.start}
+                  slot={slot}
+                  selected={selectedSlot?.start === slot.start}
+                  onPress={() => setSelectedSlot(slot)}
                 />
               ))}
             </View>
-          </>
-        ) : null}
-
-        {duration ? (
-          <>
-            <IconLabel icon="sportscourt.fill" type="subtitle">Format</IconLabel>
-            <View style={styles.wrapRow}>
-              {CAPACITY_OPTIONS.map((option) => (
-                <Chip
-                  key={option.capacity}
-                  label={option.format}
-                  sublabel={`${option.capacity}p · ${option.pitches} pitch${option.pitches > 1 ? 'es' : ''}`}
-                  selected={option.capacity === capacity}
-                  onPress={() => setCapacity(option.capacity)}
-                />
-              ))}
+          ) : null}
+          {dayLockedPrompt ? (
+            <View style={styles.premiumNote}>
+              <IconSymbol name="crown.fill" size={13} color={FuttyColors.amber400} />
+              <ThemedText style={styles.premiumNoteText}>
+                This day needs Premium — standard accounts book up to {STANDARD_ADVANCE_DAYS} days ahead.
+              </ThemedText>
             </View>
-          </>
-        ) : null}
+          ) : null}
+        </>
+      ) : null}
 
-        {capacity && selectedDay && city && duration ? (
-          <>
-            <IconLabel icon="building.columns.fill" type="subtitle">Venue</IconLabel>
+      {step === 'need' ? (
+        <View style={styles.wrapRow}>
+          <Chip
+            icon="person.2.fill"
+            label="Need players"
+            selected={needChoice === 'players'}
+            onPress={() => setNeedChoice('players')}
+          />
+          <Chip
+            icon="flag.fill"
+            label="Need opposition"
+            selected={needChoice === 'opposition'}
+            onPress={() => setNeedChoice('opposition')}
+          />
+          <Chip
+            icon="checkmark"
+            label="Neither"
+            selected={needChoice === 'neither'}
+            onPress={() => setNeedChoice('neither')}
+          />
+        </View>
+      ) : null}
 
-            {venuesState.status === 'loading' ? <ActivityIndicator /> : null}
-
-            {venuesState.status === 'error' ? (
-              <ThemedText style={styles.note}>Could not load venues: {venuesState.message}</ThemedText>
-            ) : null}
-
-            {venuesState.status === 'ready' && visibleVenues.length === 0 ? (
-              <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-                No venues found for this city.
-              </IconLabel>
-            ) : null}
-
-            {visibleVenues.map((venue) => {
-              const isOpen = venue.id === openVenueId;
-
-              return (
-                <ThemedView key={venue.id} style={[styles.venueCard, { borderColor: border }]}>
-                  <View style={styles.venueHeaderRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ expanded: isOpen }}
-                      onPress={() => setOpenVenueId(isOpen ? null : venue.id)}
-                      style={styles.venueHeaderMain}>
-                      <ThemedText type="defaultSemiBold">{venue.name}</ThemedText>
-                      <ThemedText style={styles.note}>
-                        {venue.city}
-                        {venue.surface ? ` · ${venue.surface}` : ''} · {venue.open_time.slice(0, 5)}–
-                        {venue.close_time.slice(0, 5)} · {venue.base_pitches} pitches
-                      </ThemedText>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open ${venue.name} in Maps`}
-                      onPress={() => Linking.openURL(mapsUrlForVenue(venue))}
-                      style={styles.mapsButton}
-                      hitSlop={8}>
-                      <IconSymbol name="mappin.and.ellipse" size={20} color={tint} />
-                    </Pressable>
-                  </View>
-
-                  {isOpen ? (
-                    <>
-                      <IconLabel icon="clock.fill" type="subtitle">Time</IconLabel>
-                      <SlotGrid
-                        key={`${venue.id}-${selectedDay}-${bookingsVersion}`}
-                        venue={venue}
-                        dateKey={selectedDay}
-                        capacity={capacity}
-                        duration={duration}
-                        dayLocked={selectedDayLocked}
-                        onBooked={refresh}
-                      />
-                    </>
-                  ) : null}
-                </ThemedView>
-              );
-            })}
-          </>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      {bookError ? <ThemedText style={styles.errorText}>{bookError}</ThemedText> : null}
+    </WizardModal>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  stepTitle: {
+    fontSize: 26,
   },
-  content: {
-    gap: 10,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 2,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+  stepSubtitle: {
+    fontSize: 13,
+    opacity: 0.7,
+    marginBottom: 16,
   },
   wrapRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  premiumBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  dimmed: {
-    opacity: 0.4,
-  },
-  venueCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  venueHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  venueHeaderMain: {
-    flex: 1,
-  },
-  mapsButton: {
-    padding: 4,
-  },
   note: {
     fontSize: 12,
     opacity: 0.7,
   },
-  slotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  slot: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  slotLabel: {
+  errorText: {
     fontSize: 13,
-    fontWeight: '600',
+    color: FuttyColors.rose600,
+    marginTop: 12,
   },
-  slotFree: {
-    fontSize: 10,
-    opacity: 0.7,
-  },
-  confirmCard: {
-    borderWidth: 1,
+  premiumNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: FuttyColors.stone200,
     borderRadius: 12,
     padding: 12,
-    gap: 8,
+    marginBottom: 12,
   },
-  confirmRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  confirmButton: {
+  premiumNoteText: {
     flex: 1,
+    fontSize: 12,
+  },
+  dayRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dayCard: {
+    width: 60,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: FuttyColors.stone200,
+  },
+  dayCardSelected: {
+    backgroundColor: FuttyColors.emerald950,
+  },
+  dayCardName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: FuttyColors.stone700,
+  },
+  dayCardNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: FuttyColors.stone900,
+  },
+  dayCardTextSelected: {
+    color: FuttyColors.white,
+  },
+  showMoreButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  showMoreText: {
+    fontSize: 13,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  timeSlot: {
+    minWidth: 72,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: FuttyColors.stone200,
+  },
+  timeSlotSelected: {
+    backgroundColor: FuttyColors.emerald950,
+  },
+  timeSlotDisabled: {
+    opacity: 0.5,
+  },
+  timeSlotText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: FuttyColors.stone900,
+  },
+  timeSlotTextSelected: {
+    color: FuttyColors.white,
+  },
+  timeSlotTextDisabled: {
+    textDecorationLine: 'line-through',
+    color: FuttyColors.stone500,
+  },
+  completedWrap: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 60,
+    gap: 16,
+    backgroundColor: FuttyColors.stone50,
+  },
+  doneButton: {
+    height: 50,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: FuttyColors.emerald950,
+  },
+  doneButtonText: {
+    fontFamily: FuttyFonts.sansBold,
+    fontSize: 16,
+    color: FuttyColors.white,
   },
 });

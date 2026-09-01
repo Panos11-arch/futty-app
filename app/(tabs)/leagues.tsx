@@ -155,52 +155,6 @@ function JoinLeagueControl({
     loadJustCreatedRoster(justCreated.id);
   }, [justCreated?.id, loadJustCreatedRoster]);
 
-  // member counts for every team offered below as a "Join" option — lets an
-  // incomplete one (e.g. left half-filled via "Finish squad later" here, or
-  // on the Team tab) get a "Finish register" button instead of a "Join" that
-  // would just bounce back with roster_incomplete.
-  const [rosterCounts, setRosterCounts] = useState<Record<string, { main: number; sub: number }>>({});
-  const eligibleTeamIdsKey = myTeams.status === 'ready'
-    ? myTeams.teams
-        .filter(
-          ({ team }) =>
-            !registeredTeamIds.has(team.id) &&
-            (expectedRosterSize === null || team.roster_size === expectedRosterSize)
-        )
-        .map(({ team }) => team.id)
-        .join(',')
-    : '';
-
-  const loadRosterCounts = useCallback((ids: string[]) => {
-    if (ids.length === 0) {
-      setRosterCounts({});
-      return;
-    }
-    supabase
-      .from('team_members')
-      .select('team_id, role')
-      .in('team_id', ids)
-      .then(({ data }) => {
-        const counts: Record<string, { main: number; sub: number }> = {};
-        for (const row of data ?? []) {
-          const bucket = counts[row.team_id] ?? { main: 0, sub: 0 };
-          if (row.role === 'substitute') bucket.sub += 1;
-          else bucket.main += 1;
-          counts[row.team_id] = bucket;
-        }
-        setRosterCounts(counts);
-      });
-  }, []);
-
-  useEffect(() => {
-    loadRosterCounts(eligibleTeamIdsKey ? eligibleTeamIdsKey.split(',') : []);
-    // Also re-run whenever "Finish squad later" below closes the fill-roster
-    // view — eligibleTeamIdsKey (team ids only) won't have changed just
-    // because a member was added, so that path calls loadRosterCounts
-    // itself to pick up the new count.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligibleTeamIdsKey, loadRosterCounts]);
-
   if (myTeams.status === 'loading') return <ActivityIndicator />;
   if (myTeams.status === 'error') {
     return <ThemedText style={styles.note}>Could not load your teams: {myTeams.message}</ThemedText>;
@@ -280,6 +234,7 @@ function JoinLeagueControl({
             variant="secondary"
             onPress={() => router.push('/team')}
             disabled={busy}
+            compact
           />
         ) : null}
 
@@ -321,30 +276,11 @@ function JoinLeagueControl({
             setJustCreated(null);
             setCreating(false);
             myTeams.reload();
-            loadRosterCounts(eligibleTeamIdsKey ? eligibleTeamIdsKey.split(',') : []);
           }}
           disabled={busy}
         />
       </View>
     );
-  }
-
-  async function joinWithExisting(team: Team) {
-    setBusy(true);
-    setError(null);
-
-    // Guards the same check the button below is disabled for — belt and
-    // braces, since registerTeamForLeague would just bounce this back as
-    // team_premium_required anyway.
-    if (premiumGated && !hasTeamPremium(team, format)) {
-      setBusy(false);
-      return;
-    }
-
-    const { error: joinError } = await registerTeamForLeague(leagueId, team.id);
-    setBusy(false);
-    if (joinError) setError(describeLeagueError(joinError));
-    else onJoined();
   }
 
   async function createTeamOnly() {
@@ -367,11 +303,19 @@ function JoinLeagueControl({
   if (!creating) {
     return (
       <View style={styles.section}>
+        <AuthButton label="Register a new team" onPress={() => setCreating(true)} disabled={busy} compact />
+
+        {error ? <AuthError>{error}</AuthError> : null}
+
+        {/* Every row here is one of the CURRENT user's own teams not yet in
+         *  this league — i.e. an incomplete registration by definition, so
+         *  "Finish register" is the one action every row needs (it opens the
+         *  same roster/register screen either way: still filling the roster,
+         *  or already full and ready to hit Register). No separate "Join" —
+         *  it duplicated this with a button that just bounced back with
+         *  roster_incomplete for anything not already full. */}
         {eligibleTeams.map(({ team }) => {
           const needsPremium = premiumGated && !hasTeamPremium(team, format);
-          const counts = rosterCounts[team.id];
-          const rosterIncomplete =
-            counts !== undefined && (counts.main < team.roster_size || counts.sub < team.substitute_slots);
           return (
             <View key={team.id} style={styles.joinRow}>
               <View style={styles.joinRowLabel}>
@@ -380,33 +324,15 @@ function JoinLeagueControl({
                 ) : null}
                 <ThemedText style={styles.note}>{team.name}</ThemedText>
               </View>
-              <View style={styles.joinRowActions}>
-                {rosterIncomplete ? (
-                  <AuthButton
-                    label="Finish register"
-                    variant="secondary"
-                    onPress={() => setJustCreated(team)}
-                    disabled={busy}
-                  />
-                ) : null}
-                <AuthButton
-                  label={needsPremium ? 'Buy Team Premium' : joinLabel}
-                  variant={needsPremium ? 'secondary' : 'primary'}
-                  onPress={() => (needsPremium ? router.push('/team') : joinWithExisting(team))}
-                  disabled={busy}
-                  busy={busy}
-                />
-              </View>
+              <AuthButton
+                label={needsPremium ? 'Buy Team Premium' : 'Finish register'}
+                variant="secondary"
+                onPress={() => (needsPremium ? router.push('/team') : setJustCreated(team))}
+                disabled={busy}
+              />
             </View>
           );
         })}
-        {error ? <AuthError>{error}</AuthError> : null}
-        <AuthButton
-          label="Register a new team"
-          variant="secondary"
-          onPress={() => setCreating(true)}
-          disabled={busy}
-        />
       </View>
     );
   }
@@ -458,12 +384,13 @@ function JoinLeagueControl({
 
       {error ? <AuthError>{error}</AuthError> : null}
 
-      <AuthButton label="Create team" onPress={createTeamOnly} disabled={!name.trim()} busy={busy} />
+      <AuthButton label="Create team" onPress={createTeamOnly} disabled={!name.trim()} busy={busy} compact />
       <AuthButton
         label="Cancel"
         variant="secondary"
         onPress={() => setCreating(false)}
         disabled={busy}
+        compact
       />
     </View>
   );
@@ -658,7 +585,7 @@ function OpenLeagueSection({
         <JoinLeagueControl
           leagueId={hub.id}
           format={format}
-          joinLabel={hub.stage === 'divisions' ? 'Join waiting pool' : 'Join'}
+          joinLabel={hub.stage === 'divisions' ? 'Join waiting pool' : 'Register'}
           registeredTeamIds={treeTeamIds}
           defaultCity={city}
           onJoined={() => {
@@ -668,12 +595,17 @@ function OpenLeagueSection({
         />
       ) : null}
 
-      {hub.stage === 'signup' ? (
+      {/* Dev-only: for real users a signup-stage league only moves to
+       *  'season' once its capacity fills (see register_team_for_league) —
+       *  there's no legitimate reason to skip that early, so this manual
+       *  trigger must never reach production. */}
+      {__DEV__ && hub.stage === 'signup' ? (
         <AuthButton
-          label="Start season (demo)"
+          label="Start season (dev only)"
           variant="secondary"
           onPress={() => runAction(() => startLeagueSeason(hub.id))}
           busy={busy}
+          compact
         />
       ) : null}
 
@@ -789,7 +721,7 @@ const styles = StyleSheet.create({
   matchmakingLinkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   section: {
     gap: 8,

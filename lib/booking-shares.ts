@@ -6,7 +6,9 @@ export type BookingShare = {
   username: string | null;
   amount_cents: number;
   is_booker: boolean;
-  status: 'pending' | 'paid' | 'refunded' | 'cancelled';
+  /** 'authorized' = card held, not yet charged (item 6's authorize-then-
+   *  capture flow) — 'paid' now specifically means captured/charged. */
+  status: 'pending' | 'authorized' | 'paid' | 'refunded' | 'cancelled';
   paid_at: string | null;
 };
 

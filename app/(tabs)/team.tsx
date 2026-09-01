@@ -1,27 +1,17 @@
-import { ErrorCode, useIAP } from 'expo-iap';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlayerRow } from '@/components/add-player-row';
-import { AuthButton, AuthError } from '@/components/auth-form';
+import { AuthButton } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { describeFunctionError } from '@/lib/edge-functions';
-import {
-  getTeamRoster,
-  hasTeamPremium,
-  PREMIUM_FORMAT_PRICES,
-  TEAM_PREMIUM_SKUS,
-  verifyTeamPurchaseOnServer,
-  type RosterMember,
-  type Team,
-} from '@/lib/teams';
+import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
 
@@ -68,25 +58,17 @@ function StatTile({ label, value, accent }: { label: string; value: string | num
 }
 
 /** premium_9aside/premium_11aside are only ever set by verify-team-purchase
- *  after a real Apple purchase (supabase/team-premium-payments.sql) — this
- *  just triggers that flow. Purely presentational; the actual useIAP
- *  connection lives one level up in TeamPremiumSection so it's only mounted
- *  once per team, not once per format row. */
-function TeamPremiumRow({
-  team,
-  format,
-  connected,
-  busyFormat,
-  onBuy,
-}: {
-  team: Team;
-  format: PremiumFormat;
-  connected: boolean;
-  busyFormat: PremiumFormat | null;
-  onBuy: (format: PremiumFormat) => void;
-}) {
+ *  after a real Apple purchase (supabase/team-premium-payments.sql). "Buy"
+ *  navigates to the same /premium-plan popup every other Premium entry
+ *  point uses (account/premium.tsx, the League tab's "Buy Team Premium"
+ *  prompts) — this row used to open its own separate useIAP purchase
+ *  directly, which was a second, divergent path to the exact same purchase
+ *  and the actual bug report: it meant this was the one place in the app
+ *  that didn't show the plan/price/bullets confirmation screen before
+ *  charging anything. There is now exactly one place that ever calls
+ *  requestPurchase() for Team Premium — app/premium-plan.tsx. */
+function TeamPremiumRow({ team, format }: { team: Team; format: PremiumFormat }) {
   const enabled = hasTeamPremium(team, format);
-  const busy = busyFormat === format;
 
   return (
     <View style={styles.premiumRow}>
@@ -114,9 +96,12 @@ function TeamPremiumRow({
         <AuthButton
           label="Buy"
           variant="secondary"
-          onPress={() => onBuy(format)}
-          disabled={!connected || (busyFormat !== null && !busy)}
-          busy={busy}
+          onPress={() =>
+            router.push({
+              pathname: '/premium-plan',
+              params: { plan: `team-${format}`, teamId: team.id },
+            })
+          }
         />
       ) : (
         <IconLabel icon="wrench.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
@@ -127,56 +112,8 @@ function TeamPremiumRow({
   );
 }
 
-/** Owns the one useIAP connection for this team's Premium purchases —
- *  captain-only, so this whole section (and the StoreKit connection it
- *  opens) only mounts for captains. */
-function TeamPremiumSection({ team, onTeamChanged }: { team: Team; onTeamChanged: () => void }) {
+function TeamPremiumSection({ team }: { team: Team }) {
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const [buyingFormat, setBuyingFormat] = useState<PremiumFormat | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const { connected, requestPurchase, finishTransaction } = useIAP({
-    onPurchaseSuccess: async (purchase) => {
-      const format = (Object.keys(TEAM_PREMIUM_SKUS) as PremiumFormat[]).find(
-        (f) => TEAM_PREMIUM_SKUS[f] === purchase.productId
-      );
-      if (!format || !purchase.transactionId) return;
-
-      setError(null);
-      const { data, error: verifyError } = await verifyTeamPurchaseOnServer(
-        purchase.transactionId,
-        purchase.productId,
-        team.id
-      );
-
-      if (verifyError || !data?.active) {
-        // Left unfinished on purpose — see app/premium.tsx's identical note.
-        setBuyingFormat(null);
-        setError(verifyError ? await describeFunctionError(verifyError) : 'Apple could not verify this purchase.');
-        return;
-      }
-
-      await finishTransaction({ purchase, isConsumable: false });
-      setBuyingFormat(null);
-      onTeamChanged();
-    },
-    onPurchaseError: (purchaseError) => {
-      setBuyingFormat(null);
-      if (purchaseError.code === ErrorCode.UserCancelled) return;
-      setError(purchaseError.message);
-    },
-  });
-
-  async function buy(format: PremiumFormat) {
-    setBuyingFormat(format);
-    setError(null);
-    try {
-      await requestPurchase({ request: { apple: { sku: TEAM_PREMIUM_SKUS[format] } }, type: 'in-app' });
-    } catch (requestError) {
-      setBuyingFormat(null);
-      setError(requestError instanceof Error ? requestError.message : 'Could not start purchase.');
-    }
-  }
 
   return (
     <ThemedView style={[styles.teamCard, { borderColor: border }]}>
@@ -184,9 +121,8 @@ function TeamPremiumSection({ team, onTeamChanged }: { team: Team; onTeamChanged
         Team Premium
       </IconLabel>
       <ThemedText style={styles.note}>Needed for 9-a-side and 11-a-side leagues.</ThemedText>
-      <TeamPremiumRow team={team} format="9-a-side" connected={connected} busyFormat={buyingFormat} onBuy={buy} />
-      <TeamPremiumRow team={team} format="11-a-side" connected={connected} busyFormat={buyingFormat} onBuy={buy} />
-      {error ? <AuthError>{error}</AuthError> : null}
+      <TeamPremiumRow team={team} format="9-a-side" />
+      <TeamPremiumRow team={team} format="11-a-side" />
     </ThemedView>
   );
 }
@@ -248,7 +184,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
         </View>
       </ThemedView>
 
-      {isCaptain ? <TeamPremiumSection team={team} onTeamChanged={onTeamChanged} /> : null}
+      {isCaptain ? <TeamPremiumSection team={team} /> : null}
 
       <IconLabel icon="person.2.fill" type="subtitle">
         Roster ({team.roster_size} {team.substitute_slots > 0 ? `+ ${team.substitute_slots} subs` : ''})

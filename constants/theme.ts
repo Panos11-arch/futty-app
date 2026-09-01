@@ -10,7 +10,9 @@ import { Platform } from 'react-native';
 import { FuttyColors } from '@/constants/futty-theme';
 
 const futty = {
-  text: FuttyColors.emerald950,
+  // Bold/heading text is black (item 6) — tint stays green, reserved for
+  // buttons/highlights/icons.
+  text: FuttyColors.stone900,
   background: FuttyColors.stone50,
   tint: FuttyColors.emerald950,
   icon: FuttyColors.stone200,

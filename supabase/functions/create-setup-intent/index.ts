@@ -59,11 +59,17 @@ Deno.serve(async (req) => {
     automatic_payment_methods: { enabled: true },
   });
 
+  // Field names here must match lib/payments.ts's SetupIntentPayload exactly
+  // — item 9's "must provide either intentConfiguration or
+  // customEphemeralKeySecret" error was this response using clientSecret/
+  // ephemeralKeySecret while the client read setupIntentClientSecret/
+  // ephemeralKey, so both arrived at CustomerSheet.initialize() as
+  // undefined despite this function doing everything else right.
   return new Response(
     JSON.stringify({
-      clientSecret: setupIntent.client_secret,
+      setupIntentClientSecret: setupIntent.client_secret,
       customerId,
-      ephemeralKeySecret: ephemeralKey.secret,
+      ephemeralKey: ephemeralKey.secret,
     }),
     { headers: { 'Content-Type': 'application/json' } }
   );

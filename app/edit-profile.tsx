@@ -11,7 +11,7 @@ import { ThemedText } from '@/components/themed-text';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useAuth } from '@/lib/auth';
-import { joinPhone, splitPhone, type Country } from '@/lib/countries';
+import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
 import { toDateKey } from '@/lib/days';
 import { updateProfile, useProfile } from '@/lib/use-profile';
 import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
@@ -154,6 +154,7 @@ export default function EditProfileScreen() {
   }
 
   const activeProfile = profile.profile;
+  const phoneError = getPhoneNumberError(form.phoneCountry, form.phoneNational);
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -165,6 +166,11 @@ export default function EditProfileScreen() {
     const trimmedUsername = form.username.trim();
     if (!USERNAME_PATTERN.test(trimmedUsername)) {
       setError(USERNAME_RULES_MESSAGE);
+      return;
+    }
+
+    if (phoneError) {
+      setError(phoneError);
       return;
     }
 
@@ -225,6 +231,7 @@ export default function EditProfileScreen() {
             onChangeCountry={(c) => set('phoneCountry', c)}
             onChangeNational={(v) => set('phoneNational', v)}
           />
+          {phoneError ? <AuthError>{phoneError}</AuthError> : null}
         </Field>
 
         <View style={styles.toggleRow}>

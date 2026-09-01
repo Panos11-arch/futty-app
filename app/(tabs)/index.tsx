@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
   cardTitleInRow: {
     fontFamily: FuttyFonts.sansSemiBold,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   cardEmpty: {
     fontFamily: FuttyFonts.sans,
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
   nextGameVenue: {
     fontFamily: FuttyFonts.sansMedium,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
     marginBottom: 2,
   },
   upcomingList: {
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
   resultTeams: {
     fontFamily: FuttyFonts.sansMedium,
     fontSize: 13,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   scoreSection: {
     marginTop: 14,
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
   scoreFormTitle: {
     fontFamily: FuttyFonts.sansMedium,
     fontSize: 13,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   scoreInputsRow: {
     flexDirection: 'row',
@@ -688,12 +688,12 @@ const styles = StyleSheet.create({
   premiumTitle: {
     fontFamily: FuttyFonts.sansSemiBold,
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
   },
   premiumSubtitle: {
     fontFamily: FuttyFonts.sans,
     fontSize: 12,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
     opacity: 0.8,
   },
   teamPremiumBox: {

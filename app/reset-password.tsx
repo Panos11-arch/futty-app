@@ -9,11 +9,11 @@ import {
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  PasswordStrengthMeter,
 } from '@/components/auth-form';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
-
-const MIN_PASSWORD_LENGTH = 6;
+import { getPasswordLengthError } from '@/lib/password';
 
 export default function ResetPasswordScreen() {
   const { session, updatePassword, endRecovery, recoveryError: linkError } = useAuth();
@@ -23,11 +23,13 @@ export default function ResetPasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const passwordLengthError = getPasswordLengthError(password);
+
   async function submit() {
     if (busy) return;
 
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+    if (passwordLengthError) {
+      setError(passwordLengthError);
       return;
     }
     if (password !== confirmation) {
@@ -93,6 +95,9 @@ export default function ResetPasswordScreen() {
         editable={!busy}
       />
 
+      <PasswordStrengthMeter password={password} />
+      {passwordLengthError ? <AuthError>{passwordLengthError}</AuthError> : null}
+
       <AuthField
         value={confirmation}
         onChangeText={setConfirmation}
@@ -111,7 +116,7 @@ export default function ResetPasswordScreen() {
       <AuthButton
         label="Update password"
         onPress={submit}
-        disabled={password.length === 0 || confirmation.length === 0}
+        disabled={password.length === 0 || confirmation.length === 0 || !!passwordLengthError}
         busy={busy}
       />
     </AuthScreen>

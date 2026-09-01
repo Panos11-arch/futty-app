@@ -19,12 +19,15 @@ import {
   cancelSquadPost,
   createSquadPost,
   listMyOpenPostsForBooking,
+  POSITIONS_NEEDED,
   SKILL_LEVELS,
+  type PositionNeeded,
   type SkillLevel,
 } from '@/lib/squads';
 import { useMyBookings, type MyBooking } from '@/lib/use-my-bookings';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useVenues, type Venue } from '@/lib/use-venues';
+import { XP_TIERS, type XpTier } from '@/lib/xp-tier';
 
 /** "Need players" / "Need opposition" post a Squad listing tied to this
  *  booking, and can be cancelled again from the same button while this
@@ -32,12 +35,23 @@ import { useVenues, type Venue } from '@/lib/use-venues';
  *  already have a full lineup (e.g. 10 players for a 5-a-side) and don't
  *  need to advertise for anything, so it's just a local acknowledgement, not
  *  a squad post. */
-function PostSquadNeed({ booking }: { booking: MyBooking }) {
+export function PostSquadNeed({
+  booking,
+  initialMode = null,
+}: {
+  booking: MyBooking;
+  /** Skips straight past the "Need players / Need opposition / Whole pitch"
+   *  choice — used right after the booking wizard (item 3) already
+   *  collected that preference, so it isn't asked twice. */
+  initialMode?: 'players' | 'opposition' | null;
+}) {
   const { user } = useAuth();
   const myTeams = useMyTeams();
-  const [mode, setMode] = useState<'players' | 'opposition' | null>(null);
+  const [mode, setMode] = useState<'players' | 'opposition' | null>(initialMode);
   const [targetCount, setTargetCount] = useState('4');
   const [level, setLevel] = useState<SkillLevel | null>(null);
+  const [positionNeeded, setPositionNeeded] = useState<PositionNeeded | null>(null);
+  const [levelNeeded, setLevelNeeded] = useState<XpTier | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +101,11 @@ function PostSquadNeed({ booking }: { booking: MyBooking }) {
       venueBookingId: booking.id,
       level: level ?? undefined,
       ...(postType === 'players'
-        ? { playersNeeded: Number(targetCount) || 1 }
+        ? {
+            playersNeeded: Number(targetCount) || 1,
+            positionNeeded: positionNeeded ?? undefined,
+            levelNeeded: levelNeeded ?? undefined,
+          }
         : { teamId: teamId ?? undefined }),
     });
 
@@ -141,6 +159,34 @@ function PostSquadNeed({ booking }: { booking: MyBooking }) {
               label={lvl}
               selected={level === lvl}
               onPress={() => setLevel(level === lvl ? null : lvl)}
+            />
+          ))}
+        </View>
+        <IconLabel icon="sportscourt.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={12}>
+          Position needed (optional)
+        </IconLabel>
+        <View style={styles.wrapRow}>
+          <Chip label="Any" selected={positionNeeded === null} onPress={() => setPositionNeeded(null)} />
+          {POSITIONS_NEEDED.map((position) => (
+            <Chip
+              key={position}
+              label={position}
+              selected={positionNeeded === position}
+              onPress={() => setPositionNeeded(position)}
+            />
+          ))}
+        </View>
+        <IconLabel icon="trophy.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={12}>
+          Level needed (optional)
+        </IconLabel>
+        <View style={styles.wrapRow}>
+          <Chip label="Any" selected={levelNeeded === null} onPress={() => setLevelNeeded(null)} />
+          {XP_TIERS.map((tier) => (
+            <Chip
+              key={tier}
+              label={tier}
+              selected={levelNeeded === tier}
+              onPress={() => setLevelNeeded(tier)}
             />
           ))}
         </View>

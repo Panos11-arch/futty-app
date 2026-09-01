@@ -74,7 +74,7 @@ export default function PaymentMethodsScreen() {
             <ThemedText style={styles.currentLabel}>
               {selectedLabel ? `Default: ${selectedLabel}` : 'No saved card yet'}
             </ThemedText>
-            <AuthButton label="Manage payment methods" onPress={openSheet} busy={busy} />
+            <AuthButton label="Manage payment methods" onPress={openSheet} busy={busy} compact />
           </>
         ) : null}
 
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   currentLabel: {
     fontSize: 14,
-    color: FuttyColors.emerald950,
+    color: FuttyColors.stone900,
     fontWeight: '600',
   },
 });

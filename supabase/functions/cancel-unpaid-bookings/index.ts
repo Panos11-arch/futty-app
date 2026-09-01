@@ -1,9 +1,21 @@
 // Scheduled job (pg_cron + pg_net, see the bottom of
 // supabase/booking-payment-splits.sql) — every 10 minutes, finds every
-// confirmed booking with at least one still-unpaid player share within 3
-// hours of kickoff, cancels the WHOLE booking (voiding the reservation, not
-// just the unpaid portion), refunds every share that was already paid IN
-// FULL, and notifies everyone involved (including the booker) why.
+// confirmed booking with at least one share that isn't fully authorized (or
+// isn't authorized at all) within 3 hours of kickoff, cancels the WHOLE
+// booking (voiding the reservation, not just the unpaid portion), and
+// notifies everyone involved (including the booker) why.
+//
+// Item 6 (authorize-then-capture): every share here is either 'pending' (no
+// successful PaymentIntent) or 'authorized' (card held, never captured,
+// since stripe-webhook only ever captures once the WHOLE roster is
+// authorized — see that function) — never 'paid', because a fully-authorized
+// booking is captured immediately and would never still be sitting
+// unconfirmed this close to kickoff. So this now VOIDS every authorized
+// hold instead of charging-then-refunding: no real money ever moves for a
+// match that didn't happen. The 'paid' branch below is kept only as a
+// defensive fallback for a share captured under the old immediate-capture
+// model (or a rare capture/cancellation race) — refunding is still correct
+// for money that was actually taken.
 //
 // Deliberately not triggered by a client call anywhere — this only ever
 // runs on the schedule, authenticated by a shared secret (x-cron-secret)
@@ -45,18 +57,23 @@ Deno.serve(async (req) => {
 
     if (!shares || shares.length === 0) continue;
 
-    // Refund every share that was already paid — the reservation itself is
-    // being voided, so this is a full refund of what each of THEM paid, not
-    // a partial/prorated one.
+    // Void every authorized hold — nobody was actually charged, so there's
+    // nothing to refund, just the hold on their card to release. The 'paid'
+    // branch is a defensive fallback only (see the file header comment).
     for (const share of shares) {
-      if (share.status === 'paid' && share.stripe_payment_intent_id) {
+      if (share.status === 'authorized' && share.stripe_payment_intent_id) {
+        try {
+          await stripe.paymentIntents.cancel(share.stripe_payment_intent_id);
+        } catch (err) {
+          console.error(`Void failed for share ${share.id}:`, err);
+          // Keep going — one failed void shouldn't stop the booking from
+          // being cancelled or the rest from being voided/notified.
+        }
+      } else if (share.status === 'paid' && share.stripe_payment_intent_id) {
         try {
           await stripe.refunds.create({ payment_intent: share.stripe_payment_intent_id });
         } catch (err) {
           console.error(`Refund failed for share ${share.id}:`, err);
-          // Keep going — one failed refund (e.g. already refunded) shouldn't
-          // stop the booking from being cancelled or the rest from being
-          // refunded/notified.
         }
       }
     }
@@ -67,7 +84,7 @@ Deno.serve(async (req) => {
       .from('booking_payment_shares')
       .update({ status: 'cancelled' })
       .eq('booking_id', bookingId)
-      .eq('status', 'pending');
+      .in('status', ['pending', 'authorized']);
     await supabaseAdmin
       .from('booking_payment_shares')
       .update({ status: 'refunded' })
@@ -78,7 +95,7 @@ Deno.serve(async (req) => {
       profile_id: share.profile_id,
       type: 'booking_cancelled',
       title: 'Booking cancelled',
-      body: 'Not everyone paid their share in time, so this booking was cancelled and refunded.',
+      body: "Not everyone's spot was confirmed in time, so this booking was cancelled — no one was charged.",
       data: { bookingId },
     }));
     await supabaseAdmin.from('notifications').insert(notifications);

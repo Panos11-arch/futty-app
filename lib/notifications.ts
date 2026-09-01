@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase';
 
-export type NotificationType = 'fixture_message' | 'squad_post' | 'booking_slot' | 'booking_cancelled';
+export type NotificationType =
+  | 'fixture_message'
+  | 'squad_post'
+  | 'booking_slot'
+  | 'booking_cancelled'
+  | 'fixture_agreed';
 
 export type AppNotification = {
   id: string;
