@@ -85,7 +85,18 @@ async function captureIfFull(bookingId: string, supabaseAdmin: ReturnType<typeof
     .maybeSingle();
   if (!booking) return;
 
-  const needed = FORMAT_PLAYER_COUNT[booking.format as string] ?? 10;
+  // Mirrors public.booking_total_shares_needed (supabase/opposition-match-
+  // payments.sql): doubled once this booking has a matched opposition
+  // post — two full rosters share the one pitch instead of one.
+  const { data: matchedOpposition } = await supabaseAdmin
+    .from('squad_posts')
+    .select('id')
+    .eq('venue_booking_id', bookingId)
+    .eq('type', 'opposition')
+    .eq('status', 'matched')
+    .maybeSingle();
+
+  const needed = (FORMAT_PLAYER_COUNT[booking.format as string] ?? 10) * (matchedOpposition ? 2 : 1);
 
   const { data: shares } = await supabaseAdmin
     .from('booking_payment_shares')

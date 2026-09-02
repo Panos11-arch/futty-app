@@ -19,6 +19,7 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   booking_slot: 'calendar',
   booking_cancelled: 'exclamationmark.triangle.fill',
   fixture_agreed: 'flag.checkered',
+  match_payment_due: 'creditcard.fill',
 };
 
 function timeAgo(iso: string) {
@@ -67,6 +68,8 @@ async function openNotification(notification: AppNotification) {
     router.push('/book');
   } else if (notification.type === 'booking_cancelled') {
     router.push('/my-bookings');
+  } else if (notification.type === 'match_payment_due' && typeof data.bookingId === 'string') {
+    router.push({ pathname: '/booking-payment', params: { bookingId: data.bookingId } });
   }
 }
 

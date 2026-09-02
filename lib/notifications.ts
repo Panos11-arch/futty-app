@@ -5,7 +5,8 @@ export type NotificationType =
   | 'squad_post'
   | 'booking_slot'
   | 'booking_cancelled'
-  | 'fixture_agreed';
+  | 'fixture_agreed'
+  | 'match_payment_due';
 
 export type AppNotification = {
   id: string;

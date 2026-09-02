@@ -1,3 +1,4 @@
+import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -9,6 +10,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { useAuth } from '@/lib/auth';
+import { createSharePayment } from '@/lib/booking-shares';
+import { describeFunctionError } from '@/lib/edge-functions';
 import { describeSquadError } from '@/lib/squad-errors';
 import {
   cancelOppositionOffer,
@@ -17,6 +21,7 @@ import {
   leaveSquadPost,
   offerOpposition,
 } from '@/lib/squads';
+import { supabase } from '@/lib/supabase';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useSquadPosts, type SquadPostWithDetails } from '@/lib/use-squad-posts';
 
@@ -116,7 +121,9 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
 
 function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; onChanged: () => void }) {
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
+  const { user } = useAuth();
   const myTeams = useMyTeams();
+  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [offering, setOffering] = useState(false);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -141,17 +148,100 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
   const canCancel = isMyMatch && new Date(post.scheduled_at).getTime() - CANCEL_WINDOW_MS > Date.now();
 
   async function submitOffer() {
-    if (!teamId) return;
+    if (!teamId || busy) return;
     setBusy(true);
     setError(null);
+
     const { error: offerError } = await offerOpposition(post.id, teamId);
-    setBusy(false);
     if (offerError) {
+      setBusy(false);
       setError(describeSquadError(offerError));
-    } else {
+      return;
+    }
+
+    if (!post.venue_booking_id || !user) {
+      // No real booking behind this post (or, in practice, always signed in
+      // to have gotten this far) — nothing to authorize, the match itself is
+      // already locked in by offer_opposition above.
+      setBusy(false);
       setOffering(false);
       onChanged();
+      return;
     }
+
+    // offer_opposition (supabase/opposition-match-payments.sql) creates a
+    // pending share for every member of both rosters, including this
+    // captain — fetched fresh here rather than trusted from client state,
+    // same reasoning as join-squad-post.tsx.
+    const { data: share, error: shareError } = await supabase
+      .from('booking_payment_shares')
+      .select('id')
+      .eq('booking_id', post.venue_booking_id)
+      .eq('profile_id', user.id)
+      .maybeSingle();
+
+    if (shareError) {
+      setBusy(false);
+      setError(shareError.message);
+      return;
+    }
+
+    if (!share) {
+      // Free venue — add_booking_share_internal deliberately skips creating
+      // a share when amount_cents = 0. Nothing to authorize; the match is
+      // already on.
+      setBusy(false);
+      setOffering(false);
+      onChanged();
+      return;
+    }
+
+    // From here on, a failed/cancelled payment must not leave this match
+    // "on" with its very first payment never having gone through —
+    // cancel_opposition_offer both reopens the post and cleans up every
+    // pending share the match just created (see that function's comment).
+    async function rollbackOffer() {
+      await cancelOppositionOffer(post.id);
+    }
+
+    const { data: intent, error: intentError } = await createSharePayment(share.id);
+    if (intentError || !intent?.clientSecret) {
+      await rollbackOffer();
+      setBusy(false);
+      setError(intentError ? await describeFunctionError(intentError) : "Couldn't start payment.");
+      return;
+    }
+
+    const { error: initError } = await initPaymentSheet({
+      merchantDisplayName: 'Futty',
+      paymentIntentClientSecret: intent.clientSecret,
+    });
+    if (initError) {
+      await rollbackOffer();
+      setBusy(false);
+      setError(initError.message);
+      return;
+    }
+
+    const { error: presentError } = await presentPaymentSheet();
+    if (presentError) {
+      await rollbackOffer();
+      setBusy(false);
+      if (presentError.code !== 'Canceled') setError(presentError.message);
+      return;
+    }
+
+    setBusy(false);
+    setOffering(false);
+    onChanged();
+
+    // Only now — the offering captain's own hold actually succeeded — tell
+    // both rosters they're playing and owe their own share. Fire-and-forget:
+    // a push failing here must never undo a match that already went
+    // through.
+    supabase.functions
+      .invoke('notify-opposition-matched', { body: { postId: post.id, payerProfileId: user.id } })
+      .catch(() => {});
   }
 
   async function cancelMatch() {
@@ -232,7 +322,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           <View style={styles.confirmRow}>
             {captainTeams.length > 0 ? (
               <View style={styles.confirmButton}>
-                <AuthButton label="Offer" onPress={submitOffer} disabled={!teamId} busy={busy} />
+                <AuthButton label="Offer & Pay My Share" onPress={submitOffer} disabled={!teamId} busy={busy} />
               </View>
             ) : null}
             <View style={styles.confirmButton}>
