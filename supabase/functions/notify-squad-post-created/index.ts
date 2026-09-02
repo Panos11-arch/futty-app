@@ -24,7 +24,25 @@ type SquadPost = {
   venue_id: string;
   posted_by: string | null;
   team_id: string | null;
+  scheduled_at: string;
+  position_needed: string | null;
+  level_needed: string | null;
 };
+
+// "Sat 18:00" — Cyprus local time, matching the 'Asia/Nicosia' convention
+// used server-side elsewhere (supabase/scores.sql etc.) and the SQL trigger
+// this mirrors (supabase/squad-post-notifications.sql).
+function formatWhen(iso: string) {
+  const date = new Date(iso);
+  const weekday = date.toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'Asia/Nicosia' });
+  const time = date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Nicosia',
+  });
+  return `${weekday} ${time}`;
+}
 
 Deno.serve(async (req) => {
   const { postId } = await req.json().catch(() => ({}));
@@ -36,7 +54,7 @@ Deno.serve(async (req) => {
 
   const { data: post } = await supabase
     .from('squad_posts')
-    .select('id, type, format, venue_id, posted_by, team_id')
+    .select('id, type, format, venue_id, posted_by, team_id, scheduled_at, position_needed, level_needed')
     .eq('id', postId)
     .maybeSingle<SquadPost>();
   if (!post) {
@@ -56,6 +74,7 @@ Deno.serve(async (req) => {
 
   const { data: venue } = await supabase.from('venues').select('name').eq('id', post.venue_id).maybeSingle();
   const venueName = venue?.name ?? 'a venue';
+  const when = formatWhen(post.scheduled_at);
 
   let title: string;
   let body: string;
@@ -65,12 +84,28 @@ Deno.serve(async (req) => {
       .select('username')
       .eq('id', post.posted_by ?? '')
       .maybeSingle();
-    title = 'Looking for players';
-    body = `${poster?.username ?? 'Someone'} needs players for ${post.format} at ${venueName}`;
+    const who = poster?.username ?? 'Someone';
+    // Items 2/5 — naming the specific position up front (when given) is what
+    // lets a recipient tell at a glance whether this is relevant to them.
+    if (post.position_needed) {
+      title = `Needs a ${post.position_needed}`;
+      body = `${who} needs a ${post.position_needed} — ${post.format} at ${venueName}, ${when}`;
+    } else {
+      title = 'Looking for players';
+      body = `${who} needs players — ${post.format} at ${venueName}, ${when}`;
+    }
   } else {
     const { data: team } = await supabase.from('teams').select('name').eq('id', post.team_id ?? '').maybeSingle();
-    title = 'Looking for opposition';
-    body = `${team?.name ?? 'A team'} wants a ${post.format} match at ${venueName}`;
+    const who = team?.name ?? 'A team';
+    // Item 3 — informational only, never a hard filter; matching stays
+    // city+format only (see squad_post_notification_recipients).
+    if (post.level_needed) {
+      title = `Looking for a ${post.level_needed}-level opponent`;
+      body = `${who} is looking for a ${post.level_needed}-level opponent — ${post.format} at ${venueName}, ${when}`;
+    } else {
+      title = 'Looking for opposition';
+      body = `${who} wants a match — ${post.format} at ${venueName}, ${when}`;
+    }
   }
 
   const messages = tokenRows.map((row) => ({

@@ -13,7 +13,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { describeSquadError } from '@/lib/squad-errors';
-import { cancelPendingShare, joinSquadPost, leaveSquadPost } from '@/lib/squads';
+import { cancelPendingShare, describePlayerPostNeed, joinSquadPost, leaveSquadPost } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 import { useSquadPosts } from '@/lib/use-squad-posts';
 
@@ -215,12 +215,9 @@ export default function JoinSquadPostScreen() {
           </View>
         ) : null}
 
-        {post.position_needed || post.level_needed ? (
+        {describePlayerPostNeed(post) ? (
           <View style={styles.quote}>
-            <ThemedText style={styles.quoteText}>
-              “Looking for {post.position_needed ? post.position_needed.toLowerCase() : 'any position'}
-              {post.level_needed ? `, ${post.level_needed} level or above` : ''}”
-            </ThemedText>
+            <ThemedText style={styles.quoteText}>&ldquo;{describePlayerPostNeed(post)}&rdquo;</ThemedText>
           </View>
         ) : null}
 

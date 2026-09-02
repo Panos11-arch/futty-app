@@ -176,7 +176,14 @@ export default function BookingPaymentScreen() {
           </ThemedText>
         )}
 
-        {bookingStatus === 'confirmed' && booking && needChoice && needChoice !== 'neither' ? (
+        {/* Not gated on bookingStatus === 'confirmed' — create_squad_post has
+         *  no such requirement server-side, and gating it here meant a
+         *  priced booking (the common case) hid this entire form, position
+         *  and level pickers included, until AFTER the booker authorized
+         *  their own share, which could be several screens/minutes later.
+         *  A free booking (app/book.tsx's "completed" state) already shows
+         *  this immediately; matching that here is the fix. */}
+        {booking && needChoice && needChoice !== 'neither' ? (
           <PostSquadNeed booking={booking} initialMode={needChoice} />
         ) : null}
 

@@ -26,6 +26,26 @@ export type SquadPost = {
   level_needed: string | null;
 };
 
+/** "Looking for goalkeeper, Gold level or above" — the quote-style callout
+ *  shown on a "need players" post, shared by app/join-squad-post.tsx and
+ *  app/squads.tsx's PlayersPostCard so the wording can't drift between the
+ *  two places it's shown. Null when neither is set — nothing to say. */
+export function describePlayerPostNeed(post: { position_needed: string | null; level_needed: string | null }) {
+  if (!post.position_needed && !post.level_needed) return null;
+  return `Looking for ${post.position_needed ? post.position_needed.toLowerCase() : 'any position'}${
+    post.level_needed ? `, ${post.level_needed} level or above` : ''
+  }`;
+}
+
+/** "Looking for a Gold-level opponent" — the "need opposition" equivalent of
+ *  describePlayerPostNeed above. Informational only (item 3 of the payment-
+ *  auth batch) — a team below or above this level can still see and offer to
+ *  play the post, this just states what the posting team had in mind. */
+export function describeOppositionPostNeed(post: { level_needed: string | null }) {
+  if (!post.level_needed) return null;
+  return `Looking for a ${post.level_needed}-level opponent`;
+}
+
 export async function createSquadPost(params: {
   venueId: string;
   scheduledAt: string;

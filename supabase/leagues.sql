@@ -206,6 +206,14 @@ begin
   if not found then
     raise exception 'not_in_signup';
   end if;
+
+  -- This function only backs the dev-only "Start season" trigger now (see
+  -- app/(tabs)/leagues.tsx), but a real production league can still reach
+  -- 'season' via this path with 2+ teams already registered if a captain
+  -- uses it before capacity fills — this call was missing here (unlike
+  -- register_team_for_league's auto-start), which is exactly how the
+  -- Nicosia 5-a-side Open League ended up in 'season' with zero fixtures.
+  perform public.sync_league_fixtures(p_league_id);
 end;
 $$;
 

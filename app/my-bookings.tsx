@@ -106,7 +106,7 @@ export function PostSquadNeed({
             positionNeeded: positionNeeded ?? undefined,
             levelNeeded: levelNeeded ?? undefined,
           }
-        : { teamId: teamId ?? undefined }),
+        : { teamId: teamId ?? undefined, levelNeeded: levelNeeded ?? undefined }),
     });
 
     setBusy(false);
@@ -241,6 +241,20 @@ export function PostSquadNeed({
                   label={lvl}
                   selected={level === lvl}
                   onPress={() => setLevel(level === lvl ? null : lvl)}
+                />
+              ))}
+            </View>
+            <IconLabel icon="trophy.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={12}>
+              Preferred opponent level (optional)
+            </IconLabel>
+            <View style={styles.wrapRow}>
+              <Chip label="Any" selected={levelNeeded === null} onPress={() => setLevelNeeded(null)} />
+              {XP_TIERS.map((tier) => (
+                <Chip
+                  key={tier}
+                  label={tier}
+                  selected={levelNeeded === tier}
+                  onPress={() => setLevelNeeded(tier)}
                 />
               ))}
             </View>

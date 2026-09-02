@@ -55,22 +55,38 @@ declare
   v_venue_name text;
   v_poster_name text;
   v_team_name text;
+  v_when text;
   v_title text;
   v_body text;
   v_recipient uuid;
 begin
   select name into v_venue_name from public.venues where id = new.venue_id;
+  -- "Sat 18:00" — Cyprus local time, same zone convention as
+  -- supabase/scores.sql etc. Kept short: this also has to fit a push
+  -- notification body alongside the subject/position/venue.
+  v_when := to_char(new.scheduled_at at time zone 'Asia/Nicosia', 'Dy HH24:MI');
 
   if new.type = 'players' then
     select username into v_poster_name from public.profiles where id = new.posted_by;
-    v_title := 'Looking for players';
-    v_body := coalesce(v_poster_name, 'Someone') || ' needs players for ' || new.format || ' at ' ||
-      coalesce(v_venue_name, 'a venue');
+    -- Items 2/5 — naming the specific position (when given) up front is what
+    -- lets a recipient tell at a glance whether this post is relevant to
+    -- them, instead of a generic "needs players" every time.
+    v_title := case when new.position_needed is not null then 'Needs a ' || new.position_needed
+      else 'Looking for players' end;
+    v_body := coalesce(v_poster_name, 'Someone') ||
+      (case when new.position_needed is not null then ' needs a ' || new.position_needed
+        else ' needs players' end) ||
+      ' — ' || new.format || ' at ' || coalesce(v_venue_name, 'a venue') || ', ' || v_when;
   else
     select name into v_team_name from public.teams where id = new.team_id;
-    v_title := 'Looking for opposition';
-    v_body := coalesce(v_team_name, 'A team') || ' wants a ' || new.format || ' match at ' ||
-      coalesce(v_venue_name, 'a venue');
+    -- Item 3 — informational only, never a hard filter (see
+    -- squad_post_notification_recipients — matching stays city+format only).
+    v_title := case when new.level_needed is not null then 'Looking for a ' || new.level_needed || '-level opponent'
+      else 'Looking for opposition' end;
+    v_body := coalesce(v_team_name, 'A team') ||
+      (case when new.level_needed is not null then ' is looking for a ' || new.level_needed || '-level opponent'
+        else ' wants a match' end) ||
+      ' — ' || new.format || ' at ' || coalesce(v_venue_name, 'a venue') || ', ' || v_when;
   end if;
 
   for v_recipient in select recipients.profile_id from public.squad_post_notification_recipients(new.id) as recipients

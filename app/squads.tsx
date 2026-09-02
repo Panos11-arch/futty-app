@@ -10,7 +10,13 @@ import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { describeSquadError } from '@/lib/squad-errors';
-import { cancelOppositionOffer, leaveSquadPost, offerOpposition } from '@/lib/squads';
+import {
+  cancelOppositionOffer,
+  describeOppositionPostNeed,
+  describePlayerPostNeed,
+  leaveSquadPost,
+  offerOpposition,
+} from '@/lib/squads';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useSquadPosts, type SquadPostWithDetails } from '@/lib/use-squad-posts';
 
@@ -65,22 +71,9 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
         {post.level ? ` · ${post.level}` : ''}
       </ThemedText>
 
-      {post.position_needed || post.level_needed ? (
-        <View style={styles.wrapRow}>
-          {post.position_needed ? (
-            <View style={[styles.tag, { borderColor: FuttyColors.violet500 }]}>
-              <ThemedText style={[styles.tagText, { color: FuttyColors.violet500 }]}>
-                {post.position_needed}
-              </ThemedText>
-            </View>
-          ) : null}
-          {post.level_needed ? (
-            <View style={[styles.tag, { borderColor: FuttyColors.amber400 }]}>
-              <ThemedText style={[styles.tagText, { color: FuttyColors.stone700 }]}>
-                {post.level_needed} needed
-              </ThemedText>
-            </View>
-          ) : null}
+      {describePlayerPostNeed(post) ? (
+        <View style={styles.quote}>
+          <ThemedText style={styles.quoteText}>&ldquo;{describePlayerPostNeed(post)}&rdquo;</ThemedText>
         </View>
       ) : null}
 
@@ -184,6 +177,12 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
         {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
         {post.level ? ` · ${post.level}` : ''}
       </ThemedText>
+
+      {describeOppositionPostNeed(post) ? (
+        <View style={styles.quote}>
+          <ThemedText style={styles.quoteText}>&ldquo;{describeOppositionPostNeed(post)}&rdquo;</ThemedText>
+        </View>
+      ) : null}
 
       <View style={styles.infoRow}>
         <InfoBox label="Where" value={post.venue_name} tint={FuttyColors.violet500} />
@@ -357,6 +356,17 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  quote: {
+    borderLeftWidth: 3,
+    borderLeftColor: FuttyColors.amber400,
+    paddingLeft: 12,
+    paddingVertical: 4,
+  },
+  quoteText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    color: FuttyColors.stone700,
   },
   teamNameRow: {
     flexDirection: 'row',
