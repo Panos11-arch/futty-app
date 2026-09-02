@@ -55,7 +55,7 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     const { data: posts, error } = await supabase
       .from('squad_posts')
       .select(
-        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, created_at, position_needed, level_needed, venues(name, city)'
+        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, venue_booking_id, created_at, position_needed, level_needed, venues(name, city)'
       )
       .eq('type', postType)
       .neq('status', 'cancelled')
