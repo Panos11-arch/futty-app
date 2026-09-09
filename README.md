@@ -16,6 +16,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+For password recovery and email confirmation, add these URLs to Supabase
+Dashboard > Authentication > URL Configuration > Redirect URLs:
+
+```text
+futtyapp://
+futtyapp://reset-password
+```
+
+Use a development build or a store build for auth links; Expo Go cannot
+reliably handle a stable custom-scheme callback.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

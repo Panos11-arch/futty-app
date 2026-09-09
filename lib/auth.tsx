@@ -69,7 +69,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** Where Supabase should send the user after they click an emailed link. */
 export function authRedirectTo(path: string) {
-  return Linking.createURL(path);
+  // A stable callback is required by Supabase's redirect allowlist. Without
+  // an explicit scheme, Expo Go can generate an exp:// URL that changes with
+  // the current dev server and is rejected by Supabase.
+  return Linking.createURL(path, { scheme: 'futtyapp' });
 }
 
 /**
