@@ -1,4 +1,4 @@
-import { AuthError } from '@supabase/supabase-js';
+import { AuthError, isAuthRetryableFetchError } from '@supabase/supabase-js';
 
 /**
  * Supabase's raw messages are terse and sometimes misleading — "email rate limit
@@ -7,6 +7,18 @@ import { AuthError } from '@supabase/supabase-js';
  */
 export function describeAuthError(cause: unknown) {
   if (cause instanceof AuthError) {
+    // Thrown for 500-range responses before the body is even parsed, so
+    // `.message` is just `JSON.stringify()` of the raw fetch Response (no
+    // `.code`) — surfacing it as-is looks like `{"type":"default",...}`.
+    // A 500 here means the Supabase project's auth service itself errored
+    // (commonly a paused free-tier project, or broken SMTP settings), not
+    // something the client can retry its way out of.
+    if (isAuthRetryableFetchError(cause)) {
+      return cause.status === 0
+        ? 'Could not reach Supabase. Check your internet connection and try again.'
+        : "Supabase's servers had a problem handling that request. Check that the project isn't paused and that SMTP/email settings are configured correctly, then try again.";
+    }
+
     switch (cause.code) {
       case 'over_email_send_rate_limit':
         return "Too many emails sent from this project. Supabase's built-in mail service allows only a couple per hour — wait, or set up custom SMTP to lift the cap.";
