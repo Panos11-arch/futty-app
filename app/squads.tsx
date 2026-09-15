@@ -17,6 +17,7 @@ import { describeSquadError } from '@/lib/squad-errors';
 import {
   cancelOppositionOffer,
   describeOppositionPostNeed,
+  describePaymentMode,
   describePlayerPostNeed,
   leaveSquadPost,
   offerOpposition,
@@ -94,10 +95,16 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
 
       {post.roster.length > 0 ? (
         <View style={styles.roster}>
-          {post.roster.map((player) => (
-            <View key={player.profileId} style={styles.rosterRow}>
+          {post.roster.map((player, index) => (
+            <View key={player.profileId ?? `house-${index}`} style={styles.rosterRow}>
               <ThemedText style={styles.rosterName}>{player.name}</ThemedText>
-              <ThemedText style={styles.rosterTier}>{player.tier}</ThemedText>
+              {player.isHousePlayer ? (
+                <View style={[styles.tag, { borderColor: FuttyColors.stone400 }]}>
+                  <ThemedText style={[styles.tagText, { color: FuttyColors.stone500 }]}>Venue staff</ThemedText>
+                </View>
+              ) : (
+                <ThemedText style={styles.rosterTier}>{player.tier}</ThemedText>
+              )}
             </View>
           ))}
         </View>
@@ -262,6 +269,11 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
             <ThemedText style={[styles.tagText, { color: FuttyColors.stone700 }]}>{post.team_level}</ThemedText>
           </View>
         ) : null}
+        {post.payment_mode === 'gipedo_pano' ? (
+          <View style={[styles.tag, { borderColor: FuttyColors.coral500 }]}>
+            <ThemedText style={[styles.tagText, { color: FuttyColors.coral500 }]}>Gipedo Pano</ThemedText>
+          </View>
+        ) : null}
       </View>
       <ThemedText style={styles.note}>
         {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
@@ -318,6 +330,11 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
               ))}
             </View>
           )}
+          <ThemedText style={styles.note}>
+            {post.payment_mode === 'gipedo_pano'
+              ? 'Gipedo Pano: you and your opponents each authorize a hold for your normal share, but only the losing team is actually charged once the result is confirmed — the winners are released. A draw falls back to a normal split.'
+              : 'Split payment: both full rosters share the pitch cost evenly, regardless of the result.'}
+          </ThemedText>
           {error ? <AuthError>{error}</AuthError> : null}
           <View style={styles.confirmRow}>
             {captainTeams.length > 0 ? (

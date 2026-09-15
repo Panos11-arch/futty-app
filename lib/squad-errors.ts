@@ -35,6 +35,16 @@ export function describeSquadError(error: PostgrestError) {
       return "This post isn't matched yet.";
     case 'too_late_to_cancel':
       return "Too close to kickoff to cancel now.";
+    case 'invalid_payment_mode':
+      return 'Not a valid payment mode for that post type.';
+    case 'not_venue_owner':
+      return 'Only a venue owner account can add a house player.';
+    case 'not_your_venue':
+      return "You can only add house players to bookings at a venue you own.";
+    case 'not_linked_to_booking':
+      return "This post isn't linked to a real booking.";
+    case 'name_required':
+      return 'Enter a name.';
     default:
       return error.message;
   }

@@ -13,6 +13,8 @@ import { dateKeyToDate, dayLabel, toDateKey } from '@/lib/days';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { useAuth } from '@/lib/auth';
+import { addHousePlayer } from '@/lib/squads';
+import { describeSquadError } from '@/lib/squad-errors';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
 import type { Venue } from '@/lib/use-venues';
@@ -27,6 +29,10 @@ type DashboardBooking = {
   note: string | null;
   playerLabel: string | null;
   teamLabel: string | null;
+  /** Set only for a booking with an open "Need players" post linked to it
+   *  (supabase/house-players.sql) — lets the owner add a house player right
+   *  from this row. */
+  playersPost: { id: string; playersNeeded: number; joinedCount: number } | null;
 };
 
 type BookingsState =
@@ -106,8 +112,20 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
           }>)
         : Promise.resolve({ data: [] as { id: string; username: string | null; full_name: string | null }[] }),
       bookingIds.length > 0
-        ? supabase.from('squad_posts').select('team_id, venue_booking_id').in('venue_booking_id', bookingIds)
-        : Promise.resolve({ data: [] as { team_id: string | null; venue_booking_id: string | null }[] }),
+        ? supabase
+            .from('squad_posts')
+            .select('id, type, team_id, players_needed, venue_booking_id, status')
+            .in('venue_booking_id', bookingIds)
+        : Promise.resolve({
+            data: [] as {
+              id: string;
+              type: string;
+              team_id: string | null;
+              players_needed: number | null;
+              venue_booking_id: string | null;
+              status: string;
+            }[],
+          }),
     ]);
 
     if (requestIdRef.current !== requestId) return;
@@ -115,10 +133,18 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
     const teamIds = [
       ...new Set((squadPosts ?? []).map((p) => p.team_id).filter((id): id is string => !!id)),
     ];
-    const { data: teams } =
+    const playersPostIds = (squadPosts ?? [])
+      .filter((p) => p.type === 'players' && p.status === 'open')
+      .map((p) => p.id);
+
+    const [{ data: teams }, { data: joiners }] = await Promise.all([
       teamIds.length > 0
-        ? await supabase.from('teams').select('id, name').in('id', teamIds)
-        : { data: [] as { id: string; name: string }[] };
+        ? supabase.from('teams').select('id, name').in('id', teamIds)
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      playersPostIds.length > 0
+        ? supabase.from('squad_post_joiners').select('post_id').in('post_id', playersPostIds)
+        : Promise.resolve({ data: [] as { post_id: string }[] }),
+    ]);
 
     if (requestIdRef.current !== requestId) return;
 
@@ -128,6 +154,18 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
       (squadPosts ?? [])
         .filter((p) => p.venue_booking_id && p.team_id)
         .map((p) => [p.venue_booking_id as string, p.team_id as string])
+    );
+    const joinedCountByPostId = new Map<string, number>();
+    for (const j of joiners ?? []) {
+      joinedCountByPostId.set(j.post_id, (joinedCountByPostId.get(j.post_id) ?? 0) + 1);
+    }
+    const playersPostByBookingId = new Map(
+      (squadPosts ?? [])
+        .filter((p) => p.type === 'players' && p.status === 'open' && p.venue_booking_id)
+        .map((p) => [
+          p.venue_booking_id as string,
+          { id: p.id, playersNeeded: p.players_needed ?? 0, joinedCount: joinedCountByPostId.get(p.id) ?? 0 },
+        ])
     );
 
     setState({
@@ -145,6 +183,7 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
           note: b.note,
           playerLabel: profile?.full_name || profile?.username || null,
           teamLabel: teamId ? teamById.get(teamId) ?? null : null,
+          playersPost: playersPostByBookingId.get(b.id) ?? null,
         };
       }),
     });
@@ -244,6 +283,68 @@ function useRecurringSlots(venueId: string | null, userId: string | null) {
 }
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** "Add house player" (item 5 of supabase/house-players.sql) — a free-text
+ *  name field alongside the booking's own details, only shown on a booking
+ *  with an open "Need players" post still short a spot. Fills that spot for
+ *  free, no account, no payment hold — see add_house_player's RLS-style
+ *  owner check for why this is safe to expose with no extra gating here. */
+function AddHousePlayerRow({
+  postId,
+  spotsLeft,
+  onAdded,
+}: {
+  postId: string;
+  spotsLeft: number;
+  onAdded: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (spotsLeft <= 0) {
+    return <ThemedText style={styles.note}>Need players: full.</ThemedText>;
+  }
+
+  if (!open) {
+    return (
+      <Pressable accessibilityRole="button" onPress={() => setOpen(true)}>
+        <ThemedText type="link" style={styles.note}>
+          Need players: {spotsLeft} spot{spotsLeft === 1 ? '' : 's'} left — add house player
+        </ThemedText>
+      </Pressable>
+    );
+  }
+
+  async function submit() {
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    const { error: addError } = await addHousePlayer(postId, name.trim());
+    setBusy(false);
+    if (addError) {
+      setError(describeSquadError(addError));
+    } else {
+      setName('');
+      setOpen(false);
+      onAdded();
+    }
+  }
+
+  return (
+    <View style={styles.addHouseRow}>
+      <AuthField value={name} onChangeText={setName} placeholder="Staff member's name" editable={!busy} />
+      {error ? <AuthError>{error}</AuthError> : null}
+      <View style={styles.addPlayerRow}>
+        <View style={styles.addPlayerField}>
+          <AuthButton label="Add" onPress={submit} disabled={!name.trim()} busy={busy} compact />
+        </View>
+        <AuthButton label="Cancel" variant="secondary" onPress={() => setOpen(false)} disabled={busy} compact />
+      </View>
+    </View>
+  );
+}
 
 // One row of hourly start times covering a typical training-slot day —
 // same reasoning as matchmaking.tsx's KICKOFF_TIMES: simpler than tying into
@@ -473,6 +574,13 @@ export default function VenueDashboardScreen() {
                             {booking.pitches} pitch{booking.pitches === 1 ? '' : 'es'}
                             {isOwnerBlock && booking.note ? ` · ${booking.note}` : ''}
                           </ThemedText>
+                          {booking.playersPost ? (
+                            <AddHousePlayerRow
+                              postId={booking.playersPost.id}
+                              spotsLeft={booking.playersPost.playersNeeded - booking.playersPost.joinedCount}
+                              onAdded={dayBookings.reload}
+                            />
+                          ) : null}
                         </ThemedView>
                       );
                     })}
@@ -713,5 +821,17 @@ const styles = StyleSheet.create({
   recurringLabel: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  addHouseRow: {
+    gap: 6,
+    marginTop: 4,
+  },
+  addPlayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addPlayerField: {
+    flex: 1,
   },
 });

@@ -27,6 +27,7 @@ export function FixtureConfirmedCard({
   bookingFormat,
   venueName,
   whenLabel,
+  paymentModeLabel,
 }: {
   /** Both set → team-vs-team fixture. Neither set → plain booking, shows
    *  bookingFormat instead. */
@@ -35,6 +36,10 @@ export function FixtureConfirmedCard({
   bookingFormat?: string | null;
   venueName?: string | null;
   whenLabel?: string | null;
+  /** "Gipedo Pano: loser pays the full pitch" — squad-matched opposition
+   *  posts only (see supabase/gipedo-pano-payments.sql); null/undefined for
+   *  a normal split-payment match, which gets no extra callout here. */
+  paymentModeLabel?: string | null;
 }) {
   const isFixture = !!teamAName && !!teamBName;
 
@@ -56,6 +61,12 @@ export function FixtureConfirmedCard({
           {bookingFormat ? <ThemedText style={styles.bookingFormat}>{bookingFormat}</ThemedText> : null}
         </View>
       )}
+
+      {paymentModeLabel ? (
+        <View style={styles.paymentModePill}>
+          <ThemedText style={styles.paymentModeText}>{paymentModeLabel}</ThemedText>
+        </View>
+      ) : null}
 
       {venueName || whenLabel ? (
         <View style={styles.pill}>
@@ -168,5 +179,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: FuttyColors.stone900,
+  },
+  paymentModePill: {
+    backgroundColor: FuttyColors.coral500,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  paymentModeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: FuttyColors.white,
   },
 });

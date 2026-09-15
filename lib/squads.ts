@@ -20,6 +20,9 @@ export type SquadPost = {
   matched_team_id: string | null;
   venue_booking_id: string | null;
   created_at: string;
+  /** 'opposition' posts only — 'players' posts are always 'split'. See
+   *  supabase/gipedo-pano-payments.sql. */
+  payment_mode: 'split' | 'gipedo_pano';
   /** "Need players" posts only — position/level wanted, both optional
    *  ("Any" in the UI maps to null here). */
   position_needed: string | null;
@@ -46,6 +49,15 @@ export function describeOppositionPostNeed(post: { level_needed: string | null }
   return `Looking for a ${post.level_needed}-level opponent`;
 }
 
+/** "Gipedo Pano: loser pays the full pitch" — shown wherever an opposition
+ *  post's payment terms need to be clear before a captain offers/pays,
+ *  same reasoning as describeOppositionPostNeed above. Null for 'split',
+ *  since that's just the normal, unremarked-on default. */
+export function describePaymentMode(post: { payment_mode: 'split' | 'gipedo_pano' }) {
+  if (post.payment_mode !== 'gipedo_pano') return null;
+  return 'Gipedo Pano: loser pays the full pitch';
+}
+
 export async function createSquadPost(params: {
   venueId: string;
   scheduledAt: string;
@@ -61,6 +73,9 @@ export async function createSquadPost(params: {
   /** "Need players" posts only — "Any" is represented as undefined/omitted. */
   positionNeeded?: string;
   levelNeeded?: string;
+  /** "Need opposition" posts only — defaults to 'split' server-side too, so
+   *  omitting this is always safe for a "Need players" post. */
+  paymentMode?: 'split' | 'gipedo_pano';
 }) {
   const result = await supabase.rpc('create_squad_post', {
     p_venue_id: params.venueId,
@@ -73,6 +88,7 @@ export async function createSquadPost(params: {
     p_venue_booking_id: params.venueBookingId ?? null,
     p_position_needed: params.positionNeeded ?? null,
     p_level_needed: params.levelNeeded ?? null,
+    p_payment_mode: params.paymentMode ?? 'split',
   });
 
   // The in-app bell row for this is written server-side by the
@@ -103,6 +119,12 @@ export async function cancelSquadPost(postId: string) {
 
 export async function leaveSquadPost(postId: string) {
   return supabase.rpc('leave_squad_post', { p_post_id: postId });
+}
+
+/** Venue-owner only (supabase/house-players.sql) — fills an open spot on a
+ *  "Need players" post with a free-text name, no account, no payment. */
+export async function addHousePlayer(postId: string, name: string) {
+  return supabase.rpc('add_house_player', { p_post_id: postId, p_name: name });
 }
 
 /** Deletes the caller's own still-'pending' (never authorized) payment

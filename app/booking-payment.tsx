@@ -38,6 +38,15 @@ const STATUS_LABEL: Record<BookingShare['status'], string> = {
   cancelled: 'Cancelled',
 };
 
+// Gipedo Pano (supabase/gipedo-pano-payments.sql): the hold itself is
+// identical to a normal split payment — same amount, same authorize step —
+// only what happens to it once the result is known differs, so only these
+// two statuses need different wording.
+const GIPEDO_PANO_STATUS_LABEL: Partial<Record<BookingShare['status'], string>> = {
+  authorized: 'Card held — only charged if your team loses',
+  cancelled: 'Released — your team won (or the match was voided)',
+};
+
 /** Shown right after a priced booking is created, replacing the old
  *  "pay the full amount now" screen — the booker authorizes their own share
  *  here (which is what actually reserves the pitch), other players show as
@@ -59,6 +68,7 @@ export default function BookingPaymentScreen() {
 
   const [shares, setShares] = useState<BookingShare[] | null>(null);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
+  const [gipedoPano, setGipedoPano] = useState(false);
   const [booking, setBooking] = useState<MyBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingShareId, setPayingShareId] = useState<string | null>(null);
@@ -68,18 +78,27 @@ export default function BookingPaymentScreen() {
 
   const load = useCallback(async () => {
     if (!bookingId) return;
-    const [{ data: shareRows, error: shareError }, { data: bookingRow }] = await Promise.all([
-      listBookingShares(bookingId),
-      supabase
-        .from('venue_bookings')
-        .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format, status')
-        .eq('id', bookingId)
-        .maybeSingle(),
-    ]);
+    const [{ data: shareRows, error: shareError }, { data: bookingRow }, { data: oppositionPost }] =
+      await Promise.all([
+        listBookingShares(bookingId),
+        supabase
+          .from('venue_bookings')
+          .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format, status')
+          .eq('id', bookingId)
+          .maybeSingle(),
+        supabase
+          .from('squad_posts')
+          .select('payment_mode')
+          .eq('venue_booking_id', bookingId)
+          .eq('type', 'opposition')
+          .eq('status', 'matched')
+          .maybeSingle(),
+      ]);
     if (shareError) setError(shareError.message);
     else setShares(shareRows ?? []);
     if (bookingRow) setBooking(bookingRow);
     if (bookingRow) setBookingStatus(bookingRow.status);
+    setGipedoPano(oppositionPost?.payment_mode === 'gipedo_pano');
   }, [bookingId]);
 
   useFocusEffect(
@@ -161,10 +180,17 @@ export default function BookingPaymentScreen() {
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <IconLabel icon="creditcard.fill" type="subtitle">
-          Split payment
+          {gipedoPano ? 'Gipedo Pano' : 'Split payment'}
         </IconLabel>
 
-        {bookingStatus === 'confirmed' ? (
+        {gipedoPano ? (
+          <ThemedText style={styles.note}>
+            Gipedo Pano: the losing team pays for the whole pitch. Everyone still authorizes a hold for
+            their normal share up front — same as any other match — but only the losing team is actually
+            charged once the result is confirmed. The winning team's holds are released, nobody charged. A
+            draw falls back to normal split payment.
+          </ThemedText>
+        ) : bookingStatus === 'confirmed' ? (
           <IconLabel icon="checkmark.circle.fill" iconColor={FuttyColors.emerald700} style={styles.note}>
             Pitch reserved — your card is held, not charged. Everyone's charged together once the roster
             is full.
@@ -200,7 +226,11 @@ export default function BookingPaymentScreen() {
                   {share.profile_id === user?.id ? 'You' : (share.username ?? 'Player')}
                   {share.is_booker ? ' · Booker' : ''}
                 </ThemedText>
-                <ThemedText style={styles.shareStatus}>{STATUS_LABEL[share.status] ?? share.status}</ThemedText>
+                <ThemedText style={styles.shareStatus}>
+                  {(gipedoPano ? GIPEDO_PANO_STATUS_LABEL[share.status] : undefined) ??
+                    STATUS_LABEL[share.status] ??
+                    share.status}
+                </ThemedText>
               </View>
               <ThemedText style={styles.shareAmount}>{centsToLabel(share.amount_cents)}</ThemedText>
             </View>

@@ -7,9 +7,12 @@ import { supabase } from '@/lib/supabase';
 import { xpTier, type XpTier } from '@/lib/xp-tier';
 
 export type SquadPostRosterEntry = {
-  profileId: string;
+  profileId: string | null;
   name: string;
-  tier: XpTier;
+  tier: XpTier | null;
+  /** Venue staff added via supabase/house-players.sql's add_house_player —
+   *  no account, no payment share, tier is meaningless for them. */
+  isHousePlayer: boolean;
 };
 
 export type SquadPostWithDetails = SquadPost & {
@@ -55,7 +58,7 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     const { data: posts, error } = await supabase
       .from('squad_posts')
       .select(
-        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, venue_booking_id, created_at, position_needed, level_needed, venues(name, city)'
+        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, venue_booking_id, created_at, position_needed, level_needed, payment_mode, venues(name, city)'
       )
       .eq('type', postType)
       .neq('status', 'cancelled')
@@ -87,12 +90,15 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
         postType === 'players' && rows.length > 0
           ? supabase
               .from('squad_post_joiners')
-              .select('post_id, profile_id')
+              .select('post_id, profile_id, display_name, is_house_player')
               .in(
                 'post_id',
                 rows.map((row) => row.id)
               )
-          : Promise.resolve({ data: [] as { post_id: string; profile_id: string }[], error: null }),
+          : Promise.resolve({
+              data: [] as { post_id: string; profile_id: string | null; display_name: string | null; is_house_player: boolean }[],
+              error: null,
+            }),
       ]);
 
     if (requestIdRef.current !== requestId) return;
@@ -106,7 +112,9 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
       return;
     }
 
-    const joinerProfileIds = [...new Set((joiners ?? []).map((j) => j.profile_id))];
+    const joinerProfileIds = [
+      ...new Set((joiners ?? []).map((j) => j.profile_id).filter((id): id is string => !!id)),
+    ];
     // profiles' RLS only allows reading your own row — a plain
     // .from('profiles') select here would silently come back empty for
     // every joiner except the signed-in user. get_public_profiles is the
@@ -140,11 +148,20 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
         joined_count: postJoiners.length,
         joined_by_me: !!user && postJoiners.some((j) => j.profile_id === user.id),
         roster: postJoiners.map((j) => {
-          const profile = joinerProfileById.get(j.profile_id);
+          if (j.is_house_player) {
+            return {
+              profileId: null,
+              name: j.display_name ?? 'Venue staff',
+              tier: null,
+              isHousePlayer: true,
+            };
+          }
+          const profile = j.profile_id ? joinerProfileById.get(j.profile_id) : null;
           return {
             profileId: j.profile_id,
             name: profile?.full_name || profile?.username || 'Player',
             tier: xpTier(profile?.xp ?? 0),
+            isHousePlayer: false,
           };
         }),
         team_level: team ? xpTier(team.xp) : null,

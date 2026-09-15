@@ -90,11 +90,21 @@ async function captureIfFull(bookingId: string, supabaseAdmin: ReturnType<typeof
   // post — two full rosters share the one pitch instead of one.
   const { data: matchedOpposition } = await supabaseAdmin
     .from('squad_posts')
-    .select('id')
+    .select('id, payment_mode')
     .eq('venue_booking_id', bookingId)
     .eq('type', 'opposition')
     .eq('status', 'matched')
     .maybeSingle();
+
+  // Gipedo Pano (supabase/gipedo-pano-payments.sql): capture is
+  // deliberately deferred until the match result is known, not the moment
+  // the roster fills — every share just stays 'authorized' (a held, not
+  // charged, card) until supabase/functions/settle-gipedo-pano captures the
+  // losing team and voids the winning one, once submit_friendly_score (or
+  // the stale-match sweep) decides an outcome. The redefined
+  // bookings_needing_share_cancellation already knows not to void these
+  // pre-kickoff once the roster is actually full.
+  if (matchedOpposition?.payment_mode === 'gipedo_pano') return;
 
   const needed = (FORMAT_PLAYER_COUNT[booking.format as string] ?? 10) * (matchedOpposition ? 2 : 1);
 

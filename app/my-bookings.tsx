@@ -53,6 +53,7 @@ export function PostSquadNeed({
   const [positionNeeded, setPositionNeeded] = useState<PositionNeeded | null>(null);
   const [levelNeeded, setLevelNeeded] = useState<XpTier | null>(null);
   const [teamId, setTeamId] = useState<string | null>(null);
+  const [paymentMode, setPaymentMode] = useState<'split' | 'gipedo_pano'>('split');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The post's own id, not just "did we post" — cancelling needs it. Seeded
@@ -106,7 +107,7 @@ export function PostSquadNeed({
             positionNeeded: positionNeeded ?? undefined,
             levelNeeded: levelNeeded ?? undefined,
           }
-        : { teamId: teamId ?? undefined, levelNeeded: levelNeeded ?? undefined }),
+        : { teamId: teamId ?? undefined, levelNeeded: levelNeeded ?? undefined, paymentMode }),
     });
 
     setBusy(false);
@@ -258,6 +259,22 @@ export function PostSquadNeed({
                 />
               ))}
             </View>
+            <IconLabel icon="creditcard.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={12}>
+              Payment terms
+            </IconLabel>
+            <View style={styles.wrapRow}>
+              <Chip label="Split evenly" selected={paymentMode === 'split'} onPress={() => setPaymentMode('split')} />
+              <Chip
+                label="Gipedo Pano"
+                selected={paymentMode === 'gipedo_pano'}
+                onPress={() => setPaymentMode('gipedo_pano')}
+              />
+            </View>
+            <ThemedText style={styles.note}>
+              {paymentMode === 'gipedo_pano'
+                ? 'Cypriot tradition: the losing team pays for the whole pitch. Both sides still authorize a hold for their normal share up front — only the result decides who actually gets charged.'
+                : 'Both teams split the pitch cost evenly, regardless of the result.'}
+            </ThemedText>
           </>
         )}
         {error ? <AuthError>{error}</AuthError> : null}

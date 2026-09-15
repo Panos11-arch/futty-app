@@ -8,6 +8,7 @@ import { PopupModal } from '@/components/popup-modal';
 import { ThemedText } from '@/components/themed-text';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { formatFixtureWhen, getFixture } from '@/lib/fixtures';
+import { describePaymentMode } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 
 type CardState =
@@ -20,6 +21,7 @@ type CardState =
       bookingFormat: string | null;
       venueName: string | null;
       whenLabel: string | null;
+      paymentModeLabel: string | null;
     };
 
 /** "Match Found" — shown for a matched "need opposition" squad post
@@ -55,6 +57,7 @@ export default function FixtureConfirmedScreen() {
           bookingFormat: null,
           venueName: data.venue ? `${data.venue.name} · ${data.venue.city}` : null,
           whenLabel: formatFixtureWhen(data),
+          paymentModeLabel: null,
         });
         return;
       }
@@ -90,6 +93,7 @@ export default function FixtureConfirmedScreen() {
           bookingFormat: booking.format,
           venueName: venue ? `${venue.name} · ${venue.city}` : null,
           whenLabel: `${when.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+          paymentModeLabel: null,
         });
         return;
       }
@@ -97,7 +101,7 @@ export default function FixtureConfirmedScreen() {
       // kind === 'squad' — a "need opposition" post that's been matched.
       const { data: post, error: postError } = await supabase
         .from('squad_posts')
-        .select('team_id, matched_team_id, venue_id, scheduled_at, format')
+        .select('team_id, matched_team_id, venue_id, scheduled_at, format, payment_mode')
         .eq('id', id)
         .maybeSingle();
 
@@ -127,6 +131,7 @@ export default function FixtureConfirmedScreen() {
         bookingFormat: null,
         venueName: venue ? `${venue.name} · ${venue.city}` : null,
         whenLabel: `${when.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+        paymentModeLabel: describePaymentMode(post),
       });
     }
 
@@ -161,6 +166,7 @@ export default function FixtureConfirmedScreen() {
             bookingFormat={state.bookingFormat}
             venueName={state.venueName}
             whenLabel={state.whenLabel}
+            paymentModeLabel={state.paymentModeLabel}
           />
         ) : null}
       </View>

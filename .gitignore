@@ -45,3 +45,6 @@ app-example
 
 # Supabase CLI local cache (project ref, org id, account email)
 supabase/.temp/
+
+# Claude Code worktree scratch space
+.claude/worktrees/

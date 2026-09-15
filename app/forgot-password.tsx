@@ -1,9 +1,10 @@
+import { AuthError } from '@supabase/supabase-js';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   AuthButton,
-  AuthError,
+  AuthError as AuthErrorText,
   AuthField,
   AuthLink,
   AuthNotice,
@@ -14,6 +15,18 @@ import {
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
 
+const RESEND_COOLDOWN_SECONDS = 60;
+
+// Module-level rather than component state: this screen remounts every time
+// the user navigates back to it, and without this a quick "back, then send
+// again" would forget the cooldown and walk straight into Supabase's
+// over_email_send_rate_limit error.
+let cooldownUntil = 0;
+
+function secondsRemaining() {
+  return Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000));
+}
+
 export default function ForgotPasswordScreen() {
   const { requestPasswordReset } = useAuth();
 
@@ -21,9 +34,16 @@ export default function ForgotPasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(secondsRemaining);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setInterval(() => setCooldown(secondsRemaining()), 1000);
+    return () => clearInterval(id);
+  }, [cooldown]);
 
   async function submit() {
-    if (email.trim().length === 0 || busy) return;
+    if (email.trim().length === 0 || busy || cooldown > 0) return;
 
     setBusy(true);
     setError(null);
@@ -33,8 +53,20 @@ export default function ForgotPasswordScreen() {
       // Supabase deliberately succeeds whether or not the address exists, so
       // this message must not imply the account was found either way.
       setSent(true);
+      cooldownUntil = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
+      setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (cause) {
-      setError(describeAuthError(cause));
+      // Supabase's mailer only allows a couple of sends per hour, so this
+      // fires the moment someone re-submits too soon. That's not really a
+      // failure from the user's point of view — an email already went out —
+      // so treat it as success-with-a-wait rather than an alarming error.
+      if (cause instanceof AuthError && cause.code === 'over_email_send_rate_limit') {
+        setSent(true);
+        cooldownUntil = Date.now() + RESEND_COOLDOWN_SECONDS * 1000;
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+      } else {
+        setError(describeAuthError(cause));
+      }
     } finally {
       setBusy(false);
     }
@@ -50,7 +82,14 @@ export default function ForgotPasswordScreen() {
       </AuthSubtitle>
 
       {sent ? (
-        <AuthNotice>Open the link on this device so the app can pick it up.</AuthNotice>
+        <>
+          <AuthNotice>Open the link on this device so the app can pick it up.</AuthNotice>
+          {cooldown > 0 ? (
+            <AuthNotice>You can request another link in {cooldown}s.</AuthNotice>
+          ) : (
+            <AuthLink label="Resend link" onPress={submit} />
+          )}
+        </>
       ) : (
         <>
           <AuthField
@@ -67,12 +106,12 @@ export default function ForgotPasswordScreen() {
             returnKeyType="go"
           />
 
-          {error ? <AuthError>{error}</AuthError> : null}
+          {error ? <AuthErrorText>{error}</AuthErrorText> : null}
 
           <AuthButton
-            label="Send reset link"
+            label={cooldown > 0 ? `Try again in ${cooldown}s` : 'Send reset link'}
             onPress={submit}
-            disabled={email.trim().length === 0}
+            disabled={email.trim().length === 0 || cooldown > 0}
             busy={busy}
           />
         </>
