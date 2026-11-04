@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
@@ -220,6 +221,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Futty',
+      ...walletPayOptions,
       paymentIntentClientSecret: intent.clientSecret,
     });
     if (initError) {

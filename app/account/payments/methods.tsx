@@ -32,6 +32,9 @@ export default function PaymentMethodsScreen() {
         customerId: data.customerId,
         customerEphemeralKeySecret: data.ephemeralKey,
         setupIntentClientSecret: data.setupIntentClientSecret,
+        merchantDisplayName: 'Futty',
+        applePayEnabled: true,
+        googlePayEnabled: true,
       });
 
       if (initError) {

@@ -63,7 +63,10 @@
       ],
       [
         "@stripe/stripe-react-native",
-        {}
+        {
+          "merchantIdentifier": "merchant.com.panosalepis.futtyapp",
+          "enableGooglePay": true
+        }
       ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
