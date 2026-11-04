@@ -18,7 +18,7 @@
 // on its own, because nothing here is trusted without that live round-trip
 // to Apple.
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import {
   extractOriginalTransactionId,
   fetchAppleSubscriptionStatus,
@@ -29,7 +29,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 async function handleSubscription(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseClient,
   originalTransactionId: string
 ) {
   const { data: existing } = await supabaseAdmin
@@ -62,7 +62,7 @@ async function handleSubscription(
 }
 
 async function handleTeamPurchase(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: SupabaseClient,
   originalTransactionId: string
 ) {
   const { data: existing } = await supabaseAdmin

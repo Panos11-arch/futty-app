@@ -13,14 +13,24 @@
 // only ever decreases via dispute penalties, confirmed directly against
 // supabase/scores.sql — there is no win/draw XP reward to describe).
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
-const MODEL = 'claude-sonnet-5';
+// Overridable without a redeploy: supabase secrets set ANTHROPIC_MODEL=...
+const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
 const MAX_TOOL_ITERATIONS = 4;
+
+// Cost controls. Each request re-sends the whole conversation, so both the
+// history length and the per-message size are capped, plus a per-user rate
+// limit (counted in public.ai_chat_usage, see supabase/security-hardening.sql).
+const MAX_HISTORY_MESSAGES = 20;
+const MAX_MESSAGE_CHARS = 2000;
+const MAX_REQUESTS_PER_HOUR = 20;
+const MAX_REQUESTS_PER_DAY = 60;
 
 // Mirrors lib/booking.ts exactly (CAPACITY_OPTIONS, buildSlotGrid) — kept as
 // a separate copy rather than a shared import since that file also pulls in
@@ -109,7 +119,7 @@ const CHECK_AVAILABILITY_TOOL = {
 };
 
 async function checkPitchAvailability(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   input: { day: string; format: string; duration_hours?: number; city?: string; venue_name?: string }
 ) {
   const option = CAPACITY_OPTIONS.find((o) => o.format === input.format);
@@ -218,12 +228,36 @@ Deno.serve(async (req) => {
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
-  if (!body.messages || body.messages.length === 0) {
+  if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return new Response('Missing messages', { status: 400 });
   }
 
+  const cleaned = body.messages
+    .filter((m) => (m?.role === 'user' || m?.role === 'assistant') && typeof m.content === 'string')
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MESSAGE_CHARS) }));
+  // The API requires the conversation to start with a user turn.
+  while (cleaned.length > 0 && cleaned[0].role !== 'user') cleaned.shift();
+  if (cleaned.length === 0) return new Response('Missing messages', { status: 400 });
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+  const userId = userData.user.id;
+  const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [{ count: lastHour }, { count: lastDay }] = await Promise.all([
+    supabaseAdmin.from('ai_chat_usage').select('id', { count: 'exact', head: true }).eq('profile_id', userId).gte('created_at', hourAgo),
+    supabaseAdmin.from('ai_chat_usage').select('id', { count: 'exact', head: true }).eq('profile_id', userId).gte('created_at', dayAgo),
+  ]);
+  if ((lastHour ?? 0) >= MAX_REQUESTS_PER_HOUR || (lastDay ?? 0) >= MAX_REQUESTS_PER_DAY) {
+    return new Response(
+      JSON.stringify({ error: "You've sent a lot of messages — please try again a bit later." }),
+      { status: 429, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  await supabaseAdmin.from('ai_chat_usage').insert({ profile_id: userId });
+
   // deno-lint-ignore no-explicit-any
-  const messages: any[] = body.messages.map((m) => ({ role: m.role, content: m.content }));
+  const messages: any[] = cleaned;
 
   try {
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {

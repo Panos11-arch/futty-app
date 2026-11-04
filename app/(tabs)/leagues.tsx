@@ -194,8 +194,9 @@ function JoinLeagueControl({
     const needsPremium = premiumGated && !hasTeamPremium(justCreated, format);
     const canRegister = rosterReady && !needsPremium;
 
+    const justCreatedId = justCreated.id;
     function onMemberAdded() {
-      loadJustCreatedRoster(justCreated.id);
+      loadJustCreatedRoster(justCreatedId);
     }
 
     async function finishRegistration() {

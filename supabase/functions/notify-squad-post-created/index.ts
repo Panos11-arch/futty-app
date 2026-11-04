@@ -14,6 +14,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { getCallerId } from '../_shared/caller.ts';
+
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -45,6 +47,9 @@ function formatWhen(iso: string) {
 }
 
 Deno.serve(async (req) => {
+  const callerId = await getCallerId(req);
+  if (!callerId) return new Response('Unauthorized', { status: 401 });
+
   const { postId } = await req.json().catch(() => ({}));
   if (typeof postId !== 'string') {
     return new Response(JSON.stringify({ error: 'missing postId' }), { status: 400 });
@@ -59,6 +64,24 @@ Deno.serve(async (req) => {
     .maybeSingle<SquadPost>();
   if (!post) {
     return new Response(JSON.stringify({ error: 'post not found' }), { status: 404 });
+  }
+
+  // Only the person who created the post can trigger its notifications —
+  // otherwise anyone could re-send pushes for any post, as often as they
+  // liked.
+  if (post.posted_by !== callerId) {
+    return new Response(JSON.stringify({ error: 'not your post' }), { status: 403 });
+  }
+
+  // Once per post: a retry or double tap must not notify everyone twice.
+  const { data: claimed } = await supabase
+    .from('squad_posts')
+    .update({ push_notified_at: new Date().toISOString() })
+    .eq('id', postId)
+    .is('push_notified_at', null)
+    .select('id');
+  if (!claimed || claimed.length === 0) {
+    return new Response('already notified', { status: 200 });
   }
 
   const { data: recipients } = await supabase.rpc('squad_post_notification_recipients', { p_post_id: postId });

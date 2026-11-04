@@ -5,7 +5,7 @@ import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Record<Extract<SymbolViewProps['name'], string>, ComponentProps<typeof MaterialIcons>['name']>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -66,6 +66,7 @@ const MAPPING = {
   'ellipsis': 'more-horiz',
   'person.crop.circle.badge.plus': 'person-add',
   'chevron.down': 'expand-more',
+  'trash.fill': 'delete',
 } as IconMapping;
 
 /**

@@ -45,7 +45,6 @@ export default function PaymentMethodsScreen() {
     })();
     // Only ever runs once per screen visit — re-initing on every render would
     // fight Stripe's own sheet state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function openSheet() {

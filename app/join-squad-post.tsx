@@ -222,7 +222,7 @@ export default function JoinSquadPostScreen() {
         ) : null}
 
         <ThemedText style={styles.disclaimer}>
-          Your card is only held, not charged — you're only charged once the match is confirmed with a full
+          Your card is only held, not charged — you&apos;re only charged once the match is confirmed with a full
           roster.
         </ThemedText>
 

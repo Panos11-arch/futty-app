@@ -16,6 +16,8 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { getCallerId } from '../_shared/caller.ts';
+
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -42,7 +44,13 @@ function formatWhen(iso: string) {
 }
 
 Deno.serve(async (req) => {
-  const { postId, payerProfileId } = await req.json().catch(() => ({}));
+  const callerId = await getCallerId(req);
+  if (!callerId) return new Response('Unauthorized', { status: 401 });
+
+  // payerProfileId used to come from the request body; it's now always the
+  // verified caller, so nobody can trigger this on someone else's behalf.
+  const { postId } = await req.json().catch(() => ({}));
+  const payerProfileId = callerId;
   if (typeof postId !== 'string') {
     return new Response(JSON.stringify({ error: 'missing postId' }), { status: 400 });
   }
@@ -56,6 +64,30 @@ Deno.serve(async (req) => {
     .maybeSingle<SquadPost>();
   if (!post || !post.team_id || !post.matched_team_id) {
     return new Response(JSON.stringify({ error: 'post not found or not matched' }), { status: 404 });
+  }
+
+  // Caller must be on one of the two teams in this match.
+  const { data: membership } = await supabase
+    .from('team_members')
+    .select('team_id')
+    .eq('profile_id', callerId)
+    .in('team_id', [post.team_id, post.matched_team_id])
+    .limit(1);
+  if (!membership || membership.length === 0) {
+    return new Response(JSON.stringify({ error: 'not in this match' }), { status: 403 });
+  }
+
+  // Once per matched opponent: a retry or double tap must not notify both
+  // rosters twice. Keyed on the opponent, so if an offer is cancelled and a
+  // different team takes the slot, that new match still gets announced.
+  const { data: claimed } = await supabase
+    .from('squad_posts')
+    .update({ match_notified_team_id: post.matched_team_id })
+    .eq('id', postId)
+    .or(`match_notified_team_id.is.null,match_notified_team_id.neq.${post.matched_team_id}`)
+    .select('id');
+  if (!claimed || claimed.length === 0) {
+    return new Response('already notified', { status: 200 });
   }
 
   const [{ data: venue }, { data: teamA }, { data: teamB }, { data: booking }] = await Promise.all([

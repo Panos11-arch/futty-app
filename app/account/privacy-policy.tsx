@@ -5,7 +5,7 @@ import { DocBullet, DocEmailLink, DocHeading, DocParagraph, DocScreen } from '@/
  *  points at, this is what's shown inside the app itself. */
 export default function PrivacyPolicyScreen() {
   return (
-    <DocScreen updated="August 2026">
+    <DocScreen updated="November 2026">
       <DocParagraph>
         Futty (&quot;the app&quot;, &quot;we&quot;, &quot;us&quot;) is a pitch-booking and
         5-a-side-to-11-a-side football community app for Cyprus. This page explains what
@@ -56,9 +56,8 @@ export default function PrivacyPolicyScreen() {
 
       <DocHeading>Payments</DocHeading>
       <DocParagraph>
-        Personal and Team Premium purchases are handled entirely by Apple (via the App Store) or
-        Google (via Google Play) — Futty never sees or stores your card details, only confirmation
-        that a purchase was made. Pitch booking payments (including each player&apos;s split share)
+        Personal and Team Premium purchases are handled entirely by Apple (via the App Store) —
+        Futty never sees or stores your card details, only confirmation that a purchase was made. Pitch booking payments (including each player&apos;s split share)
         are processed by Stripe; Futty never stores your full card number.
       </DocParagraph>
 
@@ -70,10 +69,19 @@ export default function PrivacyPolicyScreen() {
       </DocBullet>
       <DocBullet>
         Service providers — the app is built on Supabase (database, authentication, hosting),
-        Stripe (pitch booking payments), and Expo/EAS (app infrastructure, push delivery). These
-        providers process data on our behalf and don&apos;t use it for their own purposes.
+        Stripe (pitch booking payments), Apple (App Store purchases), Expo/EAS (app infrastructure,
+        push delivery), Sentry (crash and error reports, including technical device information)
+        and Anthropic (processes Futty AI chat messages to generate answers). These providers
+        process data on our behalf.
       </DocBullet>
       <DocBullet>We do not sell your data, and we do not use third-party ad/tracking SDKs.</DocBullet>
+
+      <DocHeading>Contacts</DocHeading>
+      <DocParagraph>
+        If you allow it, the Community tab checks the phone numbers in your device&apos;s contacts
+        against Futty accounts to show which of your contacts already use the app. The numbers are
+        sent to our server only for that check and are not stored.
+      </DocParagraph>
 
       <DocHeading>Blocking and reporting</DocHeading>
       <DocParagraph>
@@ -85,7 +93,11 @@ export default function PrivacyPolicyScreen() {
       <DocHeading>Your choices</DocHeading>
       <DocBullet>You can edit or remove most profile fields at any time from Edit Profile.</DocBullet>
       <DocBullet>You can turn off push notifications and phone number visibility at any time.</DocBullet>
-      <DocBullet>To request deletion of your account and associated data, contact us below.</DocBullet>
+      <DocBullet>
+        You can delete your account at any time from Account &gt; Settings &gt; Delete account. This
+        removes your login, profile details and saved cards. Match results you took part in stay in
+        league tables under &quot;Deleted player&quot;. You can also ask us to do this by email.
+      </DocBullet>
 
       <DocHeading>Changes to this policy</DocHeading>
       <DocParagraph>If this policy changes materially, we&apos;ll update the date above.</DocParagraph>

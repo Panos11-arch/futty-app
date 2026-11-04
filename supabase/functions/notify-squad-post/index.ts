@@ -28,7 +28,7 @@ type SquadPostRecord = {
 };
 
 Deno.serve(async (req) => {
-  if (webhookSecret && req.headers.get('x-webhook-secret') !== webhookSecret) {
+  if (!webhookSecret || req.headers.get('x-webhook-secret') !== webhookSecret) {
     return new Response('Unauthorized', { status: 401 });
   }
 

@@ -1,7 +1,7 @@
 // Cancels a booking and refunds it if it was paid — the only path in now
 // that client-side calls to the cancel_booking RPC are revoked (see
-// supabase/booking-payments.sql). Order matters: cancel_booking (called as
-// the authenticated user, so its own ownership/cutoff checks apply) runs
+// supabase/booking-payments.sql). Order matters: cancel_booking_for (with the
+// verified caller passed in, so its ownership/cutoff checks apply) runs
 // FIRST — if the 30-minutes-before-kickoff cutoff has passed, or it's not
 // this user's booking, or it's already cancelled, that fails immediately
 // and no refund is ever attempted. Only once the cancellation itself
@@ -35,16 +35,13 @@ Deno.serve(async (req) => {
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-  // Read the pre-cancellation state — specifically whether it was actually
-  // 'confirmed' (money captured) vs. still 'pending_payment' (nothing to
-  // refund), since cancel_booking below will have already changed it.
-  const { data: before } = await supabaseAdmin
-    .from('venue_bookings')
-    .select('status, amount_cents, stripe_payment_intent_id')
-    .eq('id', body.bookingId)
-    .maybeSingle();
-
-  const { error: cancelError } = await supabaseAsUser.rpc('cancel_booking', { p_booking_id: body.bookingId });
+  // cancel_booking_for (supabase/security-hardening.sql) does the ownership,
+  // cutoff and status flip atomically, and returns what the status was
+  // BEFORE cancelling — no separate pre-read that could go stale.
+  const { data: previousStatus, error: cancelError } = await supabaseAdmin.rpc('cancel_booking_for', {
+    p_booking_id: body.bookingId,
+    p_profile_id: userData.user.id,
+  });
   if (cancelError) {
     return new Response(JSON.stringify({ error: cancelError.message }), {
       status: 400,
@@ -53,38 +50,63 @@ Deno.serve(async (req) => {
   }
 
   let refunded = false;
+  let released = false;
 
-  if (before?.status === 'confirmed' && before.amount_cents > 0) {
-    // Per-player split payments (supabase/booking-payment-splits.sql): each
-    // player who already paid their own share gets refunded individually,
-    // since there is no single whole-booking PaymentIntent for a split
-    // booking any more (booking.stripe_payment_intent_id, checked below, is
-    // only ever set by the pre-splitting flow).
-    const { data: paidShares } = await supabaseAdmin
-      .from('booking_payment_shares')
-      .select('id, stripe_payment_intent_id')
-      .eq('booking_id', body.bookingId)
-      .eq('status', 'paid');
+  // Per-player split payments: void every card hold that was never charged
+  // ('authorized' — previously these were left held after a cancellation),
+  // refund every share that was actually charged ('paid'), and mark any
+  // still-unpaid ones cancelled.
+  const { data: shares } = await supabaseAdmin
+    .from('booking_payment_shares')
+    .select('id, status, stripe_payment_intent_id')
+    .eq('booking_id', body.bookingId)
+    .in('status', ['pending', 'authorized', 'paid']);
 
-    if (paidShares && paidShares.length > 0) {
-      for (const share of paidShares) {
-        if (share.stripe_payment_intent_id) {
-          await stripe.refunds.create({ payment_intent: share.stripe_payment_intent_id });
-          refunded = true;
-        }
+  for (const share of shares ?? []) {
+    try {
+      if (share.status === 'authorized' && share.stripe_payment_intent_id) {
+        await stripe.paymentIntents.cancel(share.stripe_payment_intent_id);
+        released = true;
+      } else if (share.status === 'paid' && share.stripe_payment_intent_id) {
+        await stripe.refunds.create(
+          { payment_intent: share.stripe_payment_intent_id },
+          { idempotencyKey: `refund-share-${share.id}` }
+        );
+        refunded = true;
+      } else if (share.status === 'pending' && share.stripe_payment_intent_id) {
+        // Started paying but never finished — cancel the intent so it can't
+        // complete later against a cancelled booking.
+        await stripe.paymentIntents.cancel(share.stripe_payment_intent_id).catch(() => {});
       }
-      await supabaseAdmin
-        .from('booking_payment_shares')
-        .update({ status: 'refunded' })
-        .eq('booking_id', body.bookingId)
-        .eq('status', 'paid');
-    } else if (before.stripe_payment_intent_id) {
-      await stripe.refunds.create({ payment_intent: before.stripe_payment_intent_id });
+    } catch (err) {
+      // Keep going: one Stripe failure must not leave everyone else's card
+      // held. The error is logged for manual follow-up.
+      console.error(`cancel-booking: Stripe action failed for share ${share.id}:`, err);
+      continue;
+    }
+    await supabaseAdmin
+      .from('booking_payment_shares')
+      .update({ status: share.status === 'paid' ? 'refunded' : 'cancelled' })
+      .eq('id', share.id);
+  }
+
+  // Bookings from before split payments had a single whole-booking intent.
+  if (!shares?.length && previousStatus === 'confirmed') {
+    const { data: legacy } = await supabaseAdmin
+      .from('venue_bookings')
+      .select('amount_cents, stripe_payment_intent_id')
+      .eq('id', body.bookingId)
+      .maybeSingle();
+    if (legacy?.stripe_payment_intent_id && legacy.amount_cents > 0) {
+      await stripe.refunds.create(
+        { payment_intent: legacy.stripe_payment_intent_id },
+        { idempotencyKey: `refund-booking-${body.bookingId}` }
+      );
       refunded = true;
     }
   }
 
-  return new Response(JSON.stringify({ cancelled: true, refunded }), {
+  return new Response(JSON.stringify({ cancelled: true, refunded, released }), {
     headers: { 'Content-Type': 'application/json' },
   });
 });

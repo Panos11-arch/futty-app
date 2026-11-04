@@ -14,7 +14,8 @@ export type BookSlotParams = {
  *  into venue_bookings — RLS blocks a direct insert/update so the capacity
  *  check and ownership check run atomically on the server. Reserves the slot
  *  as 'pending_payment' (priced venue) or 'confirmed' immediately (free
- *  venue) — see createBookingPayment below for what happens next. */
+ *  venue) — app/booking-payment.tsx then collects each player's share via
+ *  create-share-payment. */
 export async function bookSlot(params: BookSlotParams) {
   return supabase.rpc('book_slot', {
     p_venue_id: params.venueId,
@@ -24,17 +25,6 @@ export async function bookSlot(params: BookSlotParams) {
     p_pitches: params.pitches,
     p_capacity: params.capacity,
     p_format: params.format,
-  });
-}
-
-/** Creates (or re-fetches, if already created and not yet paid) a Stripe
- *  PaymentIntent for a 'pending_payment' booking — the client_secret this
- *  returns is what Stripe's Payment Sheet needs to actually collect card
- *  details. The booking only flips to 'confirmed' once Stripe's webhook
- *  confirms the charge — see supabase/functions/stripe-webhook. */
-export async function createBookingPayment(bookingId: string) {
-  return supabase.functions.invoke<{ clientSecret: string }>('create-booking-payment', {
-    body: { bookingId },
   });
 }
 

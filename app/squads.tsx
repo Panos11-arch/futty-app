@@ -17,7 +17,6 @@ import { describeSquadError } from '@/lib/squad-errors';
 import {
   cancelOppositionOffer,
   describeOppositionPostNeed,
-  describePaymentMode,
   describePlayerPostNeed,
   leaveSquadPost,
   offerOpposition,
