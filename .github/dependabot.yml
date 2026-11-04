@@ -5,14 +5,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    # Expo pins its own package versions per SDK — upgrade those together
-    # with `npx expo install --fix` rather than one PR at a time.
     ignore:
+      # Expo pins its own package versions per SDK — upgrade those together
+      # with `npx expo install --fix` when moving to a new Expo SDK, never
+      # one PR at a time.
       - dependency-name: "expo*"
       - dependency-name: "react-native*"
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "@react-native*"
+      - dependency-name: "@sentry/react-native"
+      - dependency-name: "@stripe/stripe-react-native"
+      # Major versions (e.g. eslint 9 -> 10) usually need code changes;
+      # do those deliberately, not via a bot PR.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # One PR for all React Navigation packages, since they move together.
+      react-navigation:
+        patterns:
+          - "@react-navigation/*"
   - package-ecosystem: github-actions
     directory: /
     schedule:
