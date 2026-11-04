@@ -61,6 +61,20 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Never take a card hold for a booking that's already been cancelled
+  // (e.g. the cleanup job ran while this screen was open).
+  const { data: booking } = await supabaseAdmin
+    .from('venue_bookings')
+    .select('status')
+    .eq('id', share.booking_id)
+    .maybeSingle();
+  if (!booking || booking.status === 'cancelled') {
+    return new Response(JSON.stringify({ error: 'This booking has been cancelled' }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   if (share.stripe_payment_intent_id) {
     const existing = await stripe.paymentIntents.retrieve(share.stripe_payment_intent_id);
     if (existing.status !== 'canceled') {
@@ -76,6 +90,11 @@ Deno.serve(async (req) => {
     capture_method: 'manual',
     automatic_payment_methods: { enabled: true },
     metadata: { share_id: share.id, booking_id: share.booking_id, profile_id: userData.user.id },
+  }, {
+    // Two taps on "Pay" at once must not create two holds. Keyed on the
+    // previous (cancelled) intent, if any, so a genuine retry still gets a
+    // fresh one.
+    idempotencyKey: `share-${share.id}-after-${share.stripe_payment_intent_id ?? 'none'}`,
   });
 
   await supabaseAdmin

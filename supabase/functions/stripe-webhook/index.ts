@@ -27,7 +27,7 @@
 // here at all), Stripe's SDK has an official, documented Deno-compatible
 // path for exactly this.
 
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -46,7 +46,7 @@ const FORMAT_PLAYER_COUNT: Record<string, number> = {
   '11-a-side': 11,
 };
 
-async function handleAuthorized(paymentIntentId: string, supabaseAdmin: ReturnType<typeof createClient>) {
+async function handleAuthorized(paymentIntentId: string, supabaseAdmin: SupabaseClient) {
   const { data: share } = await supabaseAdmin
     .from('booking_payment_shares')
     .select('id, booking_id, is_booker, status')
@@ -54,9 +54,16 @@ async function handleAuthorized(paymentIntentId: string, supabaseAdmin: ReturnTy
     .maybeSingle();
 
   if (!share) return;
-  if (share.status !== 'pending') return; // already handled — webhooks can repeat
 
-  await supabaseAdmin.from('booking_payment_shares').update({ status: 'authorized' }).eq('id', share.id);
+  // Atomic pending -> authorized. If two deliveries of this event race, only
+  // one gets a row back; the other stops here.
+  const { data: claimed } = await supabaseAdmin
+    .from('booking_payment_shares')
+    .update({ status: 'authorized' })
+    .eq('id', share.id)
+    .eq('status', 'pending')
+    .select('id');
+  if (!claimed || claimed.length === 0) return; // already handled — webhooks can repeat
 
   // The reservation itself is only ever contingent on the BOOKER's own share
   // — everyone else's shares are independent of whether the pitch is held,
@@ -77,7 +84,7 @@ async function handleAuthorized(paymentIntentId: string, supabaseAdmin: ReturnTy
  *  the moment the booking's full roster is authorized — never one at a
  *  time, so a squad that fills is charged as a single event, not
  *  player-by-player as they happen to join. */
-async function captureIfFull(bookingId: string, supabaseAdmin: ReturnType<typeof createClient>) {
+async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
   const { data: booking } = await supabaseAdmin
     .from('venue_bookings')
     .select('format')
@@ -120,7 +127,11 @@ async function captureIfFull(bookingId: string, supabaseAdmin: ReturnType<typeof
   for (const share of shares) {
     if (share.status !== 'authorized' || !share.stripe_payment_intent_id) continue;
     try {
-      await stripe.paymentIntents.capture(share.stripe_payment_intent_id);
+      // Idempotency key: if two webhook runs both decide the roster is full,
+      // Stripe treats the second capture as the same request, not a new one.
+      await stripe.paymentIntents.capture(share.stripe_payment_intent_id, {}, {
+        idempotencyKey: `capture-share-${share.id}`,
+      });
       await supabaseAdmin
         .from('booking_payment_shares')
         .update({ status: 'paid', paid_at: new Date().toISOString() })
@@ -137,29 +148,45 @@ async function captureIfFull(bookingId: string, supabaseAdmin: ReturnType<typeof
   }
 }
 
-Deno.serve(async (req) => {
-  const signature = req.headers.get('stripe-signature');
-  if (!signature) return new Response('Missing signature', { status: 400 });
+/** A card hold Stripe released on its own — almost always because it
+ *  expired (card authorizations only last about 7 days). The database still
+ *  said 'authorized', so the app showed the player as covered when they no
+ *  longer were. Put the share back to 'pending' and tell the player to
+ *  authorize again; if nobody does, cancel-unpaid-bookings handles it as
+ *  for any other unpaid share. Our own voids (cancel-booking, the cleanup
+ *  job, Gipedo Pano settlement) never carry the 'automatic' reason, so they
+ *  never come through here. */
+async function handleHoldExpired(paymentIntent: Stripe.PaymentIntent, supabaseAdmin: SupabaseClient) {
+  if (paymentIntent.cancellation_reason !== 'automatic') return;
 
-  // Signature verification needs the exact raw bytes Stripe signed — reading
-  // this as text (not req.json()) is what makes that possible.
-  const body = await req.text();
+  const { data: reopened } = await supabaseAdmin
+    .from('booking_payment_shares')
+    .update({ status: 'pending' })
+    .eq('stripe_payment_intent_id', paymentIntent.id)
+    .eq('status', 'authorized')
+    .select('id, booking_id, profile_id');
+  const share = reopened?.[0];
+  if (!share) return;
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
-  } catch (err) {
-    return new Response(`Signature verification failed: ${err instanceof Error ? err.message : err}`, {
-      status: 400,
-    });
+  await supabaseAdmin.from('notifications').insert({
+    profile_id: share.profile_id,
+    type: 'match_payment_due',
+    title: 'Please confirm your payment again',
+    body: 'The hold on your card for an upcoming game expired. Re-confirm your share to keep your spot.',
+    data: { bookingId: share.booking_id },
+  });
+}
+
+async function processEvent(event: Stripe.Event, supabaseAdmin: SupabaseClient) {
+  if (event.type === 'payment_intent.canceled') {
+    await handleHoldExpired(event.data.object as Stripe.PaymentIntent, supabaseAdmin);
+    return;
   }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
   if (event.type === 'payment_intent.amount_capturable_updated') {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
     await handleAuthorized(paymentIntent.id, supabaseAdmin);
-    return new Response('ok', { status: 200 });
+    return;
   }
 
   if (event.type === 'payment_intent.succeeded') {
@@ -192,7 +219,7 @@ Deno.serve(async (req) => {
             .eq('status', 'pending_payment');
         }
       }
-      return new Response('ok', { status: 200 });
+      return;
     }
 
     await supabaseAdmin
@@ -201,10 +228,52 @@ Deno.serve(async (req) => {
       .eq('stripe_payment_intent_id', paymentIntent.id)
       .eq('status', 'pending_payment'); // no-op if already confirmed/cancelled — safe to receive twice
   }
+}
 
-  // Other event types (payment_intent.payment_failed, canceled, etc.) don't
-  // need handling here — an authorization that never lands just ages out on
-  // its own via cancel-unpaid-bookings.
+Deno.serve(async (req) => {
+  const signature = req.headers.get('stripe-signature');
+  if (!signature) return new Response('Missing signature', { status: 400 });
+
+  // Signature verification needs the exact raw bytes Stripe signed — reading
+  // this as text (not req.json()) is what makes that possible.
+  const body = await req.text();
+
+  let event: Stripe.Event;
+  try {
+    event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
+  } catch (err) {
+    return new Response(`Signature verification failed: ${err instanceof Error ? err.message : err}`, {
+      status: 400,
+    });
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+  // Stripe retries deliveries. Record each event ID once; a repeat is
+  // acknowledged without being processed again.
+  const { error: dedupeError } = await supabaseAdmin
+    .from('stripe_webhook_events')
+    .insert({ id: event.id, type: event.type });
+  if (dedupeError) {
+    if (dedupeError.code === '23505') return new Response('duplicate', { status: 200 });
+    // Table missing or DB unavailable: return 500 so Stripe retries later
+    // instead of the event being lost.
+    return new Response(`Could not record event: ${dedupeError.message}`, { status: 500 });
+  }
+
+  try {
+    await processEvent(event, supabaseAdmin);
+  } catch (err) {
+    // Forget the event so Stripe's retry is processed rather than skipped as
+    // a duplicate.
+    await supabaseAdmin.from('stripe_webhook_events').delete().eq('id', event.id);
+    console.error(`stripe-webhook: failed processing ${event.id}:`, err);
+    return new Response('processing failed', { status: 500 });
+  }
+
+  // Other event types (payment_intent.payment_failed etc.) don't need
+  // handling here — an authorization that never lands just ages out on its
+  // own via cancel-unpaid-bookings.
 
   return new Response('ok', { status: 200 });
 });
@@ -219,7 +288,8 @@ DEPLOYMENT:
 
 2. In the Stripe dashboard (Developers > Webhooks > Add endpoint):
      URL: https://<project-ref>.supabase.co/functions/v1/stripe-webhook
-     Events to send: payment_intent.amount_capturable_updated, payment_intent.succeeded
+     Events to send: payment_intent.amount_capturable_updated, payment_intent.succeeded,
+                     payment_intent.canceled
 
 3. After creating it, Stripe shows a signing secret ("whsec_...") — set it:
      supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...

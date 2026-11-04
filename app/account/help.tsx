@@ -35,7 +35,7 @@ export default function HelpScreen() {
           something urgently, email us above.
         </DocFAQ>
         <DocFAQ question="How do I delete my account?">
-          Email us at the address above and we&apos;ll remove your account and associated data.
+          Go to Account &gt; Settings &gt; Delete account. You&apos;ll need to cancel any upcoming bookings first. If you can&apos;t sign in, email us at the address above and we&apos;ll do it for you.
         </DocFAQ>
       </View>
     </DocScreen>

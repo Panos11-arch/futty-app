@@ -1,3 +1,4 @@
+import { APPLE_PAY_MERCHANT_ID } from '@/lib/wallet-pay';
 import { Sentry } from '@/lib/sentry';
 
 import { ArchivoBlack_400Regular } from '@expo-google-fonts/archivo-black';
@@ -256,7 +257,9 @@ export default Sentry.wrap(function RootLayout() {
     // styled — restyling/z-index/hitSlop changes alone could never have
     // fixed it.
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StripeProvider publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}>
+      <StripeProvider
+        publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+        merchantIdentifier={APPLE_PAY_MERCHANT_ID}>
         <AuthProvider>
           <AppLockProvider>
             <ThemeProvider value={FuttyNavigationTheme}>

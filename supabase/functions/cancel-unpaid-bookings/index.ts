@@ -31,7 +31,7 @@ const cronSecret = Deno.env.get('CRON_SECRET');
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 
 Deno.serve(async (req) => {
-  if (cronSecret && req.headers.get('x-cron-secret') !== cronSecret) {
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
     return new Response('Unauthorized', { status: 401 });
   }
 

@@ -30,7 +30,7 @@ type PendingShare = {
 };
 
 Deno.serve(async (req) => {
-  if (cronSecret && req.headers.get('x-cron-secret') !== cronSecret) {
+  if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -116,26 +116,9 @@ DEPLOYMENT:
 3. Uses the same CRON_SECRET and STRIPE_SECRET_KEY already set for
    cancel-unpaid-bookings — no new secrets needed.
 
-4. Register the cron job (run in the Supabase dashboard SQL editor —
-   replace <CRON_SECRET> and the project ref, same as cancel-unpaid-
-   bookings' own registration in supabase/booking-payment-splits.sql):
-
-   do $$
-   begin
-     perform cron.unschedule(jobid) from cron.job where jobname = 'settle-gipedo-pano-payments';
-
-     perform cron.schedule(
-       'settle-gipedo-pano-payments',
-       '*/10 * * * *',
-       $sql$
-       select net.http_post(
-         url := 'https://ospztpemchfpvvostisw.supabase.co/functions/v1/settle-gipedo-pano',
-         headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
-         body := '{}'::jsonb
-       );
-       $sql$
-     );
-   exception when undefined_table or undefined_function or invalid_schema_name then
-     raise notice 'pg_cron/pg_net not enabled — enable both under Database > Extensions, then re-run.';
-   end $$;
+4. Register the cron job: fill in <CRON_SECRET> in
+   supabase/settle-gipedo-pano-cron.sql and run it in the Supabase dashboard
+   SQL editor. (It lives in its own file because the cron schedule string
+   contains the characters that end a code comment — inside this comment it
+   stopped the whole function from compiling.)
 */

@@ -1,7 +1,5 @@
 import { StyleSheet, View } from 'react-native';
 
-import { FuttyColors } from '@/constants/futty-theme';
-
 const STRIPE_COUNT = 9;
 const PITCH_GREEN_A = '#1f8a4c';
 const PITCH_GREEN_B = '#1c7d45';

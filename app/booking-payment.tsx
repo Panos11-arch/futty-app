@@ -11,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { addBookingPlayer, createSharePayment, listBookingShares, type BookingShare } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
@@ -130,6 +131,7 @@ export default function BookingPaymentScreen() {
 
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Futty',
+      ...walletPayOptions,
       paymentIntentClientSecret: data.clientSecret,
     });
     if (initError) {
@@ -187,12 +189,12 @@ export default function BookingPaymentScreen() {
           <ThemedText style={styles.note}>
             Gipedo Pano: the losing team pays for the whole pitch. Everyone still authorizes a hold for
             their normal share up front — same as any other match — but only the losing team is actually
-            charged once the result is confirmed. The winning team's holds are released, nobody charged. A
+            charged once the result is confirmed. The winning team&apos;s holds are released, nobody charged. A
             draw falls back to normal split payment.
           </ThemedText>
         ) : bookingStatus === 'confirmed' ? (
           <IconLabel icon="checkmark.circle.fill" iconColor={FuttyColors.emerald700} style={styles.note}>
-            Pitch reserved — your card is held, not charged. Everyone's charged together once the roster
+            Pitch reserved — your card is held, not charged. Everyone&apos;s charged together once the roster
             is full.
           </IconLabel>
         ) : (

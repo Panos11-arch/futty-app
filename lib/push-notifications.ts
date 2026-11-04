@@ -29,11 +29,15 @@ export async function registerForPushNotifications(
   if (Platform.OS === 'web') return { ok: false, reason: 'not_supported_on_web' };
   if (!Device.isDevice) return { ok: false, reason: 'not_a_physical_device' };
 
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  // `status` comes from expo-modules-core's PermissionResponse, which npm
+  // nests under expo/ so TypeScript can't see it from here — the field is
+  // there at runtime.
+  type WithStatus = { status: string };
+  const existingStatus = ((await Notifications.getPermissionsAsync()) as unknown as WithStatus).status;
   const finalStatus =
     existingStatus === 'granted'
       ? existingStatus
-      : (await Notifications.requestPermissionsAsync()).status;
+      : ((await Notifications.requestPermissionsAsync()) as unknown as WithStatus).status;
 
   if (finalStatus !== 'granted') return { ok: false, reason: 'permission_denied' };
 

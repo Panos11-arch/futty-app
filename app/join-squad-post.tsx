@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { describeSquadError } from '@/lib/squad-errors';
@@ -137,6 +138,7 @@ export default function JoinSquadPostScreen() {
 
     const { error: initError } = await initPaymentSheet({
       merchantDisplayName: 'Futty',
+      ...walletPayOptions,
       paymentIntentClientSecret: intent.clientSecret,
     });
     if (initError) {
@@ -222,7 +224,7 @@ export default function JoinSquadPostScreen() {
         ) : null}
 
         <ThemedText style={styles.disclaimer}>
-          Your card is only held, not charged — you're only charged once the match is confirmed with a full
+          Your card is only held, not charged — you&apos;re only charged once the match is confirmed with a full
           roster.
         </ThemedText>
 

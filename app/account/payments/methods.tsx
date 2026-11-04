@@ -32,6 +32,9 @@ export default function PaymentMethodsScreen() {
         customerId: data.customerId,
         customerEphemeralKeySecret: data.ephemeralKey,
         setupIntentClientSecret: data.setupIntentClientSecret,
+        merchantDisplayName: 'Futty',
+        applePayEnabled: true,
+        googlePayEnabled: true,
       });
 
       if (initError) {
@@ -45,7 +48,6 @@ export default function PaymentMethodsScreen() {
     })();
     // Only ever runs once per screen visit — re-initing on every render would
     // fight Stripe's own sheet state.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function openSheet() {
