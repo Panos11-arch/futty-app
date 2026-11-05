@@ -2,6 +2,7 @@ import { useSegments } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -50,6 +51,8 @@ export function FuttyAiChat() {
     const nextMessages: ChatMessage[] = [...messages, { role: 'user', content: text }];
     setMessages(nextMessages);
     setInput('');
+    // Close the keyboard once a message is sent, so the reply is visible.
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
 
@@ -88,7 +91,11 @@ export function FuttyAiChat() {
 
       <PopupModal visible={open} onClose={close} title="Futty AI">
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.messages}
+            keyboardShouldPersistTaps="handled"
+            // Swiping down over the conversation also closes the keyboard.
+            keyboardDismissMode="interactive">
             {messages.length === 0 ? (
               <View style={styles.emptyRow}>
                 <IconSymbol name="hand.wave.fill" size={14} color={FuttyColors.stone400} />
@@ -122,6 +129,10 @@ export function FuttyAiChat() {
               style={styles.input}
               onSubmitEditing={send}
               returnKeyType="send"
+              // With multiline on, Return used to add a new line instead of
+              // sending (onSubmitEditing never fired). Now Return sends and
+              // closes the keyboard; long messages still wrap.
+              submitBehavior="blurAndSubmit"
               editable={!busy}
               multiline
             />
