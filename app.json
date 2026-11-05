@@ -3,6 +3,12 @@
     "name": "futty-app",
     "slug": "futty-app",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/185f673b-393d-45ca-a7b5-bda0da4a0c8f"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "futtyapp",
