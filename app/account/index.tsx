@@ -34,6 +34,7 @@ export default function AccountMenuScreen() {
 
         <MenuSection title="Your Account">
           <MenuRow icon="pencil" label="Edit Profile" onPress={() => router.push('/edit-profile')} />
+          <MenuRow icon="sportscourt.fill" label="My Bookings" onPress={() => router.push('/my-bookings')} />
           <MenuRow icon="flag.checkered" label="Your Activity" onPress={() => router.push('/account/activity')} />
           <MenuRow icon="creditcard.fill" label="Your Payments" onPress={() => router.push('/account/payments')} />
           <MenuRow icon="gearshape.fill" label="Settings" onPress={() => router.push('/account/settings')} />
