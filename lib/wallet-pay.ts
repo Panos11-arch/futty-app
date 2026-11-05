@@ -7,7 +7,7 @@
  * payment still goes through Stripe at the normal card rate.
  *
  * Apple Pay also needs (one-time, outside the code):
- *  1. A Merchant ID `merchant.com.panosalepis.futtyapp` in the Apple
+ *  1. A Merchant ID `merchant.com.futty.app` in the Apple
  *     Developer portal (Certificates, Identifiers & Profiles > Identifiers).
  *  2. Stripe Dashboard > Settings > Payment methods > Apple Pay > add an iOS
  *     certificate for that Merchant ID (Stripe gives you the CSR to upload).
@@ -15,7 +15,7 @@
  * Google Pay needs no setup beyond the `enableGooglePay` flag in app.json.
  */
 
-export const APPLE_PAY_MERCHANT_ID = 'merchant.com.panosalepis.futtyapp';
+export const APPLE_PAY_MERCHANT_ID = 'merchant.com.futty.app';
 
 export const walletPayOptions = {
   applePay: {
