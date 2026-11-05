@@ -22,7 +22,7 @@
     "@react-navigation/native": "^7.5.1",
     "@sentry/react-native": "~7.11.0",
     "@stripe/stripe-react-native": "0.63.0",
-    "@supabase/supabase-js": "^2.110.9",
+    "@supabase/supabase-js": "^2.118.0",
     "expo": "^55.0.28",
     "expo-constants": "~55.0.17",
     "expo-contacts": "~55.0.18",
