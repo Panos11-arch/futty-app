@@ -220,14 +220,29 @@ function NextGameCard({ onScored }: { onScored: () => void }) {
           {upcoming.map((booking, index) => {
             const bookingVenue = venueFor(booking.venue_id);
             return (
-              <View key={booking.id} style={index > 0 ? styles.upcomingRow : undefined}>
-                <Text style={styles.nextGameVenue}>{bookingVenue?.name ?? 'Booked venue'}</Text>
-                <Text style={styles.cardBody}>
-                  {bookingVenue?.city ? `${bookingVenue.city} · ` : ''}
-                  {dayLabel(dateKeyToDate(booking.booking_day))} · {booking.start_time.slice(0, 5)}–
-                  {booking.end_time.slice(0, 5)} · {booking.format}
-                </Text>
-              </View>
+              // Opens My bookings, where the booking can be viewed and
+              // cancelled — previously that screen was only reachable from a
+              // notification or the Match Found popup.
+              <Pressable
+                key={booking.id}
+                onPress={() => router.push('/my-bookings')}
+                accessibilityRole="button"
+                accessibilityHint="Opens My bookings, where you can view or cancel this booking"
+                style={({ pressed }) => [
+                  styles.upcomingPressable,
+                  index > 0 ? styles.upcomingRow : undefined,
+                  pressed ? styles.upcomingPressed : undefined,
+                ]}>
+                <View style={styles.upcomingText}>
+                  <Text style={styles.nextGameVenue}>{bookingVenue?.name ?? 'Booked venue'}</Text>
+                  <Text style={styles.cardBody}>
+                    {bookingVenue?.city ? `${bookingVenue.city} · ` : ''}
+                    {dayLabel(dateKeyToDate(booking.booking_day))} · {booking.start_time.slice(0, 5)}–
+                    {booking.end_time.slice(0, 5)} · {booking.format}
+                  </Text>
+                </View>
+                <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} />
+              </Pressable>
             );
           })}
         </View>
@@ -615,6 +630,17 @@ const styles = StyleSheet.create({
   },
   upcomingList: {
     gap: 0,
+  },
+  upcomingPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  upcomingText: {
+    flex: 1,
+  },
+  upcomingPressed: {
+    opacity: 0.6,
   },
   upcomingRow: {
     marginTop: 10,
