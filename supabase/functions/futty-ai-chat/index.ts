@@ -21,7 +21,7 @@ const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
 // Overridable without a redeploy: supabase secrets set ANTHROPIC_MODEL=...
-const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5';
+const MODEL = Deno.env.get('ANTHROPIC_MODEL') ?? 'claude-sonnet-5-5';
 const MAX_TOOL_ITERATIONS = 4;
 
 // Cost controls. Each request re-sends the whole conversation, so both the
@@ -293,6 +293,10 @@ Deno.serve(async (req) => {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    // Logged so the actual reason (bad model name, no API credit, invalid
+    // key, rate limit...) shows in Supabase > Edge Functions > Logs. The app
+    // itself only ever shows a generic "Couldn't reach Futty AI".
+    console.error('futty-ai-chat failed:', err instanceof Error ? err.message : err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
