@@ -1,7 +1,7 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
@@ -151,10 +151,24 @@ export default function BookingPaymentScreen() {
       return;
     }
 
-    // Flips to 'paid' via stripe-webhook, not this client call — reload()
-    // will show 'pending' for a brief moment until that webhook lands, same
-    // trust model as every other payment in this app.
-    load();
+    // Payment authorized: leave this screen straight away, so the player
+    // isn't left looking at an "Authorize your share" button that still
+    // reads 'pending' until stripe-webhook flips the share (the server, not
+    // this call, is the source of truth for that). router.replace, not push,
+    // so the back button doesn't return here.
+    //
+    // The booker goes to My Bookings, which still has their booking's
+    // "need players / need opposition" post form and Cancel button; anyone
+    // else goes Home.
+    const destination = share.is_booker ? '/my-bookings' : '/';
+    Alert.alert(
+      'Payment confirmed',
+      share.is_booker
+        ? "Your pitch is reserved. Your card is only charged once everyone's in."
+        : "You're in! Your card is only charged once everyone's in.",
+      [{ text: 'OK', onPress: () => router.replace(destination) }],
+      { cancelable: false }
+    );
   }
 
   async function addPlayer() {
