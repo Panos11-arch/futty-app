@@ -15,13 +15,12 @@ import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { addBookingPlayer, createSharePayment, listBookingShares, type BookingShare } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { formatEuros } from '@/lib/service-fee';
 import { PostSquadNeed } from '@/app/my-bookings';
 import { supabase } from '@/lib/supabase';
 import type { MyBooking } from '@/lib/use-my-bookings';
 
-function centsToLabel(cents: number) {
-  return `€${(cents / 100).toFixed(2)}`;
-}
+const centsToLabel = formatEuros;
 
 const STATUS_ICON: Record<BookingShare['status'], React.ComponentProps<typeof IconSymbol>['name']> = {
   pending: 'clock.fill',
@@ -70,6 +69,9 @@ export default function BookingPaymentScreen() {
   const [shares, setShares] = useState<BookingShare[] | null>(null);
   const [bookingStatus, setBookingStatus] = useState<string | null>(null);
   const [gipedoPano, setGipedoPano] = useState(false);
+  // Flat per-player service fee for this booking; null for bookings made
+  // before the flat fee (their 8.9% is folded into the price, no breakdown).
+  const [feeCents, setFeeCents] = useState<number | null>(null);
   const [booking, setBooking] = useState<MyBooking | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [payingShareId, setPayingShareId] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export default function BookingPaymentScreen() {
         listBookingShares(bookingId),
         supabase
           .from('venue_bookings')
-          .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format, status')
+          .select('id, venue_id, booking_day, start_time, end_time, pitches, capacity, format, status, service_fee_cents_per_player')
           .eq('id', bookingId)
           .maybeSingle(),
         supabase
@@ -99,6 +101,7 @@ export default function BookingPaymentScreen() {
     else setShares(shareRows ?? []);
     if (bookingRow) setBooking(bookingRow);
     if (bookingRow) setBookingStatus(bookingRow.status);
+    setFeeCents(bookingRow?.service_fee_cents_per_player ?? null);
     setGipedoPano(oppositionPost?.payment_mode === 'gipedo_pano');
   }, [bookingId]);
 
@@ -234,7 +237,14 @@ export default function BookingPaymentScreen() {
                     share.status}
                 </ThemedText>
               </View>
-              <ThemedText style={styles.shareAmount}>{centsToLabel(share.amount_cents)}</ThemedText>
+              <View style={styles.shareAmountColumn}>
+                <ThemedText style={styles.shareAmount}>{centsToLabel(share.amount_cents)}</ThemedText>
+                {feeCents ? (
+                  <ThemedText style={styles.feeBreakdown}>
+                    Pitch {centsToLabel(share.amount_cents - feeCents)} + service fee {centsToLabel(feeCents)}
+                  </ThemedText>
+                ) : null}
+              </View>
             </View>
 
             {share.profile_id === user?.id && share.status === 'pending' ? (
@@ -330,6 +340,14 @@ const styles = StyleSheet.create({
     fontFamily: FuttyFonts.monoSemiBold,
     fontSize: 14,
     color: FuttyColors.stone900,
+  },
+  shareAmountColumn: {
+    alignItems: 'flex-end',
+  },
+  feeBreakdown: {
+    fontFamily: FuttyFonts.sans,
+    fontSize: 11,
+    color: FuttyColors.stone500,
   },
   addPlayerSection: {
     gap: 8,
