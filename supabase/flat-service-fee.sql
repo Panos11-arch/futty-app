@@ -8,8 +8,11 @@
 --   * venue_bookings.amount_cents      = the VENUE's price only (no fee)
 --   * venue_bookings.service_fee_cents_per_player = 80 for new bookings,
 --     NULL for bookings made before this change
---   * each player's share              = their part of the venue price + €0.80
---     (e.g. a €30 5-a-side: €6.00 + €0.80 = €6.80 each)
+--   * the venue price is shared by EVERYONE on the pitch: the booking's
+--     capacity (10 for 5-a-side = 5 v 5, 14 / 18 / 22 for 7s / 9s / 11s),
+--     whether one group books the whole pitch or two teams play each other
+--   * each player's share              = venue price / capacity + €0.80
+--     (e.g. a €60 5-a-side pitch: €60 / 10 = €6.00 + €0.80 = €6.80 each)
 --
 -- Why a per-booking column rather than just changing the maths: bookings
 -- made before this still have the old 8.9% already inside amount_cents.
@@ -47,7 +50,40 @@ alter table public.venue_bookings add column if not exists service_fee_cents_per
 grant select (service_fee_cents_per_player) on public.venue_bookings to authenticated;
 
 -- ---------------------------------------------------------------------------
--- 3. book_slot: amount_cents is now the venue price only; the booker's share
+-- 3. How many players share a booking's price.
+--    Flat-fee bookings: everyone on the pitch (the booking's capacity), so a
+--    team that books and later gets an opponent doesn't change anyone's
+--    price. Older bookings keep the old rule (one team's worth, doubled once
+--    an opponent is matched) so their existing shares stay consistent.
+--    supabase/functions/stripe-webhook mirrors this when deciding the
+--    roster is full.
+-- ---------------------------------------------------------------------------
+create or replace function public.booking_total_shares_needed(p_booking_id uuid)
+returns integer
+language sql
+security definer
+set search_path = ''
+stable
+as $$
+  select case
+    when b.service_fee_cents_per_player is not null
+      then coalesce(b.capacity, public.format_player_count(b.format) * 2)
+    else public.format_player_count(b.format) * (
+      case when exists (
+        select 1 from public.squad_posts sp
+        where sp.venue_booking_id = p_booking_id and sp.type = 'opposition' and sp.status = 'matched'
+      ) then 2 else 1 end
+    )
+  end
+  from public.venue_bookings b
+  where b.id = p_booking_id;
+$$;
+
+revoke execute on function public.booking_total_shares_needed(uuid) from public, anon, authenticated;
+grant execute on function public.booking_total_shares_needed(uuid) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- 4. book_slot: amount_cents is now the venue price only; the booker's share
 --    is their part of it (plus the leftover cents from dividing) + €0.80.
 -- ---------------------------------------------------------------------------
 create or replace function public.book_slot(
@@ -66,7 +102,7 @@ declare
   v_amount_cents integer;
   v_status text;
   v_booking public.venue_bookings;
-  v_format_count integer;
+  v_players integer;
   v_share_cents integer;
   v_booker_share_cents integer;
 begin
@@ -118,13 +154,14 @@ begin
     raise exception 'duplicate_booking';
   end;
 
-  -- Split the venue price evenly across the format's fixed player count
-  -- (5/7/9/11); the leftover cents from integer division go to the booker,
-  -- per spec. Every player, booker included, then adds the service fee.
+  -- Split the venue price evenly across everyone on the pitch (the
+  -- booking's capacity: 10 for 5 v 5, and so on); the leftover cents from
+  -- integer division go to the booker, per spec. Every player, booker
+  -- included, then adds the service fee.
   if v_amount_cents > 0 then
-    v_format_count := public.format_player_count(p_format);
-    v_share_cents := v_amount_cents / v_format_count;
-    v_booker_share_cents := v_amount_cents - v_share_cents * (v_format_count - 1)
+    v_players := coalesce(p_capacity, public.format_player_count(p_format) * 2);
+    v_share_cents := v_amount_cents / v_players;
+    v_booker_share_cents := v_amount_cents - v_share_cents * (v_players - 1)
                             + public.service_fee_cents();
 
     insert into public.booking_payment_shares (booking_id, profile_id, amount_cents, is_booker, status)
@@ -139,7 +176,7 @@ revoke execute on function public.book_slot(uuid, date, time, time, integer, int
 grant execute on function public.book_slot(uuid, date, time, time, integer, integer, text) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
--- 4. add_booking_share_internal: a joining player's share is their part of
+-- 5. add_booking_share_internal: a joining player's share is their part of
 --    the venue price + the booking's fee. Old bookings (fee NULL) are
 --    unchanged: amount_cents already contains their 8.9%.
 -- ---------------------------------------------------------------------------

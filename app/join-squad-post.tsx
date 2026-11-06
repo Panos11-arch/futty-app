@@ -49,7 +49,7 @@ export default function JoinSquadPostScreen() {
     if (!post?.venue_booking_id) return;
     supabase
       .from('venue_bookings')
-      .select('amount_cents, format, service_fee_cents_per_player')
+      .select('amount_cents, format, capacity, service_fee_cents_per_player')
       .eq('id', post.venue_booking_id)
       .maybeSingle()
       .then(({ data }) => {
@@ -60,7 +60,9 @@ export default function JoinSquadPostScreen() {
         // Flat-fee bookings: amount_cents is the venue price only, so the
         // share is the player's part of it + the fee (matches
         // add_booking_share_internal). Older bookings had the fee folded in.
-        setShareCents(fee ? Math.floor(data.amount_cents / perPlayer) + fee : Math.round(data.amount_cents / perPlayer));
+        // Flat-fee bookings are split across everyone on the pitch (capacity).
+        const everyone: number = data.capacity ?? perPlayer * 2;
+        setShareCents(fee ? Math.floor(data.amount_cents / everyone) + fee : Math.round(data.amount_cents / perPlayer));
         setFeeCents(fee);
       });
   }, [post?.venue_booking_id]);
