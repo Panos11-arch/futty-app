@@ -10,6 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { formatEuros } from '@/lib/service-fee';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
@@ -38,6 +39,7 @@ export default function JoinSquadPostScreen() {
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [shareCents, setShareCents] = useState<number | null>(null);
+  const [feeCents, setFeeCents] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,14 +49,21 @@ export default function JoinSquadPostScreen() {
     if (!post?.venue_booking_id) return;
     supabase
       .from('venue_bookings')
-      .select('amount_cents, format')
+      .select('amount_cents, format, capacity, service_fee_cents_per_player')
       .eq('id', post.venue_booking_id)
       .maybeSingle()
       .then(({ data }) => {
         if (!data || !data.amount_cents) return;
         const counts: Record<string, number> = { '5-a-side': 5, '7-a-side': 7, '9-a-side': 9, '11-a-side': 11 };
         const perPlayer = counts[data.format as string] ?? 10;
-        setShareCents(Math.round(data.amount_cents / perPlayer));
+        const fee: number | null = data.service_fee_cents_per_player ?? null;
+        // Flat-fee bookings: amount_cents is the venue price only, so the
+        // share is the player's part of it + the fee (matches
+        // add_booking_share_internal). Older bookings had the fee folded in.
+        // Flat-fee bookings are split across everyone on the pitch (capacity).
+        const everyone: number = data.capacity ?? perPlayer * 2;
+        setShareCents(fee ? Math.floor(data.amount_cents / everyone) + fee : Math.round(data.amount_cents / perPlayer));
+        setFeeCents(fee);
       });
   }, [post?.venue_booking_id]);
 
@@ -213,7 +222,12 @@ export default function JoinSquadPostScreen() {
         {shareCents !== null ? (
           <View style={styles.shareBox}>
             <ThemedText style={styles.shareLabel}>Your share</ThemedText>
-            <ThemedText style={styles.shareAmount}>€{(shareCents / 100).toFixed(2)}</ThemedText>
+            <ThemedText style={styles.shareAmount}>{formatEuros(shareCents)}</ThemedText>
+            {feeCents ? (
+              <ThemedText style={styles.feeBreakdown}>
+                Pitch {formatEuros(shareCents - feeCents)} + service fee {formatEuros(feeCents)}
+              </ThemedText>
+            ) : null}
           </View>
         ) : null}
 
@@ -300,6 +314,10 @@ const styles = StyleSheet.create({
     fontFamily: FuttyFonts.monoSemiBold,
     fontSize: 18,
     color: FuttyColors.emerald950,
+  },
+  feeBreakdown: {
+    fontSize: 12,
+    color: FuttyColors.stone500,
   },
   quote: {
     borderLeftWidth: 3,

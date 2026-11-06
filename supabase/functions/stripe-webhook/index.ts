@@ -87,7 +87,7 @@ async function handleAuthorized(paymentIntentId: string, supabaseAdmin: Supabase
 async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
   const { data: booking } = await supabaseAdmin
     .from('venue_bookings')
-    .select('format')
+    .select('format, capacity, service_fee_cents_per_player')
     .eq('id', bookingId)
     .maybeSingle();
   if (!booking) return;
@@ -113,7 +113,15 @@ async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
   // pre-kickoff once the roster is actually full.
   if (matchedOpposition?.payment_mode === 'gipedo_pano') return;
 
-  const needed = (FORMAT_PLAYER_COUNT[booking.format as string] ?? 10) * (matchedOpposition ? 2 : 1);
+  // Mirrors public.booking_total_shares_needed (supabase/flat-service-fee.sql):
+  // flat-fee bookings are shared by everyone on the pitch (capacity: 10 for
+  // 5 v 5, ...); older bookings keep one team's count, doubled once an
+  // opponent is matched.
+  const formatCount = FORMAT_PLAYER_COUNT[booking.format as string] ?? 5;
+  const needed =
+    booking.service_fee_cents_per_player != null
+      ? (booking.capacity ?? formatCount * 2)
+      : formatCount * (matchedOpposition ? 2 : 1);
 
   const { data: shares } = await supabaseAdmin
     .from('booking_payment_shares')
