@@ -1,6 +1,6 @@
 # Futty – Product & Features
 
-As of 4 November 2026 · Owners: Anghelo (match and stats features, coding track A) · Panos (booking, payment and venue features, coding track P) · built in Claude Code
+As of 7 November 2026 (payments, venue and weather rules: 13 Payments & Bookings Spec; UI: 15 Design Brief; both win where this doc disagrees) · Owners: Anghelo (match and stats features, coding track A) · Panos (booking, payment and venue features, coding track P) · built in Claude Code
 
 Every game booked through Futty is a real match: two sides, a venue, a time, a result. That's what lets Futty borrow SofaScore and FotMob's best features for amateur football. But none of it is worth anything unless the stats can't be faked, so a trusted "match record" has to be built first and every feature below sits on top of it.
 
@@ -9,15 +9,15 @@ Every game booked through Futty is a real match: two sides, a venue, a time, a r
 | Feature | Works well | Doesn't work | Launch verdict |
 | :---- | :---- | :---- | :---- |
 | Pitch booking | Real availability, slot locking | Venue chosen before time; no price before confirming; 1-hour only | Keep, redesign the flow |
-| Split payments | Card tracking per player | Cancels games, overcharges, never pays venues | Replace with the two options in 03 |
+| Split payments | Card tracking per player | Cancels games, overcharges, never pays venues | Replace with the three booking modes in 13 |
 | Need players | Fills a short squad | Can be linked to someone else's booking; no player level | Keep, fix ownership, add level |
 | Need opposition | Football-specific; nobody else has it | Payment side broken | Keep, make it the headline |
-| Gipedo Pano | Distinctive, Cypriot | Collects half the price; disputes pay nothing | In for launch, rebuilt with the founders' rules (03 Payments & Fees, Gipedo Pano; 06 Coding, P8) |
+| Gipedo Pano | Distinctive, Cypriot | Collects half the price; disputes pay nothing | In for launch, rebuilt with the rules in 13 (Gipedo Pano) and 14, P8 |
 | Teams and leagues | Round robin, standings, fixtures | Stats self-editable; XP only goes down | Keep; replace XP with level and stats below |
 | Community feed, follows | Moderation built | Little reason to open it | Keep; feed it match results and cards |
 | Venue dashboard | Block slots, house players | Thin for running a venue | Keep and expand: venues judge us on it |
-| Premium, Team Premium | Apple verification works | Sells the wrong things | On: €3.99 a month, 14 days ahead instead of 7, no service fee; pricing still being decided (01, decision B) |
-| Futty AI | Live availability | States outdated rules (2/21 days, €4.99, 30-minute cancellation). Decided 6 Nov: stays on, rules read from one shared source (06, P10) | Off |
+| Premium, Team Premium | Apple verification works | Sells the wrong things | On: €3.99 a month, 14 days ahead instead of 7, no service fee on the player's own spot (decided 7 November) |
+| Futty AI | Live availability | States outdated rules (2/21 days, €4.99, 30-minute cancellation). Decided 6 Nov: stays on, rules read from one shared source (14, P10) | On, after P10 |
 
 ## 2\. The foundation: every game becomes a match record
 
@@ -116,7 +116,7 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 
 ## 11\. Specs to write before code
 
-1. **Payment flow (Panos)**: both options from 03, the debt rule, every screen's text, a state diagram  
+1. **Payment flow (Panos)**: done as 13 Payments & Bookings Spec (7 November); every screen's text follows 15 Design Brief  
 2. **Venue model (Panos, from Dimitris's venue discovery answers)**: named pitches and sizes, which combine, hours per weekday, peak and off-peak prices, cancellation window, photos, address  
 3. **Booking flow (Panos)**: date → time → format → venues free then, with price, photo and area; 1h, 1.5h or 2h; total and cancellation rule before paying; guests by name; invite link  
 4. **Match record and stats** (Anghelo with Panos): sections 2 to 8 turned into exact rules for each screen  
@@ -153,12 +153,13 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 35. 3\. Opening hours per weekday, and prices: peak, off-peak and weekend, per format.  
 36. 4\. Block slots and recurring blocks (academy training, regular customers).  
 37. 5\. Walk-in and phone bookings: add a booking by hand so the app never double-books; mark it cash or card at the counter.  
-38. 6\. Cancel a slot for weather or maintenance: everyone is refunded and notified automatically.  
+38. 6\. Weather and maintenance: flag "conditions may be unsuitable" for a day or slot (players are notified and can cancel under the normal rules); block pitches so nobody can book them (existing games stay on); cancel a booking (every player gets their whole share back by card or venue credit, their choice, and the venue pays Stripe's fee). A nudge when the forecast for a booked slot is bad, at least 12 hours before kickoff (13).  
 39. 7\. Check-in: show the match QR code; mark no-shows.  
 40. 8\. Venue profile: photos, amenities, after-sales services, rules, contact details.  
 41. 9\. Food and drink menu and post-match offers.  
 42. 10\. Payouts: Stripe Connect onboarding and status, list of payouts, what each booking paid.  
 43. 11\. Notifications to the venue: new booking, cancellation, unpaid spot, daily summary of tomorrow's bookings.  
+44. 11a\. Cash and debt (decided 7 November, 13): each booking's roster shows every player's payment choice; staff tick cash as paid; run collection early; see and settle debts; see each player's credit; the "allow 6 v 6 on 5-a-side pitches" setting; offer a player to a team that's short.  
 44.   
 45. After launch:  
 46. 12\. Reports: occupancy by hour and weekday (a heatmap), revenue by pitch, no-show rate, slots Futty filled that would have been empty, food and drink offer redemptions; the monthly report sent automatically.  
@@ -166,7 +167,7 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 48. 14\. Integrations: a calendar feed for Google or Apple Calendar, daily summary by email or WhatsApp, CSV export for the venue's accountant.  
 49. 15\. Customers: regulars list, message a booker, block a problem player.  
 50. 16\. Host tournaments and leagues at the venue.  
-51. 17\. Cash spots, once decision A in 01 is made.  
+51. 17\. (Cash spots moved into the launch version, item 11a.)  
 52.   
 53. 13\. Calendar and WhatsApp reminders for players (added 6 November)  
 54.   
@@ -181,4 +182,16 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 63. \- Players opt in and choose WhatsApp, push or both, per reminder type.  
 64. \- Needs the WhatsApp Business Platform: a business phone number, Meta-approved message templates, and Meta's per-message charges. Check the cost per message for Cyprus before switching it on for everyone; push notifications stay free.  
 65. \- The same channel later sends venues their daily summary (section 12, item 14).  
-66. 
+66.
+
+## 14. Weather for players (added 7 November)
+
+- A forecast (rain, wind, temperature for the match hours) on the venue page, checkout and each upcoming game, from Apple WeatherKit through Futty's server.
+- When conditions look bad (rain chance 60% or more or heavy rain, wind 40 km/h or more, thunderstorms, 38°C or hotter), a banner says "Heavy rain forecast. The venue may cancel this booking." It warns only; it never promises a cancellation.
+- Built in 14 Claude Code Prompts, P11. Full rules in 13.
+
+## 15. Short games and 6 v 6 (added 7 November)
+
+- If fewer players join than the booking is for, the players who joined split the full pitch price after the match. Six hours before kickoff everyone is told and can ask the venue for a player or post a public request; the venue can also offer a player from its dashboard.
+- Venues that allow it offer "6 v 6" on 5-a-side pitches: the same pitch price split 12 ways. Details in 13.
+
