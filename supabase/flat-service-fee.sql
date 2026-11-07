@@ -110,7 +110,10 @@ begin
     raise exception 'not_authenticated';
   end if;
 
-  if p_day < current_date or (p_day = current_date and p_start <= current_time) then
+  -- Cyprus time, not the server's UTC (see supabase/cyprus-time.sql).
+  if p_day < (now() at time zone 'Asia/Nicosia')::date
+     or (p_day = (now() at time zone 'Asia/Nicosia')::date
+         and p_start <= (now() at time zone 'Asia/Nicosia')::time) then
     raise exception 'slot_in_past';
   end if;
 

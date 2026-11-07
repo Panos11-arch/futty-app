@@ -22,6 +22,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 
 import { getCallerId } from '../_shared/caller.ts';
+import { cyprusToday } from '../_shared/cyprus-time.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -36,7 +37,9 @@ Deno.serve(async (req) => {
   if (!userId) return new Response('Unauthorized', { status: 401 });
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
-  const today = new Date().toISOString().slice(0, 10);
+  // Booking days are Cyprus dates; the server's UTC date is a day behind
+  // between midnight and 02:00 in Cyprus.
+  const today = cyprusToday();
 
   // 1. Money still in play?
   const { data: activeShares } = await admin

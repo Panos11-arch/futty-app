@@ -14,6 +14,7 @@
 // supabase/scores.sql — there is no win/draw XP reward to describe).
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { cyprusToday } from '../_shared/cyprus-time.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -54,7 +55,7 @@ function minToTime(min: number) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
-const SYSTEM_PROMPT = `You are "Futty AI", an in-app assistant for Futty — a pitch-booking and football league/team app for Cyprus. Today's date is ${new Date().toISOString().slice(0, 10)}.
+const SYSTEM_PROMPT = `You are "Futty AI", an in-app assistant for Futty — a pitch-booking and football league/team app for Cyprus. Today's date in Cyprus is {{TODAY}}.
 
 ONLY answer questions about how the Futty app works. If asked anything unrelated (general chat, other topics, coding help, etc.), politely decline and redirect to app-related help.
 
@@ -198,7 +199,8 @@ async function callAnthropic(messages: unknown[]) {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      // Filled in per request: a worker can stay alive past midnight.
+      system: SYSTEM_PROMPT.replace('{{TODAY}}', cyprusToday()),
       messages,
       tools: [CHECK_AVAILABILITY_TOOL],
     }),
