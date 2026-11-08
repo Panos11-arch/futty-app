@@ -101,6 +101,7 @@ A player who cancels in the first hour gets everything back. After that €1 is 
   - the booker pays **€1 for every player who had paid**, as one extra charge. For example, 9 other players paid: the booker's own share follows the table above, plus a €9 charge.
 - **The booker cancels a booking they paid for everyone:** in the middle window, €1 per player is kept (€10 on a 5 v 5). The rest becomes credit at that venue.
 - **The whole team can be cancelled less than 6 hours before kickoff, but nobody gets money back, and the slot is released for others to book (agreed 7 Nov).** It's the same no-refund rule as every other late cancellation.
+- **Payouts (decided 7 November):** Stripe Connect with separate charges and transfers. Futty's Stripe account takes every payment; after collection each venue is sent its pitch money minus anything it owes (for example Stripe's fee on its own cancellations), so no money ever has to be pulled back from a venue.
 - **Credit sits with the venue.** Futty sends the venue its credit money at the next payout and keeps a record of each player's credit there. The decisions doc (#16) still asks for legal advice on this before real money flows.
 
 ## Short games, top-ups and 6 v 6
