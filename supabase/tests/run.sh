@@ -13,6 +13,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Test-only helpers (create a user, act as them); see tests/helpers.sql.
+psql -v ON_ERROR_STOP=1 -q -f tests/helpers.sql
+
 for test in tests/*.test.sql; do
   echo "== $test"
   psql -v ON_ERROR_STOP=1 -q -f "$test"

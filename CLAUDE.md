@@ -11,3 +11,12 @@
 | Database | venues, pitches, bookings, payments, squad posts, profiles security, app rules, menu items | matches, match players, attendance, goals, votes, ratings, levels, stats, notifications, calendar |
 | Release and CI | `app.json`, `eas.json`, `.github/`, builds, App Store | — |
 
+## Testing
+
+CI runs all three on every pull request.
+
+| What | Command | Notes |
+| :---- | :---- | :---- |
+| App (Jest) | `npx jest` | Tests sit next to the code (`lib/service-fee.test.ts`). `lib/money/` must stay at 100% line coverage. |
+| Edge Functions (Deno) | `deno test --node-modules-dir=none supabase/functions/` | Use `supabase/functions/_shared/stripe-fake.ts` instead of a real Stripe client. `_shared/money*` must stay at 100% line coverage (`_scripts/check-money-coverage.ts`). |
+| Database (SQL) | `npx supabase db start`, then `PGHOST=127.0.0.1 PGPORT=54322 PGUSER=postgres PGPASSWORD=postgres supabase/tests/run.sh` | Runs every `supabase/tests/*.test.sql` against the migrated schema. Use `supabase/tests/helpers.sql` to create users and act as them; wrap each test in `begin; ... rollback;`. Needs `psql`. |

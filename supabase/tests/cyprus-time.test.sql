@@ -23,7 +23,7 @@ insert into tz_cases values ('UTC'), ('Asia/Nicosia');
 do $$
 declare
   v_tz text;
-  v_booker uuid := gen_random_uuid();
+  v_booker uuid := tests.create_user('cyprus-time-test@futty.test');
   v_venue uuid;
   v_local timestamp;
   v_day date;
@@ -32,8 +32,6 @@ declare
   v_booking public.venue_bookings;
   v_share integer;
 begin
-  insert into auth.users (id, aud, role, email)
-  values (v_booker, 'authenticated', 'authenticated', 'cyprus-time-test@futty.test');
   insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour)
   values ('Cyprus time test venue', 4, '00:00', '23:59', 60) returning id into v_venue;
   perform set_config('request.jwt.claim.sub', v_booker::text, false);
