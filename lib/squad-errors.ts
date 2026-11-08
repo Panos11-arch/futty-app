@@ -1,6 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
-/** Maps the plain-text exceptions raised by supabase/squads.sql. */
+/** Maps the plain-text exceptions raised by supabase/legacy/squads.sql. */
 export function describeSquadError(error: PostgrestError) {
   switch (error.message) {
     case 'not_authenticated':

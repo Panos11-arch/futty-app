@@ -1,6 +1,6 @@
 // Cancels a booking and refunds it if it was paid — the only path in now
 // that client-side calls to the cancel_booking RPC are revoked (see
-// supabase/booking-payments.sql). Order matters: cancel_booking_for (with the
+// supabase/legacy/booking-payments.sql). Order matters: cancel_booking_for (with the
 // verified caller passed in, so its ownership/cutoff checks apply) runs
 // FIRST — if the 30-minutes-before-kickoff cutoff has passed, or it's not
 // this user's booking, or it's already cancelled, that fails immediately
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-  // cancel_booking_for (supabase/security-hardening.sql) does the ownership,
+  // cancel_booking_for (supabase/legacy/security-hardening.sql) does the ownership,
   // cutoff and status flip atomically, and returns what the status was
   // BEFORE cancelling — no separate pre-read that could go stale.
   const { data: previousStatus, error: cancelError } = await supabaseAdmin.rpc('cancel_booking_for', {

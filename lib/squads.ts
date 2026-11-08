@@ -21,7 +21,7 @@ export type SquadPost = {
   venue_booking_id: string | null;
   created_at: string;
   /** 'opposition' posts only — 'players' posts are always 'split'. See
-   *  supabase/gipedo-pano-payments.sql. */
+   *  supabase/legacy/gipedo-pano-payments.sql. */
   payment_mode: 'split' | 'gipedo_pano';
   /** "Need players" posts only — position/level wanted, both optional
    *  ("Any" in the UI maps to null here). */
@@ -92,7 +92,7 @@ export async function createSquadPost(params: {
   });
 
   // The in-app bell row for this is written server-side by the
-  // on_squad_post_created_notify trigger (supabase/squad-post-notifications.sql)
+  // on_squad_post_created_notify trigger (supabase/legacy/squad-post-notifications.sql)
   // regardless of whether this call succeeds — this only adds the actual push
   // send (item 5), which needs an Edge Function since this project has no
   // pg_net/Database Webhook support for the trigger to call Expo's push API
@@ -121,14 +121,14 @@ export async function leaveSquadPost(postId: string) {
   return supabase.rpc('leave_squad_post', { p_post_id: postId });
 }
 
-/** Venue-owner only (supabase/house-players.sql) — fills an open spot on a
+/** Venue-owner only (supabase/legacy/house-players.sql) — fills an open spot on a
  *  "Need players" post with a free-text name, no account, no payment. */
 export async function addHousePlayer(postId: string, name: string) {
   return supabase.rpc('add_house_player', { p_post_id: postId, p_name: name });
 }
 
 /** Deletes the caller's own still-'pending' (never authorized) payment
- *  share for a booking — see supabase/cancel-pending-share.sql. Used to
+ *  share for a booking — see supabase/legacy/cancel-pending-share.sql. Used to
  *  clean up after leaveSquadPost() when a join's follow-up payment step
  *  fails or is cancelled; leaveSquadPost only ever removes the
  *  squad_post_joiners row, never the share the join trigger created

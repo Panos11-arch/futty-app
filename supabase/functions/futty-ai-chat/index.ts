@@ -11,7 +11,7 @@
 // REAL answer computed from live venue_bookings data — never a guess. The
 // system prompt is written to match verified actual app behavior (e.g. XP
 // only ever decreases via dispute penalties, confirmed directly against
-// supabase/scores.sql — there is no win/draw XP reward to describe).
+// supabase/legacy/scores.sql — there is no win/draw XP reward to describe).
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
@@ -27,7 +27,7 @@ const MAX_TOOL_ITERATIONS = 4;
 
 // Cost controls. Each request re-sends the whole conversation, so both the
 // history length and the per-message size are capped, plus a per-user rate
-// limit (counted in public.ai_chat_usage, see supabase/security-hardening.sql).
+// limit (counted in public.ai_chat_usage, see supabase/legacy/security-hardening.sql).
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_REQUESTS_PER_HOUR = 20;

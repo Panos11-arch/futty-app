@@ -1,7 +1,10 @@
--- Tests for supabase/cyprus-time.sql. Run after stubs.sql and
--- cyprus-time.sql, in a NEW connection (the database time zone set by
--- cyprus-time.sql only applies to connections opened after it).
--- Any failed check raises an error, which fails CI.
+-- Tests for supabase/legacy/cyprus-time.sql, run against the migrated schema
+-- in a NEW connection (the database time zone set in
+-- 20261108230318_outside_public_schema.sql only applies to connections opened
+-- after it). Any failed check raises an error, which fails CI. Everything runs
+-- in one transaction that is rolled back, so the test leaves no rows behind.
+
+begin;
 
 -- 1. A new connection runs on Cyprus time.
 do $$
@@ -29,8 +32,10 @@ declare
   v_booking public.venue_bookings;
   v_share integer;
 begin
-  insert into public.venues (base_pitches, price_per_pitch_hour)
-  values (4, 60) returning id into v_venue;
+  insert into auth.users (id, aud, role, email)
+  values (v_booker, 'authenticated', 'authenticated', 'cyprus-time-test@futty.test');
+  insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour)
+  values ('Cyprus time test venue', 4, '00:00', '23:59', 60) returning id into v_venue;
   perform set_config('request.jwt.claim.sub', v_booker::text, false);
 
   for v_tz in select tz from tz_cases loop
@@ -82,3 +87,5 @@ begin
 end $$;
 
 select 'cyprus-time tests passed' as result;
+
+rollback;

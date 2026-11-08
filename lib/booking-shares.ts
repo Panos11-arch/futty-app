@@ -12,7 +12,7 @@ export type BookingShare = {
   paid_at: string | null;
 };
 
-/** Every player's share of a split booking (supabase/booking-payment-
+/** Every player's share of a split booking (supabase/legacy/booking-payment-
  *  splits.sql) — the booker sees everyone's, another player sees only their
  *  own row (list_booking_shares raises otherwise). */
 export async function listBookingShares(bookingId: string) {

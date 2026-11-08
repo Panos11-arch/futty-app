@@ -22,7 +22,7 @@ export const PERSONAL_PREMIUM_SKU = 'premium_monthly_v2';
 export const PERSONAL_PREMIUM_PRICE_LABEL = '€4.99';
 
 // There is deliberately no client-side setPremium() here anymore.
-// profiles.is_premium is now locked down (supabase/premium-payments.sql
+// profiles.is_premium is now locked down (supabase/legacy/premium-payments.sql
 // revokes client UPDATE access to that column) and can only be set by the
 // verify-purchase / apple-server-notifications Edge Functions after
 // confirming a real purchase directly with Apple — this just calls that

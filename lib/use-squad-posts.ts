@@ -10,7 +10,7 @@ export type SquadPostRosterEntry = {
   profileId: string | null;
   name: string;
   tier: XpTier | null;
-  /** Venue staff added via supabase/house-players.sql's add_house_player —
+  /** Venue staff added via supabase/legacy/house-players.sql's add_house_player —
    *  no account, no payment share, tier is meaningless for them. */
   isHousePlayer: boolean;
 };
@@ -118,7 +118,7 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     // profiles' RLS only allows reading your own row — a plain
     // .from('profiles') select here would silently come back empty for
     // every joiner except the signed-in user. get_public_profiles is the
-    // security-definer RPC (supabase/public-profiles.sql) that exists
+    // security-definer RPC (supabase/legacy/public-profiles.sql) that exists
     // specifically to read other users' public fields.
     const { data: joinerProfiles } =
       joinerProfileIds.length > 0

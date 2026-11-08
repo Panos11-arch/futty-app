@@ -1,6 +1,6 @@
 // Scheduled job (pg_cron + pg_net, registered at the bottom of this file's
 // deployment notes) — every 10 minutes, executes whatever Gipedo Pano
-// settlement supabase/gipedo-pano-payments.sql has already decided
+// settlement supabase/legacy/gipedo-pano-payments.sql has already decided
 // (submit_friendly_score's confirmed/dispute-lockout paths, or the stale-
 // match sweep) but hasn't been turned into real Stripe calls yet.
 //
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 /*
 DEPLOYMENT:
 
-1. Run supabase/gipedo-pano-payments.sql first.
+1. Run supabase/legacy/gipedo-pano-payments.sql first.
 
 2. Deploy WITHOUT JWT verification — pg_net calls this directly, with no
    Supabase user session:
@@ -117,7 +117,7 @@ DEPLOYMENT:
    cancel-unpaid-bookings — no new secrets needed.
 
 4. Register the cron job: fill in <CRON_SECRET> in
-   supabase/settle-gipedo-pano-cron.sql and run it in the Supabase dashboard
+   supabase/legacy/settle-gipedo-pano-cron.sql and run it in the Supabase dashboard
    SQL editor. (It lives in its own file because the cron schedule string
    contains the characters that end a code comment — inside this comment it
    stopped the whole function from compiling.)
