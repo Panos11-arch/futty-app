@@ -11,7 +11,7 @@ As of 7 November 2026 (repo at commit 8c93516) · Two developers, both in Claude
 - 6 Nov: flat €0.80 service fee per player shown as its own line; pitch price split across everyone on the pitch (10 for a 5-a-side); Futty AI keyboard and error fixes; leave the payment screen after paying (PR \#19)  
 - 7 Nov: Cyprus time for every "has this started?" check (database time zone Asia/Nicosia, book_slot, delete-account, Futty AI); SQL tests and Deno tests run in CI on every PR (PR \#20). The payment and booking rules were finalised in 13 Payments & Bookings Spec; the UI direction in 15 Design Brief.
 
-Not done yet: migrations (P1); the rest of the test harness (T0: SQL tests still run against stand-in tables in supabase/tests/stubs.sql, and there is no Jest yet); remaining security fixes (P2); everything in 14.
+Not done yet: the rest of the test harness (T0: SQL tests run against the migrated schema, but there is no Jest yet); remaining security fixes (P2); everything in 14.
 
 **Warning:** since 6 November a 5-a-side needs 10 app payments, and the 3-hour auto-cancel still runs until P4a removes it. Any real group that doesn't all pay in the app gets cancelled. P4a fixes it; until then, test only with your own accounts.
 
