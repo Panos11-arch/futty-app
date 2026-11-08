@@ -48,3 +48,6 @@ supabase/.temp/
 
 # Claude Code worktree scratch space
 .claude/worktrees/
+
+# Test coverage reports
+coverage/

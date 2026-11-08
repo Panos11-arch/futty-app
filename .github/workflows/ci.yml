@@ -18,9 +18,11 @@ jobs:
       - run: npm ci
       - run: npx expo lint
       - run: npx tsc --noEmit
+      # Fails if lib/money/ (once it exists) drops below 100% line coverage.
+      - run: npx jest --ci
 
   edge-functions:
-    name: Edge Functions typecheck
+    name: Edge Functions typecheck and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -28,7 +30,10 @@ jobs:
         with:
           deno-version: v2.x
       - run: deno check --node-modules-dir=none supabase/functions/*/index.ts
-      - run: deno test --node-modules-dir=none supabase/functions/
+      - run: deno test --node-modules-dir=none --coverage=coverage/deno supabase/functions/
+      - run: deno coverage --lcov --output=coverage/deno.lcov coverage/deno
+      # Fails if any supabase/functions/_shared/money* file is below 100% line coverage.
+      - run: deno run --allow-read supabase/functions/_scripts/check-money-coverage.ts coverage/deno.lcov
 
   database:
     name: SQL tests

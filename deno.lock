@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "npm:@supabase/supabase-js@2": "2.119.0",
+    "npm:jose@5": "5.10.0",
     "npm:stripe@22": "22.6.2"
   },
   "npm": {
@@ -53,6 +54,9 @@
     "iceberg-js@0.8.1": {
       "integrity": "sha512-1dhVQZXhcHje7798IVM+xoo/1ZdVfzOMIc8/rgVSijRK38EDqOJoGula9N/8ZI5RD8QTxNQtK/Gozpr+qUqRRA=="
     },
+    "jose@5.10.0": {
+      "integrity": "sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg=="
+    },
     "stripe@22.6.2": {
       "integrity": "sha512-PwRE2scocvXqDKPiskMa5vRJEAEkq46W69XyUYmAwrNSLr675lQnfqLwnsndAWizwgihOWw/irLmoFRo3ez7ew=="
     },
@@ -75,6 +79,8 @@
         "npm:@sentry/react-native@7.11",
         "npm:@stripe/stripe-react-native@0.63.0",
         "npm:@supabase/supabase-js@^2.118.0",
+        "npm:@testing-library/react-native@^14.1.0",
+        "npm:@types/jest@29.5.14",
         "npm:@types/react@~19.2.10",
         "npm:eslint-config-expo@~55.0.1",
         "npm:eslint@^9.25.0",
@@ -98,6 +104,8 @@
         "npm:expo-updates@~55.0.26",
         "npm:expo-web-browser@~55.0.18",
         "npm:expo@^55.0.28",
+        "npm:jest-expo@~55.0.22",
+        "npm:jest@29.7",
         "npm:patch-package@^8.0.1",
         "npm:react-dom@19.2.0",
         "npm:react-native-gesture-handler@2.30",
