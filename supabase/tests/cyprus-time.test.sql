@@ -1,4 +1,4 @@
--- Tests for supabase/cyprus-time.sql. Run after stubs.sql and
+-- Tests for supabase/legacy/cyprus-time.sql. Run after stubs.sql and
 -- cyprus-time.sql, in a NEW connection (the database time zone set by
 -- cyprus-time.sql only applies to connections opened after it).
 -- Any failed check raises an error, which fails CI.

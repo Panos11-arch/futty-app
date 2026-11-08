@@ -94,7 +94,7 @@ async function handleTeamPurchase(
 
   // A refund mid-season doesn't retroactively undo results already banked,
   // but the team can't keep playing on a Premium slot they no longer paid
-  // for — forfeit_team_premium_fixtures (supabase/team-premium-forfeit.sql)
+  // for — forfeit_team_premium_fixtures (supabase/legacy/team-premium-forfeit.sql)
   // resolves every not-yet-completed fixture in this format as a loss for
   // them / a walkover win for their opponent.
   if (!active) {
@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
 /*
 DEPLOYMENT:
 
-0. Run supabase/team-premium-forfeit.sql in the SQL Editor first (adds
+0. Run supabase/legacy/team-premium-forfeit.sql in the SQL Editor first (adds
    forfeit_team_premium_fixtures, called below) if you haven't already.
 
 1. Deploy (reuses the ASC_KEY_ID/ASC_ISSUER_ID/ASC_PRIVATE_KEY secrets set up

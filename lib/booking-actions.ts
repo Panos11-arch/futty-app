@@ -10,7 +10,7 @@ export type BookSlotParams = {
   format: string;
 };
 
-/** Wraps book_slot (supabase/booking-payments.sql), the only writable path
+/** Wraps book_slot (supabase/legacy/booking-payments.sql), the only writable path
  *  into venue_bookings — RLS blocks a direct insert/update so the capacity
  *  check and ownership check run atomically on the server. Reserves the slot
  *  as 'pending_payment' (priced venue) or 'confirmed' immediately (free
@@ -39,7 +39,7 @@ export async function cancelBooking(bookingId: string) {
   });
 }
 
-/** Wraps log_booking_result (supabase/booking-results.sql) — self-reported,
+/** Wraps log_booking_result (supabase/legacy/booking-results.sql) — self-reported,
  *  since a plain booking has no opponent team to agree the score with. */
 export async function logBookingResult(params: {
   bookingId: string;

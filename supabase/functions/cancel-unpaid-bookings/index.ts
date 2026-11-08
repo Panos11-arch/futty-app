@@ -1,5 +1,5 @@
 // Scheduled job (pg_cron + pg_net, see the bottom of
-// supabase/booking-payment-splits.sql) — every 10 minutes, finds every
+// supabase/legacy/booking-payment-splits.sql) — every 10 minutes, finds every
 // confirmed booking with at least one share that isn't fully authorized (or
 // isn't authorized at all) within 3 hours of kickoff, cancels the WHOLE
 // booking (voiding the reservation, not just the unpaid portion), and
@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
 /*
 DEPLOYMENT:
 
-1. Run supabase/booking-payment-splits.sql first.
+1. Run supabase/legacy/booking-payment-splits.sql first.
 
 2. Set a random shared secret (same pattern as notify-squad-post's
    WEBHOOK_SECRET):

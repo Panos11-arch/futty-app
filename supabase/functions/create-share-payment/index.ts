@@ -1,6 +1,6 @@
 // Per-player equivalent of create-booking-payment: creates a Stripe
 // PaymentIntent for exactly ONE player's share of a split booking (see
-// supabase/booking-payment-splits.sql), for the exact amount book_slot /
+// supabase/legacy/booking-payment-splits.sql), for the exact amount book_slot /
 // add_booking_share_internal already computed server-side. A player can only
 // ever create a PaymentIntent for their OWN share — there is no "pay for
 // someone else" path.

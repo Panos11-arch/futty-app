@@ -10,10 +10,10 @@ cd "$(dirname "$0")/.."
 
 run() { psql -v ON_ERROR_STOP=1 -q -f "$1"; }
 
-run tests/stubs.sql
-
-# The SQL files under test, in the order they are run on the live database.
-for file in cyprus-time.sql; do
+# The real production schema, in migration order — an exact copy of what
+# `supabase db reset` builds locally. Replaces the old supabase/tests/stubs.sql
+# stand-ins now that supabase/migrations/ exists.
+for file in migrations/*.sql; do
   run "$file"
 done
 

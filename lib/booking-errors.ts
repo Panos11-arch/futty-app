@@ -1,7 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
 /** Maps the plain-text exceptions raised by book_slot/cancel_booking/
- *  log_booking_result (supabase/booking-payments.sql, booking-results.sql)
+ *  log_booking_result (supabase/legacy/booking-payments.sql, booking-results.sql)
  *  to what the button should say. Takes a plain string rather than an error
  *  object, since callers going through an Edge Function (create-booking-
  *  payment, cancel-booking) need to extract the real message via

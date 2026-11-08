@@ -36,7 +36,7 @@ const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-// Mirrors format_player_count() in supabase/booking-payment-splits.sql —
+// Mirrors format_player_count() in supabase/legacy/booking-payment-splits.sql —
 // duplicated here rather than round-tripping to Postgres for a plain lookup
 // table with no rows of its own.
 const FORMAT_PLAYER_COUNT: Record<string, number> = {
@@ -92,7 +92,7 @@ async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
     .maybeSingle();
   if (!booking) return;
 
-  // Mirrors public.booking_total_shares_needed (supabase/opposition-match-
+  // Mirrors public.booking_total_shares_needed (supabase/legacy/opposition-match-
   // payments.sql): doubled once this booking has a matched opposition
   // post — two full rosters share the one pitch instead of one.
   const { data: matchedOpposition } = await supabaseAdmin
@@ -103,7 +103,7 @@ async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
     .eq('status', 'matched')
     .maybeSingle();
 
-  // Gipedo Pano (supabase/gipedo-pano-payments.sql): capture is
+  // Gipedo Pano (supabase/legacy/gipedo-pano-payments.sql): capture is
   // deliberately deferred until the match result is known, not the moment
   // the roster fills — every share just stays 'authorized' (a held, not
   // charged, card) until supabase/functions/settle-gipedo-pano captures the
@@ -113,7 +113,7 @@ async function captureIfFull(bookingId: string, supabaseAdmin: SupabaseClient) {
   // pre-kickoff once the roster is actually full.
   if (matchedOpposition?.payment_mode === 'gipedo_pano') return;
 
-  // Mirrors public.booking_total_shares_needed (supabase/flat-service-fee.sql):
+  // Mirrors public.booking_total_shares_needed (supabase/legacy/flat-service-fee.sql):
   // flat-fee bookings are shared by everyone on the pitch (capacity: 10 for
   // 5 v 5, ...); older bookings keep one team's count, doubled once an
   // opponent is matched.
@@ -200,7 +200,7 @@ async function processEvent(event: Stripe.Event, supabaseAdmin: SupabaseClient) 
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
-    // Per-player split payments (supabase/booking-payment-splits.sql). Under
+    // Per-player split payments (supabase/legacy/booking-payment-splits.sql). Under
     // manual capture this fires when THIS function's own capture() call
     // above completes, so the share is already 'paid' by the time it's
     // received — this branch is now mainly a no-op/backward-compat path.
