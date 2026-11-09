@@ -1,5 +1,18 @@
 @AGENTS.md
 
+## Working rules
+
+1. Specs. docs/specs/13-payments-bookings.md is the source of truth for money and bookings; docs/specs/15-design.md for UI. Where 03, 05 or 12 disagree with 13 or 15, 13 and 15 win. If a rule you need is missing or ambiguous, stop and ask. Never invent a business rule, an amount or a time limit.
+2. Money. Integer cents only, never floating point. Every amount is computed on the server from venue data. The app only displays amounts the server returns, and never sends a price, fee, capacity or total that the server trusts.
+3. Time. Every date and time rule uses Cyprus time (Asia/Nicosia). In SQL use (now() at time zone 'Asia/Nicosia'); in Edge Functions use supabase/functions/_shared/cyprus-time.ts. Never compare booking days or times against UTC.
+4. Security. Every table has RLS. security definer functions set search_path = ''. Internal functions are revoked from public, anon and authenticated and granted to service_role only. Never trust ids, prices, capacities or statuses sent by the app; check the caller owns what they act on. No secrets in the app.
+5. Stripe. Every Stripe call carries an idempotency key built from our row ids. Every money movement is written to the money ledger with its reason. Payment state changes come from verified webhooks, not from the app.
+6. Tests. Every PR includes tests for the behaviour it changes: SQL tests in supabase/tests/*.test.sql, Deno tests next to Edge Functions (*.test.ts), Jest tests for lib/ and components/. Write the failing test first, then the code. Each worked example in spec 13 is a test with that exact amount. A PR without tests is not merged; CI must be green.
+7. Scope. Only touch the files the prompt names. Shared files (package.json, app.json, app/_layout.tsx, app/(tabs)/_layout.tsx, lib/supabase.ts, constants/, components/ui/) change in their own small PR. A change to package.json or app.json that adds native code needs a new development build: say so in the PR.
+8. Migrations. New files only (supabase migration new pay_<name> or match_<name>); never edit a merged migration.
+9. Expo SDK 55. Read https://docs.expo.dev/versions/v55.0.0/ for any Expo API before using it.
+10. UI. Screens use components/ui and the tokens in constants/futty-theme.ts only: no hard-coded colours, font sizes or emoji.
+
 ## Ownership
 
 | Area | Panos | Anghelo |
