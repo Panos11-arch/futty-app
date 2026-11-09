@@ -88,7 +88,7 @@ Deno.test('a webhook for a replaced intent: money taken on it is refunded and re
 
   await handlePaymentModeEvent(event('payment_intent.succeeded', intent('pi_old', 'succeeded')), deps);
 
-  strictEqual(stripe.callsTo('refunds.create')[0].idempotencyKey, 'refund-pi_old-replaced_intent-680');
+  strictEqual(stripe.callsTo('refunds.create')[0].idempotencyKey, 'refund-pi_old-680');
   deepStrictEqual(db.callsTo('record_intent_refund')[0].args, {
     p_intent_id: 'pi_old', p_refund_id: 're_1', p_amount_cents: 680, p_reason: 'replaced_intent',
   });
@@ -102,6 +102,56 @@ Deno.test('a refused hold whose release fails goes on the retry queue; the webho
 
   strictEqual(await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', intent('pi_1', 'requires_capture')), deps), true);
   strictEqual(db.callsTo('queue_money_release')[0].args.p_intent_id, 'pi_1');
+});
+
+// H1: the cancellation's own run may have died before releasing the rest,
+// so a late webhook on a cancelled booking runs the release loop for the
+// whole booking, not just its own intent.
+Deno.test('a late hold on a cancelled booking releases everything on the booking, not just its own intent', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('share_payment_held', { result: 'release', reason: 'booking_cancelled', booking_id: 'b1', share_id: 's1' });
+  db.respond('booking_money_to_release', [
+    { kind: 'share', id: 's1', status: 'pending', stripe_payment_intent_id: 'pi_late', amount_cents: 680 },
+    { kind: 'share', id: 's2', status: 'authorized', stripe_payment_intent_id: 'pi_2', amount_cents: 680 },
+    { kind: 'guarantee', id: 'g1', status: 'held', stripe_payment_intent_id: 'pi_g', amount_cents: 6000 },
+  ]);
+  const state: Record<string, string> = { pi_late: 'requires_capture', pi_2: 'requires_capture', pi_g: 'requires_capture' };
+  stripe.respond('paymentIntents.retrieve', (c: { id?: string }) => intent(c.id!, state[c.id!] as 'requires_capture'));
+  stripe.respond('paymentIntents.cancel', (c: { id?: string }) => {
+    state[c.id!] = 'canceled';
+    return { id: c.id, status: 'canceled' };
+  });
+  db.respond('record_intent_cancelled', false);
+
+  await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', intent('pi_late', 'requires_capture')), deps);
+
+  strictEqual(db.callsTo('booking_money_to_release')[0].args.p_booking_id, 'b1');
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_late', 'pi_2', 'pi_g'],
+    'its own hold, then the rest of the booking, each once');
+});
+
+Deno.test('money taken late on a cancelled booking is refunded, and the rest of the booking released', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('share_payment_captured', { result: 'refund', reason: 'booking_cancelled', booking_id: 'b1', share_id: 's1' });
+  db.respond('booking_money_to_release', [
+    { kind: 'share', id: 's2', status: 'authorized', stripe_payment_intent_id: 'pi_2', amount_cents: 680 },
+  ]);
+  stripe.respond('paymentIntents.retrieve', (c: { id?: string }) =>
+    c.id === 'pi_late' ? intent('pi_late', 'succeeded') : intent('pi_2', 'requires_capture')
+  );
+
+  await handlePaymentModeEvent(event('payment_intent.succeeded', intent('pi_late', 'succeeded')), deps);
+
+  strictEqual(stripe.callsTo('refunds.create')[0].params?.payment_intent, 'pi_late');
+  strictEqual(stripe.callsTo('paymentIntents.cancel')[0].id, 'pi_2');
+});
+
+Deno.test('a replaced intent on a live booking releases only that intent', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('share_payment_held', { result: 'release', reason: 'replaced_intent', booking_id: 'b1', share_id: 's1' });
+  stripe.respond('paymentIntents.retrieve', intent('pi_old', 'requires_capture'));
+  await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', intent('pi_old', 'requires_capture')), deps);
+  strictEqual(db.callsTo('booking_money_to_release').length, 0);
 });
 
 Deno.test('the booker paid after the 15-minute window: everything on the booking goes back', async () => {
@@ -142,7 +192,7 @@ Deno.test('a booker\'s new guarantee card replaces the old one and the hold is r
   deepStrictEqual(db.callsTo('guarantee_card_replaced')[0].args, { p_guarantee_id: 'g1', p_profile_id: 'p1', p_payment_method_id: 'pm_new' });
   const [create] = stripe.callsTo('paymentIntents.create');
   strictEqual(create.params?.payment_method, 'pm_new');
-  strictEqual(create.idempotencyKey, 'guarantee-g1-attempt-2', 'a new attempt, not the failed one');
+  strictEqual(create.idempotencyKey, 'guarantee-g1-pm_new-attempt-2', 'a new attempt, not the failed one');
 });
 
 Deno.test('other SetupIntents (Payment methods screen) are not ours', async () => {

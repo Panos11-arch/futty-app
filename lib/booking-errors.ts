@@ -62,6 +62,8 @@ export function describeBookingErrorMessage(message: string) {
       return 'The game has started, so the card for this booking can no longer be changed.';
     case 'no_guarantee_to_update':
       return "This booking doesn't have a guarantee card to update.";
+    case 'no_saved_card':
+      return 'Pay your share first. Your card is saved when you pay, and then you can change it here.';
     case 'booking_mismatch':
       return "That post doesn't match your booking's venue or format.";
     case 'already_invited':

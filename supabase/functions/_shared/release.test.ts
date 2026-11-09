@@ -42,8 +42,8 @@ Deno.test('money already taken is recorded with Stripe\'s fee, refunded, and the
     p_fee_cents: 80, p_stripe_fee_cents: 35, p_reason: 'taken',
   });
   const [refund] = stripe.callsTo('refunds.create');
-  deepStrictEqual(refund.params, { payment_intent: 'pi_1', amount: 680, metadata: { reason: 'booking_cancelled', booking_id: 'b1' } });
-  strictEqual(refund.idempotencyKey, 'refund-pi_1-booking_cancelled-680');
+  deepStrictEqual(refund.params, { payment_intent: 'pi_1', amount: 680, metadata: { booking_id: 'b1' } });
+  strictEqual(refund.idempotencyKey, 'refund-pi_1-680');
   deepStrictEqual(db.callsTo('record_intent_refund')[0].args, {
     p_intent_id: 'pi_1', p_refund_id: 're_1', p_amount_cents: 680, p_reason: 'booking_cancelled',
   });
@@ -55,7 +55,7 @@ Deno.test('two partial refunds on one intent: the second refunds only what is le
   await releaseIntent(deps, item);
   const [refund] = stripe.callsTo('refunds.create');
   strictEqual(refund.params?.amount, 380);
-  strictEqual(refund.idempotencyKey, 'refund-pi_1-booking_cancelled-380');
+  strictEqual(refund.idempotencyKey, 'refund-pi_1-380');
   strictEqual(db.callsTo('record_intent_refund')[0].args.p_amount_cents, 380);
 });
 
@@ -74,10 +74,15 @@ Deno.test('an open intent nobody paid is cancelled so it can\'t be paid later; n
   strictEqual(db.callsTo('record_money_movement').length, 0);
 });
 
-Deno.test('an intent already cancelled needs nothing', async () => {
-  const { stripe, deps } = setup(intent('pi_1', 'canceled'));
+Deno.test('an intent already cancelled needs no Stripe call; a release a dead run never recorded is recorded once', async () => {
+  const { db, stripe, deps } = setup(intent('pi_1', 'canceled'));
+  db.respond('record_intent_cancelled', true);
   strictEqual(await releaseIntent(deps, item), 'nothing');
   strictEqual(stripe.callsTo('paymentIntents.cancel').length, 0);
+  deepStrictEqual(db.callsTo('record_intent_cancelled')[0].args, {
+    p_booking_id: 'b1', p_share_id: 's1', p_guarantee_id: null, p_intent_id: 'pi_1', p_reason: 'booking_cancelled',
+  });
+  strictEqual(db.callsTo('money_release_done')[0].args.p_outcome, 'nothing');
 });
 
 Deno.test('a processing intent can\'t be released yet: it is queued, never dropped', async () => {

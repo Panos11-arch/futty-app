@@ -5,10 +5,14 @@
 //   taken (succeeded)        the capture is recorded (if it isn't yet) and
 //                            what's left is refunded, keyed on the refund id -> 'refunded'
 //   open, never paid         cancelled so it can't be paid later -> 'nothing'
-//   already cancelled        nothing to do                   -> 'nothing'
+//   already cancelled        recorded if a dead run didn't   -> 'nothing'
 //   processing               can't be touched yet: an error, so it's retried
 // A failure is never swallowed: releaseOrQueue puts it on the retry queue
 // (money_releases), which run-payment-jobs works through until it succeeds.
+// Safe to run any number of times, at once too: every Stripe call is keyed
+// on the intent (and, for a refund, on what's left), and every movement is
+// recorded once. If a whole run dies part-way, run-payment-jobs finds the
+// cancelled booking again (bookings_with_money_to_release) and finishes it.
 import type Stripe from 'npm:stripe@^22';
 import { type Db, rpc } from './db.ts';
 import { idempotencyKeys } from './money.ts';
@@ -50,6 +54,15 @@ export async function releaseIntent({ stripe, db }: Deps, item: ReleaseItem): Pr
   if (intent.status === 'processing') {
     throw new Error(`intent_processing: ${intent.id}`);
   } else if (intent.status === 'canceled') {
+    // Cancelled already, e.g. by a run that died before recording it: the
+    // release is recorded from the hold in the ledger, once.
+    await rpc(db, 'record_intent_cancelled', {
+      p_booking_id: item.booking_id,
+      p_share_id: item.share_id ?? null,
+      p_guarantee_id: item.guarantee_id ?? null,
+      p_intent_id: intent.id,
+      p_reason: item.reason,
+    });
     outcome = 'nothing';
   } else if (intent.status === 'requires_capture') {
     await stripe.paymentIntents.cancel(intent.id, {}, { idempotencyKey: idempotencyKeys.cancelIntent(intent.id) });
@@ -79,8 +92,10 @@ export async function releaseIntent({ stripe, db }: Deps, item: ReleaseItem): Pr
     const left = charge.amount_captured - charge.amount_refunded;
     if (left > 0) {
       const refund = await stripe.refunds.create(
-        { payment_intent: intent.id, amount: left, metadata: { reason: item.reason, booking_id: item.booking_id } },
-        { idempotencyKey: idempotencyKeys.refund(intent.id, item.reason, left) },
+        // The same request whoever asks and why (the reason is in the
+        // ledger), so two runs giving back the same money make one refund.
+        { payment_intent: intent.id, amount: left, metadata: { booking_id: item.booking_id } },
+        { idempotencyKey: idempotencyKeys.refund(intent.id, left) },
       );
       await recordRefund(db, intent.id, refund, item.reason);
     } else {
@@ -185,7 +200,7 @@ export async function releaseBookingMoney(deps: Deps, bookingId: string, reason:
   return summary;
 }
 
-function errorText(err: unknown): string {
+export function errorText(err: unknown): string {
   const e = err as { code?: string; message?: string };
   return [e?.code, e?.message ?? String(err)].filter(Boolean).join(': ');
 }

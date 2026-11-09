@@ -90,10 +90,14 @@ export const idempotencyKeys = {
   capture: (shareId: string) => `capture-share-${shareId}`,
   /** Cancelling (releasing) any PaymentIntent. */
   cancelIntent: (intentId: string) => `cancel-${intentId}`,
-  /** Refunding what's left on an intent, for one reason. */
-  refund: (intentId: string, reason: string, amountCents: number) => `refund-${intentId}-${reason}-${amountCents}`,
-  /** The booker's guarantee hold; each retry after a failure is a new attempt. */
-  guaranteeHold: (guaranteeId: string, attempt: number) => `guarantee-${guaranteeId}-attempt-${attempt}`,
+  /** Refunding what's left on an intent. Not keyed on the reason: two runs
+   *  giving back the same money (a cancellation and the job finishing it)
+   *  are the same refund. */
+  refund: (intentId: string, amountCents: number) => `refund-${intentId}-${amountCents}`,
+  /** The booker's guarantee hold on one card; each retry after a failure is
+   *  a new attempt, and a new card is a new request. */
+  guaranteeHold: (guaranteeId: string, paymentMethodId: string, attempt: number) =>
+    `guarantee-${guaranteeId}-${paymentMethodId}-attempt-${attempt}`,
   /** The booker replacing their guarantee card; a new key once a new card is saved. */
   guaranteeCard: (guaranteeId: string, currentPaymentMethodId: string | null) =>
     `guarantee-card-${guaranteeId}-after-${currentPaymentMethodId ?? 'none'}`,

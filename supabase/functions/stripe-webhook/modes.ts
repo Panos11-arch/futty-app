@@ -48,7 +48,9 @@ async function placeIfDue(deps: Deps, result: ShareResult) {
 }
 
 /** What the database decided: release or refund this intent, or (the
- *  booker paid after the 15-minute window) everything on the booking. */
+ *  booker paid after the 15-minute window) everything on the booking.
+ *  On a cancelled booking it's everything too: the cancellation's own run
+ *  may have died before giving the rest back. */
 async function follow(deps: Deps, result: ShareResult, intentId: string | null) {
   if ((result.result === 'release' || result.result === 'refund') && intentId && result.booking_id) {
     await releaseOrQueue(deps, {
@@ -57,6 +59,15 @@ async function follow(deps: Deps, result: ShareResult, intentId: string | null) 
       intent_id: intentId,
       reason: result.reason ?? 'refused',
     });
+    if (result.reason === 'booking_cancelled') {
+      try {
+        await releaseBookingMoney(deps, result.booking_id, 'booking_cancelled');
+      } catch (err) {
+        // This event's own money is released or queued; run-payment-jobs
+        // finds the booking again for the rest (bookings_with_money_to_release).
+        console.error(`stripe-webhook: releasing the rest of cancelled booking ${result.booking_id} failed:`, err);
+      }
+    }
   } else if (result.result === 'expired' && result.booking_id) {
     await releaseBookingMoney(deps, result.booking_id, 'payment_window_expired');
   } else {

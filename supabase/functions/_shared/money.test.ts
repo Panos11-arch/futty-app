@@ -55,8 +55,8 @@ Deno.test('idempotency keys are built from our ids and stable on retry', () => {
   strictEqual(idempotencyKeys.legacyShareIntent('s1', null), 'share-s1-after-none');
   strictEqual(idempotencyKeys.capture('s1'), 'capture-share-s1');
   strictEqual(idempotencyKeys.cancelIntent('pi_1'), 'cancel-pi_1');
-  strictEqual(idempotencyKeys.refund('pi_1', 'booking_cancelled', 680), 'refund-pi_1-booking_cancelled-680');
-  strictEqual(idempotencyKeys.guaranteeHold('g1', 1), 'guarantee-g1-attempt-1');
+  strictEqual(idempotencyKeys.refund('pi_1', 680), 'refund-pi_1-680');
+  strictEqual(idempotencyKeys.guaranteeHold('g1', 'pm_1', 1), 'guarantee-g1-pm_1-attempt-1');
   strictEqual(idempotencyKeys.guaranteeCard('g1', 'pm_1'), 'guarantee-card-g1-after-pm_1');
   strictEqual(idempotencyKeys.guaranteeCard('g1', null), 'guarantee-card-g1-after-none');
   strictEqual(idempotencyKeys.customer('p1'), 'customer-p1');
@@ -72,4 +72,18 @@ Deno.test('a retry with a different amount, method or timing gets a new key', ()
     idempotencyKeys.shareIntent({ ...card, amountCents: 600 }),
   ]);
   strictEqual(keys.size, 4);
+});
+
+Deno.test('a guarantee hold on a new card, or a new attempt, gets a new key', () => {
+  const keys = new Set([
+    idempotencyKeys.guaranteeHold('g1', 'pm_1', 1),
+    idempotencyKeys.guaranteeHold('g1', 'pm_2', 1),
+    idempotencyKeys.guaranteeHold('g1', 'pm_1', 2),
+  ]);
+  strictEqual(keys.size, 3);
+});
+
+Deno.test('a refund is keyed on the intent and what is left, whatever the reason, so two runs make one refund', () => {
+  strictEqual(idempotencyKeys.refund('pi_1', 680), idempotencyKeys.refund('pi_1', 680));
+  strictEqual(idempotencyKeys.refund('pi_1', 380), 'refund-pi_1-380', 'a later partial refund is a new request');
 });

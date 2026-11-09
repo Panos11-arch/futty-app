@@ -44,7 +44,7 @@ Deno.test('releases holds, refunds payments and records each in the ledger', asy
 
   deepStrictEqual(res, { status: 200, body: { cancelled: true, refunded: true, released: true, pending: false } });
   deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_held', 'pi_g']);
-  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => c.idempotencyKey), ['refund-pi_paid-booking_cancelled-680']);
+  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => c.idempotencyKey), ['refund-pi_paid-680']);
   deepStrictEqual(db.callsTo('record_intent_refund')[0].args.p_refund_id, 're_pi_paid', 'the refund is keyed on its re_ id');
   deepStrictEqual(db.callsTo('share_released')[0].args, { p_share_id: 's3', p_new_status: 'cancelled' });
 });

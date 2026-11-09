@@ -1,7 +1,7 @@
 // Scheduled job (pg_cron + pg_net, every minute): takes shares when their free
-// hour ends, expires unpaid bookings, places the bookers' guarantee holds and
-// retries failed releases. See
-// handler.ts. Authenticated by the cron secret, like cancel-unpaid-bookings.
+// hour ends, expires unpaid bookings, finishes giving back the money on
+// cancelled bookings, places the bookers' guarantee holds and retries failed
+// releases. See handler.ts. Authenticated by the cron secret, like cancel-unpaid-bookings.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
