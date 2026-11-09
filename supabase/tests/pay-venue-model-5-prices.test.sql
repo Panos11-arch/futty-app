@@ -16,8 +16,9 @@ declare
   v_case record;
   v_price integer;
 begin
-  -- 5-a-side: peak EUR 60, off-peak EUR 50, weekend EUR 70.
-  perform tests.set_price(v_venue, '5-a-side', 6000, 5000, 7000);
+  -- 5-a-side: EUR 50 (off-peak), with a peak price of EUR 60 and a weekend
+  -- price of EUR 70.
+  perform tests.set_price(v_venue, '5-a-side', 5000, p_peak => 6000, p_weekend => 7000);
 
   perform tests.act_as(v_player);
   for v_case in

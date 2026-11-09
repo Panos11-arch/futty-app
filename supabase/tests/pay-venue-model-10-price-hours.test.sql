@@ -1,14 +1,14 @@
--- Peak and weekend hours are per venue, stored with its price rules
--- (docs/specs/13-payments-bookings.md, "Prices and fees", decided 9
--- November). Until a venue's data says otherwise: peak Monday to Friday
--- from 17:00 until closing, weekend Saturday and Sunday all day, off-peak
--- otherwise.
+-- For a venue that has peak and weekend prices, the hours they apply are
+-- per venue, stored with its price rules (docs/specs/13-payments-bookings.md,
+-- "Prices and fees", decided 9 November). Unless its data sets other hours:
+-- peak Monday to Friday from 17:00 until closing, weekend Saturday and
+-- Sunday all day, off-peak (the venue's one price) otherwise.
 begin;
 
 do $$
 declare
   v_player uuid := tests.create_user('hours-rules-player@futty.test');
-  -- Both open 08:00 to midnight. EUR 60 peak, EUR 50 off-peak, EUR 70 weekend.
+  -- Both open 08:00 to midnight. EUR 50, with peak EUR 60 and weekend EUR 70.
   v_default uuid := tests.create_venue(p_pitches => 1, p_open => '08:00', p_close => '24:00');
   v_custom uuid := tests.create_venue(p_pitches => 1, p_open => '08:00', p_close => '24:00');
   v_monday date := tests.next_weekday(1);
@@ -19,8 +19,8 @@ declare
   v_booking public.venue_bookings;
   v_error text;
 begin
-  perform tests.set_price(v_default, '5-a-side', 6000, 5000, 7000);
-  perform tests.set_price(v_custom, '5-a-side', 6000, 5000, 7000);
+  perform tests.set_price(v_default, '5-a-side', 5000, p_peak => 6000, p_weekend => 7000);
+  perform tests.set_price(v_custom, '5-a-side', 5000, p_peak => 6000, p_weekend => 7000);
 
   -- The hours are on the price rule, with the agreed defaults.
   select * into v_rule from public.price_rules where venue_id = v_default and format = '5-a-side';

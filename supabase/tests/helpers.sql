@@ -87,17 +87,25 @@ as $$
   returning id;
 $$;
 
--- Price per hour for a format, in cents: peak, off-peak, weekend.
-create or replace function tests.set_price(p_venue uuid, p_format text, p_peak integer, p_offpeak integer, p_weekend integer)
+-- Price per hour for a format, in cents: the venue's one price, plus an
+-- optional peak and weekend price (null = the venue has none).
+drop function if exists tests.set_price(uuid, text, integer, integer, integer);
+create function tests.set_price(
+  p_venue uuid,
+  p_format text,
+  p_price integer,
+  p_peak integer default null,
+  p_weekend integer default null
+)
 returns void
 language sql
 security definer
 set search_path = ''
 as $$
-  insert into public.price_rules (venue_id, format, peak_cents, offpeak_cents, weekend_cents)
-  values (p_venue, p_format, p_peak, p_offpeak, p_weekend)
+  insert into public.price_rules (venue_id, format, price_cents, peak_cents, weekend_cents)
+  values (p_venue, p_format, p_price, p_peak, p_weekend)
   on conflict (venue_id, format) do update
-    set peak_cents = excluded.peak_cents, offpeak_cents = excluded.offpeak_cents, weekend_cents = excluded.weekend_cents;
+    set price_cents = excluded.price_cents, peak_cents = excluded.peak_cents, weekend_cents = excluded.weekend_cents;
 $$;
 
 

@@ -17,8 +17,8 @@ declare
 begin
   v_six := tests.create_pitch(v_venue, 'Six', '6-a-side', p_sort => 1);
   v_five := tests.create_pitch(v_venue, 'Five', '5-a-side', p_sort => 2);
-  perform tests.set_price(v_venue, '6-a-side', 7200, 7200, 7200);
-  perform tests.set_price(v_venue, '5-a-side', 6000, 6000, 6000);
+  perform tests.set_price(v_venue, '6-a-side', 7200);
+  perform tests.set_price(v_venue, '5-a-side', 6000);
 
   -- 6-a-side books the real pitch at its own price: 12 players, 7200 / 12 = 600 + 80.
   perform tests.act_as(v_player);

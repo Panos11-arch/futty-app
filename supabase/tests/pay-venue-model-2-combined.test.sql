@@ -22,8 +22,8 @@ begin
   v_p2 := tests.create_pitch(v_venue, 'Pitch 2', p_sort => 2);
   v_p3 := tests.create_pitch(v_venue, 'Pitch 3', p_sort => 3);
   insert into public.pitch_combinations (venue_id, format, pitch_ids) values (v_venue, '7-a-side', array[v_p1, v_p2]);
-  perform tests.set_price(v_venue, '5-a-side', 6000, 6000, 6000);
-  perform tests.set_price(v_venue, '7-a-side', 11000, 11000, 11000);
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  perform tests.set_price(v_venue, '7-a-side', 11000);
 
   -- A 7-a-side holds both pitches of the combination.
   perform tests.act_as(v_a);

@@ -17,7 +17,11 @@ The venue always gets its full pitch price; Futty adds a service fee per player 
 - **Premium players** pay no service fee.
 - **Paying with venue credit:** no service fee. If the credit doesn't cover the whole share, the rest is paid by card **plus the normal €0.80**.
 - **It's a service fee, not a card fee.** It's charged the same whatever the payment method; card surcharges on consumer cards are banned in the EU.
-- **Peak, off-peak and weekend prices (decided 9 November):** each venue has its own peak and weekend hours, stored with its price rules. Until a venue's data says otherwise, **peak** is Monday to Friday from 17:00 until closing, **weekend** is Saturday and Sunday all day, and every other hour is **off-peak**.
+- **Pitch prices (decided 9 November):** by default a venue has **one price per format, the same at every hour**. Peak and weekend prices are optional and apply only when the venue's data provides them; a venue without them charges its one price for every slot.
+  - **When a venue has them:** its peak and weekend hours are stored with its price rules. Unless its data sets other hours, **peak** is Monday to Friday from 17:00 until closing and **weekend** is Saturday and Sunday all day. Every other hour is **off-peak**, at the venue's one price.
+  - **A game is priced half hour by half hour,** each half hour at its own price.
+  - **Example, one price:** a 5-a-side at €50 an hour costs €50 at any hour, any day: €50 ÷ 10 = €5.00 + €0.80 = **€5.80 each**.
+  - **Example, crossing into peak:** the same venue with a €60 peak price. A weekday game from 16:30 to 17:30 is half off-peak and half peak: €25 + €30 = €55, so €55 ÷ 10 = €5.50 + €0.80 = **€6.30 each**.
 
 | Booking                                        | Each player pays | Stripe takes                | Futty keeps per player     |
 |------------------------------------------------|------------------|-----------------------------|----------------------------|
