@@ -28,6 +28,12 @@ export function describeBookingErrorMessage(message: string) {
       return 'Pick a slot that starts and ends on the hour or half hour.';
     case 'outside_opening_hours':
       return "That's outside the venue's opening hours.";
+    case 'venue_closed':
+      return 'The venue is closed that day — pick another day.';
+    case 'slot_blocked':
+      return "The venue isn't taking bookings then — pick another time.";
+    case 'price_not_set':
+      return "This venue hasn't set a price for that format yet.";
     case 'invalid_format':
       return "This venue doesn't offer that format.";
     case 'invalid_players_per_side':
