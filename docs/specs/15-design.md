@@ -1,6 +1,6 @@
 # 15 Futty – Design Brief
 
-7 November 2026 · Owner: Panos (all UI work) · The Claude Code prompts that build this are in 17 UI Redesign Prompts
+7 November 2026 · Owner: Anghelo runs the UI prompts in 17 (from 9 November); Panos's booking, venue and dashboard screens use the same components · The Claude Code prompts that build this are in 17 UI Redesign Prompts
 
 **Futty should look like a calm, professional booking tool: lots of white space, one brand colour, real photos, clear prices, no decoration.** Playtomic is the reference for structure and tone. We borrow how its screens are organised, never its logo, colours, illustrations or wording.
 

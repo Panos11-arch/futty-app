@@ -1,6 +1,6 @@
 # Futty – Coding
 
-As of 8 November 2026 (repo at commit 518a2ac) · Panos writes all the code, in Claude Code. Anghelo owns the spreadsheets (venue data); Dimitris owns the pitch deck.
+As of 8 November 2026 (repo at commit 518a2ac) · Split on 9 November: Panos runs the payments prompts (P), Anghelo the match and design prompts (A and U) and the venue data spreadsheets; Dimitris owns the pitch deck. Who runs what, and where the two meet: 14, "Who runs what".
 
 **Build order: follow 14 Claude Code Prompts (and 17 for the UI) top to bottom.** Nothing in a later step starts before the step it depends on is merged. Core app by Fri 20 Nov, Gipedo Pano by Tue 24 Nov, venue dashboard by Wed 2 Dec (before the December venue visits).
 
@@ -17,7 +17,7 @@ Not done yet: the rest of the test harness (T0: SQL tests run against the migrat
 
 ## 2\. Working rules
 
-1. **One branch per prompt:** `panos/p4a-modes`, `panos/u3-home`. One pull request per prompt.  
+1. **One branch per prompt:** `panos/p4b-cancellations`, `anghelo/u3-home`. One pull request per prompt.  
 2. **Merge small and daily.** A pull request into master at least once a day; no branch older than 3 days. Before merging a money or security PR, ask Claude Code in a fresh session to review the diff against spec 13 and the working rules.  
 3. **Tests or no merge.** A pull request without tests for what it changes isn't merged, and CI must be green (set up in T0).  
 4. **Pull before every Claude Code session:** `git pull origin master`.  
@@ -26,7 +26,7 @@ Not done yet: the rest of the test harness (T0: SQL tests run against the migrat
 7. **Shared files in their own small pull request:** `package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`. A change to `package.json` or `app.json` that adds native code means a new iOS development build.  
 8. **Daily 10-minute call** with Anghelo and Dimitris: what was merged, what's next, and any venue data or pitch questions.
 
-## 3\. Code areas (all built by Panos from 7 November)
+## 3\. Code areas (Panos: left column; Anghelo: right column, from 9 November)
 
 | Area | Payments, bookings, venues, release | Matches, stats, social, notifications |
 | :---- | :---- | :---- |
@@ -37,9 +37,9 @@ Not done yet: the rest of the test harness (T0: SQL tests run against the migrat
 | Database | venues, pitches, bookings, payments, squad posts, profiles security, app rules, menu items | matches, match players, attendance, goals, votes, ratings, levels, stats, notifications, calendar |
 | Release and CI | `app.json`, `eas.json`, `.github/`, builds, App Store | — |
 
-## 4\. The five contracts between the two tracks
+## 4\. The six contracts between the two tracks
 
-Panos builds both sides; the contracts still mark the boundary between the payment code and the match code, so each side is built and tested against them. Until one exists, the caller uses a stub with the agreed signature.
+Panos builds the payment side and Anghelo the match side; each is built and tested against these contracts. Until one exists, the caller uses a stub with the agreed signature (in docs/specs/match-record.md, written in A1a).
 
 | \# | Contract | Built in | Used by | What it does |
 | :---- | :---- | :---- | :---- | :---- |
@@ -47,7 +47,8 @@ Panos builds both sides; the contracts still mark the boundary between the payme
 | 2 | `booking_participants` table | Payment code (P4a) | Match code | Who's on the booking: profile or guest name, venue-provided player, payment choice (app or cash), paid state (13) |
 | 3 | `match_result_confirmed` view | Match code (A2) | Payment code, for collection and Gipedo Pano | Matches whose score is confirmed, with result and kickoff |
 | 4 | `send_notification(profile_id, type, data)` | Match code (A2) | Payment code | One place that writes notifications and sends push (and later WhatsApp) |
-| 5 | `<NextBookingCard />` | Payment code (P5) | Home (U3) | Next booking: who's in, who hasn't paid |
+| 5 | `<NextBookingCard />` | Payment code (P5) | Home (U3) | Next booking: who's in, who hasn't paid. P5 rebuilds `components/booking/next-game-card.tsx` with the same export and props |
+| 6 | `useOwed()` in `lib/use-owed.ts` | Payment code (P5) | Home (U3) | What the player owes and any failed payment, from the server |
 
 ## 5\. Build order
 

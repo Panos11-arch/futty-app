@@ -1,12 +1,12 @@
 # 14 Futty – Claude Code Prompts
 
-7 November 2026 · Panos writes all the code (Anghelo: venue data spreadsheets; Dimitris: pitch deck) · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
+7 November 2026, split updated 9 November · Panos runs the P prompts, Anghelo the A and U prompts (and the venue data spreadsheets); Dimitris: pitch deck · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
 
 **One prompt = one pull request.** Do them in the order below. A prompt starts only when everything in its "Needs" column is merged. Every prompt names the spec sections it implements and the tests that prove it.
 
 ## How to run a prompt
 
-1. `git checkout master && git pull origin master`, then `git checkout -b panos/p4a-modes`.
+1. `git checkout master && git pull origin master`, then `git checkout -b panos/p4b-cancellations` (Anghelo: `anghelo/a2-match-record`).
 2. In Claude Code: `/clear`, switch to plan mode (Shift+Tab), paste the prompt.
 3. **Read the plan before approving it.** Reject it if it does any of these:
     - touches files you don't own;
@@ -15,6 +15,71 @@
 4. Let it build. Run the tests locally: `supabase/tests/run.sh`, `deno test supabase/functions/`, `npx jest`.
 5. Open the pull request. For any money or security PR, first ask Claude Code in a fresh session to review the diff against spec 13 and the working rules in CLAUDE.md. **Merge only when CI is green.**
 6. If Claude Code says the spec is unclear, **stop and decide it together.** Write the decision into 13 (or 15) in the same PR.
+
+## Who runs what (from 9 November)
+
+**Panos runs the payments prompts (P), Anghelo runs the match and design prompts (A and U).** Each works in his own files (the Ownership table in CLAUDE.md), on his own branches (`panos/...`, `anghelo/...`), and merges his own pull requests once CI is green and a fresh Claude Code session has reviewed the diff. A pull request that changes a shared file (`package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`) needs a quick OK from the other person before merging.
+
+**Only Panos changes production:** he applies every merged migration (both tracks) with `supabase db push`, deploys Edge Functions and runs EAS builds. Anghelo works on his local database only.
+
+### Panos, in this order
+
+| Order | Prompt | Waits for Anghelo's | Hours |
+| --- | --- | --- | --- |
+| 1 | P4a review and merge (not deployed until P5) | — | 1 |
+| 2 | P4b Cancellations and venue credit | — | 8 |
+| 3 | P4c Collection, top-ups and debt | A1a (contract signatures); uses the `match_result_confirmed` stub until A2 merges | 10 |
+| 4 | P9 Venue pages and data import | U1, and the ES and Nuevo venue data sheets | 8 |
+| 5 | P5 Booking flow screens | U1, A3a | 10 |
+| 6 | P10 Shared rules and Futty AI | — | 6 |
+| 7 | P8 Gipedo Pano | A2 | 10 |
+| 8 | P6 Venue dashboard | A2 (check-in) | 20 |
+| 9 | P7 Release build | Anghelo's "Now" prompts merged | 3 |
+| 10 | P4d Venue payouts | — | 8 |
+| 11 | P11 Weather | — | 6 |
+| 12 | P12 6 v 6 switching | — | 4 |
+
+About 50 hours before 20 November and 45 after.
+
+### Anghelo, in this order
+
+| Order | Prompt | Waits for Panos's | Hours |
+| --- | --- | --- | --- |
+| 1 | A1a Match spec only (`docs/specs/match-record.md`) | — | 2 |
+| 2 | U0 Design tokens and fonts (17) | — | 3 |
+| 3 | U1 Component library (17) | — | 6 |
+| 4 | A2 Match record and notifications | — | 12 |
+| 5 | A3a Add to calendar (`lib/calendar`) | — | 3 |
+| 6 | A1b Match components (FormChips, MatchRow, ScoreLine) | — | 2 |
+| 7 | U2 Navigation (17) | — | 3 |
+| 8 | U3 Home (17) | — | 3 |
+| 9 | A3b Form, reminders, notification settings | — | 9 |
+| 10 | A4 Match page, man of the match, lineups | — | 10 |
+| 11 | A8 Post-match food and drink offers | P9 (venue_menu_items) | 4 |
+| 12 | A5 Ratings and skill level | — | 10 |
+| 13 | U4 Play section, U6 Sign-in (17) | — | 8 |
+| 14 | U5 Profile, account and Premium (17) | P5 and P10 | 4 |
+| 15 | U7 Squads, posts and pop-ups (17) | P5 | 3 |
+| 16 | A6 Shareable cards, A7 Team of the week | — | 11 |
+| 17 | U8 Final sweep and guards (17) | P5, P6, P9 | 3 |
+
+About 67 hours before 20 November and 30 after. The venue data sheets for English School and Nuevo Campo come first (due Wed 11 November): P9 imports them.
+
+### Where the two tracks meet
+
+| What | Built by | Needed by | How to avoid waiting |
+| --- | --- | --- | --- |
+| Contract signatures 1, 3, 4 (`docs/specs/match-record.md`) | Anghelo, A1a | Panos, P4c | A1a is Anghelo's first prompt. |
+| `send_notification` (contract 4) | Anghelo, A2 | Panos, every P prompt | A stub already exists (P3). A2 replaces it with `create or replace` and keeps every notification type already allowed. |
+| `match_result_confirmed` (contract 3) | Anghelo, A2 | Panos, P4c and P8 | P4c uses a stub view with A1a's signature; A2 replaces it. P8 waits for A2. |
+| `create_match_for_booking` (contract 1) | Anghelo, A2 | Panos, booking confirmation | Panos calls it only once A2 is merged. |
+| `components/ui` and tokens | Anghelo, U0 and U1 | Panos, P9 and P5 | U0 and U1 are Anghelo's 2nd and 3rd prompts. |
+| `lib/calendar` | Anghelo, A3a | Panos, P5 (Add to calendar) | A3a is split out of A3 and comes early. |
+| `venue_menu_items` | Panos, P9 | Anghelo, A8 | A8 comes late in Anghelo's list. |
+| `NextBookingCard` (contract 5) | Panos, P5 | Anghelo's Home (U3) | U3 builds `components/booking/next-game-card.tsx`; P5 rebuilds that same file with the same export and props, so Home needs no change. |
+| `useOwed()` in `lib/use-owed.ts` (contract 6, debt and failed payments) | Panos, P5 | Anghelo's Home banner (U3) | U3 builds the banner slot empty; once P5 is merged, Anghelo connects `useOwed()` to it in a small follow-up. |
+| Screens restyled by U5 and U7 (account payments, settings, Premium, squads) | Panos owns them | Anghelo restyles them | U5 and U7 start only after P5 (and P10 for U5) are merged; Panos doesn't change those screens afterwards. |
+| Production database, Edge Functions, EAS builds | Panos | Both | Anghelo tells Panos when a `match_` migration is merged; Panos applies it with the next push. |
 
 ## Order and owners
 
@@ -67,7 +132,7 @@ A9 WhatsApp reminders. Then, in Playtomic order (12, section 6):
 6. venue tournaments;
 7. games at other pitches.
 
-**Load:** Panos writes all the code: about 140 hours of "Now" prompts before 20 November (roughly 11 hours a day) and about 80 hours of "Next" prompts before 2 December. The 14 November checkpoint (06, section 6) decides what moves. Cut in this order:
+**Load:** split between Panos and Anghelo (see "Who runs what"): about 50 and 67 hours of "Now" prompts before 20 November, then about 45 and 30 hours of "Next". The 14 November checkpoint (06, section 6) decides what moves. Cut in this order:
 1. P11 Weather
 2. P12 Switching
 3. A7
@@ -258,8 +323,8 @@ Read docs/specs/13-payments-bookings.md (all sections the player sees) and docs/
 1. Flow: date strip (7 or 14 days by account) -> time -> format (and "players per side: 5 v 5 / 6 v 6" only where the venue allows it) -> venues free at that time as photo cards with price per player -> venue -> checkout.
 2. Checkout: "Pay for everyone: €65.50" / "Each pays: €6.80 each" with both prices from the server; for each pays, "I'm responsible for the team" / "Just my spot" with one plain sentence on what each means; price breakdown (pitch + service fee); the cancellation rules in three lines; the non-refundable notice that must be accepted when kickoff is under 6 hours away; cash option where allowed; Apple Pay / Google Pay; sticky total bar.
 3. Booking detail: roster with paid state (in app, cash, unpaid), invite and share, a countdown to the next cancellation cutoff, Add to calendar (lib/calendar from A3), Directions, and Cancel, which first shows cancellation_quote and needs a second tap to confirm.
-4. Debt: a banner on Home and Book when the player owes money, and a "Pay what I owe" screen. Credit: credit per venue with expiry, applied at checkout.
-5. Build <NextBookingCard /> in components/booking/ and use it on Home in place of U3's next-game-card (same props).
+4. Debt: a banner on Book when the player owes money, and a "Pay what I owe" screen; also export useOwed() from lib/use-owed.ts (what the player owes and any failed payment, from the server), which Anghelo connects to Home's banner. Credit: credit per venue with expiry, applied at checkout.
+5. Rebuild components/booking/next-game-card.tsx as the real NextBookingCard, keeping its export and props, so Home picks it up without being edited. Don't edit app/(tabs)/index.tsx.
 6. The app never computes a price: every amount shown comes from the server response.
 
 Tests (Jest): each screen renders the server's amounts unchanged (680 -> "€6.80"); the non-refundable notice appears at 5h59m and not at 6h01m; Pay is disabled until the notice is accepted; the cancel button shows the quote before cancelling; the debt banner blocks booking and links to payment; 6 v 6 choice hidden when the venue doesn't allow it.
@@ -285,6 +350,8 @@ The design prompts U0–U3 (now) and U4–U8 (next) are in **17 UI Redesign Prom
 
 ### A1 Match spec and mock components
 
+Run as two pull requests: **A1a** is the spec only (everything up to "No database code."), so Panos has the contract signatures early; **A1b** is the components, after U1.
+
 ```
 Read docs/specs/05-product.md sections 2-8, docs/specs/06-coding.md section 4 and docs/specs/15-design.md. Write docs/specs/match-record.md: tables, columns, RLS, every security-definer function with its signature, and the exact signatures of contracts 1, 3 and 4. Contract 4 (send_notification) must list these types, which the payment code will send: guarantee_hold_failed, short_game_warning, top_up_charged, debt_created, debt_settled, cash_unpaid_prompt, booking_cancelled_by_venue, venue_closed_new_bookings, venue_condition_warning, spot_released, gipedo_result_needed. No database code. Then build FormChips, MatchRow and ScoreLine in components/match/ with components/ui and tokens, against typed mock data in lib/match/mock.ts, with Jest tests. Only touch components/match/, lib/match/ and docs/specs/.
 
@@ -302,6 +369,8 @@ Plan first.
 ```
 
 ### A3 Form, reminders, add to calendar
+
+Run as two pull requests: **A3a** is lib/calendar only (the "Add to calendar" part and its calendar test), straight after A2, because P5 needs it; **A3b** is everything else.
 
 ```
 Using the match record: form guide (last 5 confirmed matches, W/D/L chips, forfeit as "L (forfeit)") for players and named teams; recent matches on profiles; head-to-head between named teams; a job every 15 minutes sending reminders 24h and 2h before a player's games and after them (confirm score, vote, rate, rebook), all in Cyprus time; followed-team notifications; notification settings per type with quiet hours; profile preferences (position, foot, preferred days and times) and "players you play with most". Build lib/calendar: "Add to calendar" adds the event (venue name and address, pitch, kickoff and end, who's playing, link back to the booking) and updates or removes it when the booking moves or is cancelled; P5 uses it on the booking screens. Add a library only if needed, in its own small PR.
