@@ -34,6 +34,7 @@ declare
 begin
   insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour)
   values ('Cyprus time test venue', 4, '00:00', '23:59', 60) returning id into v_venue;
+  perform public.init_venue_model_from_legacy(v_venue);
   perform set_config('request.jwt.claim.sub', v_booker::text, false);
 
   for v_tz in select tz from tz_cases loop

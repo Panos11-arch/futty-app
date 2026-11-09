@@ -46,9 +46,12 @@ from (values
 ) as v (id, position)
 where p.id = v.id;
 
--- Two venues with two pitches each (venues.base_pitches). Only Test Arena
+-- Two venues with two pitches each, built from the pre-P3 columns by
+-- init_venue_model_from_legacy below. Only Test Arena
 -- North allows 6 v 6 on its 5-a-side pitches.
 insert into public.venues (id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour, owner_profile_id, allows_6v6_on_5s)
 values
   ('b0000000-0000-4000-8000-000000000001', 'Test Arena North', 'Nicosia', 'Artificial grass', 2, '08:00', '23:00', 60, 'a0000000-0000-4000-8000-000000000001', true),
   ('b0000000-0000-4000-8000-000000000002', 'Test Arena South', 'Limassol', 'Artificial grass', 2, '09:00', '23:00', 50, null, false);
+
+select public.init_venue_model_from_legacy(id) from public.venues;

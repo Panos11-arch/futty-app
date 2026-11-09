@@ -40,7 +40,12 @@ begin
 end;
 $$;
 
--- A venue with sensible defaults; override what a test cares about.
+-- A venue with sensible defaults; override what a test cares about. Built
+-- the way the P3 migration converts existing venues
+-- (init_venue_model_from_legacy): p_pitches 5-a-side pitches, neighbours
+-- combining for 7s / 9s / 11s, the same hours every day and p_price per
+-- pitch per hour in every price band. p_pitches => 0 gives a venue with
+-- hours only, for tests that add their own pitches and prices.
 create or replace function tests.create_venue(
   p_owner uuid default null,
   p_price numeric default 60,
@@ -49,18 +54,69 @@ create or replace function tests.create_venue(
   p_close time default '23:00'
 )
 returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+begin
+  insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour, owner_profile_id)
+  values ('Test venue ' || gen_random_uuid(), p_pitches, p_open, p_close, p_price, p_owner)
+  returning id into v_id;
+  perform public.init_venue_model_from_legacy(v_id);
+  return v_id;
+end;
+$$;
+
+-- A named pitch. p_formats defaults to the pitch's own size.
+create or replace function tests.create_pitch(
+  p_venue uuid,
+  p_name text,
+  p_size text default '5-a-side',
+  p_formats text[] default null,
+  p_sort integer default 0
+)
+returns uuid
 language sql
 security definer
 set search_path = ''
 as $$
-  insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour, owner_profile_id)
-  values ('Test venue ' || gen_random_uuid(), p_pitches, p_open, p_close, p_price, p_owner)
+  insert into public.pitches (venue_id, name, size, formats, sort_order)
+  values (p_venue, p_name, p_size, coalesce(p_formats, array[p_size]), p_sort)
   returning id;
 $$;
+
+-- Price per hour for a format, in cents: peak, off-peak, weekend.
+create or replace function tests.set_price(p_venue uuid, p_format text, p_peak integer, p_offpeak integer, p_weekend integer)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.price_rules (venue_id, format, peak_cents, offpeak_cents, weekend_cents)
+  values (p_venue, p_format, p_peak, p_offpeak, p_weekend)
+  on conflict (venue_id, format) do update
+    set peak_cents = excluded.peak_cents, offpeak_cents = excluded.offpeak_cents, weekend_cents = excluded.weekend_cents;
+$$;
+
 
 -- Today's date in Cyprus, the day book_slot's windows count from.
 create or replace function tests.cyprus_today()
 returns date language sql stable as $$ select (now() at time zone 'Asia/Nicosia')::date $$;
+
+-- The first day from tomorrow on with this ISO weekday (1 = Monday ... 7 =
+-- Sunday), so always inside the 7-day booking window.
+create or replace function tests.next_weekday(p_isodow integer)
+returns date
+language sql
+stable
+as $$
+  select d::date
+  from generate_series(tests.cyprus_today() + 1, tests.cyprus_today() + 7, interval '1 day') as d
+  where extract(isodow from d) = p_isodow
+  limit 1;
+$$;
 
 -- Runs `p_sql` and returns the exception message it raised, or null if it
 -- succeeded. Lets a test assert on the error code without its own
@@ -115,4 +171,6 @@ $$;
 
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
+revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
+revoke all on function tests.set_price(uuid, text, integer, integer, integer) from public;
 grant execute on all functions in schema tests to anon, authenticated, service_role;

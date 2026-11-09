@@ -120,7 +120,8 @@ create table if not exists public.booking_pitches (
 
 -- Venue data is public to signed-in users; writes go through Futty (service
 -- role) or the venue functions. Who holds which pitch follows booking
--- visibility.
+-- visibility. Blocks are the venue staff's own: players see their effect
+-- through venue_free_slots / venue_day_availability, not who blocked or why.
 alter table public.pitches enable row level security;
 alter table public.pitch_combinations enable row level security;
 alter table public.opening_hours enable row level security;
@@ -134,12 +135,19 @@ create policy "Signed-in users read pitch combinations" on public.pitch_combinat
 create policy "Signed-in users read opening hours" on public.opening_hours for select to authenticated using (true);
 create policy "Signed-in users read closures" on public.venue_closures for select to authenticated using (true);
 create policy "Signed-in users read prices" on public.price_rules for select to authenticated using (true);
-create policy "Signed-in users read venue blocks" on public.venue_blocks for select to authenticated using (true);
+create policy "Venue owners manage their blocks" on public.venue_blocks
+  for all to authenticated
+  using (exists (select 1 from public.venues v where v.id = venue_blocks.venue_id and v.owner_profile_id = auth.uid()))
+  with check (
+    created_by = auth.uid()
+    and exists (select 1 from public.venues v where v.id = venue_blocks.venue_id and v.owner_profile_id = auth.uid())
+  );
 create policy "People in a booking read its pitches" on public.booking_pitches
   for select to authenticated using (public.can_view_booking(booking_id));
 
 grant select on public.pitches, public.pitch_combinations, public.opening_hours, public.venue_closures,
   public.price_rules, public.venue_blocks, public.booking_pitches to authenticated;
+grant insert, update, delete on public.venue_blocks to authenticated;
 grant all on public.pitches, public.pitch_combinations, public.opening_hours, public.venue_closures,
   public.price_rules, public.venue_blocks, public.booking_pitches to service_role;
 

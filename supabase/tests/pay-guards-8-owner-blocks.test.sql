@@ -14,9 +14,9 @@ declare
 begin
   update public.profiles set role = 'venue_owner' where id in (v_owner, v_other_owner);
 
-  -- A player takes both pitches 12:00-13:00.
+  -- A player takes both pitches 12:00-13:00 (a 7-a-side on the two combined).
   perform tests.act_as(v_player);
-  perform public.book_slot(v_venue, v_day, '12:00', '13:00', 2, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_day, '12:00', '13:00', 2, '7-a-side', 5);
 
   -- The owner blocks one pitch at 14:00.
   perform tests.act_as(v_owner);
@@ -36,7 +36,7 @@ begin
   -- Cancel it, fill its slot, then reinstating it is refused.
   update public.venue_bookings set status = 'cancelled' where id = v_block;
   perform tests.act_as(v_player);
-  perform public.book_slot(v_venue, v_day, '14:00', '15:00', 2, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_day, '14:00', '15:00', 2, '7-a-side', 5);
   perform tests.act_as(v_owner);
   v_error := tests.error_of(format('update public.venue_bookings set status = ''confirmed'' where id = %L', v_block));
   assert v_error = 'slot_full', format('reinstating a block into a full slot: got %s', coalesce(v_error, 'success'));

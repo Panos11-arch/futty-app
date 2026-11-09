@@ -4,7 +4,8 @@ begin;
 -- Run as postgres: switch the 6 v 6 flag on for one venue.
 create temporary table ids as
 select tests.create_user('players-test@futty.test') as booker,
-       tests.create_venue(p_price => 60) as plain_venue,
+       -- 4 pitches, so 9s and 11s (3 and 4 pitches combined) fit too.
+       tests.create_venue(p_price => 60, p_pitches => 4) as plain_venue,
        tests.create_venue(p_price => 60) as six_venue;
 update public.venues set allows_6v6_on_5s = true where id = (select six_venue from ids);
 grant select on ids to authenticated;
