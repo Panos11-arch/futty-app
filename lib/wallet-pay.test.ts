@@ -5,7 +5,7 @@ const appJson = require('../app.json');
 
 describe('Apple Pay merchant ID', () => {
   it('is the one registered in the Apple Developer portal', () => {
-    expect(APPLE_PAY_MERCHANT_ID).toBe('merchant.com.futty.app');
+    expect(APPLE_PAY_MERCHANT_ID).toBe('merchant.com.panosalepis.futtyapp');
   });
 
   it('matches the Stripe plugin in app.json', () => {

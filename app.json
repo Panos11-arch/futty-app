@@ -70,7 +70,7 @@
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.futty.app",
+          "merchantIdentifier": "merchant.com.panosalepis.futtyapp",
           "enableGooglePay": true
         }
       ],
