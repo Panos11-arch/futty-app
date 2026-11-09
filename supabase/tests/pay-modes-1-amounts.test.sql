@@ -182,35 +182,38 @@ begin
 
   v_share := tests.join_booking(v_booking.id, v_cash);
   perform tests.act_as_service_role();
-  v_prepared := public.prepare_share_payment(v_share.id, v_cash, 'cash', false);
+  v_prepared := public.plan_share_payment(v_share.id, v_cash, 'cash', false);
   perform tests.act_as_postgres();
   assert (v_prepared ->> 'amount_cents')::int = 80, format('a cash player pays 80 by card, got %s', v_prepared);
   assert (v_prepared ->> 'cash_cents')::int = 600, 'and 600 in cash at the venue';
+  assert (tests.share_of(v_booking.id, v_cash)).payment_method = 'card', 'planning writes nothing';
+
+  v_prepared := tests.pay_share(v_share.id, 'pi_cash_fee', 'cash');
   v_share := tests.share_of(v_booking.id, v_cash);
-  assert (v_share.payment_method, v_share.amount_cents, v_share.cash_cents) = ('cash', 80, 600), 'the share records cash';
+  assert (v_share.payment_method, v_share.amount_cents, v_share.cash_cents, v_share.stripe_payment_intent_id)
+         = ('cash', 80, 600, 'pi_cash_fee'), 'the share records cash, with its intent';
 
   -- Switching back to card puts the pitch part back on the card.
   perform tests.act_as_service_role();
-  v_prepared := public.prepare_share_payment(v_share.id, v_cash, 'card', false);
+  v_prepared := public.plan_share_payment(v_share.id, v_cash, 'card', false);
   perform tests.act_as_postgres();
   assert (v_prepared ->> 'amount_cents')::int = 680, 'card again: 680';
 
-  -- Premium cash player: nothing by card, so nothing to authorise; the spot
-  -- is settled at once.
+  -- Premium cash player who isn't the booker: nothing by card, but every
+  -- player paying in the app saves a card, which P4c builds. Until then:
+  -- refused, never let through without one.
   perform tests.act_as_service_role();
-  v_prepared := public.prepare_share_payment((tests.share_of(v_booking.id, v_premium)).id, v_premium, 'cash', false);
-  perform tests.act_as_postgres();
-  assert (v_prepared ->> 'amount_cents')::int = 0 and v_prepared ->> 'status' = 'paid',
-    format('a Premium cash player pays 0 by card, got %s', v_prepared);
-
-  perform tests.act_as_service_role();
-  assert tests.error_of(format($q$ select public.prepare_share_payment(%L, %L, 'cash', false) $q$,
+  assert tests.error_of(format($q$ select public.plan_share_payment(%L, %L, 'cash', false) $q$,
+                               (tests.share_of(v_booking.id, v_premium)).id, v_premium)) = 'saved_card_required',
+    'a Premium cash player is refused until a card can be saved';
+  assert tests.error_of(format($q$ select public.plan_share_payment(%L, %L, 'cash', false) $q$,
                                (tests.share_of(v_paid_all.id, v_booker)).id, v_booker)) = 'cash_not_allowed',
     'no cash when the booker pays for everyone';
-  assert tests.error_of(format($q$ select public.prepare_share_payment(%L, %L, 'card', false) $q$,
+  assert tests.error_of(format($q$ select public.plan_share_payment(%L, %L, 'card', false) $q$,
                                (tests.share_of(v_booking.id, v_booker)).id, v_cash)) = 'not_your_share',
     'a player can only pay their own share';
   perform tests.act_as_postgres();
+  assert (tests.share_of(v_booking.id, v_premium)).status = 'pending', 'the refused share stays unpaid';
 end $$;
 
 -- The mode is required: no silent default on money (decided 9 November).

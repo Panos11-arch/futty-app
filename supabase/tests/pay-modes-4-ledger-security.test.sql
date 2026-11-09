@@ -11,13 +11,13 @@ declare
   v_booking uuid := gen_random_uuid();
 begin
   perform tests.act_as_service_role();
-  assert public.record_money_movement(v_booking, null, null, 'cancel', 680, 'pi_ledger', 'booking_cancelled'),
+  assert public.record_money_movement(v_booking, null, null, 'cancel', 680, 'pi_ledger', 'pi_ledger', 'booking_cancelled'),
     'first time: recorded';
-  assert not public.record_money_movement(v_booking, null, null, 'cancel', 680, 'pi_ledger', 'booking_cancelled'),
+  assert not public.record_money_movement(v_booking, null, null, 'cancel', 680, 'pi_ledger', 'pi_ledger', 'booking_cancelled'),
     'second time: already there';
-  assert tests.error_of(format($q$ select public.record_money_movement(%L, null, null, 'gift', 1, 'pi_x', 'x') $q$, v_booking))
+  assert tests.error_of(format($q$ select public.record_money_movement(%L, null, null, 'gift', 1, 'pi_x', 'pi_x', 'x') $q$, v_booking))
          like '%money_ledger_kind_check%', 'only known kinds';
-  assert tests.error_of(format($q$ select public.record_money_movement(%L, null, null, 'hold', 1, 'pi_y', '') $q$, v_booking))
+  assert tests.error_of(format($q$ select public.record_money_movement(%L, null, null, 'hold', 1, 'pi_y', 'pi_y', '') $q$, v_booking))
          like '%money_ledger_reason_check%', 'every movement has a reason';
   perform tests.act_as_postgres();
   assert (select count(*) from public.money_ledger where booking_id = v_booking) = 1, 'one row';
@@ -43,18 +43,34 @@ begin
 
   foreach v_fn in array array[
     'money_share(integer, integer, text, boolean, boolean, text)',
-    'prepare_share_payment(uuid, uuid, text, boolean)',
+    'money_capture_due_at(timestamptz, timestamptz)',
+    'money_payment_window_ends_at(timestamptz)',
+    'share_payment_plan(public.booking_payment_shares, uuid, text, boolean)',
+    'plan_share_payment(uuid, uuid, text, boolean)',
+    'attach_share_intent(uuid, uuid, text, boolean, text, integer, text, text)',
+    'attach_share_setup(uuid, uuid, text, text, text)',
     'set_share_payment_intent(uuid, text)',
     'set_stripe_customer(uuid, text)',
-    'share_payment_held(text, integer, text)',
-    'share_payment_captured(text, integer, text)',
-    'share_card_saved(uuid, text, text)',
+    'share_payment_held(uuid, text, integer, text, timestamptz)',
+    'share_payment_captured(uuid, text, integer, text, integer, integer, timestamptz)',
+    'share_card_saved(uuid, text, text, timestamptz)',
     'shares_due_for_capture()',
-    'share_captured(uuid, integer)',
+    'share_captured(uuid, integer, integer)',
+    'expire_unpaid_booking(uuid)',
+    'bookings_past_payment_window()',
     'guarantees_due_for_hold(uuid)',
     'guarantee_hold_placed(uuid, text, integer)',
-    'guarantee_hold_failed(uuid, text, text)',
-    'record_money_movement(uuid, uuid, uuid, text, integer, text, text)',
+    'guarantee_hold_failed(uuid, text, text, boolean)',
+    'guarantee_for_card_update(uuid, uuid)',
+    'guarantee_card_replaced(uuid, uuid, text)',
+    'record_money_movement(uuid, uuid, uuid, text, integer, text, text, text, integer, integer, integer)',
+    'record_intent_capture(uuid, uuid, uuid, text, integer, integer, integer, text)',
+    'record_intent_refund(text, text, integer, text)',
+    'money_balance(uuid)',
+    'queue_money_release(uuid, uuid, uuid, text, text, text)',
+    'money_releases_due()',
+    'money_release_attempted(uuid, boolean, text, text)',
+    'money_release_done(uuid, uuid, uuid, text, text)',
     'booking_money_to_release(uuid)',
     'share_released(uuid, text)',
     'guarantee_released(uuid)'
@@ -109,13 +125,10 @@ begin
   select id into v_guarantee from public.booking_guarantees where booking_id = v_booking.id;
 
   perform tests.act_as_service_role();
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_booker)).id, 'pi_c_booker');
-  perform public.share_payment_held('pi_c_booker', 680, 'pm_c');
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_held)).id, 'pi_c_held');
-  perform public.share_payment_held('pi_c_held', 680, 'pm_h');
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_paid)).id, 'pi_c_paid');
-  perform public.share_payment_held('pi_c_paid', 680, 'pm_p');
-  perform public.share_captured((tests.share_of(v_booking.id, v_paid)).id, 680);
+  perform tests.hold_share((tests.share_of(v_booking.id, v_booker)).id, 'pi_c_booker', 'pm_c');
+  perform tests.hold_share((tests.share_of(v_booking.id, v_held)).id, 'pi_c_held', 'pm_h');
+  perform tests.hold_share((tests.share_of(v_booking.id, v_paid)).id, 'pi_c_paid', 'pm_p');
+  perform public.share_captured((tests.share_of(v_booking.id, v_paid)).id, 680, 35);
   perform public.guarantee_hold_placed(v_guarantee, 'pi_c_guarantee', 6000);
 
   select array_agg(kind || ':' || status || ':' || coalesce(stripe_payment_intent_id, '-') || ':' || amount_cents order by kind, stripe_payment_intent_id)

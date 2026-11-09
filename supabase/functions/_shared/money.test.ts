@@ -48,14 +48,28 @@ Deno.test('the card charge follows from a share\'s breakdown', () => {
 });
 
 Deno.test('idempotency keys are built from our ids and stable on retry', () => {
-  strictEqual(idempotencyKeys.shareIntent('s1', null), 'share-s1-after-none');
-  strictEqual(idempotencyKeys.shareIntent('s1', 'pi_old'), 'share-s1-after-pi_old');
+  const card = { shareId: 's1', amountCents: 680, method: 'card', captureMethod: 'manual', previousIntentId: null } as const;
+  strictEqual(idempotencyKeys.shareIntent(card), 'share-s1-680-card-manual-after-none');
+  strictEqual(idempotencyKeys.shareIntent(card), idempotencyKeys.shareIntent({ ...card }), 'the same request, the same key');
+  strictEqual(idempotencyKeys.shareIntent({ ...card, previousIntentId: 'pi_old' }), 'share-s1-680-card-manual-after-pi_old');
+  strictEqual(idempotencyKeys.legacyShareIntent('s1', null), 'share-s1-after-none');
   strictEqual(idempotencyKeys.capture('s1'), 'capture-share-s1');
-  strictEqual(idempotencyKeys.capture('s1'), idempotencyKeys.capture('s1'));
   strictEqual(idempotencyKeys.cancelIntent('pi_1'), 'cancel-pi_1');
-  strictEqual(idempotencyKeys.refundShare('s1'), 'refund-share-s1');
-  strictEqual(idempotencyKeys.refundBooking('b1'), 'refund-booking-b1');
+  strictEqual(idempotencyKeys.refund('pi_1', 'booking_cancelled', 680), 'refund-pi_1-booking_cancelled-680');
   strictEqual(idempotencyKeys.guaranteeHold('g1', 1), 'guarantee-g1-attempt-1');
+  strictEqual(idempotencyKeys.guaranteeCard('g1', 'pm_1'), 'guarantee-card-g1-after-pm_1');
+  strictEqual(idempotencyKeys.guaranteeCard('g1', null), 'guarantee-card-g1-after-none');
   strictEqual(idempotencyKeys.customer('p1'), 'customer-p1');
-  strictEqual(idempotencyKeys.shareCardSetup('s1'), 'setup-share-s1');
+  strictEqual(idempotencyKeys.shareCardSetup('s1', 'cash', null), 'setup-share-s1-cash-after-none');
+});
+
+Deno.test('a retry with a different amount, method or timing gets a new key', () => {
+  const card = { shareId: 's1', amountCents: 680, method: 'card', captureMethod: 'manual', previousIntentId: null } as const;
+  const keys = new Set([
+    idempotencyKeys.shareIntent(card),
+    idempotencyKeys.shareIntent({ ...card, amountCents: 80, method: 'cash' }),
+    idempotencyKeys.shareIntent({ ...card, captureMethod: 'automatic' }),
+    idempotencyKeys.shareIntent({ ...card, amountCents: 600 }),
+  ]);
+  strictEqual(keys.size, 4);
 });

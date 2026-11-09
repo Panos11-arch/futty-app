@@ -71,20 +71,34 @@ export function cardChargeCents(share: { pitch_cents: number; fee_cents: number;
 }
 
 /** Every Stripe idempotency key, built from our row ids, so a retried call
- *  is the same request to Stripe and money never moves twice. */
+ *  is the same request to Stripe and money never moves twice. A key names
+ *  everything the request carries (amount, method, timing), so a retry with
+ *  different parameters is a new request, never a clash with the old one. */
 export const idempotencyKeys = {
-  /** A share's PaymentIntent; a new one only after the previous was cancelled. */
-  shareIntent: (shareId: string, previousIntentId: string | null) => `share-${shareId}-after-${previousIntentId ?? 'none'}`,
+  /** A share's PaymentIntent, for one amount, method and capture method,
+   *  replacing previousIntentId (cancelled first). */
+  shareIntent: ({ shareId, amountCents, method, captureMethod, previousIntentId }: {
+    shareId: string;
+    amountCents: number;
+    method: PaymentMethod;
+    captureMethod: 'manual' | 'automatic';
+    previousIntentId: string | null;
+  }) => `share-${shareId}-${amountCents}-${method}-${captureMethod}-after-${previousIntentId ?? 'none'}`,
+  /** A share of a booking from before P4a (one amount, one method). */
+  legacyShareIntent: (shareId: string, previousIntentId: string | null) => `share-${shareId}-after-${previousIntentId ?? 'none'}`,
   /** Taking a held share. */
   capture: (shareId: string) => `capture-share-${shareId}`,
   /** Cancelling (releasing) any PaymentIntent. */
   cancelIntent: (intentId: string) => `cancel-${intentId}`,
-  refundShare: (shareId: string) => `refund-share-${shareId}`,
-  /** A booking from before split payments, paid as one intent. */
-  refundBooking: (bookingId: string) => `refund-booking-${bookingId}`,
+  /** Refunding what's left on an intent, for one reason. */
+  refund: (intentId: string, reason: string, amountCents: number) => `refund-${intentId}-${reason}-${amountCents}`,
   /** The booker's guarantee hold; each retry after a failure is a new attempt. */
   guaranteeHold: (guaranteeId: string, attempt: number) => `guarantee-${guaranteeId}-attempt-${attempt}`,
+  /** The booker replacing their guarantee card; a new key once a new card is saved. */
+  guaranteeCard: (guaranteeId: string, currentPaymentMethodId: string | null) =>
+    `guarantee-card-${guaranteeId}-after-${currentPaymentMethodId ?? 'none'}`,
   customer: (profileId: string) => `customer-${profileId}`,
   /** Saving a card for a share with nothing to charge. */
-  shareCardSetup: (shareId: string) => `setup-share-${shareId}`,
+  shareCardSetup: (shareId: string, method: PaymentMethod, previousIntentId: string | null) =>
+    `setup-share-${shareId}-${method}-after-${previousIntentId ?? 'none'}`,
 };

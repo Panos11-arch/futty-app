@@ -1,5 +1,6 @@
-// Scheduled job (pg_cron + pg_net, every 5 minutes): takes shares 60 minutes
-// after they were held and places the bookers' guarantee holds. See
+// Scheduled job (pg_cron + pg_net, every minute): takes shares when their free
+// hour ends, expires unpaid bookings, places the bookers' guarantee holds and
+// retries failed releases. See
 // handler.ts. Authenticated by the cron secret, like cancel-unpaid-bookings.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -33,12 +34,14 @@ Deno.serve(async (req) => {
 // 2. Deploy WITHOUT JWT verification (pg_net calls it with the cron secret):
 //      supabase functions deploy run-payment-jobs --no-verify-jwt
 //
-// 3. Schedule it every 5 minutes, the same way as cancel-unpaid-bookings:
-//      select cron.schedule('run-payment-jobs', '*/5 * * * *', $$
+// 3. Schedule it every minute, the same way as cancel-unpaid-bookings:
+//      select cron.schedule('run-payment-jobs', '* * * * *', $$
 //        select net.http_post(
 //          url := 'https://<project-ref>.supabase.co/functions/v1/run-payment-jobs',
 //          headers := jsonb_build_object('x-cron-secret', '<CRON_SECRET>')
 //        );
 //      $$);
-//    A share is taken on the first run at or after 60 minutes, so 60-65
-//    minutes after its hold; never before.
+//    A share is taken on the first run after its free hour ends, so within
+//    a minute of it, never before. An unpaid booking is cancelled within a
+//    minute of its 15-minute window closing; a payment Stripe reports after
+//    the window is refused by event time whenever its webhook arrives.

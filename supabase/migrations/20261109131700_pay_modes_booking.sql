@@ -177,7 +177,8 @@ grant execute on function public.book_slot(uuid, date, time, time, integer, text
 -- A player joining a booking (invite accepted, squad post joined, added by
 -- the booker). New bookings price the share with money_share; in a booking
 -- the booker paid for in full, the spot is 'covered'. Bookings before P4a
--- keep the old maths.
+-- keep the old maths. Only active shares count toward capacity: a spot
+-- whose share was cancelled or refunded is free again.
 create or replace function public.add_booking_share_internal(p_booking_id uuid, p_profile_id uuid)
 returns void
 language plpgsql
@@ -200,7 +201,7 @@ begin
 
   select count(*) into v_current_count
   from public.booking_payment_shares
-  where booking_id = p_booking_id;
+  where booking_id = p_booking_id and status not in ('cancelled', 'refunded');
 
   if v_current_count >= v_total_needed then
     return; -- booking already has a share for every slot
@@ -256,20 +257,139 @@ as $$
   where p.id = p_post_id and b.status <> 'cancelled' and b.amount_cents > 0;
 $$;
 
--- Called by create-share-payment, as the verified caller, before any Stripe
--- call. Checks the share is theirs and unpaid, recomputes it from the venue
--- price (Premium as of now) for the chosen method, and decides the timing:
--- held and taken 60 minutes later, or, less than 6 hours before kickoff,
--- taken at once after the player accepts "This booking is non-refundable"
--- (the acceptance time is stored). Nothing to pay by card settles the share
--- now, except a responsible booker whose card the guarantee still needs
--- (needs_saved_card: the function saves it with a SetupIntent).
--- Bookings before P4a are checked and returned unchanged (payment_mode null).
-create or replace function public.prepare_share_payment(
+-- Internal: what paying this share now would be. Checks it's the caller's
+-- share, unpaid, on a live booking, and (for the booker) inside the
+-- 15-minute payment window; recomputes it from the venue price (Premium as
+-- of now) for the chosen method; and decides the timing: held and taken
+-- when the free hour ends, or, less than 6 hours before kickoff, taken at
+-- once, only after the player accepts "This booking is non-refundable".
+-- Writes nothing.
+--
+-- Every player paying in the app saves a card (spec 13). A share with
+-- nothing to charge saves one with a SetupIntent (needs_saved_card); P4a
+-- builds that for the each-pays booker only.
+-- TODO(P4c): a Premium cash player who isn't the booker, and a player paying
+-- fully with venue credit, save a card the same way. Until then they are
+-- refused (saved_card_required) rather than let through without one.
+create or replace function public.share_payment_plan(
+  p_share public.booking_payment_shares,
+  p_profile_id uuid,
+  p_method text,
+  p_accept_non_refundable boolean
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_booking public.venue_bookings;
+  v_amounts record;
+  v_non_refundable boolean := false;
+  v_needs_card boolean := false;
+  v_customer text;
+begin
+  if p_share.id is null then
+    raise exception 'share_not_found';
+  end if;
+  if p_share.profile_id is distinct from p_profile_id then
+    raise exception 'not_your_share';
+  end if;
+  if p_share.status <> 'pending' then
+    raise exception 'share_not_pending';
+  end if;
+  select * into v_booking from public.venue_bookings where id = p_share.booking_id;
+  if v_booking.status = 'cancelled' then
+    raise exception 'booking_cancelled';
+  end if;
+  select stripe_customer_id into v_customer from public.profiles where id = p_profile_id;
+
+  if v_booking.payment_mode is null then
+    return jsonb_build_object(
+      'share_id', p_share.id, 'booking_id', p_share.booking_id, 'is_booker', p_share.is_booker,
+      'payment_mode', null, 'status', p_share.status, 'payment_method', p_share.payment_method,
+      'amount_cents', p_share.amount_cents, 'stripe_payment_intent_id', p_share.stripe_payment_intent_id,
+      'stripe_customer_id', v_customer, 'needs_saved_card', false);
+  end if;
+
+  if p_share.is_booker and v_booking.status = 'pending_payment'
+     and now() > public.money_payment_window_ends_at(v_booking.created_at) then
+    raise exception 'payment_window_closed';
+  end if;
+
+  select * into v_amounts from public.money_share(
+    v_booking.amount_cents, v_booking.capacity, v_booking.payment_mode, p_share.is_booker,
+    exists (select 1 from public.profiles where id = p_profile_id and is_premium), p_method);
+
+  v_non_refundable := public.money_is_non_refundable(now(), public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time));
+  if v_non_refundable and not coalesce(p_accept_non_refundable, false) then
+    raise exception 'non_refundable_not_accepted';
+  end if;
+
+  if v_amounts.card_cents = 0 then
+    if not (p_share.is_booker and v_booking.payment_mode in ('each_pays_responsible', 'each_pays_own_spot')) then
+      raise exception 'saved_card_required';
+    end if;
+    v_needs_card := true;
+  end if;
+
+  return jsonb_build_object(
+    'share_id', p_share.id,
+    'booking_id', p_share.booking_id,
+    'is_booker', p_share.is_booker,
+    'payment_mode', v_booking.payment_mode,
+    'status', p_share.status,
+    'payment_method', p_method,
+    'amount_cents', v_amounts.card_cents,
+    'pitch_cents', v_amounts.pitch_cents,
+    'fee_cents', v_amounts.fee_cents,
+    'cash_cents', v_amounts.cash_cents,
+    'capture_method', case when v_non_refundable then 'immediate' else 'manual' end,
+    'non_refundable', v_non_refundable,
+    'stripe_payment_intent_id', p_share.stripe_payment_intent_id,
+    'stripe_customer_id', v_customer,
+    'needs_saved_card', v_needs_card
+  );
+end;
+$$;
+
+-- create-share-payment, step 1, as the verified caller, before any Stripe
+-- call: the plan, with nothing written. The share keeps describing its
+-- current intent until attach_share_intent swaps both together.
+create or replace function public.plan_share_payment(
   p_share_id uuid,
   p_profile_id uuid,
   p_method text,
   p_accept_non_refundable boolean
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.share_payment_plan(s, p_profile_id, p_method, p_accept_non_refundable)
+  from (select 1) one
+  left join public.booking_payment_shares s on s.id = p_share_id;
+$$;
+
+-- create-share-payment, step 2: the intent Stripe created for the plan is
+-- put on the share together with its breakdown, method and timing, in one
+-- write. Refused (share_changed) unless the share still has the intent the
+-- caller saw (p_expected_intent_id) and the plan, recomputed now, is exactly
+-- the intent's amount and capture method. So a share's amounts never change
+-- under an intent that can still be paid; the caller cancels a refused
+-- intent.
+create or replace function public.attach_share_intent(
+  p_share_id uuid,
+  p_profile_id uuid,
+  p_method text,
+  p_accept_non_refundable boolean,
+  p_intent_id text,
+  p_intent_amount_cents integer,
+  p_intent_capture_method text,
+  p_expected_intent_id text
 )
 returns jsonb
 language plpgsql
@@ -278,89 +398,93 @@ set search_path = ''
 as $$
 declare
   v_share public.booking_payment_shares;
-  v_booking public.venue_bookings;
-  v_amounts record;
-  v_non_refundable boolean;
-  v_needs_card boolean := false;
-  v_customer text;
+  v_plan jsonb;
 begin
   select * into v_share from public.booking_payment_shares where id = p_share_id for update;
-  if v_share.id is null then
-    raise exception 'share_not_found';
+  v_plan := public.share_payment_plan(v_share, p_profile_id, p_method, p_accept_non_refundable);
+  if v_plan ->> 'payment_mode' is null then
+    raise exception 'legacy_booking';
   end if;
-  if v_share.profile_id is distinct from p_profile_id then
-    raise exception 'not_your_share';
-  end if;
-  if v_share.status <> 'pending' then
-    raise exception 'share_not_pending';
-  end if;
-  select * into v_booking from public.venue_bookings where id = v_share.booking_id;
-  if v_booking.status = 'cancelled' then
-    raise exception 'booking_cancelled';
-  end if;
-  select stripe_customer_id into v_customer from public.profiles where id = p_profile_id;
-
-  if v_booking.payment_mode is not null then
-    select * into v_amounts from public.money_share(
-      v_booking.amount_cents, v_booking.capacity, v_booking.payment_mode, v_share.is_booker,
-      exists (select 1 from public.profiles where id = p_profile_id and is_premium), p_method);
-
-    v_non_refundable := public.money_is_non_refundable(now(), public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time));
-    if v_non_refundable and not coalesce(p_accept_non_refundable, false) then
-      raise exception 'non_refundable_not_accepted';
-    end if;
-
-    v_needs_card := v_amounts.card_cents = 0 and exists (
-      select 1 from public.booking_guarantees g
-      where g.booking_id = v_booking.id and g.profile_id = p_profile_id and g.status = 'awaiting_card'
-    );
-
-    update public.booking_payment_shares
-    set payment_method = p_method,
-        pitch_cents = v_amounts.pitch_cents,
-        fee_cents = v_amounts.fee_cents,
-        cash_cents = v_amounts.cash_cents,
-        amount_cents = v_amounts.card_cents,
-        capture_method = case when v_non_refundable then 'immediate' else 'manual' end,
-        non_refundable_accepted_at = case when v_non_refundable then now() end,
-        status = case when v_amounts.card_cents = 0 and not v_needs_card then 'paid' else status end,
-        paid_at = case when v_amounts.card_cents = 0 and not v_needs_card then now() else paid_at end
-    where id = p_share_id
-    returning * into v_share;
-
-    -- A booker with nothing to pay by card holds the pitch straight away.
-    if v_share.status = 'paid' and v_share.is_booker then
-      update public.venue_bookings set status = 'confirmed' where id = v_booking.id and status = 'pending_payment';
-    end if;
+  if v_share.stripe_payment_intent_id is distinct from p_expected_intent_id
+     or (v_plan ->> 'needs_saved_card')::boolean
+     or (v_plan ->> 'amount_cents')::integer is distinct from p_intent_amount_cents
+     or v_plan ->> 'capture_method' is distinct from p_intent_capture_method then
+    raise exception 'share_changed';
   end if;
 
-  return jsonb_build_object(
-    'share_id', v_share.id,
-    'booking_id', v_share.booking_id,
-    'is_booker', v_share.is_booker,
-    'payment_mode', v_booking.payment_mode,
-    'status', v_share.status,
-    'payment_method', v_share.payment_method,
-    'amount_cents', v_share.amount_cents,
-    'pitch_cents', v_share.pitch_cents,
-    'fee_cents', v_share.fee_cents,
-    'cash_cents', v_share.cash_cents,
-    'capture_method', v_share.capture_method,
-    'non_refundable', coalesce(v_share.capture_method = 'immediate', false),
-    'stripe_payment_intent_id', v_share.stripe_payment_intent_id,
-    'stripe_customer_id', v_customer,
-    'needs_saved_card', v_needs_card
-  );
+  update public.booking_payment_shares
+  set stripe_payment_intent_id = p_intent_id,
+      stripe_setup_intent_id = null,
+      payment_method = p_method,
+      pitch_cents = (v_plan ->> 'pitch_cents')::integer,
+      fee_cents = (v_plan ->> 'fee_cents')::integer,
+      cash_cents = (v_plan ->> 'cash_cents')::integer,
+      amount_cents = (v_plan ->> 'amount_cents')::integer,
+      capture_method = v_plan ->> 'capture_method',
+      non_refundable_accepted_at = case when coalesce(p_accept_non_refundable, false) then now() end
+  where id = p_share_id;
+
+  return v_plan || jsonb_build_object('stripe_payment_intent_id', p_intent_id);
 end;
 $$;
 
-create or replace function public.set_share_payment_intent(p_share_id uuid, p_intent_id text)
-returns void
-language sql
+-- create-share-payment for a share with nothing to charge by card (a
+-- Premium cash booker): the SetupIntent saving their card goes on the
+-- share with its breakdown. The share's old card intent, if any, was
+-- cancelled first (p_expected_intent_id) and is cleared.
+create or replace function public.attach_share_setup(
+  p_share_id uuid,
+  p_profile_id uuid,
+  p_method text,
+  p_setup_intent_id text,
+  p_expected_intent_id text
+)
+returns jsonb
+language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_share public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  select * into v_share from public.booking_payment_shares where id = p_share_id for update;
+  v_plan := public.share_payment_plan(v_share, p_profile_id, p_method, true);
+  if not coalesce((v_plan ->> 'needs_saved_card')::boolean, false)
+     or v_share.stripe_payment_intent_id is distinct from p_expected_intent_id then
+    raise exception 'share_changed';
+  end if;
+
+  update public.booking_payment_shares
+  set stripe_payment_intent_id = null,
+      stripe_setup_intent_id = p_setup_intent_id,
+      payment_method = p_method,
+      pitch_cents = (v_plan ->> 'pitch_cents')::integer,
+      fee_cents = (v_plan ->> 'fee_cents')::integer,
+      cash_cents = (v_plan ->> 'cash_cents')::integer,
+      amount_cents = 0,
+      capture_method = null
+  where id = p_share_id;
+
+  return v_plan;
+end;
+$$;
+
+-- Bookings from before P4a only: puts the old hold-only intent on a share.
+-- P4a shares go through attach_share_intent.
+create or replace function public.set_share_payment_intent(p_share_id uuid, p_intent_id text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.booking_payment_shares s join public.venue_bookings b on b.id = s.booking_id
+             where s.id = p_share_id and b.payment_mode is not null) then
+    raise exception 'use_attach_share_intent';
+  end if;
   update public.booking_payment_shares set stripe_payment_intent_id = p_intent_id where id = p_share_id;
+end;
 $$;
 
 -- Saves a player's Stripe customer the first time they pay. Never replaces
@@ -374,8 +498,14 @@ as $$
   update public.profiles set stripe_customer_id = p_customer_id where id = p_profile_id and stripe_customer_id is null;
 $$;
 
-revoke all on function public.prepare_share_payment(uuid, uuid, text, boolean) from public, anon, authenticated;
-grant execute on function public.prepare_share_payment(uuid, uuid, text, boolean) to service_role;
+revoke all on function public.share_payment_plan(public.booking_payment_shares, uuid, text, boolean) from public, anon, authenticated;
+grant execute on function public.share_payment_plan(public.booking_payment_shares, uuid, text, boolean) to service_role;
+revoke all on function public.plan_share_payment(uuid, uuid, text, boolean) from public, anon, authenticated;
+grant execute on function public.plan_share_payment(uuid, uuid, text, boolean) to service_role;
+revoke all on function public.attach_share_intent(uuid, uuid, text, boolean, text, integer, text, text) from public, anon, authenticated;
+grant execute on function public.attach_share_intent(uuid, uuid, text, boolean, text, integer, text, text) to service_role;
+revoke all on function public.attach_share_setup(uuid, uuid, text, text, text) from public, anon, authenticated;
+grant execute on function public.attach_share_setup(uuid, uuid, text, text, text) to service_role;
 revoke all on function public.set_share_payment_intent(uuid, text) from public, anon, authenticated;
 grant execute on function public.set_share_payment_intent(uuid, text) to service_role;
 revoke all on function public.set_stripe_customer(uuid, text) from public, anon, authenticated;

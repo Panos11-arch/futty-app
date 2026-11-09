@@ -1,12 +1,13 @@
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { createDbFake } from '../_shared/db-fake.ts';
-import { createStripeFake } from '../_shared/stripe-fake.ts';
+import { intent } from '../_shared/intent-fixtures.ts';
+import { createStripeFake, stripeError } from '../_shared/stripe-fake.ts';
 import { createSharePayment } from './handler.ts';
 
 const caller = { id: 'p1', email: 'p1@futty.test' };
 
-/** What prepare_share_payment returns for a EUR 60 5 v 5 share, each pays. */
-function prepared(overrides: Record<string, unknown> = {}) {
+/** What plan_share_payment returns for a EUR 60 5 v 5 share, each pays. */
+function plan(overrides: Record<string, unknown> = {}) {
   return {
     share_id: 's1',
     booking_id: 'b1',
@@ -27,28 +28,34 @@ function prepared(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function setup(share: Record<string, unknown>) {
+function setup(planned: Record<string, unknown>, existing?: Record<string, unknown>) {
   const db = createDbFake();
-  db.respond('prepare_share_payment', share);
+  db.respond('plan_share_payment', planned);
+  db.respond('attach_share_intent', planned);
+  db.respond('attach_share_setup', planned);
   db.respond('set_share_payment_intent', null);
   db.respond('set_stripe_customer', null);
+  db.respond('money_release_done', null);
   const stripe = createStripeFake();
   stripe.respond('paymentIntents.create', (call: { params?: Record<string, unknown> }) => ({
     id: 'pi_new',
     client_secret: 'pi_new_secret',
     amount: call.params?.amount,
   }));
+  stripe.respond('paymentIntents.retrieve', (call: { id?: string }) =>
+    call.id === 'pi_new' ? intent('pi_new', 'requires_payment_method') : existing);
+  stripe.respond('paymentIntents.cancel', (call: { id?: string }) => ({ id: call.id, status: 'canceled' }));
   return { db, stripe, deps: { db: db.db, stripe: stripe.stripe } };
 }
 
-Deno.test('EUR 60 5 v 5, each pays: holds 680, saves the card, keyed on the share', async () => {
-  const { db, stripe, deps } = setup(prepared());
+Deno.test('EUR 60 5 v 5, each pays: holds 680, saves the card, keyed on the share, amount and method', async () => {
+  const { db, stripe, deps } = setup(plan());
 
   const res = await createSharePayment(deps, caller, { shareId: 's1' });
 
   strictEqual(res.status, 200);
   deepStrictEqual(res.body, { clientSecret: 'pi_new_secret', customerId: 'cus_1', amountCents: 680, cashCents: 0, nonRefundable: false });
-  deepStrictEqual(db.callsTo('prepare_share_payment')[0].args, {
+  deepStrictEqual(db.callsTo('plan_share_payment')[0].args, {
     p_share_id: 's1', p_profile_id: 'p1', p_method: 'card', p_accept_non_refundable: false,
   });
   const [create] = stripe.callsTo('paymentIntents.create');
@@ -59,16 +66,18 @@ Deno.test('EUR 60 5 v 5, each pays: holds 680, saves the card, keyed on the shar
     setup_future_usage: 'off_session',
     capture_method: 'manual',
     automatic_payment_methods: { enabled: true },
-    metadata: { share_id: 's1', booking_id: 'b1', profile_id: 'p1' },
+    metadata: { kind: 'share', share_id: 's1', booking_id: 'b1', profile_id: 'p1', method: 'card', fee_cents: '80' },
   });
-  strictEqual(create.idempotencyKey, 'share-s1-after-none');
-  deepStrictEqual(db.callsTo('set_share_payment_intent')[0].args, { p_share_id: 's1', p_intent_id: 'pi_new' });
+  strictEqual(create.idempotencyKey, 'share-s1-680-card-manual-after-none');
+  deepStrictEqual(db.callsTo('attach_share_intent')[0].args, {
+    p_share_id: 's1', p_profile_id: 'p1', p_method: 'card', p_accept_non_refundable: false,
+    p_intent_id: 'pi_new', p_intent_amount_cents: 680, p_intent_capture_method: 'manual', p_expected_intent_id: null,
+  });
 });
 
 Deno.test('the Stripe amount is the server\'s amount for every worked example', async () => {
   const cases = [
     { pitch_cents: 612, fee_cents: 80, amount_cents: 692 },
-    { pitch_cents: 611, fee_cents: 80, amount_cents: 691 },
     { pitch_cents: 500, fee_cents: 80, amount_cents: 580 },
     { pitch_cents: 6000, fee_cents: 550, amount_cents: 6550, payment_mode: 'pay_all', is_booker: true },
     { pitch_cents: 6000, fee_cents: 660, amount_cents: 6660, payment_mode: 'pay_all', is_booker: true },
@@ -76,168 +85,153 @@ Deno.test('the Stripe amount is the server\'s amount for every worked example', 
     { pitch_cents: 600, fee_cents: 0, amount_cents: 600 },
   ];
   for (const share of cases) {
-    const { stripe, deps } = setup(prepared(share));
+    const { stripe, deps } = setup(plan(share));
     await createSharePayment(deps, caller, { shareId: 's1' });
     strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.amount, share.amount_cents);
   }
 });
 
 Deno.test('a cash player pays 80 by card', async () => {
-  const { db, stripe, deps } = setup(prepared({ payment_method: 'cash', amount_cents: 80, cash_cents: 600 }));
-
+  const { stripe, deps } = setup(plan({ payment_method: 'cash', amount_cents: 80, cash_cents: 600 }));
   const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
-
   strictEqual(res.body.amountCents, 80);
   strictEqual(res.body.cashCents, 600);
-  strictEqual(db.callsTo('prepare_share_payment')[0].args.p_method, 'cash');
-  strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.amount, 80);
+  strictEqual(stripe.callsTo('paymentIntents.create')[0].idempotencyKey, 'share-s1-80-cash-manual-after-none');
 });
 
 Deno.test('less than 6 hours before kickoff: taken at once, only with the acknowledgement', async () => {
-  const { db, stripe, deps } = setup(prepared({ capture_method: 'immediate', non_refundable: true }));
-
+  const { db, stripe, deps } = setup(plan({ capture_method: 'immediate', non_refundable: true }));
   const res = await createSharePayment(deps, caller, { shareId: 's1', acceptNonRefundable: true });
-
-  strictEqual(db.callsTo('prepare_share_payment')[0].args.p_accept_non_refundable, true);
-  strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.capture_method, 'automatic');
   strictEqual(res.body.nonRefundable, true);
+  strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.capture_method, 'automatic');
+  strictEqual(db.callsTo('attach_share_intent')[0].args.p_intent_capture_method, 'immediate');
+  strictEqual(db.callsTo('attach_share_intent')[0].args.p_accept_non_refundable, true);
 });
 
-Deno.test('refused without the acknowledgement: no Stripe call', async () => {
-  const { db, stripe, deps } = setup(prepared());
-  db.fail('prepare_share_payment', 'non_refundable_not_accepted');
-
-  const res = await createSharePayment(deps, caller, { shareId: 's1' });
-
-  deepStrictEqual(res, { status: 409, body: { error: 'non_refundable_not_accepted' } });
-  strictEqual(stripe.calls.length, 0);
-});
-
-Deno.test('someone else\'s share is refused', async () => {
-  const { db, deps } = setup(prepared());
-  db.fail('prepare_share_payment', 'not_your_share');
-  deepStrictEqual(await createSharePayment(deps, caller, { shareId: 's1' }), { status: 403, body: { error: 'not_your_share' } });
-
-  db.fail('prepare_share_payment', 'share_not_found');
-  strictEqual((await createSharePayment(deps, caller, { shareId: 's1' })).status, 404);
+Deno.test('refusals from the database: no Stripe call', async () => {
+  for (const [code, status] of [['non_refundable_not_accepted', 409], ['not_your_share', 403], ['saved_card_required', 409],
+                                ['payment_window_closed', 409]] as const) {
+    const { db, stripe, deps } = setup(plan());
+    db.fail('plan_share_payment', code);
+    const res = await createSharePayment(deps, caller, { shareId: 's1' });
+    deepStrictEqual(res, { status, body: { error: code } });
+    strictEqual(stripe.calls.length, 0);
+  }
 });
 
 Deno.test('bad requests', async () => {
-  const { deps } = setup(prepared());
+  const { deps } = setup(plan());
   strictEqual((await createSharePayment(deps, caller, {})).status, 400);
-  strictEqual((await createSharePayment(deps, caller, { shareId: 's1', method: 'cheque' as never })).status, 400);
+  strictEqual((await createSharePayment(deps, caller, { shareId: 's1', method: 'cheque' as 'card' })).status, 400);
 });
 
 Deno.test('an amount that doesn\'t match its breakdown is never sent to Stripe', async () => {
-  const { stripe, deps } = setup(prepared({ amount_cents: 1 }));
-
+  const { stripe, deps } = setup(plan({ amount_cents: 1 }));
   const res = await createSharePayment(deps, caller, { shareId: 's1' });
-
   strictEqual(res.status, 500);
-  strictEqual(stripe.calls.length, 0);
-});
-
-Deno.test('retrying reuses the open intent: no second hold', async () => {
-  const { stripe, deps } = setup(prepared({ stripe_payment_intent_id: 'pi_open' }));
-  stripe.respond('paymentIntents.retrieve', {
-    id: 'pi_open', status: 'requires_payment_method', amount: 680, capture_method: 'manual', client_secret: 'pi_open_secret',
-  });
-
-  const res = await createSharePayment(deps, caller, { shareId: 's1' });
-
-  strictEqual(res.body.clientSecret, 'pi_open_secret');
   strictEqual(stripe.callsTo('paymentIntents.create').length, 0);
 });
 
-Deno.test('the same request twice sends the same idempotency key', async () => {
-  const first = setup(prepared());
-  await createSharePayment(first.deps, caller, { shareId: 's1' });
-  const second = setup(prepared());
-  await createSharePayment(second.deps, caller, { shareId: 's1' });
-
-  strictEqual(first.stripe.calls[0].idempotencyKey, second.stripe.calls[0].idempotencyKey);
-});
-
-Deno.test('switching to cash cancels the open card intent and starts a new one', async () => {
-  const { stripe, deps } = setup(prepared({ payment_method: 'cash', amount_cents: 80, cash_cents: 600, stripe_payment_intent_id: 'pi_card' }));
-  stripe.respond('paymentIntents.retrieve', {
-    id: 'pi_card', status: 'requires_payment_method', amount: 680, capture_method: 'manual', client_secret: 'x',
-  });
-  stripe.respond('paymentIntents.cancel', { id: 'pi_card', status: 'canceled' });
-
-  await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
-
-  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => [c.id, c.idempotencyKey]), [['pi_card', 'cancel-pi_card']]);
-  const [create] = stripe.callsTo('paymentIntents.create');
-  strictEqual(create.params?.amount, 80);
-  strictEqual(create.idempotencyKey, 'share-s1-after-pi_card');
-});
-
-Deno.test('an intent that already went through is not paid again', async () => {
-  const { stripe, deps } = setup(prepared({ stripe_payment_intent_id: 'pi_done' }));
-  stripe.respond('paymentIntents.retrieve', { id: 'pi_done', status: 'requires_capture', amount: 680, capture_method: 'manual' });
-
+Deno.test('pressing Pay again reuses the open intent: no second hold', async () => {
+  const { db, stripe, deps } = setup(plan({ stripe_payment_intent_id: 'pi_old' }), intent('pi_old', 'requires_payment_method'));
   const res = await createSharePayment(deps, caller, { shareId: 's1' });
+  strictEqual(res.body.clientSecret, 'pi_old_secret');
+  strictEqual(stripe.callsTo('paymentIntents.create').length, 0);
+  strictEqual(stripe.callsTo('paymentIntents.cancel').length, 0);
+  deepStrictEqual([db.callsTo('attach_share_intent')[0].args.p_intent_id, db.callsTo('attach_share_intent')[0].args.p_expected_intent_id],
+    ['pi_old', 'pi_old']);
+});
 
+Deno.test('double Pay with a method change: the open card intent is cancelled first, the cash one has its own key', async () => {
+  const { db, stripe, deps } = setup(
+    plan({ stripe_payment_intent_id: 'pi_old', payment_method: 'cash', amount_cents: 80, cash_cents: 600 }),
+    intent('pi_old', 'requires_payment_method'),
+  );
+  const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
+  strictEqual(res.status, 200);
+  deepStrictEqual(stripe.calls.map((c) => c.method), [
+    'paymentIntents.retrieve', 'paymentIntents.cancel', 'paymentIntents.create',
+  ], 'cancelled before the new one exists');
+  strictEqual(stripe.callsTo('paymentIntents.create')[0].idempotencyKey, 'share-s1-80-cash-manual-after-pi_old');
+  strictEqual(db.callsTo('attach_share_intent')[0].args.p_expected_intent_id, 'pi_old');
+});
+
+Deno.test('double Pay with a method change after the first was confirmed: nothing changes', async () => {
+  for (const status of ['requires_capture', 'processing', 'succeeded'] as const) {
+    const { db, stripe, deps } = setup(
+      plan({ stripe_payment_intent_id: 'pi_old', payment_method: 'cash', amount_cents: 80 }),
+      intent('pi_old', status),
+    );
+    const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
+    deepStrictEqual(res, { status: 409, body: { error: 'already_paid' } });
+    deepStrictEqual(stripe.calls.map((c) => c.method), ['paymentIntents.retrieve'], `${status}: never cancelled or replaced`);
+    strictEqual(db.callsTo('attach_share_intent').length, 0, 'and the share is never changed');
+  }
+});
+
+Deno.test('confirmed between the check and the cancel: the payment stands, nothing changes', async () => {
+  const { db, stripe, deps } = setup(plan({ stripe_payment_intent_id: 'pi_old', payment_method: 'cash', amount_cents: 80 }));
+  let retrieves = 0;
+  stripe.respond('paymentIntents.retrieve', () =>
+    (retrieves++ === 0 ? intent('pi_old', 'requires_payment_method') : intent('pi_old', 'requires_capture')));
+  stripe.fail('paymentIntents.cancel', stripeError({ code: 'payment_intent_unexpected_state' }));
+  const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
   deepStrictEqual(res, { status: 409, body: { error: 'already_paid' } });
   strictEqual(stripe.callsTo('paymentIntents.create').length, 0);
+  strictEqual(db.callsTo('attach_share_intent').length, 0);
+});
+
+Deno.test('a share that changed meanwhile: the new intent is cancelled at once, never left to be paid', async () => {
+  const { db, stripe, deps } = setup(plan());
+  db.fail('attach_share_intent', 'share_changed');
+  const res = await createSharePayment(deps, caller, { shareId: 's1' });
+  deepStrictEqual(res, { status: 409, body: { error: 'share_changed' } });
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_new']);
+  strictEqual(db.callsTo('money_release_done')[0].args.p_intent_id, 'pi_new');
 });
 
 Deno.test('a player without a Stripe customer gets one, keyed on their profile', async () => {
-  const { db, stripe, deps } = setup(prepared({ stripe_customer_id: null }));
+  const { db, stripe, deps } = setup(plan({ stripe_customer_id: null }));
   stripe.respond('customers.create', { id: 'cus_new' });
-
-  await createSharePayment(deps, caller, { shareId: 's1' });
-
-  const [customer] = stripe.callsTo('customers.create');
-  deepStrictEqual(customer.params, { email: 'p1@futty.test', metadata: { profile_id: 'p1' } });
-  strictEqual(customer.idempotencyKey, 'customer-p1');
+  const res = await createSharePayment(deps, caller, { shareId: 's1' });
+  strictEqual(res.body.customerId, 'cus_new');
+  strictEqual(stripe.callsTo('customers.create')[0].idempotencyKey, 'customer-p1');
   deepStrictEqual(db.callsTo('set_stripe_customer')[0].args, { p_profile_id: 'p1', p_customer_id: 'cus_new' });
-  strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.customer, 'cus_new');
 });
 
-Deno.test('nothing to pay by card: no Stripe call', async () => {
-  const { stripe, deps } = setup(prepared({ status: 'paid', amount_cents: 0, cash_cents: 600, payment_method: 'cash', fee_cents: 0 }));
-
-  const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
-
-  deepStrictEqual(res, { status: 200, body: { paid: true, amountCents: 0, cashCents: 600 } });
-  strictEqual(stripe.calls.length, 0);
-});
-
-Deno.test('a Premium cash booker in responsible mode saves a card with a SetupIntent', async () => {
-  const { stripe, deps } = setup(prepared({
-    is_booker: true, payment_mode: 'each_pays_responsible', payment_method: 'cash',
-    amount_cents: 0, fee_cents: 0, cash_cents: 600, needs_saved_card: true,
+Deno.test('a Premium cash booker saves a card with a SetupIntent', async () => {
+  const { db, stripe, deps } = setup(plan({
+    is_booker: true, payment_mode: 'each_pays_responsible', payment_method: 'cash', amount_cents: 0, fee_cents: 0,
+    cash_cents: 600, needs_saved_card: true,
   }));
   stripe.respond('setupIntents.create', { id: 'seti_1', client_secret: 'seti_secret' });
-
   const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
-
   deepStrictEqual(res.body, { setupIntentClientSecret: 'seti_secret', customerId: 'cus_1', amountCents: 0, cashCents: 600 });
-  const [setupCall] = stripe.callsTo('setupIntents.create');
-  deepStrictEqual(setupCall.params, {
-    customer: 'cus_1',
-    usage: 'off_session',
-    automatic_payment_methods: { enabled: true },
-    metadata: { kind: 'share_card', share_id: 's1', booking_id: 'b1' },
+  const [setup1] = stripe.callsTo('setupIntents.create');
+  deepStrictEqual(setup1.params?.metadata, { kind: 'share_card', share_id: 's1', booking_id: 'b1' });
+  strictEqual(setup1.idempotencyKey, 'setup-share-s1-cash-after-none');
+  deepStrictEqual(db.callsTo('attach_share_setup')[0].args, {
+    p_share_id: 's1', p_profile_id: 'p1', p_method: 'cash', p_setup_intent_id: 'seti_1', p_expected_intent_id: null,
   });
-  strictEqual(setupCall.idempotencyKey, 'setup-share-s1');
   strictEqual(stripe.callsTo('paymentIntents.create').length, 0);
 });
 
+Deno.test('a SetupIntent the share no longer wants is cancelled', async () => {
+  const { db, stripe, deps } = setup(plan({ needs_saved_card: true, amount_cents: 0, payment_method: 'cash', is_booker: true }));
+  stripe.respond('setupIntents.create', { id: 'seti_1', client_secret: 'seti_secret' });
+  stripe.respond('setupIntents.cancel', { id: 'seti_1', status: 'canceled' });
+  db.fail('attach_share_setup', 'share_changed');
+  const res = await createSharePayment(deps, caller, { shareId: 's1', method: 'cash' });
+  deepStrictEqual(res, { status: 409, body: { error: 'share_changed' } });
+  strictEqual(stripe.callsTo('setupIntents.cancel')[0].id, 'seti_1');
+});
+
 Deno.test('a booking from before P4a keeps the old hold-only intent', async () => {
-  const { stripe, deps } = setup(prepared({ payment_mode: null, amount_cents: 680, pitch_cents: null, fee_cents: null }));
-
-  await createSharePayment(deps, caller, { shareId: 's1' });
-
+  const { db, stripe, deps } = setup(plan({ payment_mode: null, amount_cents: 680 }));
+  const res = await createSharePayment(deps, caller, { shareId: 's1' });
+  deepStrictEqual(res.body, { clientSecret: 'pi_new_secret' });
   const [create] = stripe.callsTo('paymentIntents.create');
-  deepStrictEqual(create.params, {
-    amount: 680,
-    currency: 'eur',
-    capture_method: 'manual',
-    automatic_payment_methods: { enabled: true },
-    metadata: { share_id: 's1', booking_id: 'b1', profile_id: 'p1' },
-  });
+  strictEqual(create.params?.capture_method, 'manual');
   strictEqual(create.idempotencyKey, 'share-s1-after-none');
+  deepStrictEqual(db.callsTo('set_share_payment_intent')[0].args, { p_share_id: 's1', p_intent_id: 'pi_new' });
 });

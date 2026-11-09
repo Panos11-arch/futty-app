@@ -307,6 +307,67 @@ begin
 end;
 $$;
 
+-- What create-share-payment does for a share: plans it as its owner, then
+-- puts p_intent on it (attach_share_intent) for exactly the planned amount
+-- and timing. Returns the plan.
+create or replace function tests.pay_share(
+  p_share uuid,
+  p_intent text,
+  p_method text default 'card',
+  p_accept boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_share public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  select * into v_share from public.booking_payment_shares where id = p_share;
+  v_plan := public.plan_share_payment(p_share, v_share.profile_id, p_method, p_accept);
+  return public.attach_share_intent(p_share, v_share.profile_id, p_method, p_accept, p_intent,
+    (v_plan ->> 'amount_cents')::integer, v_plan ->> 'capture_method', v_share.stripe_payment_intent_id);
+end;
+$$;
+
+-- pay_share, then Stripe's webhook says the card is held (now).
+create or replace function tests.hold_share(
+  p_share uuid,
+  p_intent text,
+  p_pm text default 'pm_test',
+  p_method text default 'card',
+  p_accept boolean default false
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_plan jsonb := tests.pay_share(p_share, p_intent, p_method, p_accept);
+begin
+  return public.share_payment_held(p_share, p_intent, (v_plan ->> 'amount_cents')::integer, p_pm, now());
+end;
+$$;
+
+-- Moves a booking so it kicks off at p_kickoff (any minute; tests only),
+-- keeping when it was made. For timing tests.
+create or replace function tests.set_kickoff(p_booking uuid, p_kickoff timestamptz)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.venue_bookings
+  set booking_day = (p_kickoff at time zone 'Asia/Nicosia')::date,
+      start_time = (p_kickoff at time zone 'Asia/Nicosia')::time,
+      end_time = case when (p_kickoff at time zone 'Asia/Nicosia')::time >= time '23:29' then time '23:59:59'
+                      else (p_kickoff at time zone 'Asia/Nicosia')::time + interval '30 minutes' end
+  where id = p_booking;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

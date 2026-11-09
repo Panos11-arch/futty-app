@@ -31,9 +31,7 @@ begin
   -- The booker pays their share: the card is saved for the guarantee.
   update public.profiles set stripe_customer_id = 'cus_far' where id = v_booker;
   perform tests.act_as_service_role();
-  perform public.prepare_share_payment((tests.share_of(v_booking.id, v_booker)).id, v_booker, 'card', false);
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_booker)).id, 'pi_far');
-  v_result := public.share_payment_held('pi_far', 680, 'pm_far');
+  v_result := tests.hold_share((tests.share_of(v_booking.id, v_booker)).id, 'pi_far', 'pm_far');
   perform tests.act_as_postgres();
   assert (v_result ->> 'guarantee_due')::boolean = false, 'not due yet';
   select * into v_guarantee from public.booking_guarantees where booking_id = v_booking.id;
@@ -55,8 +53,8 @@ begin
   v_result := public.guarantee_hold_placed(v_guarantee.id, 'pi_guarantee_far', 6000);
   assert v_result ->> 'result' = 'held', format('held, got %s', v_result);
   assert public.guarantee_hold_placed(v_guarantee.id, 'pi_guarantee_far', 6000) ->> 'result' = 'duplicate', 'once';
-  assert tests.error_of(format($q$ select public.guarantee_hold_placed(%L, 'pi_other', 5000) $q$, v_guarantee.id))
-         = 'amount_mismatch', 'the hold must be the full pitch price';
+  assert public.guarantee_hold_placed(v_guarantee.id, 'pi_other', 6000) ->> 'reason' = 'already_held',
+    'a second hold on a held guarantee is released, not kept';
   assert not exists (select 1 from public.guarantees_due_for_hold() where guarantee_id = v_guarantee.id), 'not placed twice';
   perform tests.act_as_postgres();
 
@@ -85,9 +83,7 @@ begin
   assert v_guarantee.hold_due_at = v_booking.created_at, 'due at booking when kickoff is under 72 hours away';
 
   perform tests.act_as_service_role();
-  perform public.prepare_share_payment((tests.share_of(v_booking.id, v_booker)).id, v_booker, 'card', false);
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_booker)).id, 'pi_near');
-  v_result := public.share_payment_held('pi_near', 680, 'pm_near');
+  v_result := tests.hold_share((tests.share_of(v_booking.id, v_booker)).id, 'pi_near', 'pm_near');
   assert (v_result ->> 'guarantee_due')::boolean, format('due as soon as the card is saved, got %s', v_result);
   assert (v_result ->> 'guarantee_id')::uuid = v_guarantee.id, 'the webhook is told which guarantee';
   assert exists (select 1 from public.guarantees_due_for_hold(v_guarantee.id)), 'and can place it straight away';
@@ -113,11 +109,9 @@ begin
   select * into v_guarantee from public.booking_guarantees where booking_id = v_booking.id;
 
   perform tests.act_as_service_role();
-  perform public.prepare_share_payment((tests.share_of(v_booking.id, v_booker)).id, v_booker, 'card', false);
-  perform public.set_share_payment_intent((tests.share_of(v_booking.id, v_booker)).id, 'pi_fail_share');
-  perform public.share_payment_held('pi_fail_share', 680, 'pm_fail');
+  perform tests.hold_share((tests.share_of(v_booking.id, v_booker)).id, 'pi_fail_share', 'pm_fail');
 
-  v_result := public.guarantee_hold_failed(v_guarantee.id, 'pi_fail_1', 'card_declined');
+  v_result := public.guarantee_hold_failed(v_guarantee.id, 'pi_fail_1', 'card_declined', false);
   perform tests.act_as_postgres();
   select * into v_guarantee from public.booking_guarantees where id = v_guarantee.id;
   assert (v_guarantee.status, v_guarantee.attempts, v_guarantee.last_error) = ('failed', 1, 'card_declined'),
@@ -139,7 +133,7 @@ begin
   update public.booking_guarantees set next_attempt_at = now() - interval '1 minute' where id = v_guarantee.id;
   perform tests.act_as_service_role();
   assert (select attempts from public.guarantees_due_for_hold() where guarantee_id = v_guarantee.id) = 1, 'retried after 6 hours';
-  perform public.guarantee_hold_failed(v_guarantee.id, 'pi_fail_2', 'card_declined');
+  perform public.guarantee_hold_failed(v_guarantee.id, 'pi_fail_2', 'card_declined', false);
   perform tests.act_as_postgres();
   assert (select attempts from public.booking_guarantees where id = v_guarantee.id) = 2, 'two attempts';
   assert (select count(*) from public.notifications where profile_id = v_booker and type = 'guarantee_hold_failed') = 1,
@@ -190,12 +184,17 @@ begin
   v_share := tests.share_of(v_booking.id, v_booker);
 
   perform tests.act_as_service_role();
-  v_prepared := public.prepare_share_payment(v_share.id, v_booker, 'cash', false);
+  v_prepared := public.plan_share_payment(v_share.id, v_booker, 'cash', false);
   assert (v_prepared ->> 'amount_cents')::int = 0 and (v_prepared ->> 'needs_saved_card')::boolean,
     format('nothing to charge, but the guarantee needs a card: %s', v_prepared);
-  assert v_prepared ->> 'status' = 'pending', 'not settled until the card is saved';
+  v_prepared := public.attach_share_setup(v_share.id, v_booker, 'cash', 'seti_premium', null);
+  perform tests.act_as_postgres();
+  assert (tests.share_of(v_booking.id, v_booker)).status = 'pending', 'not settled until the card is saved';
 
-  v_result := public.share_card_saved(v_share.id, 'seti_premium', 'pm_premium');
+  perform tests.act_as_service_role();
+  assert public.share_card_saved(v_share.id, 'seti_other', 'pm_other', now()) ->> 'result' = 'duplicate',
+    'only the SetupIntent on the share counts';
+  v_result := public.share_card_saved(v_share.id, 'seti_premium', 'pm_premium', now());
   perform tests.act_as_postgres();
   assert (v_result ->> 'guarantee_due')::boolean, 'the guarantee is due once the card is saved';
   assert (tests.share_of(v_booking.id, v_booker)).status = 'paid', 'the share is settled';

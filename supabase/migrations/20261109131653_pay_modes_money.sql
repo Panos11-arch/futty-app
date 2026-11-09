@@ -83,19 +83,23 @@ as $$
   select case p_mode when 'pay_all' then 55 when 'each_pays_responsible' then 80 when 'each_pays_own_spot' then 80 end;
 $$;
 
--- A held share is taken 60 minutes after it was held.
-create or replace function public.money_capture_due_at(p_held_at timestamptz)
+-- A held share is taken when its free-cancellation hour ends: 60 minutes
+-- after it was held or 6 hours before kickoff, whichever comes first
+-- (decided 9 November). A share held less than 6 hours before kickoff is
+-- therefore due at once.
+create or replace function public.money_capture_due_at(p_held_at timestamptz, p_kickoff timestamptz)
 returns timestamptz
 language sql
 immutable
 set search_path = ''
 as $$
-  select p_held_at + interval '60 minutes';
+  select least(p_held_at + interval '60 minutes', p_kickoff - interval '6 hours');
 $$;
 
--- A share paid less than 6 hours before kickoff is taken at once and is
--- non-refundable (decided 9 November: per share, whenever the booking was
--- made). Exactly 6 hours before is not "less than".
+-- A share paid less than 6 hours before kickoff is non-refundable (decided
+-- 9 November: per share, whenever the booking was made). p_paid_at is when
+-- the player confirmed the payment. Exactly 6 hours before is not "less
+-- than".
 create or replace function public.money_is_non_refundable(p_paid_at timestamptz, p_kickoff timestamptz)
 returns boolean
 language sql
@@ -103,6 +107,17 @@ immutable
 set search_path = ''
 as $$
   select p_paid_at > p_kickoff - interval '6 hours';
+$$;
+
+-- The booker completes payment within 15 minutes of booking, or the
+-- booking is cancelled and its pitches released (decided 9 November).
+create or replace function public.money_payment_window_ends_at(p_booked_at timestamptz)
+returns timestamptz
+language sql
+immutable
+set search_path = ''
+as $$
+  select p_booked_at + interval '15 minutes';
 $$;
 
 -- The booker's guarantee is held 72 hours before kickoff, or at booking when
@@ -116,7 +131,8 @@ as $$
   select greatest(p_kickoff - interval '72 hours', p_booked_at);
 $$;
 
--- A failed guarantee hold is retried 6 hours later.
+-- A failed guarantee hold is retried 6 hours later (until kickoff; see
+-- guarantees_due_for_hold).
 create or replace function public.money_guarantee_retry_at(p_failed_at timestamptz)
 returns timestamptz
 language sql
@@ -127,11 +143,12 @@ as $$
 $$;
 
 -- Kickoff of a booking as an instant: its day and start time are Cyprus
--- wall-clock time.
+-- wall-clock time. Stable, not immutable: the answer depends on the time
+-- zone database, which can change.
 create or replace function public.booking_kickoff_at(p_day date, p_start time)
 returns timestamptz
 language sql
-immutable
+stable
 set search_path = ''
 as $$
   select (p_day + p_start) at time zone 'Asia/Nicosia';
@@ -141,10 +158,12 @@ revoke all on function public.money_share(integer, integer, text, boolean, boole
 grant execute on function public.money_share(integer, integer, text, boolean, boolean, text) to service_role;
 revoke all on function public.money_fee_per_player_cents(text) from public, anon, authenticated;
 grant execute on function public.money_fee_per_player_cents(text) to service_role;
-revoke all on function public.money_capture_due_at(timestamptz) from public, anon, authenticated;
-grant execute on function public.money_capture_due_at(timestamptz) to service_role;
+revoke all on function public.money_capture_due_at(timestamptz, timestamptz) from public, anon, authenticated;
+grant execute on function public.money_capture_due_at(timestamptz, timestamptz) to service_role;
 revoke all on function public.money_is_non_refundable(timestamptz, timestamptz) from public, anon, authenticated;
 grant execute on function public.money_is_non_refundable(timestamptz, timestamptz) to service_role;
+revoke all on function public.money_payment_window_ends_at(timestamptz) from public, anon, authenticated;
+grant execute on function public.money_payment_window_ends_at(timestamptz) to service_role;
 revoke all on function public.money_guarantee_hold_due_at(timestamptz, timestamptz) from public, anon, authenticated;
 grant execute on function public.money_guarantee_hold_due_at(timestamptz, timestamptz) to service_role;
 revoke all on function public.money_guarantee_retry_at(timestamptz) from public, anon, authenticated;
