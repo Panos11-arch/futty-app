@@ -72,6 +72,7 @@ begin
   perform public.join_squad_post(v_post.id);
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and profile_id = v_joiner;
   assert v_share = 680, format('joining from the post: share should be 680, got %s', v_share);
+  perform tests.assert_share(v_booking.id, v_joiner, 600, 680, 'joining from the post: 6000 / 10 = 600, + 80');
 
   -- ...and through an invite.
   perform tests.act_as(v_invited);
@@ -79,6 +80,7 @@ begin
   perform public.accept_invite(v_invite.id);
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and profile_id = v_invited;
   assert v_share = 680, format('joining by invite: share should be 680, got %s', v_share);
+  perform tests.assert_share(v_booking.id, v_invited, 600, 680, 'joining by invite: 6000 / 10 = 600, + 80');
 
   -- A venue-wide block shows the notice too.
   perform tests.act_as_postgres();

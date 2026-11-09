@@ -31,6 +31,9 @@ begin
   assert v_booking.pitches = 2, format('a combined 7-a-side holds 2 pitches, got %s', v_booking.pitches);
   assert v_booking.capacity = 14, format('a 7-a-side is for 14 players, got %s', v_booking.capacity);
   assert v_booking.amount_cents = 11000, format('the 7-a-side price, not 2 x 5-a-side: got %s', v_booking.amount_cents);
+  -- 11000 / 14 = 785 each; the 5 leftover cents go on the booker:
+  -- 11000 - 13 x 785 = 795, + 80 = 875.
+  perform tests.assert_share(v_booking.id, v_a, 795, 875, 'combined 7-a-side booker');
   perform tests.act_as_postgres();
   select array_agg(pitch_id order by pitch_id) into v_held from public.booking_pitches where booking_id = v_booking.id;
   assert v_held = (select array_agg(x order by x) from unnest(array[v_p1, v_p2]) as x),
@@ -39,6 +42,8 @@ begin
   -- Pitch 3 is still free for a 5-a-side at the same time...
   perform tests.act_as(v_b);
   v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  -- EUR 60 5-a-side: 600 + 80 = 680.
+  perform tests.assert_share(v_booking.id, v_b, 600, 680, '5-a-side on pitch 3');
   perform tests.act_as_postgres();
   assert (select pitch_id from public.booking_pitches where booking_id = v_booking.id) = v_p3,
     'the only free pitch during the 7-a-side is pitch 3';

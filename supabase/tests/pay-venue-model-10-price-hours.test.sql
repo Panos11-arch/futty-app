@@ -16,7 +16,6 @@ declare
   v_friday date := tests.next_weekday(5);
   v_saturday date := tests.next_weekday(6);
   v_rule public.price_rules;
-  v_booking public.venue_bookings;
   v_error text;
 begin
   perform tests.set_price(v_default, '5-a-side', 5000, p_peak => 6000, p_weekend => 7000);
@@ -37,11 +36,13 @@ begin
 
   -- The defaults, for a venue whose data says nothing else.
   perform tests.act_as(v_player);
-  assert public.slot_price_cents(v_default, v_friday, '18:00', '19:00', '5-a-side') = 6000, 'Friday 18:00 is peak';
-  assert public.slot_price_cents(v_default, v_friday, '23:00', '24:00', '5-a-side') = 6000, 'peak runs until closing';
-  assert public.slot_price_cents(v_default, v_friday, '10:00', '11:00', '5-a-side') = 5000, 'Friday 10:00 is off-peak';
-  assert public.slot_price_cents(v_default, v_monday, '16:00', '17:00', '5-a-side') = 5000, 'Monday 16:00 is off-peak';
-  assert public.slot_price_cents(v_default, v_saturday, '10:00', '11:00', '5-a-side') = 7000, 'Saturday is weekend all day';
+  -- Each check: pitch price, the booker's pitch share (price / 10), and what
+  -- they pay (pitch share + the 80 service fee).
+  perform tests.check_player_price(v_default, v_friday, '18:00', '19:00', '5-a-side', 5, 6000, 600, 680, 'Friday 18:00 is peak');
+  perform tests.check_player_price(v_default, v_friday, '23:00', '24:00', '5-a-side', 5, 6000, 600, 680, 'peak runs until closing');
+  perform tests.check_player_price(v_default, v_friday, '10:00', '11:00', '5-a-side', 5, 5000, 500, 580, 'Friday 10:00 is off-peak');
+  perform tests.check_player_price(v_default, v_monday, '16:00', '17:00', '5-a-side', 5, 5000, 500, 580, 'Monday 16:00 is off-peak');
+  perform tests.check_player_price(v_default, v_saturday, '10:00', '11:00', '5-a-side', 5, 7000, 700, 780, 'Saturday is weekend all day');
 
   -- A venue with its own hours: weekend Friday to Sunday, peak Monday to
   -- Thursday 18:00-22:00.
@@ -51,16 +52,15 @@ begin
   where venue_id = v_custom;
 
   perform tests.act_as(v_player);
-  assert public.slot_price_cents(v_custom, v_friday, '10:00', '11:00', '5-a-side') = 7000, 'Friday is weekend at this venue';
-  assert public.slot_price_cents(v_custom, v_thursday, '17:00', '18:00', '5-a-side') = 5000, 'Thursday 17:00 is off-peak here';
-  assert public.slot_price_cents(v_custom, v_thursday, '18:00', '19:00', '5-a-side') = 6000, 'Thursday 18:00 is peak here';
-  assert public.slot_price_cents(v_custom, v_thursday, '22:00', '23:00', '5-a-side') = 5000, 'peak ends at 22:00 here';
+  perform tests.check_player_price(v_custom, v_friday, '10:00', '11:00', '5-a-side', 5, 7000, 700, 780, 'Friday is weekend at this venue');
+  perform tests.check_player_price(v_custom, v_friday, '18:00', '19:00', '5-a-side', 5, 7000, 700, 780, 'Friday evening is weekend here, not peak');
+  perform tests.check_player_price(v_custom, v_thursday, '17:00', '18:00', '5-a-side', 5, 5000, 500, 580, 'Thursday 17:00 is off-peak here');
+  perform tests.check_player_price(v_custom, v_thursday, '18:00', '19:00', '5-a-side', 5, 6000, 600, 680, 'Thursday 18:00 is peak here');
+  perform tests.check_player_price(v_custom, v_thursday, '22:00', '23:00', '5-a-side', 5, 5000, 500, 580, 'peak ends at 22:00 here');
   -- ...and the other venue keeps the defaults.
-  assert public.slot_price_cents(v_default, v_friday, '10:00', '11:00', '5-a-side') = 5000, 'the other venue is unchanged';
+  perform tests.check_player_price(v_default, v_friday, '10:00', '11:00', '5-a-side', 5, 5000, 500, 580, 'the other venue is unchanged');
 
-  -- book_slot and the free slots charge the venue's own bands.
-  v_booking := public.book_slot(v_custom, v_friday, '18:00', '19:00', 1, '5-a-side', 5);
-  assert v_booking.amount_cents = 7000, format('Friday at the custom venue is weekend: got %s', v_booking.amount_cents);
+  -- The free slots show the venue's own bands.
   assert (select price_cents from public.venue_free_slots(v_custom, v_thursday, '5-a-side', 60) where start_time = '19:00') = 6000,
     'free slot at Thursday 19:00 is peak here';
 
@@ -68,7 +68,7 @@ begin
   perform tests.act_as_postgres();
   update public.price_rules set peak_weekdays = array[1, 2, 3], weekend_weekdays = array[6, 7] where venue_id = v_custom;
   perform tests.act_as(v_player);
-  assert public.slot_price_cents(v_custom, v_thursday, '19:00', '20:00', '5-a-side') = 5000, 'Thursday is off-peak all day now';
+  perform tests.check_player_price(v_custom, v_thursday, '19:00', '20:00', '5-a-side', 5, 5000, 500, 580, 'Thursday is off-peak all day now');
 
   -- A day can't be both peak and weekend, and weekdays are 1 to 7.
   perform tests.act_as_postgres();

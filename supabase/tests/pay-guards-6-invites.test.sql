@@ -84,6 +84,7 @@ begin
   perform public.accept_invite(v_invite.id);
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and profile_id = v_player;
   assert v_share = 680, format('accepted player''s share should be 680 cents, got %s', v_share);
+  perform tests.assert_share(v_booking.id, v_player, 600, 680, 'accepted invite: 6000 / 10 = 600, + 80');
 
   -- A booking invite at a venue that has gone offline can't be accepted.
   perform tests.act_as(v_captain);

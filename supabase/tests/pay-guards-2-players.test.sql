@@ -27,6 +27,7 @@ begin
   assert v_booking.capacity = 10, format('capacity 100 should become 10, got %s', v_booking.capacity);
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and is_booker;
   assert v_share = 680, format('EUR 60 / 10 players + 80 fee = 680 cents, got %s', v_share);
+  perform tests.assert_share(v_booking.id, v.booker, 600, 680, 'capacity 100 ignored: 6000 / 10 = 600, + 80');
 
   -- The new signature has no capacity at all; players per side is 5 or 6.
   v_error := tests.error_of(format(
@@ -59,6 +60,7 @@ begin
   assert v_booking.capacity = 12, format('6 v 6 should hold 12 players, got %s', v_booking.capacity);
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and is_booker;
   assert v_share = 580, format('EUR 60 / 12 players + 80 fee = 580 cents, got %s', v_share);
+  perform tests.assert_share(v_booking.id, v.booker, 500, 580, '6 v 6: 6000 / 12 = 500, + 80');
 end $$;
 
 select 'pay-guards rule 2 (player numbers) passed' as result;

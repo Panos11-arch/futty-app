@@ -177,6 +177,73 @@ begin
 end;
 $$;
 
+-- What a player pays, checked in full: their share is p_pays, the booking's
+-- service fee is 80, and the pitch part of the share (share - fee) is
+-- p_pitch_share. Reads as postgres, so RLS doesn't hide the rows.
+create or replace function tests.assert_share(
+  p_booking uuid,
+  p_profile uuid,
+  p_pitch_share integer,
+  p_pays integer,
+  p_label text default ''
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_share integer;
+  v_fee integer;
+begin
+  select amount_cents into v_share from public.booking_payment_shares where booking_id = p_booking and profile_id = p_profile;
+  select service_fee_cents_per_player into v_fee from public.venue_bookings where id = p_booking;
+  assert v_share is not null, format('%s: the player has no share', p_label);
+  assert v_fee = 80, format('%s: service fee should be 80, got %s', p_label, v_fee);
+  assert v_share - v_fee = p_pitch_share,
+    format('%s: pitch share should be %s, got %s', p_label, p_pitch_share, v_share - v_fee);
+  assert v_share = p_pays, format('%s: player pays should be %s, got %s', p_label, p_pays, v_share);
+end;
+$$;
+
+-- Books the slot as the current user and checks every amount: the pitch
+-- price (slot_price_cents and the booking), the booker's pitch share and
+-- what they pay (pitch share + 80). The booking is then undone, so many
+-- cases can be checked on the same pitch and day. A failed check still
+-- fails the test: only the undo is caught.
+create or replace function tests.check_player_price(
+  p_venue uuid,
+  p_day date,
+  p_start time,
+  p_end time,
+  p_format text,
+  p_players_per_side integer,
+  p_pitch_price integer,
+  p_pitch_share integer,
+  p_pays integer,
+  p_label text
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_price integer;
+  v_booking public.venue_bookings;
+begin
+  begin
+    v_price := public.slot_price_cents(p_venue, p_day, p_start, p_end, p_format);
+    assert v_price = p_pitch_price, format('%s: pitch price should be %s, got %s', p_label, p_pitch_price, v_price);
+    v_booking := public.book_slot(p_venue, p_day, p_start, p_end, 1, p_format, p_players_per_side);
+    assert v_booking.amount_cents = p_pitch_price,
+      format('%s: booking pitch price should be %s, got %s', p_label, p_pitch_price, v_booking.amount_cents);
+    perform tests.assert_share(v_booking.id, auth.uid(), p_pitch_share, p_pays, p_label);
+    raise exception 'undo check_player_price booking' using errcode = 'P0099';
+  exception when sqlstate 'P0099' then
+    null;
+  end;
+end;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
