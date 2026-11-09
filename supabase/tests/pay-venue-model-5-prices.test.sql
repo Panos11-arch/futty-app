@@ -1,6 +1,6 @@
 -- P3: price rules per format pick the right price: peak on weekdays inside
--- the venue's peak window (17:00 to closing by default), off-peak on weekdays
--- outside it, weekend all day Saturday and Sunday. A game that crosses into
+-- the venue's peak window (Monday to Friday 17:00 to closing by default),
+-- off-peak on weekdays outside it, weekend all day Saturday and Sunday. A game that crosses into
 -- peak pays each half hour at its own band. Prices come from the server only.
 begin;
 
@@ -56,9 +56,9 @@ begin
   select amount_cents into v_share from public.booking_payment_shares where booking_id = v_booking.id and is_booker;
   assert v_share = 780, format('weekend share: expected 780, got %s', v_share);
 
-  -- A venue-specific peak window: 18:00-22:00 only.
+  -- A venue-specific peak window: 18:00-22:00 only, on its price rule.
   perform tests.act_as_postgres();
-  update public.venues set peak_starts = '18:00', peak_ends = '22:00' where id = v_venue;
+  update public.price_rules set peak_starts = '18:00', peak_ends = '22:00' where venue_id = v_venue;
   perform tests.act_as(v_player);
   assert public.slot_price_cents(v_venue, v_weekday, '17:00', '18:00', '5-a-side') = 5000, '17:00 is off-peak with an 18:00 peak start';
   assert public.slot_price_cents(v_venue, v_weekday, '21:00', '22:00', '5-a-side') = 6000, '21:00 is still peak';

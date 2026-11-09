@@ -15,7 +15,14 @@ import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { describeSquadError } from '@/lib/squad-errors';
-import { cancelPendingShare, describePlayerPostNeed, joinSquadPost, leaveSquadPost } from '@/lib/squads';
+import {
+  type BlockNotice,
+  cancelPendingShare,
+  describePlayerPostNeed,
+  getSquadPostBlockNotice,
+  joinSquadPost,
+  leaveSquadPost,
+} from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 import { useSquadPosts } from '@/lib/use-squad-posts';
 
@@ -40,6 +47,7 @@ export default function JoinSquadPostScreen() {
 
   const [shareCents, setShareCents] = useState<number | null>(null);
   const [feeCents, setFeeCents] = useState<number | null>(null);
+  const [blockNotice, setBlockNotice] = useState<BlockNotice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +65,20 @@ export default function JoinSquadPostScreen() {
         setShareCents(data.share_cents);
         setFeeCents(data.fee_cents);
       });
+  }, [post?.id, post?.venue_booking_id]);
+
+  // The venue may have closed new bookings for this time. A block stops new
+  // bookings only: this game was booked before it, so it can still be joined,
+  // and the player sees the venue's notice (spec 13, "Blocking pitches").
+  useEffect(() => {
+    if (!post?.venue_booking_id) return;
+    let current = true;
+    getSquadPostBlockNotice(post.id).then((notice) => {
+      if (current) setBlockNotice(notice);
+    });
+    return () => {
+      current = false;
+    };
   }, [post?.id, post?.venue_booking_id]);
 
   const spotsLeft = post ? (post.players_needed ?? 0) - post.joined_count : 0;
@@ -204,6 +226,20 @@ export default function JoinSquadPostScreen() {
           </ThemedText>
         </ThemedView>
 
+        {blockNotice ? (
+          <View
+            style={styles.blockNotice}
+            accessible
+            accessibilityRole="alert"
+            accessibilityLabel={`${blockNotice.title}. ${blockNotice.body}`}>
+            <IconSymbol name="lock.fill" size={16} color={FuttyColors.stone700} />
+            <View style={styles.blockNoticeText}>
+              <ThemedText type="defaultSemiBold">{blockNotice.title}</ThemedText>
+              <ThemedText>{blockNotice.body}</ThemedText>
+            </View>
+          </View>
+        ) : null}
+
         <View style={[styles.openSpotsRow, { borderColor: border }]}>
           <IconSymbol name="person.2.fill" size={16} color={FuttyColors.stone700} />
           <ThemedText style={styles.openSpotsText}>
@@ -283,6 +319,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
+  },
+  blockNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: FuttyColors.amber400,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  blockNoticeText: {
+    flex: 1,
+    gap: 2,
   },
   openSpotsText: {
     fontSize: 13,
