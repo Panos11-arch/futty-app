@@ -1,6 +1,6 @@
 # 17 Futty – UI Redesign Prompts
 
-7 November 2026 · Panos (all coding) · Implements every part of 15 Design Brief
+7 November 2026 · Run by Anghelo (from 9 November; order and waits in 14, "Who runs what") · Implements every part of 15 Design Brief
 
 **Nine prompts turn the app into the calm, professional look in 15: tokens and fonts first, then the component library, navigation, Home, and every remaining screen.** The booking screens, the venue page and the venue dashboard aren't restyled here: P5, P9 and P6 in 14 rebuild them with the same components, so they come out in the new look. Run these exactly like the prompts in 14: one prompt, one pull request, tests included, CI green before merging.
 
@@ -28,9 +28,9 @@
 | 3 | U2 Navigation: four tabs | U1 | 3 | Now |
 | 4 | U3 Home | U2 | 3 | Now |
 | 5 | U4 Play section | U2 | 6 | Next |
-| 6 | U5 Profile, account and Premium | U2 | 4 | Next |
+| 6 | U5 Profile, account and Premium | U2, P5, P10 | 4 | Next |
 | 7 | U6 Sign-in and onboarding | U1 | 2 | Next |
-| 8 | U7 Squads, posts and pop-ups | U1 | 3 | Next |
+| 8 | U7 Squads, posts and pop-ups | U1, P5 | 3 | Next |
 | 9 | U8 Final sweep and guards | U3–U7, P5, P6, P9 | 3 | Next, before the App Store screenshots |
 
 **Before U4–U7:** put the 12 Playtomic screenshots from 15 section 7 in Drive and attach the relevant ones to each session.
@@ -94,7 +94,7 @@ Tests: the tab bar renders exactly four tabs with these labels; /team, /leagues 
 ```
 Rebuild app/(tabs)/index.tsx to docs/specs/15-design.md section 5 (Home), using the same data hooks it uses today:
 - Next game card: venue photo, day and time in Cyprus time, format, who's in (AvatarStack), who hasn't paid (StatusPill), tap opens My Bookings. When P5's <NextBookingCard /> exists in components/booking/, use it instead; until then build components/booking/next-game-card.tsx with the same props so P5 can replace it.
-- A Banner slot at the top for anything owed (debt or failed payment). Render it only when the data exists (it arrives with P4c); no fake data.
+- A Banner slot at the top for anything owed (debt or failed payment). Leave it empty for now; once P5 is merged, connect it to useOwed() from lib/use-owed.ts. No fake data.
 - Quick actions: Book a pitch, Find a game.
 - Venues nearby as VenueCards in a horizontal list.
 - "Need players" games from the existing squad posts hook, as ListRows with level and time.
