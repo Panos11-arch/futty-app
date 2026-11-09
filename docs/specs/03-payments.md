@@ -46,7 +46,7 @@ Say "you get your full price, and no-shows still pay you" in the venue pitch.
 2. **Timing:** each payment is held when made and taken 1 hour later. A booking made less than 6 hours before kickoff is taken at once and is non-refundable. The booker's guarantee is held for the full pitch price 3 days before kickoff.
 3. **Collection 2 hours after the match:** short games are topped up (the players who joined split the full pitch price; Futty absorbs Stripe's fee on top-ups); unpaid amounts come from the booker's guarantee (responsible mode) or become that player's debt to the venue (just my spot). **The game is never cancelled for money.** The 3-hour auto-cancel is removed.
 4. **Debt** is owed to the venue and blocks booking, joining and paying cash anywhere on Futty until paid in the app or marked settled by the venue.
-5. **Payouts (recommended by Claude on 7 November; Panos and Anghelo to confirm):** Stripe Connect with separate charges and transfers (not destination charges), so cancellations, venue credit and the venue's Stripe fee on venue cancellations never need money pulled back from a venue (14, P4d).
+5. **Payouts (decided 7 November):** Stripe Connect with separate charges and transfers (not destination charges), so cancellations, venue credit and the venue's Stripe fee on venue cancellations never need money pulled back from a venue (14, P4d).
 
 ## Cancellation and refunds (decided 7 November)
 

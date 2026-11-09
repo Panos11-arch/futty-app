@@ -64,13 +64,13 @@ From its Trustpilot reviews (a complaints-heavy sample, but consistent):
 
 Only the small ones; the launch scope is already tight:
 
-- [ ] Result confirmation: one submits, the other accepts or rejects, auto-confirm after 24 hours (Anghelo, inside A2)  
-- [ ] Competitive or casual toggle (Anghelo, inside A5)  
-- [ ] Reliability % on levels (Anghelo, inside A5)  
-- [ ] Profile preferences and "players you play with most" (Anghelo, inside A3)  
-- [ ] Phone verification before paid games and opposition posts (Panos, inside P4 or P5)  
-- [ ] Staff roles in the venue dashboard and auto pitch assignment (Panos, inside P3 and P6)  
-- [ ] Booking card countdown to the cancellation deadline (Panos, inside P5)
+- [ ] Result confirmation: one submits, the other accepts or rejects, auto-confirm after 24 hours (inside A2)  
+- [ ] Competitive or casual toggle (inside A5)  
+- [ ] Reliability % on levels (inside A5)  
+- [ ] Profile preferences and "players you play with most" (inside A3)  
+- [ ] Phone verification before paid games and opposition posts (inside P4 or P5)  
+- [ ] Staff roles in the venue dashboard and auto pitch assignment (inside P3 and P6)  
+- [ ] Booking card countdown to the cancellation deadline (inside P5)
 
 ## 6\. First things after launch, in order
 

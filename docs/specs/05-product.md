@@ -1,6 +1,6 @@
 # Futty – Product & Features
 
-As of 7 November 2026 (payments, venue and weather rules: 13 Payments & Bookings Spec; UI: 15 Design Brief; both win where this doc disagrees) · Owners: Anghelo (match and stats features, coding track A) · Panos (booking, payment and venue features, coding track P) · built in Claude Code
+As of 7 November 2026 (payments, venue and weather rules: 13 Payments & Bookings Spec; UI: 15 Design Brief; both win where this doc disagrees) · Owner: Anghelo (product decisions) · Panos builds every feature in Claude Code (14 and 17)
 
 Every game booked through Futty is a real match: two sides, a venue, a time, a result. That's what lets Futty borrow SofaScore and FotMob's best features for amateur football. But none of it is worth anything unless the stats can't be faked, so a trusted "match record" has to be built first and every feature below sits on top of it.
 
@@ -119,8 +119,8 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 1. **Payment flow (Panos)**: done as 13 Payments & Bookings Spec (7 November); every screen's text follows 15 Design Brief  
 2. **Venue model (Panos, from Dimitris's venue discovery answers)**: named pitches and sizes, which combine, hours per weekday, peak and off-peak prices, cancellation window, photos, address  
 3. **Booking flow (Panos)**: date → time → format → venues free then, with price, photo and area; 1h, 1.5h or 2h; total and cancellation rule before paying; guests by name; invite link  
-4. **Match record and stats** (Anghelo with Panos): sections 2 to 8 turned into exact rules for each screen  
-5. **Home screen** (Anghelo): next game with who's in and who hasn't paid; "Find a team to play" above "Book"  
+4. **Match record and stats** (Panos, prompt A1 in 14): sections 2 to 8 turned into exact rules for each screen  
+5. **Home screen** (Panos, prompt U3 in 17): next game with who's in and who hasn't paid; "Find a team to play" above "Book"  
 6. **Venue dashboard (Panos with Dimitris, after discovery)**: today's bookings, block a slot in two taps, cancel for weather, check-ins, payouts  
 7. **Copy pass (Dimitris)**: no "authorize", "capture" or "void" anywhere; every money screen says who pays what and when  
 8. 12\. Venues: preview mode, venue pages, food and drink, and the venue dashboard (added 6 November)  

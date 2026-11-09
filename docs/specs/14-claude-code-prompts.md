@@ -1,60 +1,60 @@
 # 14 Futty – Claude Code Prompts
 
-7 November 2026 · Panos and Anghelo · Replaces section 7 of 06 Coding
+7 November 2026 · Panos writes all the code (Anghelo: venue data spreadsheets; Dimitris: pitch deck) · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
 
 **One prompt = one pull request.** Do them in the order below. A prompt starts only when everything in its "Needs" column is merged. Every prompt names the spec sections it implements and the tests that prove it.
 
 ## How to run a prompt
 
-1. `git checkout master && git pull origin master`, then `git checkout -b panos/p4a-modes` (or `anghelo/...`).
+1. `git checkout master && git pull origin master`, then `git checkout -b panos/p4a-modes`.
 2. In Claude Code: `/clear`, switch to plan mode (Shift+Tab), paste the prompt.
 3. **Read the plan before approving it.** Reject it if it does any of these:
     - touches files you don't own;
     - skips a test listed in the prompt;
     - invents a rule that isn't in the spec.
 4. Let it build. Run the tests locally: `supabase/tests/run.sh`, `deno test supabase/functions/`, `npx jest`.
-5. Open the pull request. The other developer reviews it the same day. **Merge only when CI is green.**
+5. Open the pull request. For any money or security PR, first ask Claude Code in a fresh session to review the diff against spec 13 and the working rules in CLAUDE.md. **Merge only when CI is green.**
 6. If Claude Code says the spec is unclear, **stop and decide it together.** Write the decision into 13 (or 15) in the same PR.
 
 ## Order and owners
 
 **Now: by Friday 20 November (code-complete)**
 
-| # | Prompt | Owner | Needs | Hours |
+| # | Prompt | Track | Needs | Hours |
 | --- | --- | --- | --- | --- |
-| 1 | S0 Standing rules in CLAUDE.md | Panos | — | 0.5 |
-| 2 | U0 Design foundation | Anghelo | S0 | 8 |
-| 3 | P1 Migrations baseline and local database | Panos | S0 | 4 |
-| 4 | T0 Test harness (SQL, Deno, Jest) | Panos | P1 | 5 |
-| 5 | A1 Match spec and mock components | Anghelo | U0 | 4 |
-| 6 | P2 Server-side guards | Panos | T0 | 6 |
-| 7 | A2 Match record and notifications | Anghelo | P1, T0 | 12 |
-| 8 | P3 Venue model | Panos | P2 | 8 |
-| 9 | P4a Booking modes, fees and payment timing | Panos | P3, A2 contract 4 | 10 |
-| 10 | A3 Form, reminders, add to calendar | Anghelo | A2 | 12 |
-| 11 | P4b Cancellations and venue credit | Panos | P4a | 8 |
-| 12 | P4c Collection, top-ups and debt | Panos | P4b, A2 contract 3 | 10 |
-| 13 | A4 Match page, man of the match, lineups | Anghelo | A2 | 10 |
-| 14 | P9 Venue pages and data import | Panos | P3, venue data sheets | 8 |
-| 15 | P5 Booking flow screens | Panos | P4c, U0 | 10 |
-| 16 | A8 Post-match food and drink offers | Anghelo | A2, P9 | 4 |
-| 17 | P10 Shared rules and Futty AI | Panos | P4c | 6 |
-| 18 | A5 Ratings and skill level | Anghelo | A4 | 10 |
+| 1 | S0 Standing rules in CLAUDE.md | Setup | — | 0.5 |
+| 2 | U0 Design tokens and fonts (17) | Design | S0 | 3 |
+| 3 | P1 Migrations baseline and local database | Setup | S0 | 4 |
+| 4 | T0 Test harness (SQL, Deno, Jest) | Setup | P1 | 5 |
+| 5 | U1 Component library, U2 Navigation, U3 Home (17) | Design | U0, T0 | 12 |
+| 6 | A1 Match spec and mock components | Matches | U1 | 4 |
+| 7 | P2 Server-side guards | Payments | T0 | 6 |
+| 8 | A2 Match record and notifications | Matches | P1, T0 | 12 |
+| 9 | P3 Venue model | Payments | P2 | 8 |
+| 10 | P4a Booking modes, fees and payment timing | Payments | P3, A2 contract 4 | 10 |
+| 11 | A3 Form, reminders, add to calendar | Matches | A2 | 12 |
+| 12 | P4b Cancellations and venue credit | Payments | P4a | 8 |
+| 13 | P4c Collection, top-ups and debt | Payments | P4b, A2 contract 3 | 10 |
+| 14 | A4 Match page, man of the match, lineups | Matches | A2 | 10 |
+| 15 | P9 Venue pages and data import | Payments | P3, venue data sheets | 8 |
+| 16 | P5 Booking flow screens | Payments | P4c, U1 | 10 |
+| 17 | A8 Post-match food and drink offers | Matches | A2, P9 | 4 |
+| 18 | P10 Shared rules and Futty AI | Payments | P4c | 6 |
+| 19 | A5 Ratings and skill level | Matches | A4 | 10 |
 
 **Next: 21 November to 2 December (submission 25 Nov, venue visits from 2 Dec)**
 
-| # | Prompt | Owner | Needs | Hours |
+| # | Prompt | Track | Needs | Hours |
 | --- | --- | --- | --- | --- |
-| 19 | P7 Release build | Panos | P5, P10 | 3 |
-| 20 | P8 Gipedo Pano | Panos | P4c, A2 | 10 |
-| 21 | P6 Venue dashboard | Panos | P4c, P9 | 20 |
-| 22 | P4d Venue payouts (Stripe Connect) | Panos | P6 | 8 |
-| 23 | U1 Restyle Panos's screens | Panos | U0 | 6 |
-| 24 | U2 Restyle Anghelo's screens | Anghelo | U0 | 8 |
-| 25 | P11 Weather | Panos | P9 | 6 |
-| 26 | P12 6 v 6 switching | Panos | P5 | 4 |
-| 27 | A6 Shareable cards | Anghelo | A4 | 5 |
-| 28 | A7 Team of the week, season stats, leaderboards | Anghelo | A5 | 6 |
+| 20 | P7 Release build | Payments | P5, P10 | 3 |
+| 21 | P8 Gipedo Pano | Payments | P4c, A2 | 10 |
+| 22 | P6 Venue dashboard | Payments | P4c, P9 | 20 |
+| 23 | P4d Venue payouts (Stripe Connect, decided 7 Nov) | Payments | P6 | 8 |
+| 24 | U4–U8 Restyle every remaining screen, final guards (17) | Design | U2 | 18 |
+| 25 | P11 Weather | Payments | P9 | 6 |
+| 26 | P12 6 v 6 switching | Payments | P5 | 4 |
+| 27 | A6 Shareable cards | Matches | A4 | 5 |
+| 28 | A7 Team of the week, season stats, leaderboards | Matches | A5 | 6 |
 
 **Later: after launch**
 
@@ -67,15 +67,15 @@ A9 WhatsApp reminders. Then, in Playtomic order (12, section 6):
 6. venue tournaments;
 7. games at other pitches.
 
-**Honest load to 20 November:** Panos about 75 hours, Anghelo about 60. That's more than either can do alongside university, so the 14 November checkpoint (06, section 6) decides what moves. Cut in this order:
+**Load:** Panos writes all the code: about 140 hours of "Now" prompts before 20 November (roughly 11 hours a day) and about 80 hours of "Next" prompts before 2 December. The 14 November checkpoint (06, section 6) decides what moves. Cut in this order:
 1. P11 Weather
 2. P12 Switching
 3. A7
 4. A6
-5. U2
-6. A5
+5. A5
+6. U5–U7 (U4 and U8 stay: they cover the screens in the App Store screenshots)
 
-**Never cut:** S0, U0, P1–P5, P4a–c, P9, P10, T0, A1–A4, A8, P8, P6.
+**Never cut:** S0, T0, U0–U4, U8, P1–P5, P4a–c, P9, P10, A1–A4, A8, P8, P6.
 
 ---
 
@@ -90,7 +90,7 @@ Add a section "Working rules" to CLAUDE.md, below the existing @AGENTS.md line, 
 4. Security. Every table has RLS. security definer functions set search_path = ''. Internal functions are revoked from public, anon and authenticated and granted to service_role only. Never trust ids, prices, capacities or statuses sent by the app; check the caller owns what they act on. No secrets in the app.
 5. Stripe. Every Stripe call carries an idempotency key built from our row ids. Every money movement is written to the money ledger with its reason. Payment state changes come from verified webhooks, not from the app.
 6. Tests. Every PR includes tests for the behaviour it changes: SQL tests in supabase/tests/*.test.sql, Deno tests next to Edge Functions (*.test.ts), Jest tests for lib/ and components/. Write the failing test first, then the code. Each worked example in spec 13 is a test with that exact amount. A PR without tests is not merged; CI must be green.
-7. Ownership. Only touch files you own (docs/specs/06-coding.md section 3). Shared files (package.json, app.json, app/_layout.tsx, app/(tabs)/_layout.tsx, lib/supabase.ts, constants/, components/ui/) change in their own small PR, announced first.
+7. Scope. Only touch the files the prompt names. Shared files (package.json, app.json, app/_layout.tsx, app/(tabs)/_layout.tsx, lib/supabase.ts, constants/, components/ui/) change in their own small PR. A change to package.json or app.json that adds native code needs a new development build: say so in the PR.
 8. Migrations. New files only (supabase migration new pay_<name> or match_<name>); never edit a merged migration.
 9. Expo SDK 55. Read https://docs.expo.dev/versions/v55.0.0/ for any Expo API before using it.
 10. UI. Screens use components/ui and the tokens in constants/futty-theme.ts only: no hard-coded colours, font sizes or emoji.
@@ -98,7 +98,7 @@ Add a section "Working rules" to CLAUDE.md, below the existing @AGENTS.md line, 
 Plan first.
 ```
 
-## Panos: now
+## Now: payments, bookings and venues
 
 ### P1 Migrations baseline and local database
 
@@ -110,7 +110,7 @@ Goal: the whole production schema lives in supabase/migrations, so every develop
 3. Move every loose supabase/*.sql file into supabase/legacy/ (keep supabase/tests/ and supabase/functions/ where they are). Update any comments that point at the old paths.
 4. Make `npx supabase start` and `npx supabase db reset` work locally with supabase/seed.sql: two venues (P2 adds allows_6v6_on_5s; set it on one of them then), two pitches each, three test players, one venue staff user. No real people's data.
 5. Change supabase/tests/run.sh so CI applies supabase/migrations instead of supabase/tests/stubs.sql; delete stubs.sql once cyprus-time.test.sql passes against the real schema.
-6. Append the ownership table from docs/specs/06-coding.md section 3 to CLAUDE.md.
+6. Append the code-area table from docs/specs/06-coding.md section 3 to CLAUDE.md.
 
 Tests: supabase/tests/cyprus-time.test.sql passes against the migrated schema; add supabase/tests/baseline.test.sql asserting RLS is enabled on every public table and no public function is executable by anon unless it is in an explicit allow-list.
 
@@ -124,7 +124,7 @@ Goal: three kinds of tests run on every PR, each proven by one real test.
 
 1. SQL: CI uses supabase/setup-cli to run `supabase start`, apply migrations and run supabase/tests/run.sh. Add supabase/tests/helpers.sql with helpers to create a test user and act as them (set request.jwt.claim.sub and role authenticated), and to act as service_role.
 2. Edge Functions: `deno test --node-modules-dir=none supabase/functions/` (already in CI). Add supabase/functions/_shared/stripe-fake.ts: a fake Stripe client that records every call (method, params, idempotency key) and returns scripted results, so payment code can be tested without the network. One test proving it records an idempotency key.
-3. App: add jest-expo and @testing-library/react-native (I own package.json, so this PR is the package.json change). `npx jest` runs in CI. One test for lib/service-fee.ts formatEuros (680 -> "€6.80", 5 -> "€0.05", 0 -> "€0.00").
+3. App: add jest-expo and @testing-library/react-native (this PR is the package.json change). `npx jest` runs in CI. One test for lib/service-fee.ts formatEuros (680 -> "€6.80", 5 -> "€0.05", 0 -> "€0.00").
 4. Coverage: fail CI if any file under lib/money/ or supabase/functions/_shared/money* drops below 100% line coverage (these folders will hold the money maths from P4a).
 5. Document the three commands in CLAUDE.md under "Testing".
 
@@ -257,9 +257,9 @@ Read docs/specs/13-payments-bookings.md (all sections the player sees) and docs/
 
 1. Flow: date strip (7 or 14 days by account) -> time -> format (and "players per side: 5 v 5 / 6 v 6" only where the venue allows it) -> venues free at that time as photo cards with price per player -> venue -> checkout.
 2. Checkout: "Pay for everyone: €65.50" / "Each pays: €6.80 each" with both prices from the server; for each pays, "I'm responsible for the team" / "Just my spot" with one plain sentence on what each means; price breakdown (pitch + service fee); the cancellation rules in three lines; the non-refundable notice that must be accepted when kickoff is under 6 hours away; cash option where allowed; Apple Pay / Google Pay; sticky total bar.
-3. Booking detail: roster with paid state (in app, cash, unpaid), invite and share, a countdown to the next cancellation cutoff, Add to calendar (Anghelo's lib/calendar), Directions, and Cancel, which first shows cancellation_quote and needs a second tap to confirm.
+3. Booking detail: roster with paid state (in app, cash, unpaid), invite and share, a countdown to the next cancellation cutoff, Add to calendar (lib/calendar from A3), Directions, and Cancel, which first shows cancellation_quote and needs a second tap to confirm.
 4. Debt: a banner on Home and Book when the player owes money, and a "Pay what I owe" screen. Credit: credit per venue with expiry, applied at checkout.
-5. Build <NextBookingCard /> in components/booking/ for Anghelo's Home.
+5. Build <NextBookingCard /> in components/booking/ and use it on Home in place of U3's next-game-card (same props).
 6. The app never computes a price: every amount shown comes from the server response.
 
 Tests (Jest): each screen renders the server's amounts unchanged (680 -> "€6.80"); the non-refundable notice appears at 5h59m and not at 6h01m; Pay is disabled until the notice is accepted; the cancel button shows the quote before cancelling; the debt banner blocks booking and links to payment; 6 v 6 choice hidden when the venue doesn't allow it.
@@ -279,27 +279,14 @@ Tests: changing a value in app_rules changes book_slot, the app display and the 
 Plan first.
 ```
 
-## Anghelo: now
+## Now: matches and stats
 
-### U0 Design foundation
-
-```
-Read docs/specs/15-design.md completely. Build the design foundation in its own PR (shared files, announce it first):
-
-1. Replace constants/futty-theme.ts with the tokens in section 3 (colour, type scale, spacing, radius, shadow). Keep the export names other files import working by mapping them to the new tokens, so no screen breaks; mark the old names deprecated.
-2. Load Inter only; remove Archivo Black from headings (keep IBM Plex Mono only for codes).
-3. Build every component listed in section 6 in components/ui/, using tokens only, with accessibility labels and Dynamic Type support.
-4. Restyle the tab bar to the four tabs in section 4 (Home, Book, Play, Profile) only after agreeing it with Panos; if not agreed yet, leave the tabs as they are and do the components only.
-
-Tests (Jest): each component renders each state (Button: primary, secondary, destructive, loading, disabled; Banner: info, warning, danger; StatusPill: paid, cash, unpaid, debt); no component contains a hex colour (a test greps components/ui for #); PriceBreakdown shows server cents as euros with two decimals.
-
-Plan first.
-```
+The design prompts U0–U3 (now) and U4–U8 (next) are in **17 UI Redesign Prompts**.
 
 ### A1 Match spec and mock components
 
 ```
-Read docs/specs/05-product.md sections 2-8, docs/specs/06-coding.md section 4 and docs/specs/15-design.md. Write docs/specs/match-record.md: tables, columns, RLS, every security-definer function with its signature, and the exact signatures of contracts 1, 3 and 4. Contract 4 (send_notification) must list these types, which Panos's code will send: guarantee_hold_failed, short_game_warning, top_up_charged, debt_created, debt_settled, cash_unpaid_prompt, booking_cancelled_by_venue, venue_closed_new_bookings, venue_condition_warning, spot_released, gipedo_result_needed. No database code. Then build FormChips, MatchRow and ScoreLine in components/match/ with components/ui and tokens, against typed mock data in lib/match/mock.ts, with Jest tests. Only touch components/match/, lib/match/ and docs/specs/.
+Read docs/specs/05-product.md sections 2-8, docs/specs/06-coding.md section 4 and docs/specs/15-design.md. Write docs/specs/match-record.md: tables, columns, RLS, every security-definer function with its signature, and the exact signatures of contracts 1, 3 and 4. Contract 4 (send_notification) must list these types, which the payment code will send: guarantee_hold_failed, short_game_warning, top_up_charged, debt_created, debt_settled, cash_unpaid_prompt, booking_cancelled_by_venue, venue_closed_new_bookings, venue_condition_warning, spot_released, gipedo_result_needed. No database code. Then build FormChips, MatchRow and ScoreLine in components/match/ with components/ui and tokens, against typed mock data in lib/match/mock.ts, with Jest tests. Only touch components/match/, lib/match/ and docs/specs/.
 
 Plan first.
 ```
@@ -307,7 +294,7 @@ Plan first.
 ### A2 Match record and notifications
 
 ```
-Implement docs/specs/match-record.md as new migrations (match_record) with SQL tests. Result confirmation: one captain submits, the other side accepts or rejects; if nobody responds it confirms after 24 hours; a rejection makes it disputed. This replaces the 3-attempt logic for new matches only, and Gipedo Pano (P8) settles from it. Internal functions service_role only. Build create_match_for_booking, the match_result_confirmed view (with result, disputed flag, kickoff and end time in Cyprus time) and send_notification with every type in contract 4, push now, ready for WhatsApp later, respecting each user's notification settings. QR check-in: a per-match code the venue shows, scanned in the app. Only touch files I own.
+Implement docs/specs/match-record.md as new migrations (match_record) with SQL tests. Result confirmation: one captain submits, the other side accepts or rejects; if nobody responds it confirms after 24 hours; a rejection makes it disputed. This replaces the 3-attempt logic for new matches only, and Gipedo Pano (P8) settles from it. Internal functions service_role only. Build create_match_for_booking, the match_result_confirmed view (with result, disputed flag, kickoff and end time in Cyprus time) and send_notification with every type in contract 4, push now, ready for WhatsApp later, respecting each user's notification settings. QR check-in: a per-match code the venue shows, scanned in the app. Only touch the files this prompt names.
 
 Tests: confirm, reject, silence for 24 hours, a player who wasn't in the match can't submit; send_notification writes one row and one push per recipient and skips users who turned that type off.
 
@@ -317,7 +304,7 @@ Plan first.
 ### A3 Form, reminders, add to calendar
 
 ```
-Using the match record: form guide (last 5 confirmed matches, W/D/L chips, forfeit as "L (forfeit)") for players and named teams; recent matches on profiles; head-to-head between named teams; a job every 15 minutes sending reminders 24h and 2h before a player's games and after them (confirm score, vote, rate, rebook), all in Cyprus time; followed-team notifications; notification settings per type with quiet hours; profile preferences (position, foot, preferred days and times) and "players you play with most". Build lib/calendar: "Add to calendar" adds the event (venue name and address, pitch, kickoff and end, who's playing, link back to the booking) and updates or removes it when the booking moves or is cancelled; Panos uses it on the booking screens. Ask Panos before adding a library.
+Using the match record: form guide (last 5 confirmed matches, W/D/L chips, forfeit as "L (forfeit)") for players and named teams; recent matches on profiles; head-to-head between named teams; a job every 15 minutes sending reminders 24h and 2h before a player's games and after them (confirm score, vote, rate, rebook), all in Cyprus time; followed-team notifications; notification settings per type with quiet hours; profile preferences (position, foot, preferred days and times) and "players you play with most". Build lib/calendar: "Add to calendar" adds the event (venue name and address, pitch, kickoff and end, who's playing, link back to the booking) and updates or removes it when the booking moves or is cancelled; P5 uses it on the booking screens. Add a library only if needed, in its own small PR.
 
 Tests for each: form order and forfeit; reminder windows at exactly 24h and 2h in Cyprus time across a daylight-saving change; quiet hours suppress pushes; calendar event updated on reschedule and removed on cancel.
 
@@ -327,7 +314,7 @@ Plan first.
 ### A4 Match page, man of the match, lineups
 
 ```
-Build the match page (score, scorers, assists, lineups, man of the match, venue, date) with components/ui; it opens once the score is confirmed; captains add their own side's scorers for 24h and the count must match the score. Man-of-the-match voting: only checked-in players, one vote, not yourself, closes 24h after confirmation, ties shared. Lineups: formation presets per format (including 6 v 6), the captain drags players onto a drawn pitch, empty positions link to "Need players". Ask Panos before adding an SVG library.
+Build the match page (score, scorers, assists, lineups, man of the match, venue, date) with components/ui; it opens once the score is confirmed; captains add their own side's scorers for 24h and the count must match the score. Man-of-the-match voting: only checked-in players, one vote, not yourself, closes 24h after confirmation, ties shared. Lineups: formation presets per format (including 6 v 6), the captain drags players onto a drawn pitch, empty positions link to "Need players". If an SVG library is needed, add react-native-svg in its own small PR; it's native code, so it needs a new development build.
 
 Tests for each rule: scorer count must equal the score; a second vote is refused; voting for yourself is refused; voting closes at 24h; ties are shared.
 
@@ -337,7 +324,7 @@ Plan first.
 ### A8 Post-match food and drink offers
 
 ```
-After a player submits or confirms a score, show that venue's active post-match offers from venue_menu_items available at the current Cyprus time, with photo, price and offer text, using components/ui. Tapping one shows "Show this at the counter" with a short code; record views and redemptions. Only touch my files.
+After a player submits or confirms a score, show that venue's active post-match offers from venue_menu_items available at the current Cyprus time, with photo, price and offer text, using components/ui. Tapping one shows "Show this at the counter" with a short code; record views and redemptions. Only touch the files this prompt names.
 
 Tests: which offers show at 14:00 vs 22:00; inactive items never show; a code can be redeemed once.
 
@@ -356,7 +343,7 @@ Plan first.
 
 ## Next (21 November to 2 December)
 
-### P7 Release build (Panos)
+### P7 Release build
 
 ```
 Prepare the App Store build: hide Team Premium behind a flag if it isn't ready; app display name "Futty"; Premium shows €3.99 from the App Store product and the 7/14-day windows from app_rules; EAS production build and TestFlight upload; re-test account deletion on that build; switch off is_live for every unsigned venue; a demo account and a test venue for Apple's reviewer; list anything App Review is likely to reject (payments, account deletion, Sign in with Apple, location wording). Tests: a release checklist test that fails if any unsigned venue is live or the demo account can't book.
@@ -364,7 +351,7 @@ Prepare the App Store build: hide Team Premium behind a flag if it isn't ready; 
 Plan first.
 ```
 
-### P8 Gipedo Pano (Panos)
+### P8 Gipedo Pano
 
 ```
 Read docs/specs/13-payments-bookings.md section "Gipedo Pano". Rebuild it for new bookings (old bookings keep the old logic):
@@ -381,7 +368,7 @@ Tests: win, loss, draw, dispute, one-sided result after 24h, no result, no oppon
 Plan first.
 ```
 
-### P6 Venue dashboard (Panos)
+### P6 Venue dashboard
 
 ```
 Read docs/specs/05-product.md section 12 (launch items 1-11) and docs/specs/13-payments-bookings.md (cash, debt, credit, weather, blocking, 6 v 6). Build the launch dashboard with components/ui, phone-first, every common action in two taps or fewer:
@@ -393,7 +380,7 @@ Tests for every write path, including that staff of venue A can't touch venue B.
 Plan first.
 ```
 
-### P4d Venue payouts (Panos)
+### P4d Venue payouts (Stripe Connect, decided 7 November)
 
 ```
 Stripe Connect with separate charges and transfers (not destination charges), so cancellations, credit and the venue's Stripe fee on venue cancellations never need a clawback: onboard each venue (Express account) from the dashboard; after collection, transfer each venue its pitch parts minus anything it owes (venue_payables); credit money is transferred to the venue when it is created, and the venue owes it back as service. A daily reconciliation job checks that, for every booking, venue + Futty + Stripe fees + refunds + credit = what was taken, and alerts on any mismatch. Payments stay in test mode until a venue has signed and finished onboarding.
@@ -403,18 +390,7 @@ Tests: transfers equal the ledger for every scenario in P4a-P4c; a venue cancell
 Plan first.
 ```
 
-### U1 and U2 Restyle remaining screens
-
-```
-(U1 Panos: book, booking-payment, my-bookings, venue-dashboard, squads, join-squad-post, account/payments, account/settings, premium. U2 Anghelo: Home, team, leagues, profile, community, fixture screens, player and team profiles, matchmaking, notifications.)
-Read docs/specs/15-design.md and the reference screenshots I attach. Restyle only my screens to use components/ui and tokens: no hard-coded colours, font sizes, radii or emoji; skeletons instead of spinners; empty and error states; sentence case; money copy per section 3. Don't change behaviour.
-
-Tests: snapshot tests per screen state; a test that fails if any of my screens contains a hex colour, a fontSize number or an emoji.
-
-Plan first.
-```
-
-### P11 Weather (Panos)
+### P11 Weather
 
 ```
 Read docs/specs/13-payments-bookings.md section "Weather". Add an Edge Function that fetches the WeatherKit forecast for a venue's coordinates (key in Supabase secrets, signed JWT), caches it per venue for an hour, and returns rain chance, rain intensity, wind, temperature and thunderstorm risk for a booking's hours. Show a weather strip on the venue page, checkout and booking detail, and the banner "Heavy rain forecast. The venue may cancel this booking." when any threshold in app_rules is met. Beyond the forecast range show "Forecast available closer to the date". Show the Apple Weather mark and the data-sources link wherever forecast data appears.
@@ -424,7 +400,7 @@ Tests (fake WeatherKit): each threshold triggers the banner; below every thresho
 Plan first.
 ```
 
-### P12 6 v 6 switching (Panos)
+### P12 6 v 6 switching
 
 ```
 Read docs/specs/13-payments-bookings.md "Switching after booking". Only the booker can switch, until 6 hours before kickoff, and every player is notified. 5 v 5 -> 6 v 6: each player who paid 680 gets 100 as venue credit and the booking has 12 spots. 6 v 6 -> 5 v 5: only while 10 or fewer players have joined; each owes 100 more, charged with the after-match top-ups. When the booker paid for everyone, switching moves no money.
