@@ -233,7 +233,7 @@ begin
   begin
     v_price := public.slot_price_cents(p_venue, p_day, p_start, p_end, p_format);
     assert v_price = p_pitch_price, format('%s: pitch price should be %s, got %s', p_label, p_pitch_price, v_price);
-    v_booking := public.book_slot(p_venue, p_day, p_start, p_end, 1, p_format, p_players_per_side);
+    v_booking := public.book_slot(p_venue, p_day, p_start, p_end, 1, p_format, p_players_per_side, 'each_pays_own_spot');
     assert v_booking.amount_cents = p_pitch_price,
       format('%s: booking pitch price should be %s, got %s', p_label, p_pitch_price, v_booking.amount_cents);
     perform tests.assert_share(v_booking.id, auth.uid(), p_pitch_share, p_pays, p_label);
@@ -241,6 +241,69 @@ begin
   exception when sqlstate 'P0099' then
     null;
   end;
+end;
+$$;
+
+-- A 30-minute slot on the half-hour grid that starts at least p_ahead from
+-- now, in Cyprus time. For timing tests that need a kickoff a few hours
+-- away; use a venue open 00:00-24:00.
+create or replace function tests.slot_starting_in(p_ahead interval, out day date, out start_time time, out end_time time)
+language plpgsql
+stable
+as $$
+declare
+  v_at timestamp := (now() at time zone 'Asia/Nicosia') + p_ahead;
+begin
+  v_at := date_trunc('hour', v_at)
+          + interval '30 minutes' * ceil(extract(epoch from v_at - date_trunc('hour', v_at)) / 1800);
+  day := v_at::date;
+  start_time := v_at::time;
+  end_time := case when start_time = time '23:30' then time '24:00' else start_time + interval '30 minutes' end;
+end;
+$$;
+
+-- Kickoff of a booking as an instant (its Cyprus day and start time).
+create or replace function tests.kickoff_of(p_booking uuid)
+returns timestamptz
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select (booking_day + start_time) at time zone 'Asia/Nicosia' from public.venue_bookings where id = p_booking;
+$$;
+
+create or replace function tests.make_premium(p_user uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.profiles set is_premium = true where id = p_user;
+$$;
+
+-- A share as postgres sees it (RLS off).
+create or replace function tests.share_of(p_booking uuid, p_profile uuid)
+returns public.booking_payment_shares
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.booking_payment_shares where booking_id = p_booking and profile_id = p_profile;
+$$;
+
+-- Adds a player to a booking the way accepting an invite or joining a post
+-- does.
+create or replace function tests.join_booking(p_booking uuid, p_profile uuid)
+returns public.booking_payment_shares
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.add_booking_share_internal(p_booking, p_profile);
+  return tests.share_of(p_booking, p_profile);
 end;
 $$;
 

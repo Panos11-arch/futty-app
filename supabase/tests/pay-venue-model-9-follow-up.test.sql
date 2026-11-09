@@ -39,11 +39,11 @@ begin
 
   -- Two games on pitch 1 (18:00 and 20:00), one on pitch 2 (18:00).
   perform tests.act_as(v_early);
-  v_early_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_early_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as(v_late);
-  v_late_booking := public.book_slot(v_venue, v_day, '20:00', '21:00', 1, '5-a-side', 5);
+  v_late_booking := public.book_slot(v_venue, v_day, '20:00', '21:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as(v_other);
-  v_other_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_other_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   assert (select pitch_id from public.booking_pitches where booking_id = v_early_booking.id) = v_p1, 'early game on pitch 1';
   assert (select pitch_id from public.booking_pitches where booking_id = v_late_booking.id) = v_p1, 'late game on pitch 1';

@@ -47,7 +47,7 @@ begin
     v_start := date_trunc('minute', v_local)::time;
     v_end := case when v_start >= time '23:00' then time '23:59' else v_start + interval '1 hour' end;
     begin
-      perform public.book_slot(v_venue, v_day, v_start, v_end, 1, 10, '5-a-side');
+      perform public.book_slot(v_venue, v_day, v_start, v_end, 1, '5-a-side', 5, 'each_pays_own_spot');
       raise exception 'book_slot accepted a slot that started an hour ago in Cyprus (session time zone %)', v_tz;
     exception when others then
       if sqlerrm <> 'slot_in_past' then
@@ -60,7 +60,7 @@ begin
     v_start := date_trunc('minute', v_local)::time;
     v_end := case when v_start >= time '23:00' then time '23:59' else v_start + interval '1 hour' end;
     begin
-      perform public.book_slot(v_venue, v_local::date, v_start, v_end, 1, 10, '5-a-side');
+      perform public.book_slot(v_venue, v_local::date, v_start, v_end, 1, '5-a-side', 5, 'each_pays_own_spot');
       raise exception 'book_slot accepted a slot that started a minute ago in Cyprus (session time zone %)', v_tz;
     exception when others then
       if sqlerrm <> 'slot_in_past' then
@@ -75,7 +75,7 @@ begin
       v_venue, v_day,
       case when v_tz = 'UTC' then time '10:00' else time '12:00' end,
       case when v_tz = 'UTC' then time '11:00' else time '13:00' end,
-      1, 10, '5-a-side');
+      1, '5-a-side', 5, 'each_pays_own_spot');
     assert v_booking.status = 'pending_payment', 'a paid slot should start as pending_payment';
     assert v_booking.amount_cents = 6000, format('expected 6000 cents, got %s', v_booking.amount_cents);
     select amount_cents into v_share

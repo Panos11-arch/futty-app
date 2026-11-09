@@ -53,6 +53,7 @@ The booker picks one of three ways to pay when booking. **Agreed.** The choice d
   - accept a player the venue offers from its dashboard.
 - **A player the venue provides plays free.** The team covers his spot like an empty one.
 - **If the booker is responsible but doesn't show** while the team plays, a teammate covers his share or he pays it in the app. Otherwise his hold covers it.
+- **The mode is always chosen (decided 9 November).** The server refuses a booking without one (`mode_required`); there is no default.
 
 ## When money is held and taken
 
@@ -62,8 +63,9 @@ A payment is held when the player pays and taken 1 hour later. Everything still 
 Step 3 applies only when the booker is responsible.
 1.  **When a player pays** (card, Apple Pay or Google Pay), their share is **held**. Their card is also saved, with their consent, so top-ups and debts can be charged later.
 2.  **1 hour after paying**, the share is **taken**. The free-cancellation hour ends here. *Exception:* a booking made less than 6 hours before kickoff is taken **straight away**, and the player must accept a "This booking is non-refundable" notice first.
+    - **Per share (decided 9 November):** the exception applies to any share paid less than 6 hours before kickoff, including a player paying late on a booking made days earlier.
 3.  **The booker's guarantee** (when the booker is responsible) is saved at booking and **held for the full pitch price 3 days before kickoff**, or at booking if the match is less than 3 days away. Holds last about 7 days, so this is the earliest that's safe.
-    - If the hold fails, the booker is notified and asked to fix their card.
+    - If the hold fails, the booker is notified and asked to fix their card. **It's retried every 6 hours; the booker is notified once, on the first failure (decided 9 November).**
     - **A failed hold never cancels the booking. Whatever the hold would have covered at collection becomes the booker's debt to the venue**.
 4.  **6 hours before kickoff:** refunds stop, and in a short game every player gets the "You're 8 of 10" notice (see Short games).
 5.  **After the match:** a cash player the venue hasn't ticked gets: "Pay €6.00 by card now, or remain in debt to \[venue\]."

@@ -77,7 +77,7 @@ begin
   -- The backfilled bookings now hold their pitches against new bookings.
   perform tests.act_as(v_player);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('booking over the backfilled games: got %s', coalesce(v_error, 'success'));
 end $$;
 

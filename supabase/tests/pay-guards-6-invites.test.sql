@@ -57,7 +57,7 @@ begin
   assert v_error = 'team_full', format('inviting into a full team: got %s', coalesce(v_error, 'success'));
 
   -- Bookings: add_booking_player sends an invite; the share appears on accept.
-  v_booking := public.book_slot(v_venue, tests.cyprus_today() + 1, '12:00', '13:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, tests.cyprus_today() + 1, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   perform tests.act_as(v_stranger);
   v_error := tests.error_of(format('select public.add_booking_player(%L::uuid, ''inviteplayer'')', v_booking.id));

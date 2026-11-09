@@ -28,18 +28,18 @@ begin
     ) as c (pitches, start_at, end_at, format, expected, label)
   loop
     v_error := tests.error_of(format(
-      'select public.book_slot(%L::uuid, %L::date, %L::time, %L::time, %s, %L, 5)',
+      'select public.book_slot(%L::uuid, %L::date, %L::time, %L::time, %s, %L, 5, ''each_pays_own_spot'')',
       v_venue, v_day, v_case.start_at, v_case.end_at, v_case.pitches, v_case.format));
     assert v_error = v_case.expected,
       format('%s: expected %s, got %s', v_case.label, v_case.expected, coalesce(v_error, 'success'));
   end loop;
 
   -- A sensible slot is accepted: both pitches, inside hours, on the grid.
-  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:30', 2, '7-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:30', 2, '7-a-side', 5, 'each_pays_own_spot');
   assert v_booking.pitches = 2 and v_booking.format = '7-a-side', 'a valid slot should be booked';
 
   -- A venue that closes at midnight takes a 23:00-24:00 slot.
-  v_booking := public.book_slot(v_midnight, v_day, '23:00', '24:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_midnight, v_day, '23:00', '24:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   assert v_booking.end_time = '24:00', 'a slot ending at midnight should be allowed when the venue closes at midnight';
 end $$;
 

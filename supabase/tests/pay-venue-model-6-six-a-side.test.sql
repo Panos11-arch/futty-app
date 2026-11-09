@@ -21,7 +21,7 @@ begin
 
   -- 6-a-side books the real pitch at its own price: 12 players, 7200 / 12 = 600 + 80.
   perform tests.act_as(v_player);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '6-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '6-a-side', 5, 'each_pays_own_spot');
   assert v_booking.capacity = 12, format('a 6-a-side is for 12 players, got %s', v_booking.capacity);
   assert v_booking.amount_cents = 7200, format('the 6-a-side price: got %s', v_booking.amount_cents);
   perform tests.assert_share(v_booking.id, v_player, 600, 680, 'real 6-a-side: 7200 / 12 = 600, + 80');
@@ -31,12 +31,12 @@ begin
   -- With the 6-a-side pitch taken, 6-a-side is full: the 5-a-side pitch doesn't host it.
   perform tests.act_as(v_player);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:30'', 1, ''6-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:30'', 1, ''6-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('second 6-a-side: got %s', coalesce(v_error, 'success'));
 
   -- The real 6-a-side pitch doesn't need the 6 v 6 flag.
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''10:00'', ''11:00'', 1, ''5-a-side'', 6)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''10:00'', ''11:00'', 1, ''5-a-side'', 6, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'six_a_side_not_allowed', format('6 v 6 on a 5 without the flag: got %s', coalesce(v_error, 'success'));
 
   -- With the flag on, 6 v 6 goes on a 5-a-side pitch at the 5-a-side price
@@ -46,7 +46,7 @@ begin
   update public.venues set allows_6v6_on_5s = true where id = v_venue;
   update public.pitches set formats = array['6-a-side', '5-a-side'] where id = v_six;
   perform tests.act_as(v_player);
-  v_booking := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '5-a-side', 6);
+  v_booking := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '5-a-side', 6, 'each_pays_own_spot');
   assert v_booking.capacity = 12, format('6 v 6 on a 5: 12 players, got %s', v_booking.capacity);
   perform tests.assert_share(v_booking.id, v_player, 500, 580, '6 v 6 on a 5: 6000 / 12 = 500, + 80');
   perform tests.act_as_postgres();
@@ -55,11 +55,11 @@ begin
   -- Only the 6-a-side pitch is left at 10:00: 6 v 6 on 5s can't use it.
   perform tests.act_as(v_player);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''10:30'', ''11:30'', 1, ''5-a-side'', 6)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''10:30'', ''11:30'', 1, ''5-a-side'', 6, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('6 v 6 with only the 6-a-side pitch free: got %s', coalesce(v_error, 'success'));
 
   -- An ordinary 5-a-side may use the 6-a-side pitch, since it hosts 5-a-side.
-  v_booking := public.book_slot(v_venue, v_day, '10:30', '11:30', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '10:30', '11:30', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.assert_share(v_booking.id, v_player, 600, 680, '5-a-side on the 6-a-side pitch: the 5-a-side price, 6000 / 10 = 600, + 80');
   perform tests.act_as_postgres();
   assert (select pitch_id from public.booking_pitches where booking_id = v_booking.id) = v_six,

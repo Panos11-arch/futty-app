@@ -13,6 +13,13 @@ describe('describeBookingErrorMessage', () => {
     'six_a_side_not_allowed',
     'venue_not_live',
     'beyond_booking_window',
+    'mode_required',
+    'invalid_payment_mode',
+    // create-share-payment
+    'non_refundable_not_accepted',
+    'cash_not_allowed',
+    'not_your_share',
+    'share_not_pending',
   ])('%s has a message', (code) => {
     const message = describeBookingErrorMessage(code);
     expect(message).not.toBe(code);

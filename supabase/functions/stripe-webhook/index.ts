@@ -1,5 +1,8 @@
-// Receives Stripe's webhook events. Two kinds matter here (item 6,
-// authorize-then-capture):
+// Receives Stripe's webhook events. Bookings made since P4a are handled in
+// modes.ts (hold, take 60 minutes later, the booker's guarantee); what
+// follows describes the old flow, which bookings made before P4a keep.
+//
+// Two kinds matter for the old flow (item 6, authorize-then-capture):
 //
 // - payment_intent.amount_capturable_updated fires when a manual-capture
 //   PaymentIntent's authorization succeeds — the card is held, nothing has
@@ -29,6 +32,8 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
+import { dbFromSupabase } from '../_shared/db.ts';
+import { handlePaymentModeEvent } from './modes.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -186,6 +191,11 @@ async function handleHoldExpired(paymentIntent: Stripe.PaymentIntent, supabaseAd
 }
 
 async function processEvent(event: Stripe.Event, supabaseAdmin: SupabaseClient) {
+  // Bookings made since P4a (booking modes, hold then take after 60
+  // minutes, the booker's guarantee): see modes.ts. Everything below is the
+  // old flow, kept for bookings made before P4a.
+  if (await handlePaymentModeEvent(event, { stripe, db: dbFromSupabase(supabaseAdmin) })) return;
+
   if (event.type === 'payment_intent.canceled') {
     await handleHoldExpired(event.data.object as Stripe.PaymentIntent, supabaseAdmin);
     return;
@@ -297,7 +307,7 @@ DEPLOYMENT:
 2. In the Stripe dashboard (Developers > Webhooks > Add endpoint):
      URL: https://<project-ref>.supabase.co/functions/v1/stripe-webhook
      Events to send: payment_intent.amount_capturable_updated, payment_intent.succeeded,
-                     payment_intent.canceled
+                     payment_intent.canceled, setup_intent.succeeded (P4a)
 
 3. After creating it, Stripe shows a signing secret ("whsec_...") — set it:
      supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...

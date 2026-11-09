@@ -39,6 +39,17 @@ export function describeBookingErrorMessage(message: string) {
     case 'invalid_players_per_side':
     case 'six_a_side_not_allowed':
       return "6 v 6 isn't available at this venue — book it as 5 v 5.";
+    case 'mode_required':
+    case 'invalid_payment_mode':
+      return 'Choose who pays: you for everyone, each player with you responsible, or each player for their own spot.';
+    case 'non_refundable_not_accepted':
+      return 'This game starts in less than 6 hours, so it is non-refundable. Accept that to pay.';
+    case 'cash_not_allowed':
+      return "Cash isn't available when the booker pays for everyone.";
+    case 'not_your_share':
+      return 'You can only pay your own share.';
+    case 'share_not_pending':
+      return 'Your share is already paid.';
     case 'booking_mismatch':
       return "That post doesn't match your booking's venue or format.";
     case 'already_invited':

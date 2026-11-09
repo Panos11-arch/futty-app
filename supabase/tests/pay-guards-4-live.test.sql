@@ -18,7 +18,7 @@ begin
 
   -- Set everything up while the venue is still live.
   perform tests.act_as(v_poster);
-  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   v_players_post := (public.create_squad_post(
     v_venue, ((v_day + time '12:00') at time zone 'Asia/Nicosia'), '5-a-side', 'players',
     p_players_needed => 3, p_venue_booking_id => v_booking.id)).id;
@@ -35,7 +35,7 @@ begin
   -- Now nothing at that venue can be booked or joined.
   perform tests.act_as(v_poster);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''14:00'', ''15:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''14:00'', ''15:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'venue_not_live', format('book_slot: got %s', coalesce(v_error, 'success'));
 
   v_error := tests.error_of(format(

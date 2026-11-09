@@ -14,9 +14,9 @@ begin
   update public.profiles set is_premium = true where id = v_premium;
 
   perform tests.act_as(v_standard);
-  perform public.book_slot(v_venue, v_today + 7, '12:00', '13:00', 1, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_today + 7, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, v_today + 8));
+    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_today + 8));
   assert v_error = 'beyond_booking_window', format('standard, day 8: got %s', coalesce(v_error, 'success'));
 
   -- The app can't make itself Premium.
@@ -24,14 +24,14 @@ begin
   assert v_error like 'permission denied%', format('setting is_premium from the app: got %s', coalesce(v_error, 'success'));
 
   perform tests.act_as(v_premium);
-  perform public.book_slot(v_venue, v_today + 14, '12:00', '13:00', 1, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_today + 14, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, v_today + 15));
+    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_today + 15));
   assert v_error = 'beyond_booking_window', format('Premium, day 15: got %s', coalesce(v_error, 'success'));
 
   -- A slot that started 1 minute ago (Cyprus time) is refused.
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, %L::time, %L::time, 1, ''5-a-side'', 5)',
+    'select public.book_slot(%L::uuid, %L::date, %L::time, %L::time, 1, ''5-a-side'', 5, ''each_pays_own_spot'')',
     v_venue, (v_now - interval '1 minute')::date,
     date_trunc('minute', v_now - interval '1 minute')::time,
     date_trunc('minute', v_now - interval '1 minute')::time + interval '1 hour'));

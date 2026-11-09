@@ -15,7 +15,7 @@ declare
   v_error text;
 begin
   perform tests.act_as(v_booker);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   -- Another user's booking can't be linked to a squad post.
   perform tests.act_as(v_other);

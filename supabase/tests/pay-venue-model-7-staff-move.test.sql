@@ -26,8 +26,8 @@ begin
   select id into v_foreign from public.pitches where venue_id = v_other_venue;
 
   perform tests.act_as(v_player);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
-  v_second := public.book_slot(v_venue, v_day, '18:30', '19:30', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
+  v_second := public.book_slot(v_venue, v_day, '18:30', '19:30', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   -- The player can't move it; neither can another venue's owner.
   v_error := tests.error_of(format('select public.move_booking_pitches(%L, array[%L]::uuid[])', v_booking.id, v_p3));
@@ -56,7 +56,7 @@ begin
   -- Pitch 1 is free again at 18:00 (for someone else: the player already
   -- has a game at 18:00 here).
   perform tests.act_as(v_other_owner);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '18:30', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '18:30', 1, '5-a-side', 5, 'each_pays_own_spot');
 end $$;
 
 -- Opening hours per weekday: no row for a weekday = closed that day.
@@ -74,17 +74,17 @@ begin
 
   perform tests.act_as(v_player);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'outside_opening_hours', format('a day the venue is closed: got %s', coalesce(v_error, 'success'));
   assert not exists (select 1 from public.venue_free_slots(v_venue, v_day, '5-a-side')), 'no free slots on a closed weekday';
 
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, v_day + 1));
+    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day + 1));
   assert v_error = 'outside_opening_hours', format('before that day''s opening: got %s', coalesce(v_error, 'success'));
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''21:30'', ''22:30'', 1, ''5-a-side'', 5)', v_venue, v_day + 1));
+    'select public.book_slot(%L::uuid, %L::date, ''21:30'', ''22:30'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day + 1));
   assert v_error = 'outside_opening_hours', format('after that day''s closing: got %s', coalesce(v_error, 'success'));
-  perform public.book_slot(v_venue, v_day + 1, '17:00', '18:00', 1, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_day + 1, '17:00', '18:00', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   assert (select min(start_time) from public.venue_free_slots(v_venue, v_day + 1, '5-a-side')) = '18:00',
     'free slots start at that day''s opening (17:00 is now booked)';

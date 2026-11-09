@@ -27,7 +27,7 @@ begin
 
   -- A 7-a-side holds both pitches of the combination.
   perform tests.act_as(v_a);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 2, '7-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 2, '7-a-side', 5, 'each_pays_own_spot');
   assert v_booking.pitches = 2, format('a combined 7-a-side holds 2 pitches, got %s', v_booking.pitches);
   assert v_booking.capacity = 14, format('a 7-a-side is for 14 players, got %s', v_booking.capacity);
   assert v_booking.amount_cents = 11000, format('the 7-a-side price, not 2 x 5-a-side: got %s', v_booking.amount_cents);
@@ -41,7 +41,7 @@ begin
 
   -- Pitch 3 is still free for a 5-a-side at the same time...
   perform tests.act_as(v_b);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   -- EUR 60 5-a-side: 600 + 80 = 680.
   perform tests.assert_share(v_booking.id, v_b, 600, 680, '5-a-side on pitch 3');
   perform tests.act_as_postgres();
@@ -51,30 +51,30 @@ begin
   -- ...and then the venue is full.
   perform tests.act_as(v_b);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:30'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''18:30'', ''19:30'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('a 5-a-side during the 7-a-side: got %s', coalesce(v_error, 'success'));
 
   -- The other way round: a 5-a-side on pitch 1 breaks the combination.
   perform tests.act_as(v_a);
-  v_booking := public.book_slot(v_venue, v_day, '20:00', '21:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '20:00', '21:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   assert (select pitch_id from public.booking_pitches where booking_id = v_booking.id) = v_p1,
     'the first free pitch in order is pitch 1';
   perform tests.act_as(v_b);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''20:30'', ''21:30'', 2, ''7-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''20:30'', ''21:30'', 2, ''7-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('a 7-a-side while pitch 1 is taken: got %s', coalesce(v_error, 'success'));
 
   -- A format the venue has no pitch or combination for is refused.
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''10:00'', ''11:00'', 3, ''9-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''10:00'', ''11:00'', 3, ''9-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'invalid_format', format('9-a-side at a venue without one: got %s', coalesce(v_error, 'success'));
 
   -- With a real 7-a-side pitch, it's used before tying up two 5-a-side pitches.
   perform tests.act_as_postgres();
   v_seven := tests.create_pitch(v_venue, 'Big pitch', '7-a-side', p_sort => 4);
   perform tests.act_as(v_a);
-  v_booking := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '7-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '7-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   select array_agg(pitch_id) into v_held from public.booking_pitches where booking_id = v_booking.id;
   assert v_held = array[v_seven], format('a real 7-a-side pitch should be used first, got %s', v_held);
