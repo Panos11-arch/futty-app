@@ -82,6 +82,7 @@ begin
     from public.booking_payment_shares
     where booking_id = v_booking.id and is_booker;
     assert v_share = 680, format('expected the booker''s share to be 680 cents, got %s', v_share);
+    perform tests.assert_share(v_booking.id, v_booking.created_by, 600, 680, 'cyprus-time booking');
   end loop;
 end $$;
 

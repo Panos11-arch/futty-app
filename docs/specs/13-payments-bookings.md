@@ -17,6 +17,11 @@ The venue always gets its full pitch price; Futty adds a service fee per player 
 - **Premium players** pay no service fee.
 - **Paying with venue credit:** no service fee. If the credit doesn't cover the whole share, the rest is paid by card **plus the normal €0.80**.
 - **It's a service fee, not a card fee.** It's charged the same whatever the payment method; card surcharges on consumer cards are banned in the EU.
+- **Pitch prices (decided 9 November):** by default a venue has **one price per format, the same at every hour**. Peak and weekend prices are optional and apply only when the venue's data provides them; a venue without them charges its one price for every slot.
+  - **When a venue has them:** its peak and weekend hours are stored with its price rules. Unless its data sets other hours, **peak** is Monday to Friday from 17:00 until closing and **weekend** is Saturday and Sunday all day. Every other hour is **off-peak**, at the venue's one price.
+  - **A game is priced half hour by half hour,** each half hour at its own price.
+  - **Example, one price:** a 5-a-side at €50 an hour costs €50 at any hour, any day: €50 ÷ 10 = €5.00 + €0.80 = **€5.80 each**.
+  - **Example, crossing into peak:** the same venue with a €60 peak price. A weekday game from 16:30 to 17:30 is half off-peak and half peak: €25 + €30 = €55, so €55 ÷ 10 = €5.50 + €0.80 = **€6.30 each**.
 
 | Booking                                        | Each player pays | Stripe takes                | Futty keeps per player     |
 |------------------------------------------------|------------------|-----------------------------|----------------------------|
@@ -203,6 +208,7 @@ The forecast only reaches about 10 days ahead. Further out, the app shows "Forec
 ### Blocking pitches
 - The venue picks a day, or a time range on a day, and marks pitches **unavailable**. Nobody can book them.
 - **Blocking stops new bookings only.** Games already booked stay on, and their players are told the venue has closed new bookings.
+- **Joining (decided 9 November):** players can still join a game that was booked before the block. The join screen shows the venue's notice that it has closed new bookings.
 - If the venue then cancels one of those games, the venue-cancels rule applies: full refund or credit, and the venue pays Stripe's €0.35 per player.
 
 ## Server-side checks that make it airtight
@@ -214,7 +220,7 @@ The app can be tampered with, so every rule that involves money or availability 
 - **Gipedo Pano** is refused more than 6 days ahead.
 - **Cyprus time:** "in the past" and every cutoff are measured in Cyprus time. *Found 7 Nov: the code compared against UTC, so in winter a slot that started up to 2 hours ago could still be booked (3 hours in summer). Fixed in pull request \#20.*
 - **A sensible slot:** the end is after the start, within opening hours; pitches between 1 and what the venue has; a format the venue offers.
-- **Blocked pitches, unsigned venues (the live/not-live switch) and players in debt** are refused when booking, joining and choosing cash.
+- **Blocked pitches** are refused for new bookings; a game booked before the block can still be joined. **Unsigned venues (the live/not-live switch) and players in debt** are refused when booking, joining and choosing cash.
 - **Only a venue's own staff** can tick cash, settle debt, block pitches, flag conditions or cancel that venue's bookings. Only the booker can cancel the whole team or switch 5 v 5 / 6 v 6; switching closes 6 hours before kickoff.
 - **Every money movement happens once.** Each Stripe call carries an idempotency key, and each movement is written to a ledger with its reason.
 - **The books always balance:** for every booking, venue + Futty + Stripe + refunds + credit = what was taken. A daily check flags any booking where they don't.

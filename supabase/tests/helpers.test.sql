@@ -57,6 +57,40 @@ begin
   assert auth.uid() is null, 'auth.uid() should be cleared';
 end $$;
 
+-- check_player_price checks every amount, then undoes its booking; a wrong
+-- expectation fails.
+do $$
+declare
+  v_player uuid := tests.create_user('helpers-price@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_day date := tests.cyprus_today() + 1;
+  v_error text;
+begin
+  perform tests.act_as(v_player);
+  -- EUR 60: 6000 / 10 = 600 + 80 = 680.
+  perform tests.check_player_price(v_venue, v_day, '12:00', '13:00', '5-a-side', 5, 6000, 600, 680, 'helper');
+  assert not exists (select 1 from public.venue_bookings where venue_id = v_venue), 'the check''s booking is undone';
+  -- So the same slot can be checked again.
+  perform tests.check_player_price(v_venue, v_day, '12:00', '13:00', '5-a-side', 5, 6000, 600, 680, 'helper again');
+
+  -- (A failed assert isn't caught by tests.error_of's "when others", so
+  -- catch assert_failure here.)
+  begin
+    perform tests.check_player_price(v_venue, v_day, '12:00', '13:00', '5-a-side', 5, 6000, 600, 681, 'wrong');
+    v_error := null;
+  exception when assert_failure then
+    get stacked diagnostics v_error = message_text;
+  end;
+  assert v_error like '%player pays should be 681, got 680%', format('a wrong total must fail: got %s', coalesce(v_error, 'success'));
+  begin
+    perform tests.check_player_price(v_venue, v_day, '12:00', '13:00', '5-a-side', 5, 6000, 601, 680, 'wrong');
+    v_error := null;
+  exception when assert_failure then
+    get stacked diagnostics v_error = message_text;
+  end;
+  assert v_error like '%pitch share should be 601, got 600%', format('a wrong pitch share must fail: got %s', coalesce(v_error, 'success'));
+end $$;
+
 select 'helpers tests passed' as result;
 
 rollback;

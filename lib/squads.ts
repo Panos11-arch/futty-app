@@ -40,6 +40,27 @@ export function describePlayerPostNeed(post: { position_needed: string | null; l
   }`;
 }
 
+export type BlockNotice = { title: string; body: string };
+
+/** The venue's notice that it has closed new bookings, shown on the join
+ *  screen when a block covers the post's game. A block stops new bookings
+ *  only, so the game (booked before it) can still be joined
+ *  (docs/specs/13-payments-bookings.md, "Blocking pitches"). */
+export function describeBlockNotice(venueName: string): BlockNotice {
+  return {
+    title: `${venueName} has closed new bookings`,
+    body: 'This game was booked before that, so it’s still on and you can join.',
+  };
+}
+
+/** Null when no block covers the game, and when the check fails: the notice
+ *  is information only and never stops anyone joining. */
+export async function getSquadPostBlockNotice(postId: string): Promise<BlockNotice | null> {
+  const { data, error } = await supabase.rpc('squad_post_block_notice', { p_post_id: postId });
+  const row = !error && Array.isArray(data) ? (data[0] as { venue_name: string } | undefined) : undefined;
+  return row ? describeBlockNotice(row.venue_name) : null;
+}
+
 /** "Looking for a Gold-level opponent" — the "need opposition" equivalent of
  *  describePlayerPostNeed above. Informational only (item 3 of the payment-
  *  auth batch) — a team below or above this level can still see and offer to

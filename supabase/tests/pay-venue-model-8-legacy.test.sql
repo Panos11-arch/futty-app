@@ -32,9 +32,13 @@ begin
   assert v_count = 0, 'no 11-a-side from 3 pitches';
   select count(*) into v_count from public.opening_hours where venue_id = v_venue and opens = '09:00' and closes = '24:00';
   assert v_count = 7, format('the same hours every day, 23:59 meaning midnight; got %s days', v_count);
-  assert (select peak_cents from public.price_rules where venue_id = v_venue and format = '5-a-side') = 5000, '5-a-side = 1 pitch-hour';
-  assert (select weekend_cents from public.price_rules where venue_id = v_venue and format = '7-a-side') = 10000, '7-a-side = 2 pitch-hours';
-  assert (select offpeak_cents from public.price_rules where venue_id = v_venue and format = '9-a-side') = 15000, '9-a-side = 3 pitch-hours';
+  assert (select price_cents from public.price_rules where venue_id = v_venue and format = '5-a-side') = 5000, '5-a-side = 1 pitch-hour';
+  assert (select price_cents from public.price_rules where venue_id = v_venue and format = '7-a-side') = 10000, '7-a-side = 2 pitch-hours';
+  assert (select price_cents from public.price_rules where venue_id = v_venue and format = '9-a-side') = 15000, '9-a-side = 3 pitch-hours';
+  -- One price at every hour: the old model had no peak or weekend prices.
+  assert not exists (
+    select 1 from public.price_rules where venue_id = v_venue and (peak_cents is not null or weekend_cents is not null)
+  ), 'a converted venue has no peak or weekend price';
 
   -- Running it again changes nothing.
   perform public.init_venue_model_from_legacy(v_venue);
