@@ -65,7 +65,7 @@ begin
   perform tests.create_pitch(v_venue, 'Pitch 1');
   perform tests.act_as(v_player);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, tests.cyprus_today() + 1));
+    'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, tests.cyprus_today() + 1));
   assert v_error = 'price_not_set', format('no price rule: got %s', coalesce(v_error, 'success'));
 end $$;
 

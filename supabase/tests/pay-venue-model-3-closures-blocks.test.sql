@@ -22,9 +22,9 @@ begin
 
   -- A game at 18:00 with two players holding a share, and one at 10:00.
   perform tests.act_as(v_booker);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as(v_other);
-  v_untouched := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '5-a-side', 5);
+  v_untouched := public.book_slot(v_venue, v_day, '10:00', '11:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   insert into public.booking_payment_shares (booking_id, profile_id, amount_cents, is_booker, status)
   values (v_booking.id, v_friend, 680, false, 'pending');
@@ -75,7 +75,7 @@ begin
 
   -- A holiday closure: the whole day disappears, the game that day stays.
   perform tests.act_as(v_booker);
-  v_booking := public.book_slot(v_venue, v_later, '12:00', '13:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_later, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   insert into public.venue_closures (venue_id, starts_on, ends_on, reason) values (v_venue, v_later, v_later, 'Holiday');
   select status into v_status from public.venue_bookings where id = v_booking.id;
@@ -84,7 +84,7 @@ begin
   select count(*) into v_count from public.venue_free_slots(v_venue, v_later, '5-a-side');
   assert v_count = 0, format('a closed day has no free slots, got %s', v_count);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''15:00'', ''16:00'', 1, ''5-a-side'', 5)', v_venue, v_later));
+    'select public.book_slot(%L::uuid, %L::date, ''15:00'', ''16:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_later));
   assert v_error = 'venue_closed', format('booking on a closed day: got %s', coalesce(v_error, 'success'));
 
   -- Only the venue's own staff may block it.

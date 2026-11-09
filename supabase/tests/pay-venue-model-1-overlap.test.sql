@@ -18,11 +18,11 @@ declare
   v_count integer;
 begin
   perform tests.act_as(v_a);
-  v_first := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5);
+  v_first := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   -- The second overlapping game goes on the other pitch...
   perform tests.act_as(v_b);
-  v_second := public.book_slot(v_venue, v_day, '12:30', '13:30', 1, '5-a-side', 5);
+  v_second := public.book_slot(v_venue, v_day, '12:30', '13:30', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   perform tests.act_as_postgres();
   select pitch_id into v_first_pitch from public.booking_pitches where booking_id = v_first.id;
@@ -34,11 +34,11 @@ begin
   -- ...and a third overlapping game is refused: both pitches are taken.
   perform tests.act_as(v_c);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''12:30'', ''13:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''12:30'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('a third overlapping game: got %s', coalesce(v_error, 'success'));
 
   -- Back-to-back is not an overlap.
-  v_third := public.book_slot(v_venue, v_day, '13:00', '14:00', 1, '5-a-side', 5);
+  v_third := public.book_slot(v_venue, v_day, '13:00', '14:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as_postgres();
   select count(*) into v_count from public.booking_pitches where booking_id = v_third.id and pitch_id = v_first_pitch;
   assert v_count = 1, 'a game starting when the first ends should take the first pitch (first free in order)';
@@ -54,16 +54,16 @@ begin
   select count(*) into v_count from public.booking_pitches where booking_id = v_second.id;
   assert v_count = 0, 'a cancelled booking should release its pitch';
   perform tests.act_as(v_c);
-  perform public.book_slot(v_venue, v_day, '12:30', '13:00', 1, '5-a-side', 5);
+  perform public.book_slot(v_venue, v_day, '12:30', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
 
   -- A pitch closed for maintenance is never assigned.
   perform tests.act_as_postgres();
   update public.pitches set is_open = false where id = v_second_pitch;
   perform tests.act_as(v_a);
-  v_first := public.book_slot(v_venue, v_day, '16:00', '17:00', 1, '5-a-side', 5);
+  v_first := public.book_slot(v_venue, v_day, '16:00', '17:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   perform tests.act_as(v_b);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''16:00'', ''17:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''16:00'', ''17:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_full', format('only the closed pitch is left: got %s', coalesce(v_error, 'success'));
 end $$;
 

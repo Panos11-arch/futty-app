@@ -15,7 +15,7 @@ declare
   v_price integer;
 begin
   perform tests.act_as(v_booker);
-  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '12:00', '13:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   v_post := public.create_squad_post(
     v_venue, (v_day + time '12:00') at time zone 'Asia/Nicosia', '5-a-side', 'players',
     p_players_needed => 3, p_venue_booking_id => v_booking.id);

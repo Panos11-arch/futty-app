@@ -39,6 +39,31 @@ export function describeBookingErrorMessage(message: string) {
     case 'invalid_players_per_side':
     case 'six_a_side_not_allowed':
       return "6 v 6 isn't available at this venue — book it as 5 v 5.";
+    case 'mode_required':
+    case 'invalid_payment_mode':
+      return 'Choose who pays: you for everyone, each player with you responsible, or each player for their own spot.';
+    case 'non_refundable_not_accepted':
+      return 'This game starts in less than 6 hours, so it is non-refundable. Accept that to pay.';
+    case 'cash_not_allowed':
+      return "Cash isn't available when the booker pays for everyone.";
+    case 'not_your_share':
+      return 'You can only pay your own share.';
+    case 'share_not_pending':
+      return 'Your share is already paid.';
+    case 'already_paid':
+      return 'Your payment has already gone through.';
+    case 'share_changed':
+      return 'Your payment changed on another device. Check your booking and try again.';
+    case 'payment_window_closed':
+      return 'Payment had to be completed within 15 minutes of booking, so this booking was cancelled.';
+    case 'saved_card_required':
+      return "Paying this way needs a saved card, which isn't available yet. Pay by card instead.";
+    case 'guarantee_closed':
+      return 'The game has started, so the card for this booking can no longer be changed.';
+    case 'no_guarantee_to_update':
+      return "This booking doesn't have a guarantee card to update.";
+    case 'no_saved_card':
+      return 'Pay your share first. Your card is saved when you pay, and then you can change it here.';
     case 'booking_mismatch':
       return "That post doesn't match your booking's venue or format.";
     case 'already_invited':
@@ -56,9 +81,9 @@ export function describeBookingErrorMessage(message: string) {
     case 'already_cancelled':
       return 'That booking is already cancelled.';
     case 'too_late_to_cancel':
-      return "Too close to kickoff to cancel — cancellations close 30 minutes before the game.";
+      return 'Less than 6 hours to kickoff, so this booking can no longer be refunded.';
     case 'booking_cancelled':
-      return "You can't log a result for a cancelled booking.";
+      return 'This booking has been cancelled.';
     case 'already_logged':
       return "You've already logged a result for this booking.";
     case 'too_early':

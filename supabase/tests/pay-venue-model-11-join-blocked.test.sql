@@ -30,7 +30,7 @@ begin
 
   -- The game is booked (pitch 1, 18:00) and posted for players, then invites go out.
   perform tests.act_as(v_booker);
-  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5);
+  v_booking := public.book_slot(v_venue, v_day, '18:00', '19:00', 1, '5-a-side', 5, 'each_pays_own_spot');
   v_post := public.create_squad_post(
     v_venue, (v_day + time '18:00') at time zone 'Asia/Nicosia', '5-a-side', 'players',
     p_players_needed => 3, p_venue_booking_id => v_booking.id);
@@ -65,7 +65,7 @@ begin
   -- A new booking in the block is still refused...
   perform tests.act_as(v_joiner);
   v_error := tests.error_of(format(
-    'select public.book_slot(%L::uuid, %L::date, ''19:00'', ''20:00'', 1, ''5-a-side'', 5)', v_venue, v_day));
+    'select public.book_slot(%L::uuid, %L::date, ''19:00'', ''20:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')', v_venue, v_day));
   assert v_error = 'slot_blocked', format('a new booking in the block: got %s', coalesce(v_error, 'success'));
 
   -- ...but the game booked before it can be joined from the post (EUR 60 / 10 + 80 = 680)...

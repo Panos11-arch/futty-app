@@ -53,6 +53,7 @@ The booker picks one of three ways to pay when booking. **Agreed.** The choice d
   - accept a player the venue offers from its dashboard.
 - **A player the venue provides plays free.** The team covers his spot like an empty one.
 - **If the booker is responsible but doesn't show** while the team plays, a teammate covers his share or he pays it in the app. Otherwise his hold covers it.
+- **The mode is always chosen (decided 9 November).** The server refuses a booking without one (`mode_required`); there is no default.
 
 ## When money is held and taken
 
@@ -62,16 +63,22 @@ A payment is held when the player pays and taken 1 hour later. Everything still 
 Step 3 applies only when the booker is responsible.
 1.  **When a player pays** (card, Apple Pay or Google Pay), their share is **held**. Their card is also saved, with their consent, so top-ups and debts can be charged later.
 2.  **1 hour after paying**, the share is **taken**. The free-cancellation hour ends here. *Exception:* a booking made less than 6 hours before kickoff is taken **straight away**, and the player must accept a "This booking is non-refundable" notice first.
+    - **Per share (decided 9 November):** the exception applies to any share paid less than 6 hours before kickoff, including a player paying late on a booking made days earlier.
 3.  **The booker's guarantee** (when the booker is responsible) is saved at booking and **held for the full pitch price 3 days before kickoff**, or at booking if the match is less than 3 days away. Holds last about 7 days, so this is the earliest that's safe.
-    - If the hold fails, the booker is notified and asked to fix their card.
+    - If the hold fails, the booker is notified and asked to fix their card. **It's retried every 6 hours; the booker is notified once, on the first failure (decided 9 November).**
     - **A failed hold never cancels the booking. Whatever the hold would have covered at collection becomes the booker's debt to the venue**.
-4.  **6 hours before kickoff:** refunds stop, and in a short game every player gets the "You're 8 of 10" notice (see Short games).
-5.  **After the match:** a cash player the venue hasn't ticked gets: "Pay €6.00 by card now, or remain in debt to \[venue\]."
-6.  **2 hours after the match, collection runs automatically.** The venue can run it earlier from its dashboard, or tick cash as received first.
+    - **Retries stop at kickoff (decided 9 November).** After that no hold is tried; anything still unpaid becomes the booker's debt at collection.
+    - **The booker can replace their card (decided 9 November)** in the app and the hold is retried at once. If their bank asks for 3-D Secure, they're asked to complete it in the app.
+4.  **The free-cancellation hour (decided 9 November)** ends 60 minutes after paying or 6 hours before kickoff, whichever comes first. The share is taken at that moment. Whether a share is non-refundable is decided when the player confirms payment, not when the payment is started.
+5.  **The booker completes payment within 15 minutes of booking (decided 9 November):** the full amount when paying for everyone, or their own share plus a saved card in the each-pays modes. Otherwise the booking is cancelled and its pitches released. This replaces the old 3-hour auto-cancel.
+6.  **Every player paying in the app saves a card (agreed),** including a Premium cash player or a player paying fully with venue credit, so top-ups and debts can be charged later.
+7.  **6 hours before kickoff:** refunds stop, and in a short game every player gets the "You're 8 of 10" notice (see Short games).
+8.  **After the match:** a cash player the venue hasn't ticked gets: "Pay €6.00 by card now, or remain in debt to \[venue\]."
+9.  **2 hours after the match, collection runs automatically.** The venue can run it earlier from its dashboard, or tick cash as received first.
     - top-ups in short games are charged;
     - in **responsible** mode, anything still unpaid is taken from the booker's hold, and the rest of the hold is released;
     - in **just my spot** mode, anything still unpaid becomes that player's debt to the venue.
-7.  **The old 3-hour auto-cancel is removed.** Unpaid spots no longer cancel a booking.
+10. **The old 3-hour auto-cancel is removed.** Unpaid spots no longer cancel a booking.
 
 **When a booker's payment fails (agreed 7 Nov), they owe it as debt to the venue, and the game still goes ahead:**
 - **The booker was responsible for the whole team:** they owe everything still unpaid at collection, up to the full pitch price.
