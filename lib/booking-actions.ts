@@ -6,8 +6,10 @@ export type BookSlotParams = {
   start: string;
   end: string;
   pitches: number;
-  capacity: number;
   format: string;
+  /** 5, or 6 for 6 v 6 on a 5-a-side pitch where the venue allows it. The
+   *  server derives how many players that is; the app never sends a count. */
+  playersPerSide?: 5 | 6;
 };
 
 /** Wraps book_slot (supabase/legacy/booking-payments.sql), the only writable path
@@ -23,8 +25,8 @@ export async function bookSlot(params: BookSlotParams) {
     p_start: params.start,
     p_end: params.end,
     p_pitches: params.pitches,
-    p_capacity: params.capacity,
     p_format: params.format,
+    p_players_per_side: params.playersPerSide ?? 5,
   });
 }
 

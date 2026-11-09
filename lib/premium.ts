@@ -1,11 +1,13 @@
 import { supabase } from '@/lib/supabase';
 
-/** How many days ahead a standard account can book. Premium unlocks the full
- *  21-day picker (lib/days.ts's DAY_PICKER_LENGTH). */
-export const STANDARD_ADVANCE_DAYS = 2;
+/** How many days after today an account can book (day 0 = today, Cyprus
+ *  dates). book_slot enforces the same numbers (beyond_booking_window);
+ *  Premium comes only from profiles.is_premium. */
+export const STANDARD_ADVANCE_DAYS = 7;
+export const PREMIUM_ADVANCE_DAYS = 14;
 
 export function isDayLocked(dayIndex: number, isPremium: boolean) {
-  return dayIndex >= STANDARD_ADVANCE_DAYS && !isPremium;
+  return dayIndex > STANDARD_ADVANCE_DAYS && !isPremium;
 }
 
 // Must match the auto-renewable subscription's Product ID created in App

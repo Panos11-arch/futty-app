@@ -21,11 +21,11 @@ import {
   type DurationHours,
   type Slot,
 } from '@/lib/booking';
-import { DAY_PICKER_LENGTH, dayNumberLabel, isToday, toDateKey, useDays, weekdayLabel } from '@/lib/days';
+import { dayNumberLabel, isToday, toDateKey, useDays, weekdayLabel } from '@/lib/days';
 import { PostSquadNeed } from '@/app/my-bookings';
 import { useDayBookings } from '@/lib/use-day-bookings';
 import type { MyBooking } from '@/lib/use-my-bookings';
-import { isDayLocked, STANDARD_ADVANCE_DAYS } from '@/lib/premium';
+import { isDayLocked, PREMIUM_ADVANCE_DAYS, STANDARD_ADVANCE_DAYS } from '@/lib/premium';
 import { useProfile } from '@/lib/use-profile';
 import { useVenues, type Venue } from '@/lib/use-venues';
 
@@ -85,8 +85,8 @@ export default function BookScreen() {
   const profile = useProfile();
   const isPremium = profile.status === 'ready' && profile.profile.is_premium;
 
-  const [dayCount, setDayCount] = useState(DAY_PICKER_LENGTH);
-  const days = useDays(dayCount);
+  // Today plus the Premium window; days past the standard window show a lock.
+  const days = useDays(PREMIUM_ADVANCE_DAYS + 1);
 
   const [city, setCity] = useState<string | null>(null);
   const [venueId, setVenueId] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export default function BookScreen() {
   const [dayLockedPrompt, setDayLockedPrompt] = useState(false);
   const [completed, setCompleted] = useState<MyBooking | null>(null);
 
-  const venues = venuesState.status === 'ready' ? venuesState.venues : [];
+  const venues = venuesState.status === 'ready' ? venuesState.venues.filter((v) => v.is_live) : [];
   const venuesInCity = city === ALL_CITIES ? venues : venues.filter((v) => v.city === city);
   const venue: Venue | null = venues.find((v) => v.id === venueId) ?? null;
   const dayBookings = useDayBookings(venueId, selectedDay ?? '');
@@ -180,7 +180,6 @@ export default function BookScreen() {
       start: selectedSlot.start,
       end: selectedSlot.end,
       pitches: pitchesForCapacity(capacity),
-      capacity,
       format: formatForCapacity(capacity),
     });
 
@@ -331,14 +330,6 @@ export default function BookScreen() {
               );
             })}
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setDayCount((c) => c + DAY_PICKER_LENGTH)}
-            style={styles.showMoreButton}>
-            <ThemedText type="link" style={styles.showMoreText}>
-              Show more days
-            </ThemedText>
-          </Pressable>
         </>
       ) : null}
 
@@ -466,13 +457,6 @@ const styles = StyleSheet.create({
   },
   dayCardTextSelected: {
     color: FuttyColors.white,
-  },
-  showMoreButton: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
-  },
-  showMoreText: {
-    fontSize: 13,
   },
   timeGrid: {
     flexDirection: 'row',

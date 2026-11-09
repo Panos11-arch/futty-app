@@ -4,10 +4,12 @@ import { StyleSheet, View } from 'react-native';
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
 import { ThemedText } from '@/components/themed-text';
 import { shareTeamInvite } from '@/lib/invite';
-import { addTeamMember, findProfileByUsername } from '@/lib/teams';
+import { describeInviteError } from '@/lib/invites';
+import { findProfileByUsername, inviteTeamMember } from '@/lib/teams';
 
-/** One "add a player" or "add a substitute" row — looks a username up, adds
- *  them if found, or offers to invite them by link if not. Shared by the
+/** One "add a player" or "add a substitute" row — looks a username up and
+ *  sends them a team invite if found (they join once they accept), or offers
+ *  to invite them by link if not. Shared by the
  *  League tab's register-a-new-team flow and the Team tab's "fill your
  *  roster" flow for an already-registered team. */
 export function AddPlayerRow({
@@ -29,6 +31,7 @@ export function AddPlayerRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<string | null>(null);
+  const [invited, setInvited] = useState<string | null>(null);
 
   if (remaining <= 0) return null;
 
@@ -39,6 +42,7 @@ export function AddPlayerRow({
     setBusy(true);
     setError(null);
     setNotFound(null);
+    setInvited(null);
 
     const { data: matches, error: lookupError } = await findProfileByUsername(trimmed);
 
@@ -53,14 +57,16 @@ export function AddPlayerRow({
       return;
     }
 
-    const { error: addError } = await addTeamMember(teamId, matches[0].id, role);
+    const { error: inviteError } = await inviteTeamMember(teamId, matches[0].id, role);
     setBusy(false);
 
-    if (addError) {
-      setError(addError.message.includes('duplicate') ? 'Already on this team.' : addError.message);
+    if (inviteError) {
+      setError(describeInviteError(inviteError));
     } else {
+      const name = matches[0].username ?? trimmed;
       setUsername('');
-      onAdded(matches[0].username ?? trimmed);
+      setInvited(name);
+      onAdded(name);
     }
   }
 
@@ -83,6 +89,9 @@ export function AddPlayerRow({
         returnKeyType="done"
       />
       {error ? <AuthError>{error}</AuthError> : null}
+      {invited ? (
+        <ThemedText style={styles.note}>Invite sent to {invited} — they join once they accept.</ThemedText>
+      ) : null}
       {notFound ? (
         <>
           <ThemedText style={styles.note}>
@@ -95,7 +104,7 @@ export function AddPlayerRow({
           />
         </>
       ) : (
-        <AuthButton label="Add" onPress={submit} disabled={!username.trim()} busy={busy} />
+        <AuthButton label="Invite" onPress={submit} disabled={!username.trim()} busy={busy} />
       )}
     </View>
   );
