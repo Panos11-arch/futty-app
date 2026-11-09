@@ -37,17 +37,13 @@ export function useDayBookings(venueId: string | null, dateKey: string) {
 
     setState({ status: 'loading' });
 
-    let query = supabase
-      .from('venue_bookings')
-      .select('start_time, end_time, pitches')
-      .eq('venue_id', venueId)
-      .eq('booking_day', dateKey);
-
-    for (const ignored of IGNORED_BOOKING_STATUSES) {
-      query = query.neq('status', ignored);
-    }
-
-    const { data, error } = await query;
+    // Availability only: other people's bookings aren't readable (who booked,
+    // their team, what they paid), just which pitches are taken when.
+    // venue_day_availability already leaves out IGNORED_BOOKING_STATUSES.
+    const { data, error } = await supabase.rpc('venue_day_availability', {
+      target_venue: venueId,
+      target_day: dateKey,
+    });
 
     if (requestIdRef.current !== requestId) return;
 

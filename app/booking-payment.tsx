@@ -14,6 +14,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { addBookingPlayer, createSharePayment, listBookingShares, type BookingShare } from '@/lib/booking-shares';
+import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { formatEuros } from '@/lib/service-fee';
 import { PostSquadNeed } from '@/app/my-bookings';
@@ -78,6 +79,7 @@ export default function BookingPaymentScreen() {
   const [username, setUsername] = useState('');
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
+  const [addNotice, setAddNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!bookingId) return;
@@ -175,11 +177,14 @@ export default function BookingPaymentScreen() {
     if (!bookingId || !username.trim() || addBusy) return;
     setAddBusy(true);
     setAddError(null);
+    setAddNotice(null);
     const { error: addPlayerError } = await addBookingPlayer(bookingId, username.trim());
     setAddBusy(false);
     if (addPlayerError) {
-      setAddError(addPlayerError.message.includes('player_not_found') ? 'No player with that username.' : addPlayerError.message);
+      setAddError(describeBookingErrorMessage(addPlayerError.message));
     } else {
+      // An invite, not a share: they appear in the list once they accept.
+      setAddNotice(`Invite sent to ${username.trim()} — they'll show up here once they accept.`);
       setUsername('');
       load();
     }
@@ -275,7 +280,7 @@ export default function BookingPaymentScreen() {
 
         {isBooker ? (
           <View style={styles.addPlayerSection}>
-            <ThemedText style={styles.label}>Add a player manually</ThemedText>
+            <ThemedText style={styles.label}>Invite a player</ThemedText>
             <View style={styles.addPlayerRow}>
               <AuthField
                 value={username}
@@ -284,9 +289,10 @@ export default function BookingPaymentScreen() {
                 autoCapitalize="none"
                 style={styles.addPlayerField}
               />
-              <AuthButton label="Add" onPress={addPlayer} busy={addBusy} disabled={!username.trim()} />
+              <AuthButton label="Invite" onPress={addPlayer} busy={addBusy} disabled={!username.trim()} />
             </View>
             {addError ? <AuthError>{addError}</AuthError> : null}
+            {addNotice ? <ThemedText style={styles.hint}>{addNotice}</ThemedText> : null}
             <ThemedText style={styles.hint}>
               Players who join via a &quot;need players&quot; post linked to this booking are added
               automatically.

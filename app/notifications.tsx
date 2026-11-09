@@ -1,14 +1,16 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AuthButton, AuthError } from '@/components/auth-form';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
 import { markNotificationRead, type AppNotification, type NotificationType } from '@/lib/notifications';
 import { supabase } from '@/lib/supabase';
 import { useNotifications } from '@/lib/use-notifications';
@@ -20,7 +22,16 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   booking_cancelled: 'exclamationmark.triangle.fill',
   fixture_agreed: 'flag.checkered',
   match_payment_due: 'creditcard.fill',
+  team_invite: 'person.crop.circle.badge.plus',
+  booking_invite: 'calendar',
 };
+
+function inviteIdOf(notification: AppNotification) {
+  const id = (notification.data as Record<string, unknown>).inviteId;
+  return (notification.type === 'team_invite' || notification.type === 'booking_invite') && typeof id === 'string'
+    ? id
+    : null;
+}
 
 function timeAgo(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -71,9 +82,76 @@ async function openNotification(notification: AppNotification) {
   } else if (notification.type === 'match_payment_due' && typeof data.bookingId === 'string') {
     router.push({ pathname: '/booking-payment', params: { bookingId: data.bookingId } });
   }
+  // Invites are answered with the buttons on the row, not by opening them.
 }
 
-function NotificationRow({ notification, onOpened }: { notification: AppNotification; onOpened: () => void }) {
+/** Accept / Decline on a team or booking invite, or what was decided. */
+function InviteActions({
+  notification,
+  status,
+  onAnswered,
+}: {
+  notification: AppNotification;
+  status: InviteStatus | undefined;
+  onAnswered: (status: InviteStatus) => void;
+}) {
+  const inviteId = inviteIdOf(notification);
+  const [busy, setBusy] = useState<'accept' | 'decline' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!inviteId || !status) return null;
+  if (status !== 'pending') {
+    return <ThemedText style={styles.rowText}>{status === 'accepted' ? 'Accepted' : 'Declined'}</ThemedText>;
+  }
+
+  async function answer(choice: 'accept' | 'decline') {
+    if (!inviteId || busy) return;
+    setBusy(choice);
+    setError(null);
+    const { error: answerError } = choice === 'accept' ? await acceptInvite(inviteId) : await declineInvite(inviteId);
+    setBusy(null);
+    if (answerError) {
+      setError(describeInviteError(answerError));
+      return;
+    }
+    onAnswered(choice === 'accept' ? 'accepted' : 'declined');
+    if (notification.read_at === null) await markNotificationRead(notification.id);
+    // A game invite means paying your share next.
+    const bookingId = (notification.data as Record<string, unknown>).bookingId;
+    if (choice === 'accept' && notification.type === 'booking_invite' && typeof bookingId === 'string') {
+      router.push({ pathname: '/booking-payment', params: { bookingId } });
+    }
+  }
+
+  return (
+    <View style={styles.inviteActions}>
+      <View style={styles.inviteButtons}>
+        <AuthButton label="Accept" compact busy={busy === 'accept'} disabled={!!busy} onPress={() => answer('accept')} />
+        <AuthButton
+          label="Decline"
+          compact
+          variant="secondary"
+          busy={busy === 'decline'}
+          disabled={!!busy}
+          onPress={() => answer('decline')}
+        />
+      </View>
+      {error ? <AuthError>{error}</AuthError> : null}
+    </View>
+  );
+}
+
+function NotificationRow({
+  notification,
+  inviteStatus,
+  onOpened,
+  onInviteAnswered,
+}: {
+  notification: AppNotification;
+  inviteStatus: InviteStatus | undefined;
+  onOpened: () => void;
+  onInviteAnswered: (status: InviteStatus) => void;
+}) {
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const unread = !notification.read_at;
 
@@ -98,6 +176,7 @@ function NotificationRow({ notification, onOpened }: { notification: AppNotifica
             {notification.title}
           </ThemedText>
           <ThemedText style={styles.rowText}>{notification.body}</ThemedText>
+          <InviteActions notification={notification} status={inviteStatus} onAnswered={onInviteAnswered} />
           <ThemedText style={styles.rowTime}>{timeAgo(notification.created_at)}</ThemedText>
         </View>
         {unread ? <View style={styles.unreadDot} /> : null}
@@ -108,6 +187,20 @@ function NotificationRow({ notification, onOpened }: { notification: AppNotifica
 
 export default function NotificationsScreen() {
   const notifications = useNotifications();
+  const [invites, setInvites] = useState<Map<string, InviteStatus>>(new Map());
+
+  const list = notifications.status === 'ready' ? notifications.notifications : null;
+  useEffect(() => {
+    if (!list) return;
+    const ids = list.map(inviteIdOf).filter((id): id is string => id !== null);
+    let active = true;
+    inviteStatuses(ids).then((statuses) => {
+      if (active) setInvites(statuses);
+    });
+    return () => {
+      active = false;
+    };
+  }, [list]);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,7 +226,12 @@ export default function NotificationsScreen() {
               <NotificationRow
                 key={notification.id}
                 notification={notification}
+                inviteStatus={invites.get(inviteIdOf(notification) ?? '')}
                 onOpened={notifications.reload}
+                onInviteAnswered={(status) => {
+                  const id = inviteIdOf(notification);
+                  if (id) setInvites((current) => new Map(current).set(id, status));
+                }}
               />
             ))
           : null}
@@ -196,6 +294,14 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: FuttyColors.stone400,
     marginTop: 2,
+  },
+  inviteActions: {
+    gap: 6,
+    marginTop: 8,
+  },
+  inviteButtons: {
+    flexDirection: 'row',
+    gap: 8,
   },
   unreadDot: {
     width: 8,

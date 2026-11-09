@@ -45,6 +45,14 @@ export function describeSquadError(error: PostgrestError) {
       return "This post isn't linked to a real booking.";
     case 'name_required':
       return 'Enter a name.';
+    case 'venue_not_live':
+      return "This venue isn't taking bookings on Futty right now.";
+    case 'not_your_booking':
+      return 'You can only post from your own booking.';
+    case 'booking_mismatch':
+      return "That post doesn't match your booking's venue or format.";
+    case 'booking_cancelled':
+      return 'That booking has been cancelled.';
     default:
       return error.message;
   }

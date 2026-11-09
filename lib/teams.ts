@@ -73,12 +73,15 @@ export async function findProfileByUsername(username: string) {
   return supabase.rpc('find_profile_by_username', { p_username: username });
 }
 
-export async function addTeamMember(
+/** Captain only. Sends the player an invite (a team_invite notification);
+ *  they join the roster when they accept it. Nobody can add someone else
+ *  directly. */
+export async function inviteTeamMember(
   teamId: string,
   profileId: string,
   role: 'player' | 'substitute' = 'player'
 ) {
-  return supabase.from('team_members').insert({ team_id: teamId, profile_id: profileId, role });
+  return supabase.rpc('invite_team_member', { p_team_id: teamId, p_profile_id: profileId, p_role: role });
 }
 
 export async function getTeamRoster(teamId: string) {

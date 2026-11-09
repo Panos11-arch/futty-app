@@ -12,6 +12,8 @@ export type Venue = {
   open_time: string;
   close_time: string;
   price_per_pitch_hour: number | null;
+  /** False for a venue Futty has switched off; book_slot refuses it (venue_not_live). */
+  is_live: boolean;
 };
 
 /** Best-effort Google Maps link for a venue. There's no stored address or
@@ -39,7 +41,7 @@ export function useVenues() {
 
     const { data, error } = await supabase
       .from('venues')
-      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour')
+      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour, is_live')
       .order('city')
       .order('name');
 

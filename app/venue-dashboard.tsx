@@ -401,7 +401,7 @@ export default function VenueDashboardScreen() {
     if (!user) return;
     supabase
       .from('venues')
-      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour')
+      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour, is_live')
       .eq('owner_profile_id', user.id)
       .then(({ data }) => {
         setVenues(data ?? []);

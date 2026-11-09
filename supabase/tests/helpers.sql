@@ -40,6 +40,43 @@ begin
 end;
 $$;
 
+-- A venue with sensible defaults; override what a test cares about.
+create or replace function tests.create_venue(
+  p_owner uuid default null,
+  p_price numeric default 60,
+  p_pitches integer default 2,
+  p_open time default '08:00',
+  p_close time default '23:00'
+)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.venues (name, base_pitches, open_time, close_time, price_per_pitch_hour, owner_profile_id)
+  values ('Test venue ' || gen_random_uuid(), p_pitches, p_open, p_close, p_price, p_owner)
+  returning id;
+$$;
+
+-- Today's date in Cyprus, the day book_slot's windows count from.
+create or replace function tests.cyprus_today()
+returns date language sql stable as $$ select (now() at time zone 'Asia/Nicosia')::date $$;
+
+-- Runs `p_sql` and returns the exception message it raised, or null if it
+-- succeeded. Lets a test assert on the error code without its own
+-- exception block (which would roll back any role switch inside it).
+create or replace function tests.error_of(p_sql text)
+returns text
+language plpgsql
+as $$
+begin
+  execute p_sql;
+  return null;
+exception when others then
+  return sqlerrm;
+end;
+$$;
+
 -- Sets the request's JWT claims the way PostgREST does, then the role.
 create or replace function tests.set_claims(p_role text, p_sub uuid)
 returns void
@@ -77,4 +114,5 @@ end;
 $$;
 
 revoke all on function tests.create_user(text, jsonb) from public;
+revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 grant execute on all functions in schema tests to anon, authenticated, service_role;

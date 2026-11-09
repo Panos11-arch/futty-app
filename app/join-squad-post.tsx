@@ -47,25 +47,17 @@ export default function JoinSquadPostScreen() {
 
   useEffect(() => {
     if (!post?.venue_booking_id) return;
+    // The server works the share out (same maths as the share it creates on
+    // join); someone else's booking total isn't readable from the app.
     supabase
-      .from('venue_bookings')
-      .select('amount_cents, format, capacity, service_fee_cents_per_player')
-      .eq('id', post.venue_booking_id)
-      .maybeSingle()
+      .rpc('squad_post_price', { p_post_id: post.id })
+      .maybeSingle<{ share_cents: number; fee_cents: number | null }>()
       .then(({ data }) => {
-        if (!data || !data.amount_cents) return;
-        const counts: Record<string, number> = { '5-a-side': 5, '7-a-side': 7, '9-a-side': 9, '11-a-side': 11 };
-        const perPlayer = counts[data.format as string] ?? 10;
-        const fee: number | null = data.service_fee_cents_per_player ?? null;
-        // Flat-fee bookings: amount_cents is the venue price only, so the
-        // share is the player's part of it + the fee (matches
-        // add_booking_share_internal). Older bookings had the fee folded in.
-        // Flat-fee bookings are split across everyone on the pitch (capacity).
-        const everyone: number = data.capacity ?? perPlayer * 2;
-        setShareCents(fee ? Math.floor(data.amount_cents / everyone) + fee : Math.round(data.amount_cents / perPlayer));
-        setFeeCents(fee);
+        if (!data) return;
+        setShareCents(data.share_cents);
+        setFeeCents(data.fee_cents);
       });
-  }, [post?.venue_booking_id]);
+  }, [post?.id, post?.venue_booking_id]);
 
   const spotsLeft = post ? (post.players_needed ?? 0) - post.joined_count : 0;
   const isLastSpot = spotsLeft === 1;
