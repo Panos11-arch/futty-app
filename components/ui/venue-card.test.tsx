@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 
-import { flatStyle } from '@/components/ui/test-utils';
+import { flatStyle, loadWithFile } from '@/components/ui/test-utils';
 import { VenueCard } from '@/components/ui/venue-card';
 import { colors } from '@/constants/futty-theme';
+
+loadWithFile(Image);
 
 const venue = {
   name: 'Nicosia Five',

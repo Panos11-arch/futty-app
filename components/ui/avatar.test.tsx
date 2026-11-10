@@ -1,6 +1,10 @@
 import { render, screen } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 
 import { Avatar, initials } from '@/components/ui/avatar';
+import { loadWithFile } from '@/components/ui/test-utils';
+
+loadWithFile(Image);
 
 describe('initials', () => {
   it.each([

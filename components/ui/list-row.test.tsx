@@ -3,6 +3,10 @@ import { Text } from 'react-native';
 
 import { ListRow } from '@/components/ui/list-row';
 
+jest.mock('@/components/ui/icon-symbol', () =>
+  jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
+);
+
 describe('ListRow', () => {
   it('renders title and subtitle as plain content', async () => {
     await render(<ListRow title="Payment methods" subtitle="Visa ending 4242" />);

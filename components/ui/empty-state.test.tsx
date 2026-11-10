@@ -2,6 +2,10 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { EmptyState } from '@/components/ui/empty-state';
 
+jest.mock('@/components/ui/icon-symbol', () =>
+  jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
+);
+
 describe('EmptyState', () => {
   it('shows an icon, one line and one action', async () => {
     const onPress = jest.fn();

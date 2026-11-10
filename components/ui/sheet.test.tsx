@@ -1,8 +1,20 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { useState } from 'react';
-import { AccessibilityInfo, Pressable, Text } from 'react-native';
+import { AccessibilityInfo, Modal, Pressable, Text } from 'react-native';
 
 import { Sheet, shouldCloseOnSwipe } from '@/components/ui/sheet';
+import { loadWithFile } from '@/components/ui/test-utils';
+
+// On a cold cache (CI) the first render here used to take longer than the
+// 5 s timeout: Modal (~10 s to load) and React Native's renderer, pulled in
+// by the sheet's Animated.View (~5 s). Load them with the file instead. The
+// slide-up itself costs no real time: beforeEach turns on fake timers.
+loadWithFile(Modal, Sheet);
+
+// Draw icons as plain Views (see iconSymbolMock): the native SymbolView's first render costs ~5 s cold.
+jest.mock('@/components/ui/icon-symbol', () =>
+  jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
+);
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 34, left: 0 }),

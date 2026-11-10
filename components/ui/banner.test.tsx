@@ -4,6 +4,10 @@ import { Banner, type BannerTone } from '@/components/ui/banner';
 import { flatStyle } from '@/components/ui/test-utils';
 import { colors } from '@/constants/futty-theme';
 
+jest.mock('@/components/ui/icon-symbol', () =>
+  jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
+);
+
 const tones: [BannerTone, string][] = [
   ['info', colors.ink],
   ['warning', colors.warning],
