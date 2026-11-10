@@ -35,6 +35,7 @@ begin
     'public.share_drop_credit(uuid, text)',
     'public.cancellation_line_not_taken(uuid)',
     'public.cancellation_claim_refund(uuid)',
+    'public.booking_payment_window_ends_at(public.venue_bookings)',
     'public.share_card_saved(uuid, text, text, timestamptz)',
     'public.attach_share_setup(uuid, uuid, text, text, text, boolean, boolean)',
     'public.money_credit_payment(integer, integer, integer)',

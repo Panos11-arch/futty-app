@@ -3,6 +3,7 @@ import type Stripe from 'npm:stripe@^22';
 import { createDbFake } from '../_shared/db-fake.ts';
 import { intent } from '../_shared/intent-fixtures.ts';
 import { createStripeFake } from '../_shared/stripe-fake.ts';
+import { releaseUnfinishedCreditReservations } from '../_shared/credit.ts';
 import { handlePaymentModeEvent } from './modes.ts';
 
 // 2026-11-09 12:00:00 UTC
@@ -255,7 +256,29 @@ Deno.test("a share's cancelled payment releases the credit it set aside; the old
   db.respond('release_share_credit_reservation', true);
   const handled = await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_c', 'canceled')), deps);
   strictEqual(handled, false, 'index.ts carries on with the old handling');
-  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, { p_share_id: 's1', p_intent_id: 'pi_c' });
+  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, {
+    p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true,
+  });
+});
+
+// Re-review Medium: a cancelled event means the hold is really gone, so the
+// webhook undoes a held share too (pay-cancellations-13-undo.test.sql has
+// the database side).
+Deno.test('the release job cancels at Stripe and dies before the database call: the webhook finishes it', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('credit_reservations_to_release', [
+    { share_id: 's1', booking_id: 'b1', stripe_payment_intent_id: 'pi_c', stripe_setup_intent_id: null },
+  ]);
+  stripe.respond('paymentIntents.retrieve', intent('pi_c', 'requires_confirmation'));
+  db.fail('release_share_credit_reservation', 'connection lost');
+  deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 0, left: 0, failed: 1 });
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_c'], 'cancelled at Stripe');
+
+  // Stripe then sends payment_intent.canceled.
+  db.respond('release_share_credit_reservation', true);
+  await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_c', 'canceled')), deps);
+  const calls = db.callsTo('release_share_credit_reservation');
+  deepStrictEqual(calls[calls.length - 1].args, { p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true });
 });
 
 Deno.test('a cancelled SetupIntent for a credit-covered share releases its credit', async () => {

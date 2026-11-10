@@ -157,6 +157,108 @@ begin
     'a middle-window keep is not given back when the venue cancels';
 end $$;
 
+-- Q1: a late canceller whose card was never taken (the hold was still
+-- waiting to be taken when the venue cancelled). The waiting capture is
+-- superseded and the hold is released instead; nothing is owed by the venue.
+do $$
+declare
+  v_owner uuid := tests.create_user('fix-q1n-owner@futty.test');
+  v_booker uuid := tests.create_user('fix-q1n-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_late public.booking_payment_shares;
+  v_quote jsonb;
+  v_done jsonb;
+  v_kept public.booking_cancellation_lines;
+  v_line public.booking_cancellation_lines;
+begin
+  update public.profiles set role = 'venue_owner' where id = v_owner;
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 1, tests.cyprus_today() + 3,
+                                          p_label => 'fix-q1n');
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_q1n_0', interval '2 hours');
+  v_late := tests.pay_ago((tests.player(v_booking.id, 1)).id, 'pi_q1n_late');
+  assert v_late.status = 'authorized', 'held, not taken yet';
+  perform tests.set_kickoff(v_booking.id, now() + interval '3 hours');
+  v_done := tests.cancel(v_booking.id, 'my_spot', v_late.profile_id);
+  v_kept := tests.line(v_done, v_late.id);
+  assert (v_kept.action, v_kept.needs_capture, v_kept.work) = ('keep', true, 'pending'), 'late: to be taken';
+
+  v_quote := tests.plan(v_booking.id, 'venue', v_owner);
+  assert tests.quote_line(v_quote, v_late.id) @> jsonb_build_object(
+    'window', 'venue', 'action', 'release', 'value_cents', 680, 'refund_cents', 680, 'kept_cents', 0,
+    'stripe_intent_id', 'pi_q1n_late'), format('the hold is released, got %s', v_quote);
+  v_done := public.cancel_booking_internal(v_booking.id, 'venue', v_owner, v_quote ->> 'quote');
+
+  select * into v_kept from public.booking_cancellation_lines where id = v_kept.id;
+  assert (v_kept.work, v_kept.outcome) = ('done', 'superseded'), 'the waiting capture is never done';
+  v_line := tests.line(v_done, v_late.id);
+  assert (v_line.action, v_line.work) = ('release', 'pending'), 'the hold is released at Stripe';
+  assert exists (select 1 from public.cancellation_work(v_line.cancellation_id) where line_id = v_line.id and kind = 'release'),
+    'cancel-booking releases it now';
+  assert not exists (select 1 from public.cancellation_work(v_kept.cancellation_id) where line_id = v_kept.id),
+    'and never takes it';
+  assert (tests.share_of(v_booking.id, v_late.profile_id)).status = 'cancelled', 'the share is closed';
+  assert not exists (select 1 from public.venue_payables where share_id = v_late.id), 'nothing taken: the venue owes nothing';
+  assert (select balanced from public.money_balance(v_booking.id)), 'the books balance';
+end $$;
+
+-- Q1: a late canceller who paid partly with credit (500 credit + 180 card,
+-- taken). The venue cancels; they choose card: the 180 is refunded and the
+-- 500 goes back to the credit it came from, keeping its expiry. The venue
+-- owes Stripe's fee on the 180.
+do $$
+declare
+  v_owner uuid := tests.create_user('fix-q1p-owner@futty.test');
+  v_booker uuid := tests.create_user('fix-q1p-booker@futty.test');
+  v_player uuid := tests.create_user('fix-q1p-player@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_share public.booking_payment_shares;
+  v_old uuid;
+  v_old_expiry timestamptz;
+  v_quote jsonb;
+  v_done jsonb;
+  v_line public.booking_cancellation_lines;
+begin
+  update public.profiles set role = 'venue_owner' where id = v_owner;
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_old := tests.give_credit(v_player, v_venue, 500, interval '10 months');
+  select expires_at into v_old_expiry from public.venue_credits where id = v_old;
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                          p_label => 'fix-q1p');
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_q1p_0', interval '2 hours');
+  v_share := tests.join_booking(v_booking.id, v_player);
+  v_share := tests.pay_ago(v_share.id, 'pi_q1p', interval '2 hours', 'card', true);
+  assert (v_share.status, v_share.amount_cents, v_share.credit_cents) = ('paid', 180, 500), 'paid 180 + 500 credit';
+  perform tests.set_kickoff(v_booking.id, now() + interval '3 hours');
+  perform tests.cancel(v_booking.id, 'my_spot', v_player);
+  assert (tests.share_of(v_booking.id, v_player)).status = 'forfeited', 'late: forfeited';
+  assert (select remaining_cents from public.venue_credits where id = v_old) = 0, 'the credit is kept for now';
+
+  v_quote := tests.plan(v_booking.id, 'venue', v_owner);
+  assert tests.quote_line(v_quote, v_share.id) @> jsonb_build_object(
+    'window', 'venue', 'action', 'refund_choice', 'paid_cents', 180, 'credit_used_cents', 500,
+    'value_cents', 680, 'refund_cents', 680), format('all 680 comes back, got %s', v_quote);
+  v_done := public.cancel_booking_internal(v_booking.id, 'venue', v_owner, v_quote ->> 'quote');
+  v_line := tests.line(v_done, v_share.id);
+
+  -- They choose card: the job claims it and refunds the 180 at Stripe.
+  assert (public.choose_cancellation_refund(v_line.id, v_player, 'card')) ->> 'result' = 'refund', 'card';
+  assert (select amount_cents from public.cancellation_line_work(v_line.id)) = 180, 'only the card part goes to Stripe';
+  assert public.cancellation_claim_refund(v_line.id), 'claimed';
+  perform public.record_intent_refund('pi_q1p', 're_q1p', 180, 'venue_refund_choice');
+  assert public.cancellation_line_refunded(v_line.id, 'refunded'), 'refunded';
+
+  assert (tests.share_of(v_booking.id, v_player)).status = 'refunded', 'refunded';
+  assert (select (remaining_cents, expires_at) from public.venue_credits where id = v_old) = (500, v_old_expiry),
+    'the 500 credit is back with its original expiry';
+  assert (select count(*) from public.venue_credits where profile_id = v_player) = 1, 'no new credit';
+  assert (select array_agg(amount_cents) from public.venue_payables where share_id = v_share.id)
+         = array[tests.stripe_fee(180)], 'the venue owes Stripe''s fee on the 180';
+  assert (select balanced from public.money_balance(v_booking.id)), 'the books balance';
+end $$;
+
 -- Medium 4: a kept share whose held card part can never be taken. The €1
 -- applies only to what was actually paid (here the 500 credit): 100 kept,
 -- 400 back to the original credit; the line is finished.
