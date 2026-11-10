@@ -214,7 +214,7 @@ Every function is `security definer` with `set search_path = ''`. Functions mark
 | `submit_match_result(p_match_id uuid, p_side_a_score integer, p_side_b_score integer)` | void | The caller is a captain of a side (decision 3), else `not_captain`; between `kickoff_at` and `result_deadline_at`, else `result_window_closed`; no earlier submission, else `result_already_submitted`; scores 0 or more, else `invalid_score`. Notifies the other side (`match_result_submitted`) |
 | `respond_to_match_result(p_match_id uuid, p_accept boolean)` | void | The caller is on the other side from the submission: its captain in a named game, any of its players in a pickup game (decision 3), else `not_allowed`; before `result_deadline_at`, else `result_window_closed`; not yet answered, else `already_answered`. Accept → `confirmed` (`confirmed_via = 'agreed'`); reject → `disputed`. Notifies both sides |
 
-A player who wasn't in the match gets `not_in_match` from both (A2 test).
+A player who wasn't in the match gets `not_in_match` from both (A2 test). Answering when nothing was submitted gives `no_result_submitted`; an answer that is neither accept nor reject gives `invalid_answer`. In a pickup game the submission notifies the other side and the players who haven't picked a side.
 
 ### 5.3 Goals, man of the match (authenticated, A4)
 
@@ -230,8 +230,8 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test).
 | `get_match_check_in_code(p_match_id uuid)` returns text | authenticated, staff of the match's venue only (`not_venue_staff`) | Returns the per-match code the venue shows as a QR. Generated once per match, stored in `match_check_in_codes` (decision 1a.1) |
 | `check_in_to_match(p_match_id uuid, p_code text)` returns void | authenticated | The caller is a player of the match (`not_in_match`); the code matches (`invalid_code`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `ends_at + 1 hour` (`check_in_closed`, decision 1a.4). Idempotent |
 | `captain_mark_attendance(p_match_id uuid, p_profile_ids uuid[])` returns void | authenticated | The caller is a captain (`not_captain`); every profile is a player on the captain's side (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`) |
-| `choose_match_side(p_match_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is a player of the match (`not_in_match`); `a` or `b` (`invalid_side`); no result submitted yet and the match is `scheduled` or `played` (`sides_locked`) |
-| `set_match_player_side(p_match_id uuid, p_player_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is the booker (`not_booker`); the player row is in the match (`not_in_match`); `a`, `b` or null (`invalid_side`); `sides_locked` as above |
+| `choose_match_side(p_match_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is a player of the match (`not_in_match`); `a` or `b`, and the booker stays on `a` (`invalid_side`, decision 3); no result submitted yet and the match is `scheduled` or `played` (`sides_locked`) |
+| `set_match_player_side(p_match_id uuid, p_player_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is the booker (`not_booker`); the player row is in the match (`not_in_match`); `a`, `b` or null, and the booker stays on `a` (`invalid_side`); `sides_locked` as above |
 
 ## 6. The contracts
 
