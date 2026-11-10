@@ -9,7 +9,9 @@
 --      money is released (the hold is gone) and any credit it used comes
 --      back, the share is unpaid again, the booking stays as it is, and the
 --      founders get an admin alert ('hold_cancelled'). Card, credit or both
---      alike.
+--      alike. Before kickoff the player is told to pay again
+--      (match_payment_due, which opens the payment screen); after kickoff
+--      they aren't: collection handles it.
 --   2. Nobody is told "Pay again to keep your spot" on a booking that's
 --      already cancelled: a held share on a cancelled booking is left to the
 --      release step, which closes it and gives its credit back.
@@ -264,7 +266,8 @@ $$;
 --   - only the release job's own cancel (release_job_intent_id) undoes a
 --     hold as before, reopening the booking when it's the booker's share;
 --   - any other cancelled hold: the share is unpaid again and its credit
---     back, the booking stays as it is, and the founders are alerted.
+--     back, the booking stays as it is, the founders are alerted, and
+--     before kickoff the player is asked to pay again.
 create or replace function public.release_share_credit_reservation(
   p_share_id uuid,
   p_intent_id text,
@@ -331,6 +334,18 @@ begin
   perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'cancel', v_share.amount_cents,
                                        p_intent_id, p_intent_id, 'hold_cancelled');
   perform public.share_drop_credit(p_share_id, 'hold_cancelled');
+  -- Before kickoff the player is asked to pay again, at the share's price
+  -- now (without credit); after kickoff collection handles it.
+  if now() < public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time) then
+    perform public.send_notification(v_share.profile_id, 'match_payment_due', jsonb_build_object(
+      'title', 'Your payment didn''t go through',
+      'body', format('Your payment for %s, %s, %s didn''t go through. Pay %s to keep your spot.',
+                     (select name from public.venues where id = v_booking.venue_id),
+                     to_char(v_booking.booking_day, 'FMDay DD Mon'), to_char(v_booking.start_time, 'HH24:MI'),
+                     public.money_format_euros((select amount_cents from public.booking_payment_shares where id = p_share_id))),
+      'bookingId', v_share.booking_id
+    ));
+  end if;
   insert into public.admin_alerts (kind, booking_id, share_id, details)
   values ('hold_cancelled', v_share.booking_id, v_share.id, jsonb_build_object(
     'intent_id', p_intent_id, 'amount_cents', v_share.amount_cents, 'credit_cents', v_share.credit_cents,

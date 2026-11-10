@@ -43,6 +43,16 @@ begin
     format('the founders are alerted; got %s', row_to_json(v_alert));
   assert not exists (select 1 from public.notifications where profile_id = v_booker and body like '%15 minutes%'),
     'no new payment window';
+  -- Before kickoff the player is asked to pay again; the notification opens
+  -- the payment screen for this booking.
+  assert (select (count(*), min(body), min(data ->> 'bookingId'))
+          from public.notifications where profile_id = v_booker and type = 'match_payment_due')
+         = (1::bigint,
+            format('Your payment for %s, %s, 12:00 didn''t go through. Pay €65.50 to keep your spot.',
+                   (select name from public.venues where id = v_venue), to_char(v_booking.booking_day, 'FMDay DD Mon')),
+            v_booking.id::text),
+    format('the booker is asked to pay again; got %s',
+           (select json_agg(n) from public.notifications n where profile_id = v_booker));
 
   perform tests.act_as_service_role();
   assert not public.release_share_credit_reservation(v_share.id, 'pi_hc_card', true), 'Stripe retries the event: once';
@@ -88,6 +98,37 @@ begin
   assert exists (select 1 from public.money_ledger where share_id = v_share.id and kind = 'credit_returned'), 'recorded';
   assert exists (select 1 from public.admin_alerts where kind = 'hold_cancelled' and share_id = v_share.id
                  and details @> '{"credit_cents": 500, "is_booker": false}'), 'the founders are alerted';
+  assert exists (select 1 from public.notifications where profile_id = v_player and type = 'match_payment_due'
+                 and body like '%didn''t go through. Pay €6.80 to keep your spot.'),
+    'the player is asked to pay the full 680 by card, the credit no longer used';
+end $$;
+
+-- After kickoff the player isn't asked to pay again: collection handles
+-- it. The money is still released, the booking stays, the founders are told.
+do $$
+declare
+  v_booker uuid := tests.create_user('hc-late-booker@futty.test');
+  v_player uuid := tests.create_user('hc-late-player@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_share public.booking_payment_shares;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                          p_label => 'hc-late');
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_hc_late_b');
+  v_share := tests.pay_ago((tests.join_booking(v_booking.id, v_player)).id, 'pi_hc_late');
+  perform tests.set_kickoff(v_booking.id, now() - interval '10 minutes');
+
+  perform tests.act_as_service_role();
+  assert public.release_share_credit_reservation(v_share.id, 'pi_hc_late', true), 'handled';
+  perform tests.act_as_postgres();
+
+  assert (select status from public.venue_bookings where id = v_booking.id) = 'confirmed', 'the booking stays';
+  assert (tests.share_of(v_booking.id, v_player)).status = 'pending', 'unpaid, for collection';
+  assert exists (select 1 from public.admin_alerts where kind = 'hold_cancelled' and share_id = v_share.id), 'alerted';
+  assert not exists (select 1 from public.notifications where profile_id = v_player and type = 'match_payment_due'),
+    'no notification after kickoff';
 end $$;
 
 -- A booker's credit hold cancelled outside the release job: no reopening
