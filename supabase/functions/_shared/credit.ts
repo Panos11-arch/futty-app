@@ -7,7 +7,9 @@
 //   - otherwise cancels it first, keyed on its id, so it can never be paid
 //     with credit that has gone back;
 //   - then releases the credit (release_share_credit_reservation, which
-//     does nothing if the share's payment changed meanwhile).
+//     does nothing if the share's payment changed meanwhile). A hold that
+//     landed between the check and the cancel is undone there as well: the
+//     share is unpaid again and its spent credit comes back.
 import type Stripe from 'npm:stripe@^22';
 import { type Db, rpc } from './db.ts';
 import { idempotencyKeys } from './money.ts';
@@ -49,9 +51,14 @@ export async function releaseUnfinishedCreditReservations(deps: Deps) {
           });
         }
       }
+      // The intent is cancelled at Stripe now, so any hold on it is gone. If
+      // the player confirmed between the check and the cancel, the webhook
+      // may already have marked the share held and spent the credit: the
+      // database undoes that too (p_hold_released) and gives the credit back.
       await rpc(deps.db, 'release_share_credit_reservation', {
         p_share_id: r.share_id,
         p_intent_id: r.stripe_payment_intent_id ?? r.stripe_setup_intent_id,
+        p_hold_released: r.stripe_payment_intent_id !== null,
       });
       summary.released += 1;
     } catch (err) {

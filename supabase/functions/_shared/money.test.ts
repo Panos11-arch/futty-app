@@ -99,6 +99,7 @@ Deno.test('idempotency keys are built from our ids and stable on retry', () => {
   strictEqual(idempotencyKeys.guaranteeCard('g1', null), 'guarantee-card-g1-after-none');
   strictEqual(idempotencyKeys.customer('p1'), 'customer-p1');
   strictEqual(idempotencyKeys.shareCardSetup('s1', 'cash', null), 'setup-share-s1-cash-after-none');
+  strictEqual(idempotencyKeys.shareCardSetup('s1', 'card', null, 'seti_old'), 'setup-share-s1-card-after-none-setup-seti_old');
   strictEqual(idempotencyKeys.cancelFee('f1', 1), 'cancel-fee-f1-attempt-1');
   strictEqual(idempotencyKeys.cancelFee('f1', 2), 'cancel-fee-f1-attempt-2', 'each retry is a new request');
 });

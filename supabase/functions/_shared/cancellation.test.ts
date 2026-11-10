@@ -12,6 +12,7 @@ function setup() {
     db.respond(fn, true);
   }
   db.respond('money_release_done', null);
+  db.respond('cancellation_claim_refund', true);
   db.respond('queue_money_release', 'r1');
   db.respond('cancellation_line_failed', { result: 'failed' });
   db.respond('cancellation_fee_paid', { result: 'paid' });
@@ -40,6 +41,16 @@ Deno.test('a card refund gives back what was taken, keyed on the intent, then cl
   deepStrictEqual(stripe.callsTo('refunds.create').map((c) => [c.params?.amount, c.idempotencyKey]), [[680, 'refund-pi_r-680']]);
   strictEqual(db.callsTo('record_intent_refund')[0].args.p_reason, 'venue_refund_choice');
   deepStrictEqual(db.callsTo('cancellation_line_refunded')[0].args, { p_line_id: 'l1', p_outcome: 'refunded' });
+});
+
+Deno.test('a refund is claimed in the database before Stripe; a line already settled is left alone', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('cancellation_claim_refund', false);
+  strictEqual(await runCancellationLine(deps, refund('pi_r')), true);
+  deepStrictEqual(db.callsTo('cancellation_claim_refund')[0].args, { p_line_id: 'l1' });
+  strictEqual(stripe.calls.length, 0, 'no refund once credit was chosen');
+  strictEqual(db.callsTo('cancellation_line_refunded').length, 0);
+  strictEqual(db.callsTo('cancellation_line_failed').length, 0);
 });
 
 Deno.test('a share paid only with credit: nothing at Stripe, the credit goes back in the database', async () => {

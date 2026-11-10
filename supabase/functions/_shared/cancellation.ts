@@ -52,6 +52,11 @@ async function doLine(deps: Deps, line: CancellationWork) {
   }
 
   if (line.kind === 'refund') {
+    // Claimed in the database first: the line is locked and checked again
+    // (no credit chosen; the 48 hours over, or card chosen), and card is
+    // recorded as the choice, so a credit choice can't race this refund.
+    const claimed = await rpc<boolean>(deps.db, 'cancellation_claim_refund', { p_line_id: line.line_id });
+    if (!claimed) return;
     // Credit that paid for the share goes back in the database; only a card
     // payment needs Stripe.
     const outcome = line.stripe_intent_id && line.amount_cents > 0 ? await releaseIntent(deps, item) : 'nothing';
@@ -63,6 +68,20 @@ async function doLine(deps: Deps, line: CancellationWork) {
   // two can never take it twice.
   const intentId = line.stripe_intent_id!;
   let intent = await deps.stripe.paymentIntents.retrieve(intentId, { expand: ['latest_charge.balance_transaction'] });
+  if (intent.status === 'canceled') {
+    // The hold is gone (it expired or was cancelled): the card part can
+    // never be taken. Recorded, and the line is finished: the credit that
+    // paid for the share above the €1 goes back, and it isn't retried.
+    await rpc(deps.db, 'record_intent_cancelled', {
+      p_booking_id: line.booking_id,
+      p_share_id: line.share_id,
+      p_guarantee_id: null,
+      p_intent_id: intentId,
+      p_reason: 'cancellation_hold_gone',
+    });
+    await rpc(deps.db, 'cancellation_line_not_taken', { p_line_id: line.line_id });
+    return;
+  }
   if (intent.status === 'requires_capture') {
     intent = await deps.stripe.paymentIntents.capture(
       intentId,

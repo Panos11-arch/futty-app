@@ -137,7 +137,16 @@ export const idempotencyKeys = {
   /** The booker's charge for cancelling the whole team, one attempt
    *  (attempt 1 on-session when they confirm; each retry a new request). */
   cancelFee: (feeId: string, attempt: number) => `cancel-fee-${feeId}-attempt-${attempt}`,
-  /** Saving a card for a share with nothing to charge. */
-  shareCardSetup: (shareId: string, method: PaymentMethod, previousIntentId: string | null) =>
-    `setup-share-${shareId}-${method}-after-${previousIntentId ?? 'none'}`,
+  /** Saving a card for a share with nothing to charge. Keyed on the share's
+   *  last SetupIntent too, so a new attempt after one was cancelled (credit
+   *  set aside for 15 minutes and given back) is a new SetupIntent, not a
+   *  replay of the cancelled one. */
+  shareCardSetup: (
+    shareId: string,
+    method: PaymentMethod,
+    previousIntentId: string | null,
+    previousSetupIntentId: string | null = null,
+  ) =>
+    `setup-share-${shareId}-${method}-after-${previousIntentId ?? 'none'}` +
+    (previousSetupIntentId ? `-setup-${previousSetupIntentId}` : ''),
 };

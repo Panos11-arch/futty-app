@@ -130,7 +130,9 @@ A player who cancels in the first hour gets everything back. After that €1 is 
   - **Exactly 6 hours before kickoff is still the middle window,** as for the non-refundable rule: exactly 6 hours is not "less than 6 hours".
   - **Nothing can be cancelled once the game has started,** by anyone, the venue included.
   - **The venue can cancel up to kickoff,** and every player gets their full share back even less than 6 hours before kickoff.
-  - **Credit that paid for a share goes back to the credit it came from,** keeping its original expiry: in a free-hour cancellation, a card refund or a credit choice. The card-or-credit choice covers only the card part.
+  - **The venue cancels after a player cancelled late (decided 10 November):** a player who forfeited their share by cancelling less than 6 hours before kickoff gets it back too, card refund or credit, their choice within 48 hours, and the venue owes Stripe's fee on it. Futty's €1 from an earlier middle-window cancellation stays with Futty.
+  - **Credit that paid for a share goes back to the credit it came from,** keeping its original expiry, in every case, the middle window included (decided 10 November). Only the card-paid part becomes new 12-month credit. In the middle window the €1 is kept from the card-paid part first, then from the credit. For example, €5.00 credit + €1.80 by card: the €5.00 goes back with its old expiry and €0.80 becomes new credit. The card-or-credit choice covers only the card part.
+  - **A kept share whose card part is never taken** (the hold expired before it could be taken): the €1 applies only to what was actually paid, so in the middle window up to €1 of the credit that paid for it is kept and the rest goes back; less than 6 hours before kickoff it is all kept.
   - **Choosing credit turns the whole card payment into credit,** the service fee included (€6.80 gives €6.80 credit).
   - **Only payments taken by card count toward the booker's €1 charge.** A share paid entirely with credit doesn't count.
   - **The free hour of a share paid entirely with credit** is the 60 minutes after the player's card was saved.
@@ -141,6 +143,7 @@ A player who cancels in the first hour gets everything back. After that €1 is 
   - **The venue's Stripe fee is the fee recorded when the payment was taken** (from its balance transaction).
 - **Payouts (decided 7 November):** Stripe Connect with separate charges and transfers. Futty's Stripe account takes every payment; after collection each venue is sent its pitch money minus anything it owes (for example Stripe's fee on its own cancellations), so no money ever has to be pulled back from a venue.
 - **Credit sits with the venue.** Futty sends the venue its credit money at the next payout and keeps a record of each player's credit there. The decisions doc (#16) still asks for legal advice on this before real money flows.
+  - **In the ledger (decided 10 November):** credit money is the venue's from the moment the credit is issued, so it is paid out at the next payout as usual. When a player chooses credit, Futty's service fee goes to the venue with it. Spending, returning or expiring credit later moves no new money to the venue; the ledger only records the change in credit the venue holds. Every booking still balances: venue + Futty + Stripe + refunds = what was taken.
 
 ## Short games, top-ups and 6 v 6
 
@@ -197,6 +200,7 @@ Debt and credit are between the player and the venue, and the venue manages them
   - When credit covers the whole pitch part, nothing is charged and the player's card is saved instead (every player paying in the app saves a card).
   - **Credit set aside for a payment that's never finished goes back:** when that payment is cancelled, when the booking expires, or when it isn't completed within 15 minutes. A player's credit never stays locked.
   - **Expired credit stays with the venue.** The expiry check runs with the payment jobs, not once a day: it only ever expires credit past its date, once.
+  - **A share paid entirely with credit is judged non-refundable when the card is saved,** as a card payment is when it's held: saved less than 6 hours before kickoff, the player must have accepted the "This booking is non-refundable" notice, otherwise nothing is used and they're asked to pay again.
 - **Legal check before real money:** the terms must spell out the debt block across all venues and the credit rules.
 
 ## Gipedo Pano

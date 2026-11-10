@@ -6,7 +6,9 @@ import { chooseCancellationRefund } from './handler.ts';
 
 function setup() {
   const db = createDbFake();
-  for (const fn of ['record_intent_capture', 'record_intent_refund', 'cancellation_line_refunded']) db.respond(fn, true);
+  for (const fn of ['record_intent_capture', 'record_intent_refund', 'cancellation_line_refunded', 'cancellation_claim_refund']) {
+    db.respond(fn, true);
+  }
   db.respond('money_release_done', null);
   db.respond('cancellation_line_failed', { result: 'failed' });
   db.respond('cancellation_line_work', [{

@@ -87,13 +87,18 @@ Deno.test('a share the job already took is not taken again', async () => {
   strictEqual(db.callsTo('cancellation_line_captured').length, 1);
 });
 
-Deno.test('a hold that expired before it could be taken: the line fails and is retried, never credited', async () => {
+Deno.test('a hold that expired before it could be taken: recorded, the credit part settled, not retried', async () => {
   const { db, stripe, deps } = setupP4b(plan(), [line('capture', 'l1', 'pi_gone')]);
+  db.respond('record_intent_cancelled', true);
+  db.respond('cancellation_line_not_taken', true);
   stripe.respond('paymentIntents.retrieve', intent('pi_gone', 'canceled'));
   const res = await cancelBooking(deps, 'p1', { bookingId: 'b1', scope: 'my_spot', quote: 'q1' });
+  strictEqual(stripe.callsTo('paymentIntents.capture').length, 0);
   strictEqual(db.callsTo('cancellation_line_captured').length, 0);
-  strictEqual(db.callsTo('cancellation_line_failed')[0].args.p_line_id, 'l1');
-  strictEqual(res.body.pending, true);
+  strictEqual(db.callsTo('record_intent_cancelled')[0].args.p_intent_id, 'pi_gone');
+  deepStrictEqual(db.callsTo('cancellation_line_not_taken')[0].args, { p_line_id: 'l1' });
+  strictEqual(db.callsTo('cancellation_line_failed').length, 0, 'not retried');
+  strictEqual(res.body.pending, false);
 });
 
 Deno.test('a Stripe failure is never swallowed: the line is retried later and the others still go back', async () => {

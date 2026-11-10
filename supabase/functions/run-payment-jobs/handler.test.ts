@@ -378,6 +378,7 @@ const refundLine = {
 Deno.test('48 hours with no choice: the card refund goes out, keyed on the intent', async () => {
   const { db, stripe, deps } = setup();
   db.respond('cancellation_work', [refundLine]);
+  db.respond('cancellation_claim_refund', true);
   db.respond('cancellation_line_refunded', true);
   stripe.respond('paymentIntents.retrieve', intent('pi_r', 'succeeded'));
   stripe.respond('refunds.create', (c: { params?: Record<string, unknown> }) => ({ id: 're_r', status: 'succeeded', amount: c.params?.amount }));
@@ -388,6 +389,22 @@ Deno.test('48 hours with no choice: the card refund goes out, keyed on the inten
   deepStrictEqual(db.callsTo('cancellation_work')[0].args, { p_cancellation_id: null }, 'everything due');
   deepStrictEqual(stripe.callsTo('refunds.create').map((c) => [c.params?.amount, c.idempotencyKey]), [[680, 'refund-pi_r-680']]);
   deepStrictEqual(db.callsTo('cancellation_line_refunded')[0].args, { p_line_id: 'l1', p_outcome: 'refunded' });
+  strictEqual(db.calls.findIndex((c) => c.fn === 'cancellation_claim_refund') <
+    db.calls.findIndex((c) => c.fn === 'cancellation_line_refunded'), true, 'claimed before Stripe');
+});
+
+Deno.test('a credit choice that beat the 48-hour refund: the claim says no, nothing goes to Stripe', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('cancellation_work', [refundLine]);
+  db.respond('cancellation_claim_refund', false);
+
+  const summary = await runPaymentJobs(deps);
+
+  deepStrictEqual(db.callsTo('cancellation_claim_refund')[0].args, { p_line_id: 'l1' });
+  strictEqual(stripe.callsTo('paymentIntents.retrieve').length, 0);
+  strictEqual(stripe.callsTo('refunds.create').length, 0);
+  strictEqual(db.callsTo('cancellation_line_refunded').length, 0);
+  strictEqual(summary.cancellationFailed, 0);
 });
 
 Deno.test("the booker's whole-team charge is retried off-session, and credit is expired", async () => {

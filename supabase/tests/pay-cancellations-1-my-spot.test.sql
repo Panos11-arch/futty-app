@@ -96,10 +96,11 @@ begin
   assert v_credit.expires_at = v_credit.issued_at + interval '12 months', 'expires 12 months after it was issued';
   assert (tests.line(v_done, v_share.id)).work = 'none', 'nothing to do at Stripe';
 
-  -- Futty keeps 100 minus Stripe's 35 = 65; the venue holds the 580.
+  -- Futty keeps 100 minus Stripe's 35 = 65; the venue holds the 580 for the
+  -- player (credit money stays with the venue, decided 10 November).
   select * into v_books from tests.share_books(v_share.id);
-  assert (v_books.venue, v_books.futty, v_books.stripe, v_books.credit) = (0, 65, 35, 580),
-    format('venue 0, Futty 65, Stripe 35, credit 580; got %s', row_to_json(v_books));
+  assert (v_books.venue, v_books.futty, v_books.stripe, v_books.credit) = (580, 65, 35, 580),
+    format('venue 580, Futty 65, Stripe 35, credit 580; got %s', row_to_json(v_books));
   assert (select balanced from public.money_balance(v_booking.id)), 'the books balance';
 end $$;
 

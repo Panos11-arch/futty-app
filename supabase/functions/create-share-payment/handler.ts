@@ -57,6 +57,8 @@ type Plan = {
   capture_method: 'manual' | 'immediate' | null;
   non_refundable: boolean;
   stripe_payment_intent_id: string | null;
+  /** The share's last SetupIntent (saving a card with nothing to charge). */
+  stripe_setup_intent_id?: string | null;
   stripe_customer_id: string | null;
   needs_saved_card: boolean;
 };
@@ -65,6 +67,8 @@ const ERROR_STATUS: Record<string, number> = { share_not_found: 404, not_your_sh
 
 // An intent the player confirmed (or is confirming): never cancelled or replaced.
 const SETTLED_INTENT = new Set(['requires_capture', 'processing', 'succeeded']);
+// A SetupIntent the player can still confirm.
+const OPEN_SETUP = new Set(['requires_payment_method', 'requires_confirmation', 'requires_action']);
 
 export async function createSharePayment(deps: Deps, caller: Caller, body: Body): Promise<Result> {
   const method = body.method ?? 'card';
@@ -120,12 +124,23 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
   }
 
   if (plan.needs_saved_card) {
-    const setupIntent = await deps.stripe.setupIntents.create({
+    // The share's last SetupIntent: still open, it's the same one again
+    // (pressing "Pay" twice). Cancelled (credit set aside and given back
+    // after 15 minutes) or refused, the new one is keyed on it, so Stripe
+    // can't replay the old one.
+    const previousSetup = plan.stripe_setup_intent_id ?? null;
+    let reused: Stripe.SetupIntent | null = null;
+    if (previousSetup) {
+      const existing = await deps.stripe.setupIntents.retrieve(previousSetup);
+      if (existing.status === 'processing') return { status: 409, body: { error: 'already_paid' } };
+      if (OPEN_SETUP.has(existing.status)) reused = existing;
+    }
+    const setupIntent = reused ?? await deps.stripe.setupIntents.create({
       customer: customerId,
       usage: 'off_session',
       automatic_payment_methods: { enabled: true },
       metadata: { kind: 'share_card', share_id: plan.share_id, booking_id: plan.booking_id },
-    }, { idempotencyKey: idempotencyKeys.shareCardSetup(plan.share_id, plan.payment_method, previous) });
+    }, { idempotencyKey: idempotencyKeys.shareCardSetup(plan.share_id, plan.payment_method, previous, previousSetup) });
     try {
       await rpc(deps.db, 'attach_share_setup', {
         p_share_id: plan.share_id,
@@ -134,11 +149,14 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
         p_setup_intent_id: setupIntent.id,
         p_expected_intent_id: previous,
         p_use_credit: useCredit,
+        p_accept_non_refundable: accept,
       });
     } catch (err) {
-      await deps.stripe.setupIntents.cancel(setupIntent.id).catch((cancelErr: unknown) =>
-        console.error(`create-share-payment: orphaned SetupIntent ${setupIntent.id} left open:`, cancelErr)
-      );
+      if (!reused) {
+        await deps.stripe.setupIntents.cancel(setupIntent.id).catch((cancelErr: unknown) =>
+          console.error(`create-share-payment: orphaned SetupIntent ${setupIntent.id} left open:`, cancelErr)
+        );
+      }
       return dbRefusal(err);
     }
     return {

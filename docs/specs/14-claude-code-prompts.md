@@ -452,9 +452,9 @@ Plan first.
 ### P4d Venue payouts (Stripe Connect, decided 7 November)
 
 ```
-Stripe Connect with separate charges and transfers (not destination charges), so cancellations, credit and the venue's Stripe fee on venue cancellations never need a clawback: onboard each venue (Express account) from the dashboard; after collection, transfer each venue its pitch parts minus anything it owes (venue_payables); credit money is transferred to the venue when it is created, and the venue owes it back as service. A daily reconciliation job checks that, for every booking, venue + Futty + Stripe fees + refunds + credit = what was taken, and alerts on any mismatch. Payments stay in test mode until a venue has signed and finished onboarding.
+Stripe Connect with separate charges and transfers (not destination charges), so cancellations, credit and the venue's Stripe fee on venue cancellations never need a clawback: onboard each venue (Express account) from the dashboard; after collection, transfer each venue its pitch parts minus anything it owes (venue_payables). Credit money stays with the venue (decided 10 November): it is in the ledger's venue_cents when the credit is issued (including Futty's fee when a player chooses credit, a `transfer` row), so it is paid out at the next payout as usual; spending, returning or expiring credit later moves no money (the credit_* rows only change credit_cents, the record of what the venue holds for players), so a share paid with credit transfers only its card part. Pay out from venue_cents, never from credit_cents. A daily reconciliation job checks that, for every booking, venue + Futty + Stripe fees + refunds = what was taken (money_balance), and alerts on any mismatch. Payments stay in test mode until a venue has signed and finished onboarding.
 
-Tests: transfers equal the ledger for every scenario in P4a-P4c; a venue cancellation reduces the next transfer by the recorded Stripe fee; reconciliation flags a booking with a missing transfer.
+Tests: transfers equal the ledger for every scenario in P4a-P4c; a venue cancellation reduces the next transfer by the recorded Stripe fee; credit issued at a venue is in that venue's next transfer, and spending it later adds nothing to a transfer; reconciliation flags a booking with a missing transfer.
 
 Plan first.
 ```

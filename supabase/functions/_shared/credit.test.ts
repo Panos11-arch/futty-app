@@ -25,7 +25,22 @@ Deno.test('an unfinished payment is cancelled at Stripe, keyed on its id, then t
   stripe.respond('paymentIntents.retrieve', intent('pi_open', 'requires_payment_method', { amount: 180 }));
   deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 1, left: 0, failed: 0 });
   deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.idempotencyKey), ['cancel-pi_open']);
-  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, { p_share_id: 's1', p_intent_id: 'pi_open' });
+  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, {
+    p_share_id: 's1', p_intent_id: 'pi_open', p_hold_released: true,
+  });
+});
+
+Deno.test('the player confirms between the check and the cancel: the database is told the hold is gone', async () => {
+  // Stripe said "not paid" when checked; the player confirmed a moment
+  // later, so the cancel released a hold the webhook may already have
+  // recorded. The database undoes that hold and gives the spent credit back
+  // (pay-cancellations-12-fixes.test.sql has the database side).
+  const { db, stripe, deps } = setup([row('pi_race')]);
+  stripe.respond('paymentIntents.retrieve', intent('pi_race', 'requires_confirmation', { amount: 180 }));
+  stripe.respond('paymentIntents.cancel', (c: { id?: string }) => intent(c.id!, 'canceled', { amount: 180 }));
+  deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 1, left: 0, failed: 0 });
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_race']);
+  strictEqual(db.callsTo('release_share_credit_reservation')[0].args.p_hold_released, true);
 });
 
 Deno.test('a payment that went through (or is going through) keeps its credit', async () => {
@@ -51,6 +66,7 @@ Deno.test('a SetupIntent never finished: cancelled, then released; one that save
   deepStrictEqual(await releaseUnfinishedCreditReservations(open.deps), { released: 1, left: 0, failed: 0 });
   deepStrictEqual(open.stripe.callsTo('setupIntents.cancel').map((c) => c.idempotencyKey), ['cancel-seti_open']);
   strictEqual(open.db.callsTo('release_share_credit_reservation')[0].args.p_intent_id, 'seti_open');
+  strictEqual(open.db.callsTo('release_share_credit_reservation')[0].args.p_hold_released, false, 'a SetupIntent holds nothing');
 
   const saved = setup([row(null, 'seti_done')]);
   saved.stripe.respond('setupIntents.retrieve', { id: 'seti_done', status: 'succeeded' });

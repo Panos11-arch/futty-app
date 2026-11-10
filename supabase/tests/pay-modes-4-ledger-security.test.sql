@@ -48,7 +48,7 @@ begin
     'share_payment_plan(public.booking_payment_shares, uuid, text, boolean, boolean)',
     'plan_share_payment(uuid, uuid, text, boolean, boolean)',
     'attach_share_intent(uuid, uuid, text, boolean, text, integer, text, text, boolean)',
-    'attach_share_setup(uuid, uuid, text, text, text, boolean)',
+    'attach_share_setup(uuid, uuid, text, text, text, boolean, boolean)',
     'set_share_payment_intent(uuid, text)',
     'set_stripe_customer(uuid, text)',
     'share_payment_held(uuid, text, integer, text, timestamptz)',

@@ -137,7 +137,10 @@ begin
   assert public.release_share_credit_reservation(v_share.id, 'seti_resv'), 'released';
   perform tests.act_as_postgres();
   assert public.venue_credit_available_cents(v_player, v_venue) = 700, 'all 700 back';
-  assert (tests.share_of(v_booking.id, v_player)).stripe_setup_intent_id is null, 'the unfinished SetupIntent is cleared';
+  -- The SetupIntent stays named on the share, so the next one is keyed on it
+  -- (a new SetupIntent, not Stripe replaying the cancelled one).
+  assert (tests.share_of(v_booking.id, v_player)).stripe_setup_intent_id = 'seti_resv', 'the last SetupIntent is kept';
+  assert (tests.share_of(v_booking.id, v_player)).amount_cents = 680, 'priced again without credit';
 end $$;
 
 -- The booking expires (the booker didn't pay within 15 minutes): credit

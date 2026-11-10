@@ -40,8 +40,8 @@ begin
   assert v_share.amount_cents = 180 and v_share.credit_cents = 500 and v_share.status = 'authorized', '180 held';
   assert (select remaining_cents from public.venue_credits where id = v_credit) = 0, 'the credit is used';
   assert (select (kind, amount_cents, venue_cents, credit_cents) from public.money_ledger
-          where share_id = v_share.id and kind = 'credit_spent') = ('credit_spent'::text, 500, 500, -500),
-    'spending it goes to the venue, in the ledger';
+          where share_id = v_share.id and kind = 'credit_spent') = ('credit_spent'::text, 500, 0, -500),
+    'spending it is recorded and moves no money: the venue already holds it';
 
   -- Cancelling in the free hour gives the 180 hold back and the 500 credit back.
   perform tests.cancel(v_booking.id, 'my_spot', v_player);
@@ -91,7 +91,8 @@ begin
   assert (select (remaining_cents, expired_at is not null) from public.venue_credits where id = v_expired) = (0, true),
     'nothing left on it';
   assert (select (amount_cents, venue_cents, credit_cents) from public.money_ledger
-          where credit_id = v_expired and kind = 'credit_expired') = (500, 500, -500), 'expired credit stays with the venue';
+          where credit_id = v_expired and kind = 'credit_expired') = (500, 0, -500),
+    'expired credit stays with the venue, which already holds it';
 end $$;
 
 -- Credit that covers the whole pitch part: no fee, and the card is saved
@@ -177,7 +178,8 @@ begin
   assert (select status from public.venue_bookings where id = v_booking.id) = 'confirmed', 'the booking is the booker''s';
   assert public.venue_credit_available_cents(v_full, v_venue) = 1000, '1000 credit left';
   assert (select (sum(venue_cents), sum(futty_cents), sum(credit_cents)) from public.money_ledger
-          where share_id = v_share.id) = (6000::bigint, 0::bigint, -6000::bigint), 'the venue gets 6000 from credit, Futty nothing';
+          where share_id = v_share.id) = (0::bigint, 0::bigint, -6000::bigint),
+    '6000 of credit spent; no new money to the venue, Futty nothing';
 
   -- Shortfall: 5000 credit; the card pays 1000 + 55 x 10 = 1550.
   perform tests.give_credit(v_short, v_venue, 5000);

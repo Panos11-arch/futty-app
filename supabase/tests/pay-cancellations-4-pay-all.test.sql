@@ -34,8 +34,8 @@ begin
     '5550 credit at that venue';
   -- Futty keeps 1000 minus Stripe's 123.
   select * into v_books from tests.share_books(v_share.id);
-  assert (v_books.venue, v_books.futty, v_books.stripe, v_books.credit) = (0, 877, 123, 5550),
-    format('venue 0, Futty 877, Stripe 123, credit 5550; got %s', row_to_json(v_books));
+  assert (v_books.venue, v_books.futty, v_books.stripe, v_books.credit) = (5550, 877, 123, 5550),
+    format('the venue holds the 5550 credit, Futty 877, Stripe 123; got %s', row_to_json(v_books));
   assert (select balanced from public.money_balance(v_booking.id)), 'the books balance';
   assert not exists (select 1 from public.booking_payment_shares where booking_id = v_booking.id and status = 'covered'),
     'every covered spot is closed';
