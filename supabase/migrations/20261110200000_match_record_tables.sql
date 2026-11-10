@@ -48,8 +48,8 @@ insert into public.notification_types (type, always_sent) values
   ('followed_team_result', false),
   ('followed_team_opponent_wanted', false);
 
--- The check constraint on notifications.type (last set by P4b, and by P4c
--- if it's applied first) becomes a foreign key to the table above.
+-- The check constraint on notifications.type (last set by P4c,
+-- 20261110190000) becomes a foreign key to the table above.
 alter table public.notifications drop constraint if exists notifications_type_check;
 alter table public.notifications
   add constraint notifications_type_fkey foreign key (type) references public.notification_types (type);
