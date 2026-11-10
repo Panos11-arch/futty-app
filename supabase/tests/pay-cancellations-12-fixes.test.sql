@@ -402,7 +402,11 @@ begin
 
   assert not public.release_share_credit_reservation(v_share.id, 'pi_m2'),
     'a held share''s credit is never released by the webhook path';
+  perform tests.act_as_service_role();
+  assert public.credit_release_started(v_share.id, 'pi_m2'), 'the job marks the intent it cancels';
+  perform tests.act_as_postgres();
   assert public.release_share_credit_reservation(v_share.id, 'pi_m2', true), 'the job cancelled the hold: undone';
+  assert not exists (select 1 from public.admin_alerts where share_id = v_share.id), 'the job''s own cancel: no alert';
   v_share := tests.share_of(v_booking.id, v_player);
   assert (v_share.status, v_share.credit_cents, v_share.amount_cents, v_share.held_at is null) = ('pending', 0, 680, true),
     format('unpaid again, priced without credit; got %s', row_to_json(v_share));

@@ -251,14 +251,26 @@ Deno.test('other events for a cancellation charge are acknowledged and ignored',
 });
 
 // P4b: credit set aside for a payment that's cancelled goes back.
-Deno.test("a share's cancelled payment releases the credit it set aside; the old handling still runs", async () => {
+Deno.test("a share's cancelled payment is handled here: the old handling never asks to pay again", async () => {
+  // Whatever the database did (nothing, on a cancelled booking), index.ts's
+  // old "confirm your payment again" handling must not run for it.
+  for (const released of [true, false]) {
+    const { db, deps } = setup();
+    db.respond('release_share_credit_reservation', released);
+    const canceled = { ...intent('pi_c', 'canceled'), cancellation_reason: 'automatic' };
+    const handled = await handlePaymentModeEvent(event('payment_intent.canceled', canceled), deps);
+    strictEqual(handled, true, 'index.ts stops here');
+    deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, {
+      p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true,
+    });
+  }
+});
+
+Deno.test('a cancelled intent from before P4a (no kind) still goes to the old handling', async () => {
   const { db, deps } = setup();
-  db.respond('release_share_credit_reservation', true);
-  const handled = await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_c', 'canceled')), deps);
-  strictEqual(handled, false, 'index.ts carries on with the old handling');
-  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, {
-    p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true,
-  });
+  const legacy = { ...intent('pi_old', 'canceled'), metadata: { share_id: 's1', booking_id: 'b1' } };
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', legacy), deps), false);
+  strictEqual(db.calls.length, 0);
 });
 
 // Re-review Medium: a cancelled event means the hold is really gone, so the
@@ -269,6 +281,7 @@ Deno.test('the release job cancels at Stripe and dies before the database call: 
   db.respond('credit_reservations_to_release', [
     { share_id: 's1', booking_id: 'b1', stripe_payment_intent_id: 'pi_c', stripe_setup_intent_id: null },
   ]);
+  db.respond('credit_release_started', true);
   stripe.respond('paymentIntents.retrieve', intent('pi_c', 'requires_confirmation'));
   db.fail('release_share_credit_reservation', 'connection lost');
   deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 0, left: 0, failed: 1 });

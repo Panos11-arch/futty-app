@@ -32,6 +32,7 @@ begin
 
   perform tests.act_as_service_role();
   v_undone_at := now();
+  perform public.credit_release_started(v_share.id, 'pi_undo_all');  -- the release job marks the intent it's cancelling
   assert public.release_share_credit_reservation(v_share.id, 'pi_undo_all', true), 'undone';
   perform tests.act_as_postgres();
 
@@ -74,6 +75,7 @@ begin
   v_share := tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_undo_exp', interval '0', 'card', true);
   update public.venue_bookings set created_at = now() - interval '30 minutes' where id = v_booking.id;
   perform tests.act_as_service_role();
+  perform public.credit_release_started(v_share.id, 'pi_undo_exp');  -- the release job marks the intent it's cancelling
   perform public.release_share_credit_reservation(v_share.id, 'pi_undo_exp', true);
   perform tests.act_as_postgres();
 
@@ -119,6 +121,7 @@ begin
   update public.venue_bookings set created_at = now() - interval '30 minutes' where id = v_booking.id;
 
   perform tests.act_as_service_role();
+  perform public.credit_release_started(v_share.id, 'pi_undo_resp');  -- the release job marks the intent it's cancelling
   assert public.release_share_credit_reservation(v_share.id, 'pi_undo_resp', true), 'undone';
   perform tests.act_as_postgres();
   select * into v_booking from public.venue_bookings where id = v_booking.id;
@@ -157,6 +160,7 @@ begin
   v_share := tests.join_booking(v_booking.id, v_player);
   v_share := tests.pay_ago(v_share.id, 'pi_undo_player', interval '0', 'card', true);
   perform tests.act_as_service_role();
+  perform public.credit_release_started(v_share.id, 'pi_undo_player');  -- the release job marks the intent it's cancelling
   assert public.release_share_credit_reservation(v_share.id, 'pi_undo_player', true), 'undone';
   perform tests.act_as_postgres();
   select * into v_booking from public.venue_bookings where id = v_booking.id;
@@ -186,6 +190,8 @@ begin
   update public.venue_credit_spends set created_at = now() - interval '20 minutes' where share_id = v_share.id;
 
   perform tests.act_as_service_role();
+  -- The job marked the intent and cancelled it at Stripe, then died.
+  assert public.credit_release_started(v_share.id, 'pi_undo_wh'), 'marked by the job';
   assert not exists (select 1 from public.credit_reservations_to_release() where share_id = v_share.id),
     'the job no longer finds it once it is held';
   -- The webhook, as stripe-webhook/modes.ts sends it.
@@ -202,9 +208,11 @@ begin
   perform tests.act_as_postgres();
 end $$;
 
--- Medium: the webhook for an intent cancelled any other way leaves a share
--- that isn't held alone: a free-hour cancellation's release, and a share
--- paid by card only.
+-- Medium: the webhook for an intent cancelled any other way leaves a
+-- share that isn't held alone (a free-hour cancellation's release). A held
+-- share paid by card only is handled like any held payment cancelled
+-- outside the release job: unpaid again, the booking as it is, the
+-- founders alerted (pay-cancellations-14-hold-cancelled.test.sql).
 do $$
 declare
   v_booker uuid := tests.create_user('undo-wh2-booker@futty.test');
@@ -223,10 +231,12 @@ begin
 
   perform tests.act_as_service_role();
   assert not public.release_share_credit_reservation(v_cancelled.id, 'pi_undo_wh2_c', true), 'a cancelled share: nothing';
-  assert not public.release_share_credit_reservation(v_card.id, 'pi_undo_wh2_d', true), 'no credit on it: left to the old handling';
+  assert public.release_share_credit_reservation(v_card.id, 'pi_undo_wh2_d', true), 'a card-only hold: handled too';
   perform tests.act_as_postgres();
   assert (tests.share_of(v_booking.id, v_cancelled.profile_id)).status = 'cancelled', 'still cancelled';
-  assert (tests.share_of(v_booking.id, v_card.profile_id)).status = 'authorized', 'untouched';
+  assert (tests.share_of(v_booking.id, v_card.profile_id)).status = 'pending', 'unpaid again';
+  assert (select status from public.venue_bookings where id = v_booking.id) = 'confirmed', 'the booking stands';
+  assert exists (select 1 from public.admin_alerts where kind = 'hold_cancelled' and share_id = v_card.id), 'alerted';
 end $$;
 
 select 'pay cancellations 13 (undo: booker window, webhook) passed' as result;

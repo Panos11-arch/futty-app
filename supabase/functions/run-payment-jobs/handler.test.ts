@@ -38,6 +38,7 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   db.respond('cancellation_fees_due', []);
   db.respond('expire_venue_credits', 0);
   db.respond('credit_reservations_to_release', []);
+  db.respond('credit_release_started', true);
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
   }

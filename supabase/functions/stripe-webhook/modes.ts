@@ -101,16 +101,22 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
     const canceled = event.data.object as Stripe.PaymentIntent;
     if (canceled.metadata?.kind === 'share' && canceled.metadata.share_id) {
       // Only the share's current payment releases anything. The hold is
-      // really gone, so a share still marked held on it is undone as well
-      // (e.g. the release job cancelled it and died before telling the
-      // database): unpaid again, its credit back.
+      // really gone, so a share still marked held on it is undone too:
+      // unpaid again, its credit back. Only the release job's own cancel
+      // reopens the booking; any other (expired after 7 days, cancelled in
+      // the dashboard) leaves the booking as it is and alerts the founders.
+      // On a cancelled booking nothing happens here (the release step
+      // closes the share). The database decides all of this.
       await rpc(deps.db, 'release_share_credit_reservation', {
         p_share_id: canceled.metadata.share_id,
         p_intent_id: canceled.id,
         p_hold_released: true,
       });
+      // Handled: the old handling (index.ts) would ask the player to pay
+      // again, even on a cancelled booking. Only bookings from before P4a,
+      // whose intents carry no kind, still go there.
+      return true;
     }
-    // The old handling still runs for the event, as before P4b.
     return false;
   }
 

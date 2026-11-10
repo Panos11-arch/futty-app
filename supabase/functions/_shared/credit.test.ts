@@ -14,6 +14,7 @@ function setup(rows: unknown[]) {
   const db = createDbFake();
   db.respond('credit_reservations_to_release', rows);
   db.respond('release_share_credit_reservation', true);
+  db.respond('credit_release_started', true);
   const stripe = createStripeFake();
   stripe.respond('paymentIntents.cancel', (c: { id?: string }) => ({ id: c.id, status: 'canceled' }));
   stripe.respond('setupIntents.cancel', (c: { id?: string }) => ({ id: c.id, status: 'canceled' }));
@@ -43,6 +44,30 @@ Deno.test('the player confirms between the check and the cancel: the database is
   strictEqual(db.callsTo('release_share_credit_reservation')[0].args.p_hold_released, true);
 });
 
+// Decided 10 November: only the release job's own cancel may reopen a
+// booking, so the job marks the intent before cancelling it.
+Deno.test('the job marks the intent as its own before cancelling it at Stripe', async () => {
+  const { db, stripe, deps } = setup([row('pi_mark')]);
+  stripe.respond('paymentIntents.retrieve', intent('pi_mark', 'requires_payment_method', { amount: 180 }));
+  let markedBeforeCancel = false;
+  stripe.respond('paymentIntents.cancel', (c: { id?: string }) => {
+    markedBeforeCancel = db.callsTo('credit_release_started').length === 1;
+    return { id: c.id, status: 'canceled' };
+  });
+  deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 1, left: 0, failed: 0 });
+  deepStrictEqual(db.callsTo('credit_release_started')[0].args, { p_share_id: 's1', p_intent_id: 'pi_mark' });
+  strictEqual(markedBeforeCancel, true, 'marked first');
+});
+
+Deno.test("the intent is no longer the share's payment: not cancelled, looked at again next run", async () => {
+  const { db, stripe, deps } = setup([row('pi_old')]);
+  db.respond('credit_release_started', false);
+  stripe.respond('paymentIntents.retrieve', intent('pi_old', 'requires_payment_method', { amount: 180 }));
+  deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 0, left: 1, failed: 0 });
+  strictEqual(stripe.callsTo('paymentIntents.cancel').length, 0);
+  strictEqual(db.callsTo('release_share_credit_reservation').length, 0);
+});
+
 Deno.test('a payment that went through (or is going through) keeps its credit', async () => {
   for (const status of ['requires_capture', 'processing', 'succeeded'] as const) {
     const { db, stripe, deps } = setup([row('pi_paying')]);
@@ -58,6 +83,13 @@ Deno.test('an intent already cancelled: just released', async () => {
   stripe.respond('paymentIntents.retrieve', intent('pi_gone', 'canceled'));
   deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 1, left: 0, failed: 0 });
   strictEqual(stripe.callsTo('paymentIntents.cancel').length, 0);
+});
+
+Deno.test('an intent someone else cancelled is not marked as the job\'s', async () => {
+  const { db, stripe, deps } = setup([row('pi_elsewhere')]);
+  stripe.respond('paymentIntents.retrieve', intent('pi_elsewhere', 'canceled'));
+  await releaseUnfinishedCreditReservations(deps);
+  strictEqual(db.callsTo('credit_release_started').length, 0);
 });
 
 Deno.test('a SetupIntent never finished: cancelled, then released; one that saved the card is left', async () => {

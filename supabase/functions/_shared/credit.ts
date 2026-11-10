@@ -4,8 +4,11 @@
 // payment set credit aside 15 minutes ago or more and is still unpaid:
 //   - checks the intent (or SetupIntent) at Stripe: one that's held,
 //     processing or paid is left to its webhook, which spends the credit;
-//   - otherwise cancels it first, keyed on its id, so it can never be paid
-//     with credit that has gone back;
+//   - otherwise marks it as the job's (credit_release_started) and cancels
+//     it, keyed on its id, so it can never be paid with credit that has
+//     gone back. Only a cancel the job marked may reopen a booking; any
+//     other cancelled hold leaves the booking as it is and alerts the
+//     founders (release_share_credit_reservation);
 //   - then releases the credit (release_share_credit_reservation, which
 //     does nothing if the share's payment changed meanwhile). A hold that
 //     landed between the check and the cancel is undone there as well: the
@@ -37,6 +40,13 @@ export async function releaseUnfinishedCreditReservations(deps: Deps) {
           continue;
         }
         if (intent.status !== 'canceled') {
+          // Marked first, so the cancelled event that follows is known to
+          // be ours: only this job's cancel may reopen the booking. Not the
+          // share's payment any more: a new one started, next run looks again.
+          if (!await rpc<boolean>(deps.db, 'credit_release_started', { p_share_id: r.share_id, p_intent_id: intent.id })) {
+            summary.left += 1;
+            continue;
+          }
           await deps.stripe.paymentIntents.cancel(intent.id, {}, { idempotencyKey: idempotencyKeys.cancelIntent(intent.id) });
         }
       } else if (r.stripe_setup_intent_id) {
