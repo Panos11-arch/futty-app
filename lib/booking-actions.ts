@@ -30,15 +30,76 @@ export async function bookSlot(params: BookSlotParams) {
   });
 }
 
-/** Cancels a booking and, if it was paid, refunds it — enforces the
- *  30-minutes-before-kickoff cutoff server-side (supabase/functions/
- *  cancel-booking). The plain cancel_booking RPC is no longer callable
- *  directly by clients, specifically so a cancellation can't happen without
- *  the refund alongside it. */
-export async function cancelBooking(bookingId: string) {
-  return supabase.functions.invoke<{ cancelled: boolean; refunded: boolean }>('cancel-booking', {
-    body: { bookingId },
+export type CancelScope = 'my_spot' | 'whole_team' | 'venue';
+
+/** One player's money in a cancellation, as the server computed it (amounts
+ *  in cents; the app only displays them). */
+export type CancellationLine = {
+  share_id: string | null;
+  guarantee_id: string | null;
+  profile_id: string;
+  is_booker: boolean;
+  window: 'free' | 'middle' | 'late' | 'other' | 'venue' | null;
+  action: 'none' | 'release' | 'keep' | 'keep_and_credit' | 'refund_choice';
+  value_cents: number;
+  kept_cents: number;
+  credit_cents: number;
+  refund_cents: number;
+};
+
+/** What cancelling would do (public.cancellation_quote). Show it before the
+ *  player confirms; confirming sends back its `quote`. */
+export type CancellationQuote = {
+  booking_id: string;
+  scope: CancelScope;
+  kickoff_at: string;
+  refunds_stop_at: string;
+  cancels_booking: boolean;
+  lines: CancellationLine[];
+  /** The booker's charge for cancelling the whole team (100 per other player
+   *  whose payment was taken), or null. */
+  booker_fee: { profile_id: string; players: number; amount_cents: number } | null;
+  quote: string;
+};
+
+/** What happens to everyone's money if the signed-in player cancels: their
+ *  own spot, the whole team (the booker), or the booking (venue staff).
+ *  Nothing is changed. */
+export async function getCancellationQuote(bookingId: string, scope: CancelScope) {
+  return supabase.rpc('cancellation_quote', { p_booking_id: bookingId, p_scope: scope });
+}
+
+export type CancelResult = {
+  cancelled: boolean;
+  /** Bookings made before P4a: the old answer. */
+  refunded?: boolean;
+  pending?: boolean;
+  /** The booker's whole-team charge. 'requires_action': show 3-D Secure
+   *  with clientSecret; the cancellation stands either way. */
+  fee?: { amountCents: number; status: string; clientSecret?: string | null } | null;
+};
+
+/** Cancels exactly what the confirmed quote said (supabase/functions/
+ *  cancel-booking); the server refuses with quote_changed if that's no longer
+ *  what would happen, and the app shows the new quote. The plain
+ *  cancel_booking RPC isn't callable by clients, so a cancellation can't
+ *  happen without its money alongside it. With no options: a booking made
+ *  before P4a, cancelled under the old rules. */
+export async function cancelBooking(bookingId: string, confirmed?: { scope: CancelScope; quote: string }) {
+  return supabase.functions.invoke<CancelResult>('cancel-booking', {
+    body: confirmed ? { bookingId, scope: confirmed.scope, quote: confirmed.quote } : { bookingId },
   });
+}
+
+/** After the booker or the venue cancelled: the player takes their share
+ *  back as venue credit, or by card refund (5-10 working days). They have 48
+ *  hours; with no choice it goes back to their card. `lineId` is the
+ *  cancellationLineId in their "Game cancelled" notification. */
+export async function chooseCancellationRefund(lineId: string, choice: 'card' | 'credit') {
+  return supabase.functions.invoke<{ choice: 'card' | 'credit'; refundCents?: number; creditCents?: number }>(
+    'choose-cancellation-refund',
+    { body: { lineId, choice } },
+  );
 }
 
 /** Wraps log_booking_result (supabase/legacy/booking-results.sql) — self-reported,

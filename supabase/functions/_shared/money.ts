@@ -65,9 +65,40 @@ export function shareAmounts({ pitchCents, players, mode, isBooker, isPremium, m
 }
 
 /** What a share's card payment must be, from the breakdown the database
- *  stored: the fee alone for a cash player, pitch part + fee otherwise. */
-export function cardChargeCents(share: { pitch_cents: number; fee_cents: number; payment_method: PaymentMethod }): number {
-  return share.payment_method === 'cash' ? share.fee_cents : share.pitch_cents + share.fee_cents;
+ *  stored: the fee alone for a cash player; otherwise the pitch part less
+ *  any venue credit paying for it, plus the fee. */
+export function cardChargeCents(
+  share: { pitch_cents: number; fee_cents: number; payment_method: PaymentMethod; credit_cents?: number | null },
+): number {
+  if (share.payment_method === 'cash') return share.fee_cents;
+  return share.pitch_cents - (share.credit_cents ?? 0) + share.fee_cents;
+}
+
+export type CreditPayment = { creditCents: number; feeCents: number; cardCents: number };
+
+/** Paying a share's pitch part with venue credit (spec 13, "Venue credit"):
+ *  as much credit as covers it; no service fee when credit covers it all;
+ *  otherwise the rest by card plus the share's normal fee (80, or 0 for a
+ *  Premium player). Same rules as public.money_credit_payment. */
+export function creditPayment(pitchCents: number, feeCents: number, creditAvailableCents: number): CreditPayment {
+  for (const value of [pitchCents, feeCents, creditAvailableCents]) {
+    if (!Number.isInteger(value) || value < 0) throw new Error('invalid_money_input');
+  }
+  const creditCents = Math.min(pitchCents, creditAvailableCents);
+  if (creditCents === pitchCents) return { creditCents, feeCents: 0, cardCents: 0 };
+  return { creditCents, feeCents, cardCents: pitchCents - creditCents + feeCents };
+}
+
+/** Kept per player when a share is cancelled from 1 hour after paying until
+ *  6 hours before kickoff; also what the booker pays per other player whose
+ *  payment was taken when they cancel the whole team (spec 13). */
+export const CANCEL_KEEP_PER_PLAYER_CENTS = 100;
+
+/** The booker's charge for cancelling the whole team: 100 per other player
+ *  whose payment was already taken. Same as public.cancellation_plan. */
+export function wholeTeamCancelFeeCents(takenOtherPlayers: number): number {
+  if (!Number.isInteger(takenOtherPlayers) || takenOtherPlayers < 0) throw new Error('invalid_money_input');
+  return CANCEL_KEEP_PER_PLAYER_CENTS * takenOtherPlayers;
 }
 
 /** Every Stripe idempotency key, built from our row ids, so a retried call
@@ -102,6 +133,9 @@ export const idempotencyKeys = {
   guaranteeCard: (guaranteeId: string, currentPaymentMethodId: string | null) =>
     `guarantee-card-${guaranteeId}-after-${currentPaymentMethodId ?? 'none'}`,
   customer: (profileId: string) => `customer-${profileId}`,
+  /** The booker's charge for cancelling the whole team, one attempt
+   *  (attempt 1 on-session when they confirm; each retry a new request). */
+  cancelFee: (feeId: string, attempt: number) => `cancel-fee-${feeId}-attempt-${attempt}`,
   /** Saving a card for a share with nothing to charge. */
   shareCardSetup: (shareId: string, method: PaymentMethod, previousIntentId: string | null) =>
     `setup-share-${shareId}-${method}-after-${previousIntentId ?? 'none'}`,

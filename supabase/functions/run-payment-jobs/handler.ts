@@ -13,12 +13,21 @@
 //   4. places every booker's guarantee hold that is due (72 hours before
 //      kickoff, or a retry 6 hours after a failure, until kickoff), and
 //      looks up at Stripe any hold that got no answer;
-//   5. retries every release or refund that failed before.
+//   5. retries every release or refund that failed before;
+//   6. cancellations (P4b): finishes any Stripe work a cancellation left
+//      (a hold to release, a kept share to take), sends the card refund to
+//      every player who didn't choose credit within 48 hours, retries the
+//      booker's whole-team charge every 6 hours until the original
+//      kickoff, and expires venue credit 12 months after it was issued;
+//   7. gives back venue credit set aside for a payment not completed within
+//      15 minutes (the intent is cancelled at Stripe first).
 // Which ones are due is decided in the database, in Cyprus time. One item
 // failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
 import { type Db, rpc } from '../_shared/db.ts';
 import { type DueGuarantee, placeGuaranteeHold } from '../_shared/guarantee.ts';
+import { runCancellationFees, runCancellationWork } from '../_shared/cancellation.ts';
+import { releaseUnfinishedCreditReservations } from '../_shared/credit.ts';
 import { idempotencyKeys } from '../_shared/money.ts';
 import { errorText, releaseBookingMoney, releaseOrQueue, runReleaseQueue, stripeFeeCents } from '../_shared/release.ts';
 
@@ -44,6 +53,10 @@ export async function runPaymentJobs(deps: Deps) {
     resumed: 0,
     held: 0, holdFailed: 0, holdRetry: 0,
     released: 0, releaseFailed: 0,
+    cancellationDone: 0, cancellationFailed: 0,
+    feePaid: 0, feeFailed: 0, feeRetry: 0,
+    creditExpired: 0,
+    creditReleased: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -114,6 +127,34 @@ export async function runPaymentJobs(deps: Deps) {
   const queue = await runReleaseQueue(deps);
   summary.released = queue.released;
   summary.releaseFailed = queue.failed;
+
+  // One part failing never stops the others.
+  try {
+    const work = await runCancellationWork(deps, null);
+    summary.cancellationDone = work.done;
+    summary.cancellationFailed = work.failed;
+  } catch (err) {
+    console.error('run-payment-jobs: cancellation work failed:', err);
+  }
+  try {
+    const fees = await runCancellationFees(deps);
+    summary.feePaid = fees.paid;
+    summary.feeFailed = fees.failed;
+    summary.feeRetry = fees.retry;
+  } catch (err) {
+    console.error('run-payment-jobs: cancellation charges failed:', err);
+  }
+  try {
+    // Safe on every run: only credit past its expiry, once.
+    summary.creditExpired = await rpc<number>(deps.db, 'expire_venue_credits');
+  } catch (err) {
+    console.error('run-payment-jobs: expiring credit failed:', err);
+  }
+  try {
+    summary.creditReleased = (await releaseUnfinishedCreditReservations(deps)).released;
+  } catch (err) {
+    console.error('run-payment-jobs: releasing unfinished credit failed:', err);
+  }
 
   return summary;
 }

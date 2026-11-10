@@ -45,7 +45,7 @@ export type Deps = { stripe: Stripe; db: Db };
 
 export type HoldResult = 'held' | 'failed' | 'released' | 'retry' | 'checked';
 
-type StripeErrorLike = {
+export type StripeErrorLike = {
   type?: string;
   code?: string;
   param?: string;
@@ -63,13 +63,13 @@ const CARD_PROBLEM_CODES = new Set([
 ]);
 
 /** The booker's card said no, or can't be used: a failed hold, theirs to fix. */
-function isCardProblem(error: StripeErrorLike): boolean {
+export function isCardProblem(error: StripeErrorLike): boolean {
   if (error.type === 'StripeCardError') return true;
   return error.type === 'StripeInvalidRequestError' &&
     (CARD_PROBLEM_PARAMS.has(error.param ?? '') || CARD_PROBLEM_CODES.has(error.code ?? ''));
 }
 
-function cardProblemText(error: StripeErrorLike): string {
+export function cardProblemText(error: StripeErrorLike): string {
   if (error.type === 'StripeCardError') return error.code ?? error.message ?? 'card_error';
   const what = error.code ?? error.message ?? 'invalid_request';
   return error.param && !CARD_PROBLEM_CODES.has(error.code ?? '') ? `${error.param}: ${what}` : what;

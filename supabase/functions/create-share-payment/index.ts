@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
       shareId: typeof body.shareId === 'string' ? body.shareId : undefined,
       method: body.method as 'card' | 'cash' | undefined,
       acceptNonRefundable: body.acceptNonRefundable === true,
+      useCredit: body.useCredit === true,
     },
   );
   return new Response(JSON.stringify(result.body), {

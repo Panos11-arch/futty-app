@@ -13,8 +13,13 @@
 //     booking is non-refundable". Whether a payment counts as non-refundable
 //     is checked again when Stripe reports it (stripe-webhook), so a hold
 //     confirmed after the 6-hour line without the notice is refused;
+//   - the player can pay the pitch part with their venue credit there
+//     (useCredit, P4b): no service fee when it covers it all, otherwise the
+//     rest by card plus the normal fee; the database sets the credit aside
+//     with the intent and spends it when the money is held;
 //   - nothing to pay by card: a SetupIntent saves the card (the each-pays
-//     booker); anyone else is refused until P4c (saved_card_required).
+//     booker, or credit covering the pitch part); a Premium cash player who
+//     isn't the booker is refused until P4c (saved_card_required).
 // Bookings from before P4a keep the old hold-only intent.
 //
 // A share's amounts never change under an intent the player could still
@@ -33,7 +38,7 @@ import { releaseOrQueue } from '../_shared/release.ts';
 
 export type Deps = { stripe: Stripe; db: Db };
 export type Caller = { id: string; email?: string | null };
-export type Body = { shareId?: string; method?: PaymentMethod; acceptNonRefundable?: boolean };
+export type Body = { shareId?: string; method?: PaymentMethod; acceptNonRefundable?: boolean; useCredit?: boolean };
 export type Result = { status: number; body: Record<string, unknown> };
 
 /** What public.plan_share_payment returns. */
@@ -48,6 +53,7 @@ type Plan = {
   pitch_cents: number;
   fee_cents: number;
   cash_cents: number;
+  credit_cents: number;
   capture_method: 'manual' | 'immediate' | null;
   non_refundable: boolean;
   stripe_payment_intent_id: string | null;
@@ -66,6 +72,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
     return { status: 400, body: { error: 'invalid_request' } };
   }
   const accept = body.acceptNonRefundable === true;
+  const useCredit = body.useCredit === true;
 
   let plan: Plan;
   try {
@@ -74,6 +81,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
       p_profile_id: caller.id,
       p_method: method,
       p_accept_non_refundable: accept,
+      p_use_credit: useCredit,
     });
   } catch (err) {
     return dbRefusal(err);
@@ -94,7 +102,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
       if (same) {
         // Pressing "Pay" again: the same intent (the acceptance is updated).
         try {
-          await attach(deps, caller, plan, accept, previous, previous, captureMethod);
+          await attach(deps, caller, plan, accept, useCredit, previous, previous, captureMethod);
         } catch (err) {
           return dbRefusal(err);
         }
@@ -125,6 +133,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
         p_method: plan.payment_method,
         p_setup_intent_id: setupIntent.id,
         p_expected_intent_id: previous,
+        p_use_credit: useCredit,
       });
     } catch (err) {
       await deps.stripe.setupIntents.cancel(setupIntent.id).catch((cancelErr: unknown) =>
@@ -134,7 +143,13 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
     }
     return {
       status: 200,
-      body: { setupIntentClientSecret: setupIntent.client_secret, customerId, amountCents: 0, cashCents: plan.cash_cents },
+      body: {
+        setupIntentClientSecret: setupIntent.client_secret,
+        customerId,
+        amountCents: 0,
+        cashCents: plan.cash_cents,
+        creditCents: plan.credit_cents ?? 0,
+      },
     };
   }
 
@@ -169,7 +184,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
   });
 
   try {
-    await attach(deps, caller, plan, accept, intent.id, previous, captureMethod);
+    await attach(deps, caller, plan, accept, useCredit, intent.id, previous, captureMethod);
   } catch (err) {
     if (!(err instanceof DbError)) throw err;
     // Something changed meanwhile (another device paid or switched): this
@@ -180,7 +195,16 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
   return success(plan, customerId, intent.client_secret);
 }
 
-function attach(deps: Deps, caller: Caller, plan: Plan, accept: boolean, intentId: string, previous: string | null, captureMethod: string) {
+function attach(
+  deps: Deps,
+  caller: Caller,
+  plan: Plan,
+  accept: boolean,
+  useCredit: boolean,
+  intentId: string,
+  previous: string | null,
+  captureMethod: string,
+) {
   return rpc(deps.db, 'attach_share_intent', {
     p_share_id: plan.share_id,
     p_profile_id: caller.id,
@@ -190,6 +214,7 @@ function attach(deps: Deps, caller: Caller, plan: Plan, accept: boolean, intentI
     p_intent_amount_cents: plan.amount_cents,
     p_intent_capture_method: captureMethod === 'automatic' ? 'immediate' : 'manual',
     p_expected_intent_id: previous,
+    p_use_credit: useCredit,
   });
 }
 
@@ -201,6 +226,7 @@ function success(plan: Plan, customerId: string, clientSecret: string | null): R
       customerId,
       amountCents: plan.amount_cents,
       cashCents: plan.cash_cents,
+      creditCents: plan.credit_cents ?? 0,
       nonRefundable: plan.non_refundable,
     },
   };

@@ -27,6 +27,8 @@ function world(dies: 'db_error' | 'crash') {
 
   const fake = createDbFake();
   const active = () => shares.filter((s) => ['pending', 'authorized', 'paid'].includes(s.status));
+  // A booking from before P4a: the old cancellation releases all its money.
+  fake.respond('cancel_booking_internal', { legacy: true });
   fake.respond('cancel_booking_for', 'confirmed');
   fake.respond('booking_money_to_release', () =>
     active().map((s) => ({ kind: 'share', id: s.id, status: s.status, stripe_payment_intent_id: s.intent, amount_cents: s.amount }))
@@ -52,7 +54,9 @@ function world(dies: 'db_error' | 'crash') {
     return null;
   });
   fake.respond('queue_money_release', 'r1');
-  for (const fn of ['shares_due_for_capture', 'bookings_past_payment_window', 'guarantees_due_for_hold', 'money_releases_due']) {
+  fake.respond('expire_venue_credits', 0);
+  for (const fn of ['shares_due_for_capture', 'bookings_past_payment_window', 'guarantees_due_for_hold', 'money_releases_due',
+                    'cancellation_work', 'cancellation_fees_due', 'credit_reservations_to_release']) {
     fake.respond(fn, []);
   }
 
@@ -98,7 +102,7 @@ for (const dies of ['db_error', 'crash'] as const) {
   Deno.test(`cancel dies after the first of three shares (${dies}): the job releases the other two, each once`, async () => {
     const w = world(dies);
 
-    await rejects(() => cancelBooking(w.deps, 'p1', 'b1'), 'the run dies, money still on the booking');
+    await rejects(() => cancelBooking(w.deps, 'p1', { bookingId: 'b1' }), 'the run dies, money still on the booking');
     deepStrictEqual(w.shares.map((s) => s.status), ['cancelled', 'authorized', 'paid']);
 
     w.recover();

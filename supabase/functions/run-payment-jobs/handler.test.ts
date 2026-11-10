@@ -34,6 +34,10 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   db.respond('share_capture_failed', { result: 'failed', attempts: 1, alerted: false });
   db.respond('guarantee_hold_errored', { result: 'retry', api_errors: 1 });
   db.respond('guarantee_hold_check_cleared', null);
+  db.respond('cancellation_work', []);
+  db.respond('cancellation_fees_due', []);
+  db.respond('expire_venue_credits', 0);
+  db.respond('credit_reservations_to_release', []);
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
   }
@@ -363,4 +367,69 @@ Deno.test('retries every queued release that is due', async () => {
   const summary = await runPaymentJobs(deps);
   strictEqual(summary.released, 1);
   deepStrictEqual(db.callsTo('money_release_attempted')[0].args, { p_release_id: 'r1', p_succeeded: true, p_outcome: 'cancelled', p_error: null });
+});
+
+// P4b: cancellations.
+const refundLine = {
+  line_id: 'l1', kind: 'refund', booking_id: 'b1', share_id: 's1', guarantee_id: null,
+  stripe_intent_id: 'pi_r', amount_cents: 680, reason: 'whole_team_refund_choice', attempts: 0,
+};
+
+Deno.test('48 hours with no choice: the card refund goes out, keyed on the intent', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('cancellation_work', [refundLine]);
+  db.respond('cancellation_line_refunded', true);
+  stripe.respond('paymentIntents.retrieve', intent('pi_r', 'succeeded'));
+  stripe.respond('refunds.create', (c: { params?: Record<string, unknown> }) => ({ id: 're_r', status: 'succeeded', amount: c.params?.amount }));
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.cancellationDone, 1);
+  deepStrictEqual(db.callsTo('cancellation_work')[0].args, { p_cancellation_id: null }, 'everything due');
+  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => [c.params?.amount, c.idempotencyKey]), [[680, 'refund-pi_r-680']]);
+  deepStrictEqual(db.callsTo('cancellation_line_refunded')[0].args, { p_line_id: 'l1', p_outcome: 'refunded' });
+});
+
+Deno.test("the booker's whole-team charge is retried off-session, and credit is expired", async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('cancellation_fees_due', [{ fee_id: 'f1' }]);
+  db.respond('cancellation_fee_to_charge', [{
+    fee_id: 'f1', booking_id: 'b1', cancellation_id: 'c1', profile_id: 'p1', amount_cents: 900,
+    stripe_customer_id: 'cus_1', stripe_payment_method_id: 'pm_1', attempt: 2, off_session: true, previous_intent_id: null,
+  }]);
+  db.respond('cancellation_fee_paid', { result: 'paid' });
+  db.respond('expire_venue_credits', 2);
+  stripe.respond('paymentIntents.create', () => intent('pi_fee', 'succeeded', { amount: 900, stripeFee: 39 }));
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.feePaid, 1);
+  strictEqual(summary.creditExpired, 2);
+  const [create] = stripe.callsTo('paymentIntents.create');
+  strictEqual(create.params?.off_session, true);
+  strictEqual(create.idempotencyKey, 'cancel-fee-f1-attempt-2');
+  deepStrictEqual(db.callsTo('cancellation_fee_paid')[0].args, {
+    p_fee_id: 'f1', p_intent_id: 'pi_fee', p_amount_cents: 900, p_stripe_fee_cents: 39,
+  });
+});
+
+Deno.test('a failing cancellation step never stops the others', async () => {
+  const { db, deps } = setup();
+  db.fail('cancellation_work', 'boom');
+  db.fail('cancellation_fees_due', 'boom');
+  db.respond('expire_venue_credits', 1);
+  const summary = await runPaymentJobs(deps);
+  strictEqual(summary.creditExpired, 1);
+});
+
+Deno.test('credit set aside for a payment not completed within 15 minutes goes back', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('credit_reservations_to_release', [
+    { share_id: 's9', booking_id: 'b1', stripe_payment_intent_id: 'pi_unfinished', stripe_setup_intent_id: null },
+  ]);
+  db.respond('release_share_credit_reservation', true);
+  stripe.respond('paymentIntents.retrieve', intent('pi_unfinished', 'requires_payment_method', { amount: 180 }));
+  const summary = await runPaymentJobs(deps);
+  strictEqual(summary.creditReleased, 1);
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_unfinished'], 'cancelled first');
 });
