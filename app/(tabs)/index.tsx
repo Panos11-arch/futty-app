@@ -1,13 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { IconButton } from '@/components/ui/icon-button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Text as UIText } from '@/components/ui/text';
+import { colors, FuttyColors, FuttyFonts, radius, space } from '@/constants/futty-theme';
 import { dateKeyAndTimeToDate, dateKeyToDate, dayLabel } from '@/lib/days';
 import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
@@ -405,37 +407,29 @@ function TeamPremiumBox() {
   );
 }
 
-/** Top-right header actions — kept as two distinct icons rather than one
- *  combined menu: the bell is a live feed (badge count, tap straight into
- *  the relevant screen), the account icon is a static menu hierarchy
- *  (app/account/index.tsx). Folding both into one icon would make the
- *  common case (checking notifications) a two-tap action instead of one. */
-function HomeHeaderActions() {
+/** Home's header (docs/specs/15-design.md section 4): a large title, the
+ *  notifications bell with a dot while anything is unread, and the account
+ *  menu (app/account/index.tsx). */
+export function HomeHeader() {
   const notifications = useNotifications();
+  const unread = notifications.unreadCount;
 
   return (
-    <View style={styles.headerActions}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Notifications"
-        onPress={() => router.push('/notifications')}
-        style={styles.headerIconButton}>
-        <IconSymbol name="bell.fill" size={18} color={FuttyColors.white} />
-        {notifications.unreadCount > 0 ? (
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>
-              {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
-            </Text>
-          </View>
-        ) : null}
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Account menu"
-        onPress={() => router.push('/account')}
-        style={styles.headerIconButton}>
-        <IconSymbol name="person.fill" size={18} color={FuttyColors.white} />
-      </Pressable>
+    <View style={styles.header}>
+      <UIText variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header" style={styles.headerTitle}>
+        Home
+      </UIText>
+      <View style={styles.headerActions}>
+        <View>
+          <IconButton
+            icon="bell.fill"
+            accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+            onPress={() => router.push('/notifications')}
+          />
+          {unread > 0 ? <View testID="unread-dot" style={styles.unreadDot} pointerEvents="none" /> : null}
+        </View>
+        <IconButton icon="person.fill" accessibilityLabel="Account menu" onPress={() => router.push('/account')} />
+      </View>
     </View>
   );
 }
@@ -456,16 +450,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.screen}>
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
-            <Text style={styles.wordmark}>FUTTY</Text>
-            <HomeHeaderActions />
-          </View>
-          <View style={styles.headerSubtitleRow}>
-            <IconSymbol name="sportscourt.fill" size={13} color={FuttyColors.emerald200} />
-            <Text style={styles.headerSubtitle}>What are we playing today?</Text>
-          </View>
-        </View>
+        <HomeHeader />
       </SafeAreaView>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -499,68 +484,30 @@ const styles = StyleSheet.create({
     backgroundColor: FuttyColors.stone50,
   },
   headerSafeArea: {
-    backgroundColor: FuttyColors.emerald950,
+    backgroundColor: colors.canvas,
   },
   header: {
-    backgroundColor: FuttyColors.emerald950,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
   },
-  wordmark: {
-    fontFamily: FuttyFonts.display,
-    fontSize: 24,
-    color: FuttyColors.white,
-    letterSpacing: 0.5,
+  headerTitle: {
+    flex: 1,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  headerIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: FuttyColors.emerald800,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  headerBadge: {
+  unreadDot: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    paddingHorizontal: 3,
-    backgroundColor: FuttyColors.rose600,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: FuttyColors.emerald950,
-  },
-  headerBadgeText: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 9,
-    color: FuttyColors.white,
-  },
-  headerSubtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 16,
-  },
-  headerSubtitle: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.emerald200,
+    top: space.md - space.xs,
+    right: space.md - space.xs,
+    width: space.sm,
+    height: space.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
   },
   body: {
     flex: 1,

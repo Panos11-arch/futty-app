@@ -1,7 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { AuthButton } from '@/components/auth-form';
@@ -12,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
+import { playHref } from '@/lib/play-segments';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
 
@@ -234,61 +234,68 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
   );
 }
 
-export default function TeamScreen() {
+/** Your teams, shown in Play's Teams segment (app/(tabs)/play.tsx). Scrolls
+ *  itself. `teamId` opens one team (app/account/activity/teams.tsx links to
+ *  it) instead of whichever comes first. */
+export function TeamContent({ teamId }: { teamId?: string }) {
   const myTeams = useMyTeams();
-  // Lets app/account/activity/teams.tsx deep-link straight to one team
-  // instead of always landing on whichever comes first.
-  const { teamId } = useLocalSearchParams<{ teamId?: string }>();
   const [selectedId, setSelectedId] = useState<string | null>(teamId ?? null);
+
+  // Play stays mounted, so a later link to another team arrives as a new prop.
+  useEffect(() => {
+    if (teamId) setSelectedId(teamId);
+  }, [teamId]);
 
   const teams = myTeams.status === 'ready' ? myTeams.teams : [];
   const selected = teams.find((t) => t.team.id === selectedId) ?? teams[0] ?? null;
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <IconLabel icon="shield.fill" type="title" iconSize={28}>Team</IconLabel>
+    <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
+      {myTeams.status === 'loading' ? <ActivityIndicator /> : null}
 
-        {myTeams.status === 'loading' ? <ActivityIndicator /> : null}
+      {myTeams.status === 'error' ? (
+        <ThemedText style={styles.note}>Could not load your teams: {myTeams.message}</ThemedText>
+      ) : null}
 
-        {myTeams.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load your teams: {myTeams.message}</ThemedText>
-        ) : null}
+      {myTeams.status === 'ready' && teams.length === 0 ? (
+        <View style={styles.section}>
+          <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
+            You&apos;re not on a team yet.
+          </IconLabel>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/leagues')}>
+            <ThemedText type="link">Register one when you join a league</ThemedText>
+          </Pressable>
+        </View>
+      ) : null}
 
-        {myTeams.status === 'ready' && teams.length === 0 ? (
-          <View style={styles.section}>
-            <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-              You&apos;re not on a team yet.
-            </IconLabel>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/leagues')}>
-              <ThemedText type="link">Register one when you join a league</ThemedText>
-            </Pressable>
-          </View>
-        ) : null}
+      {teams.length > 1 ? (
+        <View style={styles.wrapRow}>
+          {teams.map(({ team }) => (
+            <Chip
+              key={team.id}
+              label={team.name}
+              selected={selected?.team.id === team.id}
+              onPress={() => setSelectedId(team.id)}
+            />
+          ))}
+        </View>
+      ) : null}
 
-        {teams.length > 1 ? (
-          <View style={styles.wrapRow}>
-            {teams.map(({ team }) => (
-              <Chip
-                key={team.id}
-                label={team.name}
-                selected={selected?.team.id === team.id}
-                onPress={() => setSelectedId(team.id)}
-              />
-            ))}
-          </View>
-        ) : null}
-
-        {selected ? (
-          <TeamDetail
-            team={selected.team}
-            isCaptain={selected.role === 'captain'}
-            onTeamChanged={myTeams.reload}
-          />
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      {selected ? (
+        <TeamDetail
+          team={selected.team}
+          isCaptain={selected.role === 'captain'}
+          onTeamChanged={myTeams.reload}
+        />
+      ) : null}
+    </ScrollView>
   );
+}
+
+/** /team is no longer a tab: it opens Play on Teams, keeping the team id. */
+export default function TeamRoute() {
+  const { teamId } = useLocalSearchParams<{ teamId?: string }>();
+  return <Redirect href={playHref('teams', { teamId })} />;
 }
 
 const styles = StyleSheet.create({
