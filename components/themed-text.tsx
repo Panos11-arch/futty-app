@@ -1,6 +1,6 @@
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { colors, type as typeScale } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 export type ThemedTextProps = TextProps & {
@@ -34,34 +34,11 @@ export function ThemedText({
   );
 }
 
+// The old type names, mapped onto the scale in docs/specs/15-design.md.
 const styles = StyleSheet.create({
-  default: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 16,
-    lineHeight: 24,
-    // Distinct from headings (which keep the base emerald-950 'text' color
-    // above) so body copy reads as secondary, matching the prototype's
-    // heading-vs-body contrast.
-    color: FuttyColors.stone700,
-  },
-  defaultSemiBold: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  title: {
-    fontFamily: FuttyFonts.display,
-    fontSize: 32,
-    lineHeight: 34,
-  },
-  subtitle: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 20,
-  },
-  link: {
-    fontFamily: FuttyFonts.sansMedium,
-    lineHeight: 30,
-    fontSize: 16,
-    color: FuttyColors.emerald700,
-  },
+  default: typeScale.body,
+  defaultSemiBold: typeScale.headline,
+  title: typeScale.display,
+  subtitle: typeScale.title,
+  link: { ...typeScale.body, color: colors.brand },
 });

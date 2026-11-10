@@ -1,23 +1,20 @@
 /**
- * light and dark are intentionally identical — the app committed to a single
- * fixed brand look (see constants/futty-theme.ts) rather than adapting to the
- * system color scheme. useThemeColor/ThemedText/ThemedView still take a
- * colorScheme argument under the hood (unchanged call sites elsewhere), it
- * just always resolves to the same values now.
+ * light and dark are intentionally identical: the app keeps one fixed light
+ * look built from the tokens in constants/futty-theme.ts. useThemeColor,
+ * ThemedText and ThemedView still take a colour scheme, it just always
+ * resolves to the same values.
  */
 import { Platform } from 'react-native';
 
-import { FuttyColors } from '@/constants/futty-theme';
+import { colors } from '@/constants/futty-theme';
 
 const futty = {
-  // Bold/heading text is black (item 6) — tint stays green, reserved for
-  // buttons/highlights/icons.
-  text: FuttyColors.stone900,
-  background: FuttyColors.stone50,
-  tint: FuttyColors.emerald950,
-  icon: FuttyColors.stone200,
-  tabIconDefault: FuttyColors.stone400,
-  tabIconSelected: FuttyColors.emerald950,
+  text: colors.ink,
+  background: colors.canvas,
+  tint: colors.brand,
+  icon: colors.inkMuted,
+  tabIconDefault: colors.inkMuted,
+  tabIconSelected: colors.brand,
 };
 
 export const Colors = {
