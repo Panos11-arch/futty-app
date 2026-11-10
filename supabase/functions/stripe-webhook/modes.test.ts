@@ -3,6 +3,7 @@ import type Stripe from 'npm:stripe@^22';
 import { createDbFake } from '../_shared/db-fake.ts';
 import { intent } from '../_shared/intent-fixtures.ts';
 import { createStripeFake } from '../_shared/stripe-fake.ts';
+import { releaseUnfinishedCreditReservations } from '../_shared/credit.ts';
 import { handlePaymentModeEvent } from './modes.ts';
 
 // 2026-11-09 12:00:00 UTC
@@ -219,4 +220,88 @@ Deno.test('bookings from before P4a fall through to the old handling', async () 
   strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', { id: 'pi_b', metadata: {} }), deps), false,
     'a whole-booking intent has no share');
   strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', { id: 'pi_c', metadata: {} }), deps), false);
+});
+
+// P4b: the booker's whole-team cancellation charge.
+Deno.test("the booker's cancellation charge is recorded when Stripe says it was taken", async () => {
+  const { db, stripe, deps } = setup();
+  const fee = intent('pi_fee', 'succeeded', { amount: 900, stripeFee: 39, metadata: { kind: 'cancel_fee', fee_id: 'f1', booking_id: 'b1' } });
+  stripe.respond('paymentIntents.retrieve', fee);
+  db.respond('cancellation_fee_paid', { result: 'paid' });
+
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', fee), deps), true);
+  deepStrictEqual(db.callsTo('cancellation_fee_paid')[0].args, { p_fee_id: 'f1', p_intent_id: 'pi_fee', p_amount_cents: 900, p_stripe_fee_cents: 39 });
+  strictEqual(db.callsTo('share_payment_captured').length, 0, 'not a share');
+});
+
+Deno.test('a second payment for the same cancellation charge is given back', async () => {
+  const { db, stripe, deps } = setup();
+  const fee = intent('pi_fee2', 'succeeded', { amount: 900, metadata: { kind: 'cancel_fee', fee_id: 'f1', booking_id: 'b1' } });
+  stripe.respond('paymentIntents.retrieve', fee);
+  db.respond('cancellation_fee_paid', { result: 'refund', booking_id: 'b1', reason: 'duplicate_cancellation_fee' });
+  await handlePaymentModeEvent(event('payment_intent.succeeded', fee), deps);
+  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => c.idempotencyKey), ['refund-pi_fee2-900']);
+});
+
+Deno.test('other events for a cancellation charge are acknowledged and ignored', async () => {
+  const { db, deps } = setup();
+  const fee = intent('pi_fee3', 'requires_action', { metadata: { kind: 'cancel_fee', fee_id: 'f1' } });
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', fee), deps), true);
+  strictEqual(db.calls.length, 0);
+});
+
+// P4b: credit set aside for a payment that's cancelled goes back.
+Deno.test("a share's cancelled payment is handled here: the old handling never asks to pay again", async () => {
+  // Whatever the database did (nothing, on a cancelled booking), index.ts's
+  // old "confirm your payment again" handling must not run for it.
+  for (const released of [true, false]) {
+    const { db, deps } = setup();
+    db.respond('release_share_credit_reservation', released);
+    const canceled = { ...intent('pi_c', 'canceled'), cancellation_reason: 'automatic' };
+    const handled = await handlePaymentModeEvent(event('payment_intent.canceled', canceled), deps);
+    strictEqual(handled, true, 'index.ts stops here');
+    deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, {
+      p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true,
+    });
+  }
+});
+
+Deno.test('a cancelled intent from before P4a (no kind) still goes to the old handling', async () => {
+  const { db, deps } = setup();
+  const legacy = { ...intent('pi_old', 'canceled'), metadata: { share_id: 's1', booking_id: 'b1' } };
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', legacy), deps), false);
+  strictEqual(db.calls.length, 0);
+});
+
+// Re-review Medium: a cancelled event means the hold is really gone, so the
+// webhook undoes a held share too (pay-cancellations-13-undo.test.sql has
+// the database side).
+Deno.test('the release job cancels at Stripe and dies before the database call: the webhook finishes it', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('credit_reservations_to_release', [
+    { share_id: 's1', booking_id: 'b1', stripe_payment_intent_id: 'pi_c', stripe_setup_intent_id: null },
+  ]);
+  db.respond('credit_release_started', true);
+  stripe.respond('paymentIntents.retrieve', intent('pi_c', 'requires_confirmation'));
+  db.fail('release_share_credit_reservation', 'connection lost');
+  deepStrictEqual(await releaseUnfinishedCreditReservations(deps), { released: 0, left: 0, failed: 1 });
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_c'], 'cancelled at Stripe');
+
+  // Stripe then sends payment_intent.canceled.
+  db.respond('release_share_credit_reservation', true);
+  await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_c', 'canceled')), deps);
+  const calls = db.callsTo('release_share_credit_reservation');
+  deepStrictEqual(calls[calls.length - 1].args, { p_share_id: 's1', p_intent_id: 'pi_c', p_hold_released: true });
+});
+
+Deno.test('a cancelled SetupIntent for a credit-covered share releases its credit', async () => {
+  const { db, deps } = setup();
+  db.respond('release_share_credit_reservation', true);
+  const handled = await handlePaymentModeEvent(
+    event('setup_intent.canceled', { id: 'seti_1', status: 'canceled', metadata: { kind: 'share_card', share_id: 's1' } }),
+    deps,
+  );
+  strictEqual(handled, true);
+  deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, { p_share_id: 's1', p_intent_id: 'seti_1' });
+  strictEqual(await handlePaymentModeEvent(event('setup_intent.canceled', { id: 'seti_2', metadata: {} }), deps), false);
 });

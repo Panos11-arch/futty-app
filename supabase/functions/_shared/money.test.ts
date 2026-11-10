@@ -2,7 +2,16 @@
 // fees"). The same worked examples as supabase/tests/pay-modes-1-amounts.test.sql,
 // so the SQL and TypeScript can't drift apart.
 import { deepStrictEqual, strictEqual, throws } from 'node:assert/strict';
-import { cardChargeCents, FEE_EACH_PAYS_CENTS, FEE_PAY_ALL_CENTS, idempotencyKeys, shareAmounts } from './money.ts';
+import {
+  CANCEL_KEEP_PER_PLAYER_CENTS,
+  cardChargeCents,
+  creditPayment,
+  FEE_EACH_PAYS_CENTS,
+  FEE_PAY_ALL_CENTS,
+  idempotencyKeys,
+  shareAmounts,
+  wholeTeamCancelFeeCents,
+} from './money.ts';
 
 const each = { pitchCents: 6000, players: 10, mode: 'each_pays_own_spot', isBooker: false, isPremium: false, method: 'card' } as const;
 
@@ -45,6 +54,35 @@ Deno.test('the card charge follows from a share\'s breakdown', () => {
   strictEqual(cardChargeCents({ pitch_cents: 600, fee_cents: 80, payment_method: 'card' }), 680);
   strictEqual(cardChargeCents({ pitch_cents: 600, fee_cents: 80, payment_method: 'cash' }), 80);
   strictEqual(cardChargeCents({ pitch_cents: 6000, fee_cents: 495, payment_method: 'card' }), 6495);
+  strictEqual(cardChargeCents({ pitch_cents: 600, fee_cents: 80, payment_method: 'card', credit_cents: 500 }), 180,
+    'credit pays part of the pitch');
+  strictEqual(cardChargeCents({ pitch_cents: 600, fee_cents: 0, payment_method: 'card', credit_cents: 600 }), 0);
+});
+
+// The same examples as supabase/tests/pay-cancellations-7-credit.test.sql.
+Deno.test('venue credit pays the pitch part with no fee; a shortfall is paid by card plus the normal fee', () => {
+  deepStrictEqual(creditPayment(600, 80, 500), { creditCents: 500, feeCents: 80, cardCents: 180 }, '500 credit: 100 + 80');
+  deepStrictEqual(creditPayment(600, 80, 800), { creditCents: 600, feeCents: 0, cardCents: 0 }, 'covered: no fee');
+  deepStrictEqual(creditPayment(600, 80, 600), { creditCents: 600, feeCents: 0, cardCents: 0 }, 'exactly covered');
+  deepStrictEqual(creditPayment(600, 0, 500), { creditCents: 500, feeCents: 0, cardCents: 100 }, 'Premium: no fee');
+  deepStrictEqual(creditPayment(600, 80, 0), { creditCents: 0, feeCents: 80, cardCents: 680 }, 'no credit');
+  // The booker paying for everyone (decided 10 November).
+  deepStrictEqual(creditPayment(6000, 550, 7000), { creditCents: 6000, feeCents: 0, cardCents: 0 }, 'pay for everyone, covered');
+  deepStrictEqual(creditPayment(6000, 550, 5000), { creditCents: 5000, feeCents: 550, cardCents: 1550 },
+    'pay for everyone, shortfall: 1000 + 55 x 10');
+  deepStrictEqual(creditPayment(6000, 495, 5000), { creditCents: 5000, feeCents: 495, cardCents: 1495 },
+    'Premium booker: their own spot stays fee-free');
+  throws(() => creditPayment(600, 80, -1), /invalid_money_input/);
+  throws(() => creditPayment(600.5, 80, 0), /invalid_money_input/);
+});
+
+Deno.test('cancelling the whole team: 100 per other player whose payment was taken', () => {
+  strictEqual(CANCEL_KEEP_PER_PLAYER_CENTS, 100);
+  strictEqual(wholeTeamCancelFeeCents(9), 900, '9 paid players: 900');
+  strictEqual(wholeTeamCancelFeeCents(6), 600, '6 taken, 3 held: 600');
+  strictEqual(wholeTeamCancelFeeCents(0), 0);
+  throws(() => wholeTeamCancelFeeCents(-1), /invalid_money_input/);
+  throws(() => wholeTeamCancelFeeCents(1.5), /invalid_money_input/);
 });
 
 Deno.test('idempotency keys are built from our ids and stable on retry', () => {
@@ -61,6 +99,9 @@ Deno.test('idempotency keys are built from our ids and stable on retry', () => {
   strictEqual(idempotencyKeys.guaranteeCard('g1', null), 'guarantee-card-g1-after-none');
   strictEqual(idempotencyKeys.customer('p1'), 'customer-p1');
   strictEqual(idempotencyKeys.shareCardSetup('s1', 'cash', null), 'setup-share-s1-cash-after-none');
+  strictEqual(idempotencyKeys.shareCardSetup('s1', 'card', null, 'seti_old'), 'setup-share-s1-card-after-none-setup-seti_old');
+  strictEqual(idempotencyKeys.cancelFee('f1', 1), 'cancel-fee-f1-attempt-1');
+  strictEqual(idempotencyKeys.cancelFee('f1', 2), 'cancel-fee-f1-attempt-2', 'each retry is a new request');
 });
 
 Deno.test('a retry with a different amount, method or timing gets a new key', () => {

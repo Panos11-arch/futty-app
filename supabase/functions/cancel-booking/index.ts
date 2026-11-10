@@ -1,12 +1,17 @@
-// Cancels a booking and gives the money back. The only path in: client-side
-// calls to the cancel_booking RPC are revoked, so a cancellation can't
-// happen without the release and refund alongside it. See handler.ts.
+// Cancels a spot, a whole team or (venue staff) a booking, as the quote the
+// caller confirmed said. The only path in: client-side calls to the
+// cancel_booking RPC are revoked, so a cancellation can't happen without
+// its money alongside it. See handler.ts.
+//
+// Body: { bookingId, scope: 'my_spot' | 'whole_team' | 'venue', quote }
+// where quote is cancellation_quote(bookingId, scope).quote, shown to the
+// caller before they confirmed.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 import { getCallerId } from '../_shared/caller.ts';
 import { dbFromSupabase } from '../_shared/db.ts';
-import { cancelBooking } from './handler.ts';
+import { type Body, cancelBooking } from './handler.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -16,18 +21,17 @@ Deno.serve(async (req) => {
   const callerId = await getCallerId(req);
   if (!callerId) return new Response('Unauthorized', { status: 401 });
 
-  let body: { bookingId?: string };
+  let body: Body;
   try {
     body = await req.json();
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
-  if (!body.bookingId) return new Response('Missing bookingId', { status: 400 });
 
   const result = await cancelBooking(
     { stripe, db: dbFromSupabase(createClient(supabaseUrl, serviceRoleKey)) },
     callerId,
-    body.bookingId,
+    body,
   );
   return new Response(JSON.stringify(result.body), {
     status: result.status,
@@ -36,7 +40,8 @@ Deno.serve(async (req) => {
 });
 
 /*
-DEPLOYMENT (not done in P4a; ships with P5, after the pay_modes migrations):
+DEPLOYMENT (not done in P4a or P4b; ships with P5, after the pay_modes and
+pay_cancellations migrations):
 
   supabase functions deploy cancel-booking
 

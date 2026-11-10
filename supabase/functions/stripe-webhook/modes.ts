@@ -9,6 +9,15 @@
 //   setup_intent.succeeded                    a card saved for a share with
 //                                             nothing to charge, or a booker's
 //                                             new guarantee card
+//   payment_intent.canceled, setup_intent.canceled
+//                                             a share's payment was cancelled
+//                                             before it was paid: any venue
+//                                             credit it set aside goes back
+//                                             (P4b); a share still marked
+//                                             held on it is unpaid again
+//   payment_intent.succeeded (cancel_fee)     the booker's whole-team
+//                                             cancellation charge was taken
+//                                             (P4b), e.g. after 3-D Secure
 // The share is found by the share id in the intent's metadata. The event's
 // time (when Stripe says the card was held or charged) decides the
 // 15-minute payment window and whether a share is non-refundable.
@@ -78,6 +87,39 @@ async function follow(deps: Deps, result: ShareResult, intentId: string | null) 
 export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): Promise<boolean> {
   const at = new Date(event.created * 1000).toISOString();
 
+  if (event.type === 'setup_intent.canceled') {
+    const setupIntent = event.data.object as Stripe.SetupIntent;
+    if (setupIntent.metadata?.kind !== 'share_card') return false;
+    await rpc(deps.db, 'release_share_credit_reservation', {
+      p_share_id: setupIntent.metadata.share_id,
+      p_intent_id: setupIntent.id,
+    });
+    return true;
+  }
+
+  if (event.type === 'payment_intent.canceled') {
+    const canceled = event.data.object as Stripe.PaymentIntent;
+    if (canceled.metadata?.kind === 'share' && canceled.metadata.share_id) {
+      // Only the share's current payment releases anything. The hold is
+      // really gone, so a share still marked held on it is undone too:
+      // unpaid again, its credit back. Only the release job's own cancel
+      // reopens the booking; any other (expired after 7 days, cancelled in
+      // the dashboard) leaves the booking as it is and alerts the founders.
+      // On a cancelled booking nothing happens here (the release step
+      // closes the share). The database decides all of this.
+      await rpc(deps.db, 'release_share_credit_reservation', {
+        p_share_id: canceled.metadata.share_id,
+        p_intent_id: canceled.id,
+        p_hold_released: true,
+      });
+      // Handled: the old handling (index.ts) would ask the player to pay
+      // again, even on a cancelled booking. Only bookings from before P4a,
+      // whose intents carry no kind, still go there.
+      return true;
+    }
+    return false;
+  }
+
   if (event.type === 'setup_intent.succeeded') {
     const setupIntent = event.data.object as Stripe.SetupIntent;
     const pm = paymentMethodId(setupIntent.payment_method as string | { id: string } | null);
@@ -109,6 +151,10 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
   const intent = event.data.object as Stripe.PaymentIntent;
   // Guarantee holds are recorded by whoever placed them (placeGuaranteeHold).
   if (intent.metadata?.kind === 'guarantee') return true;
+  if (intent.metadata?.kind === 'cancel_fee') {
+    if (event.type === 'payment_intent.succeeded') await cancellationFeePaid(deps, intent);
+    return true;
+  }
   const shareId = intent.metadata?.share_id;
   if (!shareId) return false;
   const pm = paymentMethodId(intent.payment_method as string | { id: string } | null);
@@ -143,4 +189,23 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
 
   await follow(deps, result, intent.id);
   return true;
+}
+
+/** The booker's whole-team cancellation charge was taken: recorded as
+ *  Futty's; a second payment for the same charge is given back. */
+async function cancellationFeePaid(deps: Deps, intent: Stripe.PaymentIntent) {
+  const full = await deps.stripe.paymentIntents.retrieve(intent.id, { expand: ['latest_charge.balance_transaction'] });
+  const result = await rpc<{ result: string; reason?: string; booking_id?: string }>(deps.db, 'cancellation_fee_paid', {
+    p_fee_id: intent.metadata.fee_id,
+    p_intent_id: intent.id,
+    p_amount_cents: full.amount_received,
+    p_stripe_fee_cents: stripeFeeCents(full),
+  });
+  if (result.result === 'refund') {
+    await releaseOrQueue(deps, {
+      booking_id: result.booking_id ?? intent.metadata.booking_id,
+      intent_id: intent.id,
+      reason: result.reason ?? 'refused',
+    });
+  }
 }

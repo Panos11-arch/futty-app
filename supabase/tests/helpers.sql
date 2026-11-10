@@ -368,6 +368,166 @@ as $$
   where id = p_booking;
 $$;
 
+-- P4b: cancellations and venue credit.
+
+-- Stripe's fee on a standard European card: 1.5% + 25 cents, rounded half
+-- up (35 on 6.80, 123 on 65.50, 34 on 6.00).
+create or replace function tests.stripe_fee(p_amount integer)
+returns integer language sql immutable as $$ select (p_amount * 15 + 500) / 1000 + 25 $$;
+
+-- Pays a share as its owner and Stripe holds it p_ago ago; if its free hour
+-- is over by now, the job takes it too (with Stripe's fee). Returns the share.
+create or replace function tests.pay_ago(
+  p_share uuid,
+  p_intent text,
+  p_ago interval default '0',
+  p_method text default 'card',
+  p_use_credit boolean default false
+)
+returns public.booking_payment_shares
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_share public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  select * into v_share from public.booking_payment_shares where id = p_share;
+  v_plan := public.plan_share_payment(p_share, v_share.profile_id, p_method, false, p_use_credit);
+  v_plan := public.attach_share_intent(p_share, v_share.profile_id, p_method, false, p_intent,
+    (v_plan ->> 'amount_cents')::integer, v_plan ->> 'capture_method', v_share.stripe_payment_intent_id, p_use_credit);
+  perform public.share_payment_held(p_share, p_intent, (v_plan ->> 'amount_cents')::integer, 'pm_' || p_intent, now() - p_ago);
+  select * into v_share from public.booking_payment_shares where id = p_share;
+  if v_share.status = 'authorized' and v_share.capture_due_at <= now() then
+    perform public.share_captured(p_share, v_share.amount_cents, tests.stripe_fee(v_share.amount_cents));
+  end if;
+  select * into v_share from public.booking_payment_shares where id = p_share;
+  return v_share;
+end;
+$$;
+
+-- Books p_day p_start-p_end as p_booker in p_mode, then p_others players
+-- join (emails p_label-1@futty.test ...). Shares in join order:
+-- tests.player(booking, n) is the n-th joiner (0 = the booker).
+create or replace function tests.booking_with_players(
+  p_booker uuid,
+  p_venue uuid,
+  p_mode text,
+  p_others integer,
+  p_day date,
+  p_start time default '12:00',
+  p_end time default '13:00',
+  p_label text default 'player'
+)
+returns public.venue_bookings
+language plpgsql
+as $$
+declare
+  v_booking public.venue_bookings;
+  v_player uuid;
+  i integer;
+begin
+  perform tests.act_as(p_booker);
+  v_booking := public.book_slot(p_venue, p_day, p_start, p_end, 1, '5-a-side', 5, p_mode);
+  perform tests.act_as_postgres();
+  for i in 1 .. p_others loop
+    v_player := tests.create_user(format('%s-%s-%s@futty.test', p_label, i, left(gen_random_uuid()::text, 8)));
+    perform public.add_booking_share_internal(v_booking.id, v_player);
+    -- Distinct join times, so tests.player's order is the join order.
+    update public.booking_payment_shares set created_at = created_at + make_interval(secs => i)
+    where booking_id = v_booking.id and profile_id = v_player;
+  end loop;
+  return v_booking;
+end;
+$$;
+
+-- The n-th player to join (0 = the booker), as postgres sees the share.
+create or replace function tests.player(p_booking uuid, p_n integer)
+returns public.booking_payment_shares
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.booking_payment_shares
+  where booking_id = p_booking
+  order by is_booker desc, created_at, id
+  offset p_n limit 1;
+$$;
+
+-- What cancelling would do, as p_profile (the quote the screen shows).
+create or replace function tests.plan(p_booking uuid, p_scope text, p_profile uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.cancellation_plan(p_booking, p_scope, p_profile, now());
+$$;
+
+-- Cancels as p_profile, confirming the quote they were shown, the way
+-- cancel-booking does. Returns what the database decided.
+create or replace function tests.cancel(p_booking uuid, p_scope text, p_profile uuid)
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $$
+  select public.cancel_booking_internal(p_booking, p_scope, p_profile, tests.plan(p_booking, p_scope, p_profile) ->> 'quote');
+$$;
+
+-- The line of a cancellation for one share.
+create or replace function tests.line(p_cancellation jsonb, p_share uuid)
+returns public.booking_cancellation_lines
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.booking_cancellation_lines
+  where cancellation_id = (p_cancellation ->> 'cancellation_id')::uuid and share_id = p_share;
+$$;
+
+-- The quote's line for one share.
+create or replace function tests.quote_line(p_plan jsonb, p_share uuid)
+returns jsonb
+language sql
+immutable
+as $$
+  select l from jsonb_array_elements(p_plan -> 'lines') l where l ->> 'share_id' = p_share::text;
+$$;
+
+-- Credit at a venue, issued p_ago ago (no source booking: a test fixture).
+create or replace function tests.give_credit(p_profile uuid, p_venue uuid, p_amount integer, p_ago interval default '0')
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.venue_credits (profile_id, venue_id, amount_cents, remaining_cents, source, source_booking_id,
+                                    issued_at, expires_at)
+  values (p_profile, p_venue, p_amount, p_amount, 'player_cancelled', gen_random_uuid(),
+          now() - p_ago, now() - p_ago + interval '12 months')
+  returning id;
+$$;
+
+-- The ledger for one share, summed.
+create or replace function tests.share_books(p_share uuid,
+  out venue integer, out futty integer, out stripe integer, out refunded integer, out credit integer)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(sum(venue_cents), 0)::integer, coalesce(sum(futty_cents), 0)::integer,
+         coalesce(sum(stripe_fee_cents), 0)::integer,
+         coalesce(sum(amount_cents) filter (where kind = 'refund'), 0)::integer,
+         coalesce(sum(credit_cents), 0)::integer
+  from public.money_ledger where share_id = p_share;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

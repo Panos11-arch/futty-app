@@ -113,8 +113,38 @@ A player who cancels in the first hour gets everything back. After that €1 is 
   - the booker pays **€1 for every player who had paid**, as one extra charge. For example, 9 other players paid: the booker's own share follows the table above, plus a €9 charge.
 - **The booker cancels a booking they paid for everyone:** in the middle window, €1 per player is kept (€10 on a 5 v 5). The rest becomes credit at that venue.
 - **The whole team can be cancelled less than 6 hours before kickoff, but nobody gets money back, and the slot is released for others to book (agreed 7 Nov).** It's the same no-refund rule as every other late cancellation.
+- **Decided 10 November (cancellations):**
+  - **The booker's €1 charge counts only payments already taken.** When the booker cancels the whole team, they pay €1 for each other player whose payment (their share, or a cash player's €0.80 fee) was already taken. A payment that is only held is released, at no charge. For example, 10 players: 6 taken and 3 still held, so the booker pays 6 × €1 = **€6**.
+  - **The €1 charge applies only when the team is cancelled more than 6 hours before kickoff.** Less than 6 hours before kickoff nobody gets money back, so there is no €1 charge. Inside the booker's own free hour the charge still applies: other players' payments that were taken count, held ones don't.
+  - **Futty receives the €1 charge.**
+  - **It is taken on-session when the booker confirms the cancellation, with the amount shown first:** "Cancelling the whole team costs €6: 6 players × €1".
+    - If it fails, or needs 3-D Secure the booker doesn't complete, the cancellation still goes ahead.
+    - The booker is notified once, and the charge is retried every 6 hours. Retries stop at the original kickoff.
+    - Anything still unpaid becomes the booker's debt, owed to Futty (built in P4c).
+  - **Card refund or credit:** when the booker or the venue cancels, a player whose payment was taken has **48 hours** to choose venue credit. With no choice, it goes back to their card.
+  - **The venue cancels:** the venue owes Stripe's real fee on every payment that was taken, whether the player takes a card refund or credit, so Futty neither earns nor loses on that booking.
+  - **€1 kept, the rest as credit, applies to whatever the share paid.** A Premium player's €6.00 gives €5.00 credit. A cash player's €0.80 fee is all kept, with no credit, because the pitch part was never paid. A 6 v 6 the booker paid for everyone (€66.60) keeps €12.00 (€1 × 12 players) and gives €54.60 credit.
+  - **A share paid with credit is treated the same way:** the €1 is kept even from credit. A Premium share paid fully with €6.00 credit gives €5.00 credit back.
+  - **A booker who paid for everyone can only cancel the whole booking,** not "my spot".
+  - **A booker who cancels only their own spot in responsible mode stays responsible:** their guarantee hold is unchanged.
+  - **Exactly 6 hours before kickoff is still the middle window,** as for the non-refundable rule: exactly 6 hours is not "less than 6 hours".
+  - **Nothing can be cancelled once the game has started,** by anyone, the venue included.
+  - **The venue can cancel up to kickoff,** and every player gets their full share back even less than 6 hours before kickoff.
+  - **The venue cancels after a player cancelled late (decided 10 November):** a player who forfeited their share by cancelling less than 6 hours before kickoff gets it back too, card refund or credit, their choice within 48 hours, and the venue owes Stripe's fee on it. Futty's €1 from an earlier middle-window cancellation stays with Futty.
+  - **Credit that paid for a share goes back to the credit it came from,** keeping its original expiry, in every case, the middle window included (decided 10 November). Only the card-paid part becomes new 12-month credit. In the middle window the €1 is kept from the card-paid part first, then from the credit. For example, €5.00 credit + €1.80 by card: the €5.00 goes back with its old expiry and €0.80 becomes new credit. The card-or-credit choice covers only the card part.
+  - **When credit comes back, the latest-expiring credit is returned first (decided 10 November),** so when part of the credit is kept (the €1), what's kept is the credit that expires soonest.
+  - **A kept share whose card part is never taken** (the hold expired before it could be taken): the €1 applies only to what was actually paid, so in the middle window up to €1 of the credit that paid for it is kept and the rest goes back; less than 6 hours before kickoff it is all kept.
+  - **Choosing credit turns the whole card payment into credit,** the service fee included (€6.80 gives €6.80 credit).
+  - **Only payments taken by card count toward the booker's €1 charge.** A share paid entirely with credit doesn't count.
+  - **The free hour of a share paid entirely with credit** is the 60 minutes after the player's card was saved.
+  - **An unpaid share's open payment is cancelled when the player cancels,** so it can't be paid afterwards.
+  - **A player who cancels can't rejoin the same booking** (one spot per player per booking). Letting them rejoin while the spot is still free is a follow-up after launch.
+  - **Notifications:** the other players are told when a spot opens up or a game is cancelled (with what they get back and how to choose), and the booker is told if their €1 charge fails.
+  - **A 3-D Secure the booker doesn't finish when cancelling isn't notified at once.** The first off-session retry is 6 hours later, and the booker is told if that fails.
+  - **The venue's Stripe fee is the fee recorded when the payment was taken** (from its balance transaction).
 - **Payouts (decided 7 November):** Stripe Connect with separate charges and transfers. Futty's Stripe account takes every payment; after collection each venue is sent its pitch money minus anything it owes (for example Stripe's fee on its own cancellations), so no money ever has to be pulled back from a venue.
 - **Credit sits with the venue.** Futty sends the venue its credit money at the next payout and keeps a record of each player's credit there. The decisions doc (#16) still asks for legal advice on this before real money flows.
+  - **In the ledger (decided 10 November):** credit money is the venue's from the moment the credit is issued, so it is paid out at the next payout as usual. When a player chooses credit, Futty's service fee goes to the venue with it. Spending, returning or expiring credit later moves no new money to the venue; the ledger only records the change in credit the venue holds. Every booking still balances: venue + Futty + Stripe + refunds = what was taken.
 
 ## Short games, top-ups and 6 v 6
 
@@ -154,6 +184,7 @@ Debt and credit are between the player and the venue, and the venue manages them
 - **A player in debt to any venue can't book, join a booking or choose cash anywhere on Futty** until it's cleared. Paying off the debt is always allowed.
 - Debt is cleared by paying it in the app by card, or by the venue marking it settled in its dashboard.
 - The player sees how much they owe and to which venue. The venue sees everyone who owes it.
+- **Decided 10 November:** a debt can be owed to a venue or to Futty (for example the booker's unpaid €1-per-player charge for cancelling the whole team). Both block booking everywhere on Futty, and both are paid with "Pay what I owe".
 - **Confirmed:** paying a debt adds no new fee. Futty absorbs Stripe's cost, about €0.34 on €6.00, because the fee was already paid at booking.
 - **Confirmed:** a cash player who cancels follows the normal timings, but only the €0.80 fee is at stake: the hold is cancelled in the first hour; after that the fee is kept.
 
@@ -163,6 +194,18 @@ Debt and credit are between the player and the venue, and the venue manages them
 - Credit pays the pitch part of a share with no service fee. A shortfall is paid by card plus €0.80.
 - The venue dashboard shows each player's credit with that venue.
 - **Expiry:** credit expires 12 months after it's issued (agreed 7 Nov), subject to the legal advice in decisions doc \#16.
+- **Decided 10 November (credit):**
+  - Credit is used only with a card payment, never with cash.
+  - **The booker paying for everyone can pay with credit too.** If credit covers the whole pitch price, no service fee is charged. Otherwise the card pays the rest plus the normal €0.55 per player (a Premium booker's own spot stays fee-free). For example, €50 credit on a €60 pitch: €10.00 + €5.50 = **€15.50** by card.
+  - A Premium player paying a shortfall pays no service fee.
+  - When credit covers the whole pitch part, nothing is charged and the player's card is saved instead (every player paying in the app saves a card).
+  - **Credit set aside for a payment that's never finished goes back:** when that payment is cancelled, when the booking expires, or when it isn't completed within 15 minutes. A player's credit never stays locked.
+  - **A payment undone after it was held (decided 10 November):** when the payment is cancelled at Stripe just as the player confirmed it, the hold is undone, the credit comes back and the player is asked to pay again. If it was the booker's payment, the booking goes back to waiting for payment with a new 15-minute payment window from that moment, and the booker is told to pay again within it. If they don't, the booking is cancelled and its pitches released, as for any unpaid booking.
+  - **Only the 15-minute release can reopen a booking (decided 10 November).** Undoing a payment as above, and reopening the booking, happens only when Futty cancelled the payment because it wasn't finished within 15 minutes. Any other cancellation of a held payment, such as a hold expiring after 7 days or a cancel in the Stripe dashboard, never reopens or cancels a confirmed booking: the money for that share is released or returned (credit goes back as above), the booking stays as it is, and the founders get an admin alert. The same whether the share was paid by card, credit or both.
+    - **Telling the player (decided 10 November):** if the game hasn't kicked off yet, the player gets a payment-due notification that opens the payment screen: "Your payment for [venue, day, time] didn't go through. Pay €X to keep your spot." €X is what the share costs now, priced without the credit, which has gone back. From kickoff on, the player isn't notified: collection handles it.
+  - **Nobody is asked to pay again on a cancelled booking (decided 10 November).** A held payment on a booking that's already cancelled is released with the booking, and its credit comes back; the player isn't told to pay again.
+  - **Expired credit stays with the venue.** The expiry check runs with the payment jobs, not once a day: it only ever expires credit past its date, once.
+  - **A share paid entirely with credit is judged non-refundable when the card is saved,** as a card payment is when it's held: saved less than 6 hours before kickoff, the player must have accepted the "This booking is non-refundable" notice, otherwise nothing is used and they're asked to pay again.
 - **Legal check before real money:** the terms must spell out the debt block across all venues and the credit rules.
 
 ## Gipedo Pano
