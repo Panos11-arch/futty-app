@@ -528,6 +528,82 @@ as $$
   from public.money_ledger where share_id = p_share;
 $$;
 
+-- P4c: collection, top-ups and debt.
+
+-- Moves a booking so its match (30 minutes, see set_kickoff) ended p_ago
+-- ago. Collection is due 2 hours after the end.
+create or replace function tests.end_match(p_booking uuid, p_ago interval default '3 hours')
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  select tests.set_kickoff(p_booking, now() - p_ago - interval '30 minutes');
+$$;
+
+-- The booker's guarantee is held for its full amount (as placeGuaranteeHold
+-- records it), on intent p_intent.
+create or replace function tests.hold_guarantee(p_booking uuid, p_intent text default null)
+returns public.booking_guarantees
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_guarantee public.booking_guarantees;
+begin
+  select * into v_guarantee from public.booking_guarantees where booking_id = p_booking;
+  perform public.guarantee_hold_placed(v_guarantee.id, coalesce(p_intent, 'pi_guarantee_' || left(p_booking::text, 8)),
+                                       v_guarantee.amount_cents);
+  select * into v_guarantee from public.booking_guarantees where booking_id = p_booking;
+  return v_guarantee;
+end;
+$$;
+
+-- The collection's item for one share.
+create or replace function tests.item(p_booking uuid, p_share uuid)
+returns public.booking_collection_items
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.booking_collection_items where booking_id = p_booking and share_id = p_share;
+$$;
+
+-- What Stripe would do for every top-up of a collection: each one is taken
+-- (with Stripe's fee), except the shares in p_fail, whose card is declined.
+create or replace function tests.charge_top_ups(p_collection uuid, p_fail uuid[] default '{}')
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_item record;
+begin
+  for v_item in select * from public.collection_top_ups_due(p_collection) loop
+    if v_item.share_id = any (p_fail) then
+      perform public.collection_top_up_failed(v_item.item_id, 'pi_topup_' || left(v_item.item_id::text, 8), 'card_declined');
+    else
+      perform public.collection_top_up_paid(v_item.item_id, 'pi_topup_' || left(v_item.item_id::text, 8),
+                                            v_item.amount_cents, tests.stripe_fee(v_item.amount_cents));
+    end if;
+  end loop;
+end;
+$$;
+
+-- Everything a player still owes (unsettled debts), in cents.
+create or replace function tests.owed(p_profile uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(sum(amount_cents), 0)::integer from public.venue_debts where profile_id = p_profile and settled_at is null;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

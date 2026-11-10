@@ -305,3 +305,53 @@ Deno.test('a cancelled SetupIntent for a credit-covered share releases its credi
   deepStrictEqual(db.callsTo('release_share_credit_reservation')[0].args, { p_share_id: 's1', p_intent_id: 'seti_1' });
   strictEqual(await handlePaymentModeEvent(event('setup_intent.canceled', { id: 'seti_2', metadata: {} }), deps), false);
 });
+
+// P4c: paying what you owe, and top-ups.
+Deno.test('a debt paid in the app: recorded with Stripe\'s actual fee, and the debt settled', async () => {
+  const { db, stripe, deps } = setup();
+  const paid = intent('pi_debt', 'succeeded', { amount: 680, stripeFee: 35, metadata: { kind: 'debt', debt_id: 'd1', booking_id: 'b1', fee_cents: '80' } });
+  stripe.respond('paymentIntents.retrieve', paid);
+  db.respond('debt_paid', { result: 'settled' });
+
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', paid), deps), true);
+
+  deepStrictEqual(db.callsTo('debt_paid')[0].args, { p_debt_id: 'd1', p_intent_id: 'pi_debt', p_amount_cents: 680, p_stripe_fee_cents: 35 });
+  strictEqual(db.callsTo('share_payment_captured').length, 0, 'never treated as a share');
+  strictEqual(stripe.callsTo('refunds.create').length, 0);
+});
+
+Deno.test('a debt paid after it was already settled is given back', async () => {
+  const { db, stripe, deps } = setup();
+  const paid = intent('pi_debt2', 'succeeded', { amount: 600, metadata: { kind: 'debt', debt_id: 'd1', booking_id: 'b1', fee_cents: '0' } });
+  stripe.respond('paymentIntents.retrieve', paid);
+  db.respond('debt_paid', { result: 'refund', booking_id: 'b1', reason: 'debt_already_settled' });
+  await handlePaymentModeEvent(event('payment_intent.succeeded', paid), deps);
+  strictEqual(stripe.callsTo('refunds.create')[0].params?.payment_intent, 'pi_debt2');
+});
+
+Deno.test('a cash part paid by card after the match counts as paid in cash', async () => {
+  const { db, stripe, deps } = setup();
+  const paid = intent('pi_cashpart', 'succeeded', {
+    amount: 600, stripeFee: 34, metadata: { kind: 'cash_part', cash_share_id: 's7', booking_id: 'b1', fee_cents: '0' },
+  });
+  stripe.respond('paymentIntents.retrieve', paid);
+  db.respond('cash_paid_by_card', { result: 'paid' });
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', paid), deps), true);
+  deepStrictEqual(db.callsTo('cash_paid_by_card')[0].args, { p_share_id: 's7', p_intent_id: 'pi_cashpart', p_amount_cents: 600, p_stripe_fee_cents: 34 });
+});
+
+Deno.test('top-ups are recorded by run-collection, which charged them: the webhook leaves them alone', async () => {
+  const { db, stripe, deps } = setup();
+  const topUp = intent('pi_top', 'succeeded', { amount: 150, metadata: { kind: 'top_up', item_id: 'i1', booking_id: 'b1' } });
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', topUp), deps), true);
+  strictEqual(db.calls.length, 0);
+  strictEqual(stripe.calls.length, 0);
+});
+
+Deno.test('a cancelled debt, cash-part or top-up payment needs nothing (the next "Pay" starts a new one)', async () => {
+  const { db, deps } = setup();
+  for (const kind of ['debt', 'cash_part', 'top_up']) {
+    strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_x', 'canceled', { metadata: { kind } })), deps), true);
+  }
+  strictEqual(db.calls.length, 0);
+});
