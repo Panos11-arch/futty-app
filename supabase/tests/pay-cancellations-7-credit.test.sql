@@ -145,13 +145,63 @@ begin
          = 'credit_needs_card', 'not with cash';
   perform tests.act_as_postgres();
 
-  perform tests.act_as(v_booker);
-  v_pay_all := public.book_slot(v_venue, tests.cyprus_today() + 4, '12:00', '13:00', 1, '5-a-side', 5, 'pay_all');
+end $$;
+
+-- The booker paying for everyone (decided 10 November): credit can pay the
+-- total. Covering the whole pitch price: no Futty fee. Otherwise the card
+-- pays the rest plus the normal 55 per player.
+do $$
+declare
+  v_full uuid := tests.create_user('credit-payall-full@futty.test');
+  v_short uuid := tests.create_user('credit-payall-short@futty.test');
+  v_premium uuid := tests.create_user('credit-payall-premium@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_share public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+
+  -- Fully covered: 7000 credit pays the 6000 pitch price, no fee, the card saved.
+  perform tests.give_credit(v_full, v_venue, 7000);
+  v_booking := tests.booking_with_players(v_full, v_venue, 'pay_all', 0, tests.cyprus_today() + 3, p_label => 'payall-full');
+  v_share := tests.player(v_booking.id, 0);
   perform tests.act_as_service_role();
-  assert tests.error_of(format($q$ select public.plan_share_payment(%L, %L, 'card', false, true) $q$,
-                               (tests.player(v_pay_all.id, 0)).id, v_booker)) = 'credit_not_allowed_pay_all',
-    'not for a pay-for-everyone booking (to confirm)';
+  v_plan := public.plan_share_payment(v_share.id, v_full, 'card', false, true);
+  assert v_plan @> jsonb_build_object('pitch_cents', 6000, 'credit_cents', 6000, 'fee_cents', 0, 'amount_cents', 0,
+                                      'needs_saved_card', true), format('covered: no fee, got %s', v_plan);
+  perform public.attach_share_setup(v_share.id, v_full, 'card', 'seti_payall_full', null, true);
+  perform public.share_card_saved(v_share.id, 'seti_payall_full', 'pm_payall_full', now());
   perform tests.act_as_postgres();
+  assert (tests.share_of(v_booking.id, v_full)).status = 'paid', 'paid with credit';
+  assert (select status from public.venue_bookings where id = v_booking.id) = 'confirmed', 'the booking is the booker''s';
+  assert public.venue_credit_available_cents(v_full, v_venue) = 1000, '1000 credit left';
+  assert (select (sum(venue_cents), sum(futty_cents), sum(credit_cents)) from public.money_ledger
+          where share_id = v_share.id) = (6000::bigint, 0::bigint, -6000::bigint), 'the venue gets 6000 from credit, Futty nothing';
+
+  -- Shortfall: 5000 credit; the card pays 1000 + 55 x 10 = 1550.
+  perform tests.give_credit(v_short, v_venue, 5000);
+  v_booking := tests.booking_with_players(v_short, v_venue, 'pay_all', 0, tests.cyprus_today() + 4, p_label => 'payall-short');
+  v_share := tests.player(v_booking.id, 0);
+  perform tests.act_as_service_role();
+  v_plan := public.plan_share_payment(v_share.id, v_short, 'card', false, true);
+  perform tests.act_as_postgres();
+  assert v_plan @> jsonb_build_object('pitch_cents', 6000, 'credit_cents', 5000, 'fee_cents', 550, 'amount_cents', 1550,
+                                      'needs_saved_card', false), format('1000 + 550 by card, got %s', v_plan);
+  v_share := tests.pay_ago(v_share.id, 'pi_payall_short', interval '0', 'card', true);
+  assert (v_share.status, v_share.amount_cents, v_share.credit_cents) = ('authorized', 1550, 5000), '1550 held, 5000 credit';
+  assert public.venue_credit_available_cents(v_short, v_venue) = 0, 'the credit is spent';
+
+  -- A Premium booker's own spot stays fee-free: 1000 + 55 x 9 = 1495.
+  perform tests.make_premium(v_premium);
+  perform tests.give_credit(v_premium, v_venue, 5000);
+  v_booking := tests.booking_with_players(v_premium, v_venue, 'pay_all', 0, tests.cyprus_today() + 5,
+                                          p_label => 'payall-premium');
+  perform tests.act_as_service_role();
+  v_plan := public.plan_share_payment((tests.player(v_booking.id, 0)).id, v_premium, 'card', false, true);
+  perform tests.act_as_postgres();
+  assert v_plan @> jsonb_build_object('credit_cents', 5000, 'fee_cents', 495, 'amount_cents', 1495),
+    format('1000 + 495 by card, got %s', v_plan);
 end $$;
 
 -- Players see their own credit; the venue sees credit with it; nobody can

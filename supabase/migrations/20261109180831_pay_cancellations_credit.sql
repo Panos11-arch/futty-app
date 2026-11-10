@@ -12,7 +12,9 @@
 
 -- Paying a share's pitch part with credit: as much credit as covers it; no
 -- service fee when credit covers it all; otherwise the rest by card plus
--- the share's normal fee (p_fee_cents: 80, or 0 for a Premium player).
+-- the share's normal fee (p_fee_cents: 80, or 0 for a Premium player; for
+-- the booker paying for everyone, 55 per player, their own spot free if
+-- they're Premium).
 create or replace function public.money_credit_payment(
   p_pitch_cents integer,
   p_fee_cents integer,
@@ -235,8 +237,10 @@ end;
 $$;
 
 -- What paying this share now would be (P4a), and, when the player asks
--- (p_use_credit), with their credit at the venue: card payments only, not
--- in a booking the booker pays for in full. Credit that covers the whole
+-- (p_use_credit), with their credit at the venue: card payments only. The
+-- booker paying for everyone can pay the whole pitch price with credit
+-- (decided 10 November): no fee when credit covers it all, otherwise the
+-- rest by card plus the normal 55 per player. Credit that covers the whole
 -- pitch part leaves nothing to charge, so the card is saved with a
 -- SetupIntent (needs_saved_card), as for the each-pays booker.
 drop function public.attach_share_setup(uuid, uuid, text, text, text);
@@ -309,9 +313,6 @@ begin
   if coalesce(p_use_credit, false) then
     if p_method <> 'card' then
       raise exception 'credit_needs_card';
-    end if;
-    if v_booking.payment_mode = 'pay_all' then
-      raise exception 'credit_not_allowed_pay_all';
     end if;
     -- What's free at this venue, plus what this share already set aside.
     v_available := public.venue_credit_available_cents(p_profile_id, v_booking.venue_id)

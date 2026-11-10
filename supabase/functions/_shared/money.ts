@@ -79,7 +79,8 @@ export type CreditPayment = { creditCents: number; feeCents: number; cardCents: 
 /** Paying a share's pitch part with venue credit (spec 13, "Venue credit"):
  *  as much credit as covers it; no service fee when credit covers it all;
  *  otherwise the rest by card plus the share's normal fee (80, or 0 for a
- *  Premium player). Same rules as public.money_credit_payment. */
+ *  Premium player; 55 per player when the booker pays for everyone).
+ *  Same rules as public.money_credit_payment. */
 export function creditPayment(pitchCents: number, feeCents: number, creditAvailableCents: number): CreditPayment {
   for (const value of [pitchCents, feeCents, creditAvailableCents]) {
     if (!Number.isInteger(value) || value < 0) throw new Error('invalid_money_input');

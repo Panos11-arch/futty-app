@@ -66,6 +66,12 @@ Deno.test('venue credit pays the pitch part with no fee; a shortfall is paid by 
   deepStrictEqual(creditPayment(600, 80, 600), { creditCents: 600, feeCents: 0, cardCents: 0 }, 'exactly covered');
   deepStrictEqual(creditPayment(600, 0, 500), { creditCents: 500, feeCents: 0, cardCents: 100 }, 'Premium: no fee');
   deepStrictEqual(creditPayment(600, 80, 0), { creditCents: 0, feeCents: 80, cardCents: 680 }, 'no credit');
+  // The booker paying for everyone (decided 10 November).
+  deepStrictEqual(creditPayment(6000, 550, 7000), { creditCents: 6000, feeCents: 0, cardCents: 0 }, 'pay for everyone, covered');
+  deepStrictEqual(creditPayment(6000, 550, 5000), { creditCents: 5000, feeCents: 550, cardCents: 1550 },
+    'pay for everyone, shortfall: 1000 + 55 x 10');
+  deepStrictEqual(creditPayment(6000, 495, 5000), { creditCents: 5000, feeCents: 495, cardCents: 1495 },
+    'Premium booker: their own spot stays fee-free');
   throws(() => creditPayment(600, 80, -1), /invalid_money_input/);
   throws(() => creditPayment(600.5, 80, 0), /invalid_money_input/);
 });
