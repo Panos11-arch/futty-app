@@ -17,9 +17,9 @@
 //     (useCredit, P4b): no service fee when it covers it all, otherwise the
 //     rest by card plus the normal fee; the database sets the credit aside
 //     with the intent and spends it when the money is held;
-//   - nothing to pay by card: a SetupIntent saves the card (the each-pays
-//     booker, or credit covering the pitch part); a Premium cash player who
-//     isn't the booker is refused until P4c (saved_card_required).
+//   - nothing to pay by card: a SetupIntent saves the card (a Premium cash
+//     player, or credit covering the pitch part), so top-ups and debts can
+//     be charged later (P4c: every player who could owe money saves a card).
 // Bookings from before P4a keep the old hold-only intent.
 //
 // A share's amounts never change under an intent the player could still

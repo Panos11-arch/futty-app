@@ -78,6 +78,9 @@ Step 3 applies only when the booker is responsible.
     - top-ups in short games are charged;
     - in **responsible** mode, anything still unpaid is taken from the booker's hold, and the rest of the hold is released;
     - in **just my spot** mode, anything still unpaid becomes that player's debt to the venue.
+    - **Decided 10 November (collection):**
+      - **The booker's hold covers a share that was never paid in full, service fee included:** €6.80 for an unpaid €6.80 share, the same as that player would owe in just-my-spot mode. The total taken is capped at the hold (the pitch price, €60), pitch money first, then fees.
+      - **The venue can run collection early only once the match has ended**, so late joiners can still make the top-ups smaller.
 10. **The old 3-hour auto-cancel is removed.** Unpaid spots no longer cancel a booking.
 
 **When a booker's payment fails (agreed 7 Nov), they owe it as debt to the venue, and the game still goes ahead:**
@@ -158,6 +161,7 @@ If fewer players join than the booking is for, the players who joined split the 
 - **A failed top-up:** the player is asked to pay in the app. If they don't, the booker's hold covers it (responsible mode) or it becomes the player's debt (just my spot).
 - **Booker pays for everyone:** there are no top-ups, because the booker already paid the full pitch price.
 - **Confirmed:** "joined" means everyone who holds a spot in the booking, not who turns up. A no-show still owes their share; a venue-provided player counts as an empty spot.
+- **A late cancellation's kept money counts toward the pitch price (decided 10 November).** The players who joined pay only what's still missing. For example, 10 players, one cancels less than 6 hours before kickoff and nobody takes the spot: their €6.00 pitch part is kept, so the other 9 owe only the remaining €54 and nobody gets a top-up. The joined players never pay less than their normal share, so a late-cancelled spot that gets filled still pays the venue twice (above).
 
 ### 6 v 6 on a 5-a-side pitch
 - A venue with a real 6-a-side pitch (English School Central Park) lists it as its own pitch type with its own price. Nothing below applies to it.

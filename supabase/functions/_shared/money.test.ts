@@ -104,6 +104,24 @@ Deno.test('idempotency keys are built from our ids and stable on retry', () => {
   strictEqual(idempotencyKeys.cancelFee('f1', 2), 'cancel-fee-f1-attempt-2', 'each retry is a new request');
 });
 
+Deno.test('P4c keys: a top-up and the guarantee collection are one request each, retries included', () => {
+  strictEqual(idempotencyKeys.topUp('i1'), 'top-up-i1');
+  strictEqual(idempotencyKeys.topUp('i1'), idempotencyKeys.topUp('i1'), 'a retry after no answer is the same request');
+  strictEqual(idempotencyKeys.collectGuarantee('c1'), 'collect-guarantee-c1');
+});
+
+Deno.test('P4c keys: paying a debt or a cash part names the amount and the payment it replaces', () => {
+  strictEqual(idempotencyKeys.owed('debt', 'd1', 680, null), 'owed-debt-d1-680-after-none');
+  strictEqual(idempotencyKeys.owed('cash', 's1', 600, 'pi_old'), 'owed-cash-s1-600-after-pi_old');
+  const keys = new Set([
+    idempotencyKeys.owed('debt', 'd1', 680, null),
+    idempotencyKeys.owed('debt', 'd1', 680, 'pi_old'),
+    idempotencyKeys.owed('debt', 'd1', 750, null),
+    idempotencyKeys.owed('cash', 'd1', 680, null),
+  ]);
+  strictEqual(keys.size, 4);
+});
+
 Deno.test('a retry with a different amount, method or timing gets a new key', () => {
   const card = { shareId: 's1', amountCents: 680, method: 'card', captureMethod: 'manual', previousIntentId: null } as const;
   const keys = new Set([

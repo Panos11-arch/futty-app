@@ -18,6 +18,12 @@
 //   payment_intent.succeeded (cancel_fee)     the booker's whole-team
 //                                             cancellation charge was taken
 //                                             (P4b), e.g. after 3-D Secure
+//   payment_intent.succeeded (debt, cash_part)
+//                                             a debt, or a cash part after
+//                                             the match, was paid in the
+//                                             app (P4c, pay-owed)
+//   (top_up)                                  recorded by run-collection,
+//                                             which charged it (P4c)
 // The share is found by the share id in the intent's metadata. The event's
 // time (when Stripe says the card was held or charged) decides the
 // 15-minute payment window and whether a share is non-refundable.
@@ -35,6 +41,9 @@ import { type DueGuarantee, placeGuaranteeHold } from '../_shared/guarantee.ts';
 import { metadataFeeCents, releaseBookingMoney, releaseOrQueue, stripeFeeCents } from '../_shared/release.ts';
 
 export type Deps = { stripe: Stripe; db: Db };
+
+// P4c payments that aren't a share's (metadata.kind).
+const OWED_KINDS = new Set(['debt', 'cash_part', 'top_up']);
 
 type ShareResult = {
   result: string;
@@ -99,6 +108,10 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
 
   if (event.type === 'payment_intent.canceled') {
     const canceled = event.data.object as Stripe.PaymentIntent;
+    // P4c: a debt, cash-part or top-up payment that was cancelled moved no
+    // money; the debt or cash part is still owed and the next "Pay" starts a
+    // new payment.
+    if (OWED_KINDS.has(canceled.metadata?.kind ?? '')) return true;
     if (canceled.metadata?.kind === 'share' && canceled.metadata.share_id) {
       // Only the share's current payment releases anything. The hold is
       // really gone, so a share still marked held on it is undone too:
@@ -155,6 +168,13 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
     if (event.type === 'payment_intent.succeeded') await cancellationFeePaid(deps, intent);
     return true;
   }
+  // P4c: top-ups are recorded by run-collection, which charged them (one
+  // still processing is looked up on its next run).
+  if (intent.metadata?.kind === 'top_up') return true;
+  if (intent.metadata?.kind === 'debt' || intent.metadata?.kind === 'cash_part') {
+    if (event.type === 'payment_intent.succeeded') await owedPaid(deps, intent);
+    return true;
+  }
   const shareId = intent.metadata?.share_id;
   if (!shareId) return false;
   const pm = paymentMethodId(intent.payment_method as string | { id: string } | null);
@@ -189,6 +209,27 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
 
   await follow(deps, result, intent.id);
   return true;
+}
+
+/** A debt, or a cash part after the match, was paid in the app (pay-owed):
+ *  recorded with Stripe's actual fee and settled; a payment that's no
+ *  longer owed (settled meanwhile, collection started) is given back. */
+async function owedPaid(deps: Deps, intent: Stripe.PaymentIntent) {
+  const full = await deps.stripe.paymentIntents.retrieve(intent.id, { expand: ['latest_charge.balance_transaction'] });
+  const args = { p_intent_id: intent.id, p_amount_cents: full.amount_received, p_stripe_fee_cents: stripeFeeCents(full) };
+  const result = intent.metadata.kind === 'debt'
+    ? await rpc<{ result: string; reason?: string; booking_id?: string }>(deps.db, 'debt_paid', { p_debt_id: intent.metadata.debt_id, ...args })
+    : await rpc<{ result: string; reason?: string; booking_id?: string }>(deps.db, 'cash_paid_by_card', {
+      p_share_id: intent.metadata.cash_share_id,
+      ...args,
+    });
+  if (result.result === 'refund') {
+    await releaseOrQueue(deps, {
+      booking_id: result.booking_id ?? intent.metadata.booking_id,
+      intent_id: intent.id,
+      reason: result.reason ?? 'refused',
+    });
+  }
 }
 
 /** The booker's whole-team cancellation charge was taken: recorded as

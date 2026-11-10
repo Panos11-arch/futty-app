@@ -149,4 +149,13 @@ export const idempotencyKeys = {
   ) =>
     `setup-share-${shareId}-${method}-after-${previousIntentId ?? 'none'}` +
     (previousSetupIntentId ? `-setup-${previousSetupIntentId}` : ''),
+  /** A short game's top-up (P4c), charged off-session once: a retry after
+   *  no answer from Stripe is the same request. */
+  topUp: (itemId: string) => `top-up-${itemId}`,
+  /** Taking what's unpaid from the booker's guarantee hold at collection. */
+  collectGuarantee: (collectionId: string) => `collect-guarantee-${collectionId}`,
+  /** Paying a debt, or a cash part after the match, by card: one amount,
+   *  replacing previousIntentId (cancelled first). */
+  owed: (kind: 'debt' | 'cash', id: string, amountCents: number, previousIntentId: string | null) =>
+    `owed-${kind}-${id}-${amountCents}-after-${previousIntentId ?? 'none'}`,
 };
