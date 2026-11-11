@@ -1,10 +1,11 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Chip } from '@/components/chip';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { WizardModal } from '@/components/wizard-modal';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
@@ -89,7 +90,9 @@ export default function BookScreen() {
   const days = useDays(PREMIUM_ADVANCE_DAYS + 1);
 
   const [city, setCity] = useState<string | null>(null);
-  const [venueId, setVenueId] = useState<string | null>(null);
+  // From a venue page's "Book" button: that venue is chosen already.
+  const { venueId: venueParam } = useLocalSearchParams<{ venueId?: string }>();
+  const [venueId, setVenueId] = useState<string | null>(venueParam ?? null);
   const [capacity, setCapacity] = useState<number | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -276,6 +279,13 @@ export default function BookScreen() {
               onPress={() => setVenueId(v.id)}
             />
           ))}
+          {venue ? (
+            <Button
+              label="About this venue"
+              variant="plain"
+              onPress={() => router.push({ pathname: '/venue/[id]', params: { id: venue.id } })}
+            />
+          ) : null}
         </View>
       ) : null}
 

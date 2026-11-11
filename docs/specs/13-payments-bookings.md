@@ -281,6 +281,30 @@ Every game booking has one match record (docs/specs/match-record.md, section 6.1
 - **Retries** run after 1, 5 and 15 minutes, then every 60 minutes, until the sync succeeds or the booking's match is void.
 - **Alert:** the founders get the existing admin alert once, at the third failure.
 
+## Venue pages and the venue data import (decided 11 November)
+
+Venues are loaded from the Futty Venue Data sheet by an import script (`scripts/import-venues`). Its rules:
+
+- **Not live:** every venue is imported with `is_live = false`. Going live is a separate step, after the venue signs.
+- **Photos need permission:** a photo is imported only when `photo_permission_given` is yes. Without permission the venue is still imported, with no photos.
+- **Never guess:**
+  - blank cells stay empty, and a price, hours or a pitch is never guessed;
+  - a close of "00:00" is the end of that day;
+  - a close after midnight (e.g. "01:00") isn't supported yet, so that day's hours are skipped and listed in the import's report.
+- **Amenities:**
+  - "yes" counts, keeping a note in brackets such as "(free)" but not a source note such as "(per activeplanet.com)";
+  - "no" isn't shown;
+  - anything else (e.g. "equipment rental listed") is skipped and reported.
+- **Pitches:** the sheet's free-text pitch description is kept for Futty's own use only. It isn't shown, and no pitches are shown until real ones are entered.
+- **No price, no booking:** a venue with no price can't be booked.
+- **Peak prices:** the `price_peak` / `price_offpeak` columns aren't used yet, because peak pricing isn't decided. They stay in the sheet and aren't imported.
+- **Food and drink:** items are imported with their price, offer price and dietary tags.
+- **Same result every time:** the import is idempotent, keyed on `venue_id` (V001...). An existing venue is matched only through an optional mapping file (`venue_id` -> existing venue id), never by name.
+
+**Who sees a venue:**
+- A venue that isn't live is hidden from players completely: it's not in the Book list, and its page can't be reached. Its owner can still see it.
+- A live venue with no price shows its page with the Book bar off and "Not taking bookings yet".
+
 ## Server-side checks that make it airtight
 
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.
