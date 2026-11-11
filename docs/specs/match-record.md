@@ -36,6 +36,10 @@ These rules were missing or ambiguous in the specs and were decided while writin
    - It happens only while the match is `scheduled`, before kickoff and with no result submitted. Otherwise (a submission, `confirmed`, `disputed`, `no_result`, `void`, or past kickoff) the function changes nothing and raises no error.
    - Calling it twice gives the same result. A booking that is named on its first call gets the same roster, and a member who leaves the opponent team before kickoff gets `left_at`.
 2. **Only checked-in players count.** Because side `b` now lists every member of the opponent team, including substitutes who may not come, `match_players` is the squad, not who played. Form, stats, ratings, man of the match (voters and nominees) and skill levels count only players with a `match_attendance` row (QR check-in or ticked by their captain). This affects A3 (form guide, recent matches), A4 (man of the match), A5 (ratings and levels) and A7 (stats). The match result itself is not affected: it belongs to the two sides.
+3. **Forfeits and team form are exceptions to 1b.2** (11 November):
+   - **Forfeits:** in a confirmed forfeit, every player holding a spot (`share_id` set, `left_at` null) on either side gets it in their form, with or without a check-in. The forfeiting side gets **"L (forfeit)"** and the other side **"W"**. A squad member without a spot (a side `b` team member who held none) still needs a check-in.
+   - **Team form** (a named team's last 5) counts every confirmed match that team played, whatever the check-ins. 1b.2 applies to player form and player stats only.
+   - The app's helpers are `playerForm` and `teamForm` in `lib/match/form.ts` (A1b). A3's `player_form` and `team_form` views follow the same rules.
 
 ## 2. Time
 
@@ -356,7 +360,8 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 - **Stats** (A7): built from confirmed matches only. A forfeit counts as a loss for the side that forfeited.
 - **Skill level** (A5): only confirmed, competitive matches move levels; **forfeits never move levels**, and `disputed`, `no_result` and `void` matches never count.
 - Guests never get stats (05 section 2).
-- **Only checked-in players count** (decision 1b.2, 11 November): a player counts in form (A3), man of the match (A4), ratings and levels (A5) and stats (A7) only with a `match_attendance` row for the match. Being in `match_players` isn't enough, because a named game's side `b` lists the whole opponent team.
+- **Only checked-in players count** (decision 1b.2, 11 November): a player counts in form (A3), man of the match (A4), ratings and levels (A5) and stats (A7) only with a `match_attendance` row for the match. Being in `match_players` isn't enough, because a named game's side `b` lists the whole opponent team. Exceptions (decision 1b.3): a confirmed forfeit counts for every spot holder on both sides, and team form counts every confirmed match the team played.
+- **Words on screen** (A1b, 11 November): a forfeit shows "Forfeit" in place of the score, with "<team> pulled out" or "<team> didn't show". `disputed` shows "Disputed · won't count", `no_result` "No result entered", `played` "Waiting for the result", and `void` "Cancelled" (the word "void" is never shown, 17). The app's typed shapes for sections 4 and 6.2 are in `lib/match/types.ts`; they change whenever this document does.
 
 These are read through views (`player_form`, `team_form`, `player_recent_matches`, `head_to_head`), which A3 and A7 define. Each view exposes confirmed matches only and never exposes individual ratings or votes.
 
