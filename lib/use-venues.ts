@@ -7,11 +7,6 @@ export type Venue = {
   name: string;
   city: string;
   surface: string | null;
-  base_pitches: number;
-  /** Postgres `time`, e.g. "15:00:00". */
-  open_time: string;
-  close_time: string;
-  price_per_pitch_hour: number | null;
   /** False for a venue Futty has switched off; book_slot refuses it (venue_not_live). */
   is_live: boolean;
 };
@@ -31,7 +26,10 @@ type VenuesState =
   | { status: 'error'; message: string }
   | { status: 'ready'; venues: Venue[] };
 
-export function useVenues() {
+/** Every venue the caller may see: live venues, their own, and ones where
+ *  they hold a booking, a debt or credit (spec 13). Discovery screens (the
+ *  Book list) pass liveOnly, so a venue that isn't live never shows there. */
+export function useVenues({ liveOnly = false }: { liveOnly?: boolean } = {}) {
   const [state, setState] = useState<VenuesState>({ status: 'loading' });
   const requestIdRef = useRef(0);
 
@@ -39,11 +37,14 @@ export function useVenues() {
     const requestId = ++requestIdRef.current;
     setState({ status: 'loading' });
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('venues')
-      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour, is_live')
-      .order('city')
-      .order('name');
+      // Not the legacy pooled columns (base_pitches, open_time, close_time,
+      // price_per_pitch_hour): the venue model (pitches, opening_hours,
+      // price_rules) replaced them, and imported venues leave them empty.
+      .select('id, name, city, surface, is_live');
+    if (liveOnly) query = query.eq('is_live', true);
+    const { data, error } = await query.order('city').order('name');
 
     if (requestIdRef.current !== requestId) return;
 
@@ -52,7 +53,7 @@ export function useVenues() {
     } else {
       setState({ status: 'ready', venues: data ?? [] });
     }
-  }, []);
+  }, [liveOnly]);
 
   useEffect(() => {
     reload();

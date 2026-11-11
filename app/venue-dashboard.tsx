@@ -19,6 +19,11 @@ import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
 import type { Venue } from '@/lib/use-venues';
 
+// The dashboard still shows the legacy pooled pitch count; null for venues
+// on the new model only (e.g. imported ones). The dashboard moves to the
+// venue model in its own prompt.
+type DashboardVenue = Venue & { base_pitches: number | null };
+
 type DashboardBooking = {
   id: string;
   start_time: string;
@@ -381,7 +386,7 @@ export default function VenueDashboardScreen() {
   const profile = useProfile();
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
-  const [venues, setVenues] = useState<Venue[] | null>(null);
+  const [venues, setVenues] = useState<DashboardVenue[] | null>(null);
   const [venueId, setVenueId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(() => toDateKey(new Date()));
   const dayBookings = useVenueDayBookings(venueId, selectedDay);
@@ -648,7 +653,7 @@ export default function VenueDashboardScreen() {
               ))}
             </View>
 
-            <ThemedText style={styles.label}>Pitches occupied{venue ? ` (of ${venue.base_pitches})` : ''}</ThemedText>
+            <ThemedText style={styles.label}>Pitches occupied{venue?.base_pitches != null ? ` (of ${venue.base_pitches})` : ''}</ThemedText>
             <AuthField
               value={pitches}
               onChangeText={(v) => setPitches(v.replace(/\D/g, ''))}

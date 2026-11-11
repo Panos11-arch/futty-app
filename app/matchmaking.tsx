@@ -55,7 +55,8 @@ function ScheduleWizard({
   onClose: () => void;
   onScheduled: () => void;
 }) {
-  const venuesState = useVenues();
+  // A venue that isn't live never appears in the booking flow (spec 13).
+  const venuesState = useVenues({ liveOnly: true });
   const schedulingDays = useDays(FIXTURE_SCHEDULING_WINDOW_DAYS + 1);
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
