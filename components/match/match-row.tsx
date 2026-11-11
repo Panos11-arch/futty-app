@@ -1,6 +1,8 @@
 // A match in a list (recent matches, upcoming fixtures): the score line,
 // when and where in Cyprus time, and the viewer's result when it counts for
-// them (decisions 1b.2 and 1b.3: viewerSide is null otherwise).
+// them (decisions 1b.2 and 1b.3: viewerSide is null otherwise). The chevron
+// shows only with onPress; screens pass it for confirmed matches only, since
+// only they have a match page (05 section 3, match-record.md section 7).
 import { StyleSheet, View } from 'react-native';
 
 import { FormChip, spokenForm } from '@/components/match/form-chips';
@@ -43,7 +45,12 @@ export function MatchRow(props: MatchRowProps) {
 
   return (
     <Card onPress={onPress} accessibilityLabel={onPress ? spoken : undefined} style={styles.card}>
-      <View style={styles.row}>
+      {/* Without onPress, Card is a plain View and drops its label, so the row speaks for itself. */}
+      <View
+        testID="match-row"
+        accessible={!onPress}
+        accessibilityLabel={onPress ? undefined : spoken}
+        style={styles.row}>
         <View style={styles.body}>
           <ScoreLine item={item} />
           <Text testID="match-row-meta" variant="caption" tone="inkMuted" tabular>

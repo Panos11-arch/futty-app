@@ -3,6 +3,11 @@
 // data and real rows are interchangeable. timestamptz columns arrive as ISO
 // strings; `timestamp` columns (kickoff_local, ends_local) as wall-clock
 // strings in Cyprus time.
+//
+// The database is the source of truth. MatchResultConfirmed mirrors the
+// match_result_confirmed view (6.2) for typing and mocks only; the app reads
+// the view's rows from the server, and this type changes in the same PR as
+// the view.
 
 export type Side = 'a' | 'b';
 export type MatchKind = 'pickup' | 'named';

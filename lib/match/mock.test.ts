@@ -1,7 +1,8 @@
 // The mock data must obey the same rules as the match_result_confirmed view
 // (docs/specs/match-record.md section 6.2), so components built on it work
 // unchanged on real rows.
-import { mockFormEntries, mockMatchItems } from '@/lib/match/mock';
+import { formResult, formSide, playerForm } from '@/lib/match/form';
+import { mockFormEntries, mockMatchItems, PROFILE } from '@/lib/match/mock';
 import type { MatchResultConfirmed } from '@/lib/match/types';
 
 const VIEW_COLUMNS = [
@@ -80,6 +81,23 @@ describe('mock match data', () => {
       ),
     );
     expect(missed).toBe(true);
+  });
+
+  const withSquads = mockMatchItems.flatMap((i) => {
+    const e = mockFormEntries.find((f) => f.result.match_id === i.match.id);
+    return e ? [[i.match.id, i, e] as const] : [];
+  });
+
+  it('has a squad for every settled list item', () => {
+    expect(withSquads.map(([id]) => id)).toEqual(
+      mockMatchItems.filter((i) => i.result).map((i) => i.match.id),
+    );
+  });
+
+  it.each(withSquads)("%s: the list's viewerSide agrees with the viewer's form", (_, i, e) => {
+    expect(i.viewerSide).toBe(formSide(e, PROFILE.anghelo));
+    const chip = i.result && i.viewerSide ? formResult(i.result, i.viewerSide) : null;
+    expect(chip ? [chip] : []).toEqual(playerForm([e], PROFILE.anghelo));
   });
 
   it('gives Cyprus wall-clock times in kickoff_local', () => {

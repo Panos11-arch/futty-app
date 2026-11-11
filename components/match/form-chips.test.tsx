@@ -15,6 +15,17 @@ const kinds: [FormResult, string, string][] = [
 ];
 
 describe('FormChip', () => {
+  it.each([
+    ['W', 'won'],
+    ['D', 'drew'],
+    ['L', 'lost'],
+    ['L_forfeit', 'lost by forfeit'],
+  ] as const)('%s is spoken as "%s"', async (result, spoken) => {
+    await render(<FormChip result={result} />);
+    expect(screen.getByTestId('form-chip').props.accessibilityLabel).toBe(spoken);
+    expect(screen.getByLabelText(spoken)).toBeTruthy();
+  });
+
   it.each(kinds)('%s reads "%s" in its colour on a small canvas pill', async (result, label, color) => {
     await render(<FormChip result={result} />);
     expect(flatStyle(screen.getByText(label)).color).toBe(color);

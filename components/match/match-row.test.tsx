@@ -72,10 +72,29 @@ describe('MatchRow', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('is not a button without onPress', async () => {
+  it('without onPress: no button role, no chevron, but still one spoken summary', async () => {
     await render(<MatchRow item={mockSideAWon} />);
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByTestId('icon-chevron.right')).toBeNull();
+    const row = screen.getByTestId('match-row');
+    expect(row.props.accessible).toBe(true);
+    expect(row.props.accessibilityRole).toBeUndefined();
+    expect(
+      screen.getByLabelText('Home FC 3, Away FC 1. Sat 7 Nov · 19:00, Lakatamia Sports. You won'),
+    ).toBe(row);
+  });
+
+  it('without onPress, a disputed match says why it has no score and gives no result', async () => {
+    await render(<MatchRow item={mockDisputed} />);
+    expect(
+      screen.getByLabelText('Home FC v Away FC. Disputed · not in stats. Sun 1 Nov · 19:00, Lakatamia Sports'),
+    ).toBeTruthy();
+  });
+
+  it('with onPress, the row itself is not a second accessible element', async () => {
+    await render(<MatchRow item={mockSideAWon} onPress={jest.fn()} />);
+    expect(screen.getByTestId('match-row').props.accessible).toBe(false);
+    expect(screen.getByTestId('match-row').props.accessibilityLabel).toBeUndefined();
   });
 
   it('shows a skeleton in the shape of the row while loading', async () => {
