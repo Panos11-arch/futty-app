@@ -323,6 +323,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `booking_cancelled_by_venue` | payments | ✓ |
 | `venue_condition_warning` | payments | ✓ |
 | `gipedo_result_needed` | payments (P8) | ✓ |
+| `guarantee_charged` | payments (P4c): money taken from the booker's hold at collection | ✓ |
 | `match_result_submitted` | match (A2) | |
 | `match_result_confirmed` | match (A2) | |
 | `match_result_disputed` | match (A2) | |
