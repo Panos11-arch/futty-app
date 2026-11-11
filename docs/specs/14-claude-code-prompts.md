@@ -49,12 +49,14 @@ Dimitris takes over Panos's remaining P prompts; Panos keeps P9 and P5 (11 Novem
 | --- | --- | --- | --- |
 | 1 | P8 Gipedo Pano | — | 10 |
 | 2 | P10 Shared rules and Futty AI | P5 and P9 merged | 6 |
-| any time | Finish `panos/match-sync` | Anghelo's `create_match_for_booking` upgrade | 1 |
-| 3 | P6 Venue dashboard | P9 | 20 |
-| 4 | P12 6 v 6 switching | P5 | 4 |
-| 5 | P11 Weather | P9, P10 | 6 |
-| 6 | P4d Venue payouts | P6 | 8 |
-| 7 | P7 Release build (code part) | P5, P10, Anghelo's "Now" prompts | 3 |
+| 3 | P13 Sign in with Apple and Google (added 11 November) | agree the order with Anghelo's U6 (same screen) | 6 |
+| 4 | P6 Venue dashboard (revenue by source, CSV export, customers added 11 November) | P9 | 22 |
+| 5 | P12 6 v 6 switching | P5 | 4 |
+| 6 | P11 Weather | P9, P10 | 6 |
+| 7 | P4d Venue payouts | P6 | 8 |
+| 8 | P7 Release build (code part) | P5, P10, Anghelo's "Now" prompts | 3 |
+
+`panos/match-sync` was finished by Panos (PR #48).
 
 ### Anghelo, in this order
 
@@ -457,9 +459,13 @@ Plan first.
 ```
 Read docs/specs/05-product.md section 12 (launch items 1-11) and docs/specs/13-payments-bookings.md (cash, debt, credit, weather, blocking, 6 v 6). Build the launch dashboard with components/ui, phone-first, every common action in two taps or fewer:
 calendar per pitch; booking roster with each player's payment choice and status and a tick for cash paid; run collection early; debt list with "mark settled"; credit balances per player; block pitches for a day or time range (new bookings only); flag "conditions may be unsuitable" for a day or slot (notifies booked players); a nudge when the forecast for a booked slot is bad at least 12 hours before kickoff; the "allow 6 v 6 on 5-a-side pitches" setting; offer a player to a short team; cancel a booking (full refund or credit, player's choice, Stripe fee owed by the venue); opening hours, prices, photos, amenities, menu; walk-in and phone bookings marked cash or card; check-in QR and no-shows; venue notifications and daily summary.
+Also (added 11 November):
+- Revenue by source: app card, app cash, walk-in and phone, for a day, a week or a month, read from money_ledger (venue_cents), with Futty's fee and Stripe fees shown separately, and a CSV export of the same rows (amounts in euros with two decimals, Cyprus dates).
+- Bookings list with filters for source (app, walk-in, phone) and status.
+- Customers: everyone who booked at this venue, app players and walk-in or phone contacts, with their bookings, debt and credit at this venue.
 Only staff of that venue can do any of this (RLS and function checks).
 
-Tests for every write path, including that staff of venue A can't touch venue B.
+Tests for every write path, including that staff of venue A can't touch venue B; revenue totals equal the ledger for a day with app card, cash and walk-in bookings; the CSV has the same rows and totals as the screen; a customer at venue A is never listed at venue B.
 
 Plan first.
 ```
@@ -470,6 +476,24 @@ Plan first.
 Stripe Connect with separate charges and transfers (not destination charges), so cancellations, credit and the venue's Stripe fee on venue cancellations never need a clawback: onboard each venue (Express account) from the dashboard; after collection, transfer each venue its pitch parts minus anything it owes (venue_payables). Credit money stays with the venue (decided 10 November): it is in the ledger's venue_cents when the credit is issued (including Futty's fee when a player chooses credit, a `transfer` row), so it is paid out at the next payout as usual; spending, returning or expiring credit later moves no money (the credit_* rows only change credit_cents, the record of what the venue holds for players), so a share paid with credit transfers only its card part. Pay out from venue_cents, never from credit_cents. A daily reconciliation job checks that, for every booking, venue + Futty + Stripe fees + refunds = what was taken (money_balance), and alerts on any mismatch. Payments stay in test mode until a venue has signed and finished onboarding.
 
 Tests: transfers equal the ledger for every scenario in P4a-P4c; a venue cancellation reduces the next transfer by the recorded Stripe fee; credit issued at a venue is in that venue's next transfer, and spending it later adds nothing to a transfer; reconciliation flags a booking with a missing transfer.
+
+Plan first.
+```
+
+### P13 Sign in with Apple and Google (added 11 November)
+
+Run by Dimitris. Apple requires Sign in with Apple whenever Google sign-in is offered. `app/sign-in.tsx` is also restyled by U6: agree who goes first; the other rebases.
+
+```
+Add "Continue with Apple" and "Continue with Google" to the sign-in screen, using Supabase Auth, next to the existing email sign-in, which stays as it is. Put the logic in lib/auth-providers.ts; keep the screen change small.
+- First, in its own small PR (dimitris/p13-deps): add expo-apple-authentication (and expo-crypto only if needed) and "ios.usesAppleSignIn": true in app.json. Say in the PR that it needs a new development build. Read https://docs.expo.dev/versions/v55.0.0/sdk/apple-authentication/ before using it.
+- Apple (iOS only): the native Apple button, shown only when AppleAuthentication.isAvailableAsync() is true; then supabase.auth.signInWithIdToken with provider apple and a hashed nonce. Apple sends the user's name only on the first sign-in: save it to the profile then.
+- Google: supabase.auth.signInWithOAuth with a redirect built with expo-linking (scheme futtyapp), opened with expo-web-browser's openAuthSessionAsync, then exchange the code for a session. No native Google SDK.
+- A new Apple or Google user goes through the same profile setup as a new email user. Apple's private relay email is accepted as it is. Linking to an existing email account follows Supabase's identity linking only.
+- Account deletion must work for Apple and Google accounts too. For Apple, revoke the user's token when they delete their account, as App Review requires.
+- List exactly what Panos must set up: the Apple and Google providers in Supabase Auth, the Apple Services ID and key, the Google OAuth client IDs, the redirect URLs, and any secrets.
+
+Tests (Jest, with the native modules mocked): the Apple button shows only when available; cancelling Apple or Google shows no error; a successful sign-in creates the session and sends a new user to profile setup; the name from Apple's first sign-in is saved; errors show inline; deleting an Apple account calls the revoke step.
 
 Plan first.
 ```
