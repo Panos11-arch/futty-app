@@ -16,14 +16,8 @@
 -- (1, leftover cents on the first player to join when the booker gave up
 -- their spot, was already so: collection_amounts.)
 
-alter table public.notifications drop constraint if exists notifications_type_check;
-alter table public.notifications add constraint notifications_type_check check (type = any (array[
-  'fixture_message', 'squad_post', 'booking_slot', 'booking_cancelled', 'fixture_agreed', 'match_payment_due',
-  'team_invite', 'booking_invite', 'venue_closed_new_bookings', 'guarantee_hold_failed',
-  'booking_spot_released', 'cancellation_fee_failed',
-  'short_game_warning', 'top_up_charged', 'debt_created', 'debt_settled', 'cash_unpaid_prompt',
-  'guarantee_charged'
-]));
+-- The new type (contract 4, match-record.md section 6.3): always sent.
+insert into public.notification_types (type, always_sent) values ('guarantee_charged', true) on conflict (type) do nothing;
 
 -- What a venue owes Futty now also includes Futty's part of a debt the
 -- venue marked settled (the player paid the venue, fee included).

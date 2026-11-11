@@ -250,14 +250,14 @@ begin
     'cash_unpaid_prompt', 'booking_cancelled_by_venue', 'venue_condition_warning', 'gipedo_result_needed',
     'match_result_submitted', 'match_result_confirmed', 'match_result_disputed', 'match_reminder_24h',
     'match_reminder_2h', 'match_after_game', 'motm_vote_open', 'followed_team_match', 'followed_team_result',
-    'followed_team_opponent_wanted'
+    'followed_team_opponent_wanted', 'guarantee_charged'
   ] loop
     assert tests.mr_send(v_player, v_type, '{}') is null, format('%s is allowed', v_type);
   end loop;
-  assert (select count(*) from public.notification_types) = 30, 'exactly the 30 types of contract 4';
+  assert (select count(*) from public.notification_types) = 31, 'exactly the 31 types of contract 4';
   assert (select array_agg(type order by type) from public.notification_types where always_sent) = array[
     'booking_cancelled', 'booking_cancelled_by_venue', 'booking_spot_released', 'cancellation_fee_failed',
-    'cash_unpaid_prompt', 'debt_created', 'debt_settled', 'gipedo_result_needed', 'guarantee_hold_failed',
+    'cash_unpaid_prompt', 'debt_created', 'debt_settled', 'gipedo_result_needed', 'guarantee_charged', 'guarantee_hold_failed',
     'match_payment_due', 'short_game_warning', 'top_up_charged', 'venue_closed_new_bookings', 'venue_condition_warning'],
     'the always-sent types';
 
@@ -291,7 +291,7 @@ begin
   assert (select count(*) from public.notification_quiet_hours) = 1, 'and their own quiet hours';
   update public.notification_settings set enabled = true where profile_id = v_other;
   delete from public.notification_quiet_hours where profile_id = v_other;
-  assert (select count(*) from public.notification_types) = 30, 'everyone signed in reads the types';
+  assert (select count(*) from public.notification_types) = 31, 'everyone signed in reads the types';
   v_error := tests.error_of('select count(*) from public.notification_deliveries');
   assert v_error like 'permission denied%', format('deliveries are service_role only, got %s', v_error);
   v_error := tests.error_of(format('insert into public.notification_types values (%L, false)', 'mine'));
