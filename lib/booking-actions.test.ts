@@ -1,4 +1,4 @@
-import { cancelBooking, chooseCancellationRefund, getCancellationQuote } from './booking-actions';
+import { bookSlot, cancelBooking, chooseCancellationRefund, getCancellationQuote } from './booking-actions';
 
 // jest.mock is hoisted above the import; the factory reads the mocks lazily.
 const mockRpc = jest.fn();
@@ -13,6 +13,22 @@ jest.mock('@/lib/supabase', () => ({
 beforeEach(() => {
   mockRpc.mockReset();
   mockInvoke.mockReset();
+});
+
+describe('bookSlot', () => {
+  it('sends the venue, slot and format; the server picks the pitches (no count from the app)', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '7-a-side' });
+    expect(mockRpc).toHaveBeenCalledWith('book_slot', {
+      p_venue_id: 'v1',
+      p_day: '2026-11-16',
+      p_start: '18:00',
+      p_end: '19:00',
+      p_pitches: 1,
+      p_format: '7-a-side',
+      p_players_per_side: 5,
+    });
+  });
 });
 
 describe('getCancellationQuote', () => {

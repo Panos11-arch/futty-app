@@ -1,37 +1,40 @@
 /**
- * Slot availability rules, ported from the prototype's `slotGrid` so the app and
- * the prototype agree exactly. See futty-app_2.jsx (`slotGrid` / `bookSlot`).
+ * Booking helpers for the venue model (P3): named pitches, opening hours per
+ * weekday and price rules. Availability and prices come from the server
+ * (venue_free_slots); these only shape what it returns for the screen. The
+ * legacy pooled venue columns (base_pitches, open_time, close_time,
+ * price_per_pitch_hour) are not read anywhere.
  */
 
 export type CapacityOption = {
   capacity: number;
   format: string;
-  /** How many of the venue's pitches this format consumes. */
-  pitches: number;
 };
 
+/** The formats leagues and fixtures use, with their player counts. */
 export const CAPACITY_OPTIONS: CapacityOption[] = [
-  { capacity: 10, format: '5-a-side', pitches: 1 },
-  { capacity: 14, format: '7-a-side', pitches: 2 },
-  { capacity: 18, format: '9-a-side', pitches: 3 },
-  { capacity: 22, format: '11-a-side', pitches: 4 },
+  { capacity: 10, format: '5-a-side' },
+  { capacity: 14, format: '7-a-side' },
+  { capacity: 18, format: '9-a-side' },
+  { capacity: 22, format: '11-a-side' },
 ];
+
+/** Every format a pitch can host, smallest first (as the server's pitches.size check). */
+export const PITCH_FORMATS = ['5-a-side', '6-a-side', '7-a-side', '9-a-side', '11-a-side'] as const;
 
 export const DURATIONS = [1, 1.5, 2] as const;
 export type DurationHours = (typeof DURATIONS)[number];
 
 export const SLOT_STEP_MINUTES = 30;
 
-export function pitchesForCapacity(capacity: number) {
-  return CAPACITY_OPTIONS.find((option) => option.capacity === capacity)?.pitches ?? 1;
-}
-
-export function formatForCapacity(capacity: number) {
-  return CAPACITY_OPTIONS.find((option) => option.capacity === capacity)?.format ?? '';
-}
-
 export function durationLabel(hours: DurationHours) {
   return hours === 1 ? '1h' : hours === 1.5 ? '1h 30' : '2h';
+}
+
+/** "5-a-side" -> 10 players. */
+export function playersForFormat(format: string): number | null {
+  const m = format.match(/^(\d+)-a-side$/);
+  return m ? Number(m[1]) * 2 : null;
 }
 
 /**
@@ -50,65 +53,59 @@ export function minToTime(min: number) {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
-/** The fields of a venue_bookings row that affect availability. */
-export type BookingWindow = {
-  start_time: string;
-  end_time: string;
-  pitches: number;
-};
+/** ISO weekday (1 = Monday ... 7 = Sunday) of a "YYYY-MM-DD" day, the same on every device. */
+export function isoWeekday(dateKey: string): number {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return day === 0 ? 7 : day;
+}
+
+/** The formats a venue can be booked for: any its open pitches host, or a
+ *  pitch combination makes. Smallest first. */
+export function formatsOffered(
+  pitches: { formats: string[]; is_open: boolean }[],
+  combinations: { format: string }[],
+): string[] {
+  const offered = new Set<string>();
+  for (const pitch of pitches) if (pitch.is_open) pitch.formats.forEach((f) => offered.add(f));
+  for (const combination of combinations) offered.add(combination.format);
+  return PITCH_FORMATS.filter((f) => offered.has(f));
+}
+
+/** A free slot as venue_free_slots returns it. */
+export type FreeSlot = { start_time: string; end_time: string; price_cents: number };
 
 export type Slot = {
   start: string;
   end: string;
-  /** Pitches still free across the whole slot. */
-  free: number;
+  /** Free to book now: the server returned it (open, not past in Cyprus time, a pitch free, priced). */
   available: boolean;
+  /** The server's price for the whole game, in cents; null when not available. */
+  priceCents: number | null;
 };
 
-export function canFitFormat(basePitches: number, capacity: number) {
-  return basePitches >= pitchesForCapacity(capacity);
-}
-
-export function buildSlotGrid(params: {
-  openTime: string;
-  closeTime: string;
-  basePitches: number;
-  bookings: BookingWindow[];
-  capacity: number;
-  durationHours: number;
-}): Slot[] {
-  const { openTime, closeTime, basePitches, bookings, capacity, durationHours } = params;
-
-  const needed = pitchesForCapacity(capacity);
-  const durationMin = durationHours * 60;
-  const openMin = timeToMin(openTime);
-  const closeMin = timeToMin(closeTime);
+/**
+ * Every start time in the day's opening hours, every 30 minutes, for a game
+ * of `minutes`; a slot is available only when the server listed it as free.
+ * Times outside the hours aren't shown; times inside them that the server
+ * didn't list (booked, blocked, past) show as unavailable.
+ */
+export function slotGrid(hours: { opens: string; closes: string } | null, free: FreeSlot[], minutes: number): Slot[] {
+  if (!hours) return [];
+  const freeByStart = new Map(free.map((s) => [minToTime(timeToMin(s.start_time)), s]));
+  // The same bounds as venue_free_slots: a game must end by closing time.
+  const opens = timeToMin(hours.opens);
+  const closes = timeToMin(hours.closes);
   const slots: Slot[] = [];
-
-  // The slot must finish by closing time, so the last start is close - duration.
-  for (let start = openMin; start + durationMin <= closeMin; start += SLOT_STEP_MINUTES) {
-    const end = start + durationMin;
-    let used = 0;
-
-    for (const booking of bookings) {
-      const bookingStart = timeToMin(booking.start_time);
-      const bookingEnd = timeToMin(booking.end_time);
-
-      // Half-open overlap: a booking that ends exactly when this slot begins
-      // does not conflict with it.
-      if (bookingStart < end && bookingEnd > start) {
-        used += booking.pitches;
-      }
-    }
-
-    const free = basePitches - used;
+  for (let start = opens; start + minutes <= closes; start += SLOT_STEP_MINUTES) {
+    const key = minToTime(start);
+    const match = freeByStart.get(key);
     slots.push({
-      start: minToTime(start),
-      end: minToTime(end),
-      free,
-      available: free >= needed,
+      start: key,
+      end: minToTime(start + minutes),
+      available: !!match,
+      priceCents: match ? match.price_cents : null,
     });
   }
-
   return slots;
 }

@@ -5,7 +5,6 @@ export type BookSlotParams = {
   day: string;
   start: string;
   end: string;
-  pitches: number;
   format: string;
   /** 5, or 6 for 6 v 6 on a 5-a-side pitch where the venue allows it. The
    *  server derives how many players that is; the app never sends a count. */
@@ -24,7 +23,10 @@ export async function bookSlot(params: BookSlotParams) {
     p_day: params.day,
     p_start: params.start,
     p_end: params.end,
-    p_pitches: params.pitches,
+    // The server picks the pitches for the format (pick_pitches) and stores
+    // how many it used; p_pitches is only checked to be 1 or more and no
+    // more than the venue has, so the app no longer guesses a count.
+    p_pitches: 1,
     p_format: params.format,
     p_players_per_side: params.playersPerSide ?? 5,
   });

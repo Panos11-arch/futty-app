@@ -11,23 +11,13 @@ import { WizardModal } from '@/components/wizard-modal';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { bookSlot } from '@/lib/booking-actions';
 import { describeBookingError } from '@/lib/booking-errors';
-import {
-  buildSlotGrid,
-  CAPACITY_OPTIONS,
-  canFitFormat,
-  DURATIONS,
-  formatForCapacity,
-  pitchesForCapacity,
-  timeToMin,
-  type DurationHours,
-  type Slot,
-} from '@/lib/booking';
+import { DURATIONS, playersForFormat, type DurationHours, type Slot } from '@/lib/booking';
 import { dayNumberLabel, isToday, toDateKey, useDays, weekdayLabel } from '@/lib/days';
 import { PostSquadNeed } from '@/app/my-bookings';
-import { useDayBookings } from '@/lib/use-day-bookings';
 import type { MyBooking } from '@/lib/use-my-bookings';
 import { isDayLocked, PREMIUM_ADVANCE_DAYS, STANDARD_ADVANCE_DAYS } from '@/lib/premium';
 import { useProfile } from '@/lib/use-profile';
+import { useVenueFormats, useVenueSlots } from '@/lib/use-venue-slots';
 import { useVenues, type Venue } from '@/lib/use-venues';
 
 const ALL_CITIES = 'All';
@@ -58,7 +48,7 @@ function TimeSlotButton({
   selected,
   onPress,
 }: {
-  slot: Slot & { isPast?: boolean };
+  slot: Slot;
   selected: boolean;
   onPress: () => void;
 }) {
@@ -93,7 +83,7 @@ export default function BookScreen() {
   // From a venue page's "Book" button: that venue is chosen already.
   const { venueId: venueParam } = useLocalSearchParams<{ venueId?: string }>();
   const [venueId, setVenueId] = useState<string | null>(venueParam ?? null);
-  const [capacity, setCapacity] = useState<number | null>(null);
+  const [format, setFormat] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [needChoice, setNeedChoice] = useState<NeedChoice | null>(null);
@@ -103,34 +93,20 @@ export default function BookScreen() {
   const [dayLockedPrompt, setDayLockedPrompt] = useState(false);
   const [completed, setCompleted] = useState<MyBooking | null>(null);
 
-  const venues = venuesState.status === 'ready' ? venuesState.venues.filter((v) => v.is_live) : [];
+  // useVenues({ liveOnly }) asks the server for live venues only; a venue
+  // that isn't live never appears in the booking flow (spec 13).
+  const venues = venuesState.status === 'ready' ? venuesState.venues : [];
   const venuesInCity = city === ALL_CITIES ? venues : venues.filter((v) => v.city === city);
   const venue: Venue | null = venues.find((v) => v.id === venueId) ?? null;
-  const dayBookings = useDayBookings(venueId, selectedDay ?? '');
+  // The venue model: formats from its pitches, slots and prices from the server.
+  const venueFormats = useVenueFormats(venueId);
+  const { state: daySlots } = useVenueSlots(venueId, selectedDay, format, DEFAULT_DURATION * 60);
 
   const stepIndex = WIZARD_STEPS.indexOf(step);
   const selectedDayIndex = selectedDay ? days.findIndex((d) => toDateKey(d) === selectedDay) : -1;
   const dayLocked = isDayLocked(selectedDayIndex, isPremium);
 
-  const slots: (Slot & { isPast: boolean })[] =
-    venue && selectedDay && capacity && dayBookings.status === 'ready'
-      ? (() => {
-          const nowMinutes = isToday(new Date(selectedDay))
-            ? new Date().getHours() * 60 + new Date().getMinutes()
-            : -1;
-          return buildSlotGrid({
-            openTime: venue.open_time,
-            closeTime: venue.close_time,
-            basePitches: venue.base_pitches,
-            bookings: dayBookings.bookings,
-            capacity,
-            durationHours: DEFAULT_DURATION,
-          }).map((slot) => {
-            const isPast = nowMinutes >= 0 && timeToMin(slot.start) <= nowMinutes;
-            return { ...slot, available: slot.available && !isPast, isPast };
-          });
-        })()
-      : [];
+  const slots: Slot[] = daySlots.status === 'ready' ? daySlots.slots : [];
 
   function canAdvance() {
     switch (step) {
@@ -139,7 +115,7 @@ export default function BookScreen() {
       case 'venue':
         return !!venueId;
       case 'quantity':
-        return !!capacity;
+        return !!format;
       case 'date':
         return !!selectedDay;
       case 'time':
@@ -167,7 +143,7 @@ export default function BookScreen() {
   }
 
   async function confirmBooking() {
-    if (!venue || !selectedDay || !selectedSlot || !capacity || bookBusy) return;
+    if (!venue || !selectedDay || !selectedSlot || !format || bookBusy) return;
 
     if (dayLocked) {
       setDayLockedPrompt(true);
@@ -182,8 +158,7 @@ export default function BookScreen() {
       day: selectedDay,
       start: selectedSlot.start,
       end: selectedSlot.end,
-      pitches: pitchesForCapacity(capacity),
-      format: formatForCapacity(capacity),
+      format,
     });
 
     setBookBusy(false);
@@ -274,9 +249,13 @@ export default function BookScreen() {
             <Chip
               key={v.id}
               label={v.name}
-              sublabel={`${v.surface ?? 'Pitch'} · ${v.base_pitches} pitches`}
+              sublabel={v.city}
               selected={v.id === venueId}
-              onPress={() => setVenueId(v.id)}
+              onPress={() => {
+                setVenueId(v.id);
+                setFormat(null);
+                setSelectedSlot(null);
+              }}
             />
           ))}
           {venue ? (
@@ -291,16 +270,30 @@ export default function BookScreen() {
 
       {step === 'quantity' ? (
         <View style={styles.wrapRow}>
-          {CAPACITY_OPTIONS.map((option) => (
-            <Chip
-              key={option.capacity}
-              label={option.format}
-              sublabel={`${option.capacity}p · ${option.pitches} pitch${option.pitches > 1 ? 'es' : ''}`}
-              selected={option.capacity === capacity}
-              disabled={!!venue && !canFitFormat(venue.base_pitches, option.capacity)}
-              onPress={() => setCapacity(option.capacity)}
-            />
-          ))}
+          {venueFormats.status === 'loading' ? <ActivityIndicator /> : null}
+          {venueFormats.status === 'error' ? (
+            <ThemedText style={styles.note}>Could not load the pitches: {venueFormats.message}</ThemedText>
+          ) : null}
+          {venueFormats.status === 'ready' && venueFormats.formats.length === 0 ? (
+            <ThemedText style={styles.note}>This venue has no pitches to book yet.</ThemedText>
+          ) : null}
+          {venueFormats.status === 'ready'
+            ? venueFormats.formats.map((f) => {
+                const players = playersForFormat(f);
+                return (
+                  <Chip
+                    key={f}
+                    label={f}
+                    sublabel={players ? `${players} players` : undefined}
+                    selected={f === format}
+                    onPress={() => {
+                      setFormat(f);
+                      setSelectedSlot(null);
+                    }}
+                  />
+                );
+              })
+            : null}
         </View>
       ) : null}
 
@@ -345,14 +338,15 @@ export default function BookScreen() {
 
       {step === 'time' ? (
         <>
-          {dayBookings.status === 'loading' || dayBookings.status === 'idle' ? <ActivityIndicator /> : null}
-          {dayBookings.status === 'error' ? (
-            <ThemedText style={styles.note}>Could not load availability: {dayBookings.message}</ThemedText>
+          {daySlots.status === 'loading' || daySlots.status === 'idle' ? <ActivityIndicator /> : null}
+          {daySlots.status === 'error' ? (
+            <ThemedText style={styles.note}>Could not load availability: {daySlots.message}</ThemedText>
           ) : null}
-          {dayBookings.status === 'ready' && slots.length === 0 ? (
+          {daySlots.status === 'closed' ? <ThemedText style={styles.note}>The venue is closed this day.</ThemedText> : null}
+          {daySlots.status === 'ready' && slots.length === 0 ? (
             <ThemedText style={styles.note}>No slot fits between opening and closing time.</ThemedText>
           ) : null}
-          {dayBookings.status === 'ready' && slots.length > 0 ? (
+          {daySlots.status === 'ready' && slots.length > 0 ? (
             <View style={styles.timeGrid}>
               {slots.map((slot) => (
                 <TimeSlotButton

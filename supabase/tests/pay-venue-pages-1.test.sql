@@ -283,9 +283,17 @@ declare
     (select jsonb_agg(jsonb_build_object('weekday', d, 'opens', '08:00', 'closes', '23:00')) from generate_series(1, 7) d))));
   v_day date := tests.cyprus_today() + 3;
 begin
-  update public.venues set is_live = true where id = v_id;
+  -- Not live: Book gets no slots for it.
   perform tests.create_pitch(v_id, 'Pitch 1');
+  perform tests.set_price(v_id, '5-a-side', 6000);
   perform tests.act_as(v_player);
+  assert not exists (select 1 from public.venue_free_slots(v_id, v_day, '5-a-side', 60)), 'not live: no slots';
+  perform tests.act_as_postgres();
+  delete from public.price_rules where venue_id = v_id;
+
+  update public.venues set is_live = true where id = v_id;
+  perform tests.act_as(v_player);
+  assert not exists (select 1 from public.venue_free_slots(v_id, v_day, '5-a-side', 60)), 'no price: no slots';
   assert tests.error_of(format(
     'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')',
     v_id, v_day)) = 'price_not_set', 'no price: refused';
@@ -295,9 +303,22 @@ begin
   perform tests.act_as(v_player);
   assert (public.venue_page(v_id) ->> 'bookable')::boolean, 'priced: bookable';
   assert (public.venue_page(v_id) -> 'prices' -> 0 ->> 'hour_cents')::integer = 6000, 'the hourly price from price_rules';
+  -- Book on the venue model: the imported venue has no legacy columns, and
+  -- its slots come from its pitch, opening hours and price rule.
+  assert (select base_pitches is null and open_time is null and close_time is null and price_per_pitch_hour is null
+          from public.venues where id = v_id), 'no legacy columns';
+  assert (select count(*) from public.venue_free_slots(v_id, v_day, '5-a-side', 60)) = 29
+         and (select min(start_time) from public.venue_free_slots(v_id, v_day, '5-a-side', 60)) = '08:00'
+         and (select max(end_time) from public.venue_free_slots(v_id, v_day, '5-a-side', 60)) = '23:00'
+         and (select bool_and(price_cents = 6000) from public.venue_free_slots(v_id, v_day, '5-a-side', 60)),
+    'every hour from opening to closing, at the price rule''s price';
+  assert not exists (select 1 from public.venue_free_slots(v_id, v_day, '7-a-side', 60)), 'no 7-a-side pitch: no slots';
+  -- The app sends p_pitches 1: the server picks the pitch.
   assert tests.error_of(format(
     'select public.book_slot(%L::uuid, %L::date, ''12:00'', ''13:00'', 1, ''5-a-side'', 5, ''each_pays_own_spot'')',
     v_id, v_day)) is null, 'priced: booked';
+  assert not exists (select 1 from public.venue_free_slots(v_id, v_day, '5-a-side', 60) where start_time = '12:00'),
+    'its slot is no longer free';
   perform tests.act_as_postgres();
 end $$;
 
