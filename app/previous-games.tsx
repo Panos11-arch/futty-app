@@ -10,10 +10,11 @@ import { dateKeyAndTimeToDate } from '@/lib/days';
 import { useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useVenues } from '@/lib/use-venues';
 
-/** The overflow behind the home screen's "View all" link — every plain
- *  booking (no opponent team) you've made that's ended with no result
- *  logged yet, not just the couple shown inline there. */
-export default function PreviousGamesScreen() {
+/** Every plain booking (no opponent team) you've made that's ended with no
+ *  result logged yet. No scrolling of its own: the screen below (the
+ *  overflow behind Home's "View all" link) and Play's Matches segment
+ *  (app/(tabs)/play.tsx) each wrap it. */
+export function PreviousGamesList() {
   const unscoredBookings = useMyUnscoredBookings();
   const venuesState = useVenues();
 
@@ -40,27 +41,37 @@ export default function PreviousGamesScreen() {
       : [];
 
   return (
+    <View style={styles.list}>
+      {unscoredBookings.status === 'loading' ? <ActivityIndicator /> : null}
+      {unscoredBookings.status === 'error' ? (
+        <Text style={styles.note}>Could not load: {unscoredBookings.message}</Text>
+      ) : null}
+      {unscoredBookings.status === 'ready' && sorted.length === 0 ? (
+        <View style={styles.emptyRow}>
+          <IconSymbol name="checkmark.circle.fill" size={12} color={FuttyColors.stone400} />
+          <Text style={styles.note}>Nothing left to log — you&apos;re all caught up.</Text>
+        </View>
+      ) : null}
+      {sorted.map((booking) => (
+        <View key={booking.id} style={styles.card}>
+          <BookingResultForm
+            booking={booking}
+            venueName={venueNameFor(booking.venue_id)}
+            onSubmitted={unscoredBookings.reload}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** The overflow behind the home screen's "View all" link, not just the
+ *  couple shown inline there. */
+export default function PreviousGamesScreen() {
+  return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {unscoredBookings.status === 'loading' ? <ActivityIndicator /> : null}
-        {unscoredBookings.status === 'error' ? (
-          <Text style={styles.note}>Could not load: {unscoredBookings.message}</Text>
-        ) : null}
-        {unscoredBookings.status === 'ready' && sorted.length === 0 ? (
-          <View style={styles.emptyRow}>
-            <IconSymbol name="checkmark.circle.fill" size={12} color={FuttyColors.stone400} />
-            <Text style={styles.note}>Nothing left to log — you&apos;re all caught up.</Text>
-          </View>
-        ) : null}
-        {sorted.map((booking) => (
-          <View key={booking.id} style={styles.card}>
-            <BookingResultForm
-              booking={booking}
-              venueName={venueNameFor(booking.venue_id)}
-              onSubmitted={unscoredBookings.reload}
-            />
-          </View>
-        ))}
+        <PreviousGamesList />
       </ScrollView>
     </SafeAreaView>
   );
@@ -71,9 +82,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 10,
     padding: 16,
     paddingBottom: 48,
+  },
+  list: {
+    gap: 10,
   },
   note: {
     fontFamily: FuttyFonts.sans,

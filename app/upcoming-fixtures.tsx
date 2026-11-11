@@ -113,7 +113,9 @@ function FixtureRow({
   );
 }
 
-export default function UpcomingFixturesScreen() {
+/** Your league fixtures still to play. No scrolling of its own: the screen
+ *  below and Play's Matches segment (app/(tabs)/play.tsx) each wrap it. */
+export function UpcomingFixturesList() {
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
 
@@ -132,26 +134,34 @@ export default function UpcomingFixturesScreen() {
   const upcoming = fixtures.status === 'ready' ? fixtures.fixtures.filter((f) => f.status !== 'completed') : [];
 
   return (
+    <View style={styles.list}>
+      {fixtures.status === 'loading' ? <ActivityIndicator /> : null}
+      {fixtures.status === 'error' ? (
+        <ThemedText style={styles.note}>Could not load fixtures: {fixtures.message}</ThemedText>
+      ) : null}
+      {fixtures.status === 'ready' && upcoming.length === 0 ? (
+        <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
+          No upcoming fixtures — these fill in once your team is registered in a league with
+          opponents.
+        </IconLabel>
+      ) : null}
+      {upcoming.map((fixture) => (
+        <FixtureRow
+          key={fixture.id}
+          fixture={fixture}
+          myCaptainTeamIds={myCaptainTeamIds}
+          onChanged={fixtures.reload}
+        />
+      ))}
+    </View>
+  );
+}
+
+export default function UpcomingFixturesScreen() {
+  return (
     <SafeAreaView style={styles.flex} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {fixtures.status === 'loading' ? <ActivityIndicator /> : null}
-        {fixtures.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load fixtures: {fixtures.message}</ThemedText>
-        ) : null}
-        {fixtures.status === 'ready' && upcoming.length === 0 ? (
-          <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            No upcoming fixtures — these fill in once your team is registered in a league with
-            opponents.
-          </IconLabel>
-        ) : null}
-        {upcoming.map((fixture) => (
-          <FixtureRow
-            key={fixture.id}
-            fixture={fixture}
-            myCaptainTeamIds={myCaptainTeamIds}
-            onChanged={fixtures.reload}
-          />
-        ))}
+        <UpcomingFixturesList />
       </ScrollView>
     </SafeAreaView>
   );
@@ -162,9 +172,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    gap: 10,
     padding: 16,
     paddingBottom: 48,
+  },
+  list: {
+    gap: 10,
   },
   note: {
     fontSize: 12,

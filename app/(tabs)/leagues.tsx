@@ -1,8 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js';
-import { router, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
@@ -16,6 +15,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { CAPACITY_OPTIONS } from '@/lib/booking';
 import { canLogFixtureScore, formatFixtureWhen } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
+import { playHref } from '@/lib/play-segments';
 import { registerTeamForLeague, startLeagueSeason, type League } from '@/lib/leagues';
 import { supabase } from '@/lib/supabase';
 import {
@@ -627,7 +627,9 @@ function OpenLeagueSection({
   );
 }
 
-export default function LeaguesScreen() {
+/** Leagues, shown in Play's Leagues segment (app/(tabs)/play.tsx). Scrolls
+ *  itself. */
+export function LeaguesContent() {
   const leaguesState = useLeagues();
   const [format, setFormat] = useState(FORMATS[0]);
   const [city, setCity] = useState(CITIES[0]);
@@ -635,57 +637,59 @@ export default function LeaguesScreen() {
   const leagues = leaguesState.status === 'ready' ? leaguesState.leagues : [];
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.titleRow}>
-          <IconLabel icon="trophy.fill" type="title" iconSize={28}>League</IconLabel>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/matchmaking')}
-            style={styles.matchmakingLink}>
-            <IconSymbol name="calendar" size={14} color={FuttyColors.emerald950} />
-            <ThemedText style={styles.matchmakingLinkText}>Matchmaking</ThemedText>
-            <IconSymbol name="chevron.right" size={16} color={FuttyColors.emerald950} />
-          </Pressable>
-        </View>
+    <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
+      <View style={styles.titleRow}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/matchmaking')}
+          style={styles.matchmakingLink}>
+          <IconSymbol name="calendar" size={14} color={FuttyColors.emerald950} />
+          <ThemedText style={styles.matchmakingLinkText}>Matchmaking</ThemedText>
+          <IconSymbol name="chevron.right" size={16} color={FuttyColors.emerald950} />
+        </Pressable>
+      </View>
 
-        <IconLabel icon="sportscourt.fill" type="subtitle">Format</IconLabel>
-        <View style={styles.wrapRow}>
-          {FORMATS.map((f) => (
-            <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
-          ))}
-        </View>
+      <IconLabel icon="sportscourt.fill" type="subtitle">Format</IconLabel>
+      <View style={styles.wrapRow}>
+        {FORMATS.map((f) => (
+          <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
+        ))}
+      </View>
 
-        {leaguesState.status === 'loading' ? <ActivityIndicator /> : null}
-        {leaguesState.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load leagues: {leaguesState.message}</ThemedText>
-        ) : null}
+      {leaguesState.status === 'loading' ? <ActivityIndicator /> : null}
+      {leaguesState.status === 'error' ? (
+        <ThemedText style={styles.note}>Could not load leagues: {leaguesState.message}</ThemedText>
+      ) : null}
 
-        {leaguesState.status === 'ready' ? (
-          <>
-            <IconLabel icon="globe" type="subtitle">Island-wide league</IconLabel>
-            <StandardLeagueSection format={format} leagues={leagues} />
+      {leaguesState.status === 'ready' ? (
+        <>
+          <IconLabel icon="globe" type="subtitle">Island-wide league</IconLabel>
+          <StandardLeagueSection format={format} leagues={leagues} />
 
-            <IconLabel icon="building.2.fill" type="subtitle">Open League city</IconLabel>
-            <View style={styles.wrapRow}>
-              {CITIES.map((c) => (
-                <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
-              ))}
-            </View>
-            <OpenLeagueSection
-              format={format}
-              city={city}
-              leagues={leagues}
-              reloadLeagues={leaguesState.reload}
-            />
-          </>
-        ) : null}
+          <IconLabel icon="building.2.fill" type="subtitle">Open League city</IconLabel>
+          <View style={styles.wrapRow}>
+            {CITIES.map((c) => (
+              <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
+            ))}
+          </View>
+          <OpenLeagueSection
+            format={format}
+            city={city}
+            leagues={leagues}
+            reloadLeagues={leaguesState.reload}
+          />
+        </>
+      ) : null}
 
-        <IconLabel icon="list.clipboard.fill" type="subtitle">Your fixtures</IconLabel>
-        <FixturesSection />
-      </ScrollView>
-    </SafeAreaView>
+      <IconLabel icon="list.clipboard.fill" type="subtitle">Your fixtures</IconLabel>
+      <FixturesSection />
+    </ScrollView>
   );
+}
+
+/** /leagues is no longer a tab: it opens Play on Leagues. */
+export default function LeaguesRoute() {
+  return <Redirect href={playHref('leagues')} />;
 }
 
 const styles = StyleSheet.create({
@@ -705,7 +709,7 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
   },
   fixtureRow: {
     borderWidth: 1,
