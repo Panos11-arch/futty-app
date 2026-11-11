@@ -1,6 +1,6 @@
 # 14 Futty – Claude Code Prompts
 
-7 November 2026, split updated 9 November · Panos runs the P prompts, Anghelo the A and U prompts (and the venue data spreadsheets); Dimitris: pitch deck · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
+7 November 2026, split updated 9 and 11 November · Panos runs P9 and P5, Dimitris the other remaining P prompts, Anghelo the A and U prompts (and the venue data spreadsheets) · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
 
 **One prompt = one pull request.** Do them in the order below. A prompt starts only when everything in its "Needs" column is merged. Every prompt names the spec sections it implements and the tests that prove it.
 
@@ -18,7 +18,7 @@
 
 ## Who runs what (from 9 November)
 
-**Panos runs the payments prompts (P), Anghelo runs the match and design prompts (A and U).** Each works in his own files (the Ownership table in CLAUDE.md), on his own branches (`panos/...`, `anghelo/...`), and merges his own pull requests once CI is green and a fresh Claude Code session has reviewed the diff. A pull request that changes a shared file (`package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`) needs a quick OK from the other person before merging.
+**Panos runs the payments prompts (P), Anghelo runs the match and design prompts (A and U).** Each works in his own files (the Ownership table in CLAUDE.md), on his own branches (`panos/...`, `anghelo/...`), and merges his own pull requests once CI is green and a fresh Claude Code session has reviewed the diff. Dimitris uses `dimitris/...` branches and takes over Panos's column from 12 November (below). A pull request that changes a shared file (`package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`) needs a quick OK from the other person before merging.
 
 **Only Panos changes production:** he applies every merged migration (both tracks) with `supabase db push`, deploys Edge Functions and runs EAS builds. Anghelo works on his local database only.
 
@@ -40,6 +40,21 @@
 | 12 | P12 6 v 6 switching | — | 4 |
 
 About 50 hours before 20 November and 45 after.
+
+### Dimitris, from 12 November
+
+Dimitris takes over Panos's remaining P prompts; Panos keeps P9 and P5 (11 November), reviews every money PR before it's merged, and alone changes production. Dimitris works on his local database only, with `stripe-fake.ts`, and never holds the service_role key, a Stripe `sk_` key, the database password or the Apple login. The prompts are the ones below, with these notes: P8 creates matches in its tests with `create_match_for_booking`; P6 leaves out the bad-forecast nudge, which P11 adds; P11 and P4d use fakes and list the secrets and Stripe settings Panos must set; P7 is code and `docs/release-checklist.md` only, and Panos runs the build, the upload and the production steps.
+
+| Order | Prompt | Waits for | Hours |
+| --- | --- | --- | --- |
+| 1 | P8 Gipedo Pano | — | 10 |
+| 2 | P10 Shared rules and Futty AI | P5 and P9 merged | 6 |
+| any time | Finish `panos/match-sync` | Anghelo's `create_match_for_booking` upgrade | 1 |
+| 3 | P6 Venue dashboard | P9 | 20 |
+| 4 | P12 6 v 6 switching | P5 | 4 |
+| 5 | P11 Weather | P9, P10 | 6 |
+| 6 | P4d Venue payouts | P6 | 8 |
+| 7 | P7 Release build (code part) | P5, P10, Anghelo's "Now" prompts | 3 |
 
 ### Anghelo, in this order
 
