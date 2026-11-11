@@ -1,4 +1,30 @@
-import { appleMapsUrl, googleMapsUrl, offerWhen, pitchSummary, shortTime, weekdaysLabel } from './venue-page';
+import {
+  appleMapsUrl,
+  cancellationLines,
+  googleMapsUrl,
+  offerWhen,
+  pitchSummary,
+  shortTime,
+  weekdaysLabel,
+} from './venue-page';
+
+describe('cancellationLines', () => {
+  it('builds the three lines from the server\'s numbers', () => {
+    expect(cancellationLines({ fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 })).toEqual([
+      'Cancel within 1 hour of paying and get everything back, if you booked more than 6 hours before kickoff.',
+      'After that, €1.00 is kept and the rest becomes credit at this venue, until 6 hours before kickoff.',
+      'Less than 6 hours before kickoff, there are no refunds.',
+    ]);
+  });
+
+  it('words other numbers correctly', () => {
+    const [free, kept, late] = cancellationLines({ fee_cents: 250, free_minutes: 120, refund_cutoff_hours: 1 });
+    expect(free).toBe('Cancel within 2 hours of paying and get everything back, if you booked more than 1 hour before kickoff.');
+    expect(kept).toContain('€2.50 is kept');
+    expect(late).toBe('Less than 1 hour before kickoff, there are no refunds.');
+    expect(cancellationLines({ fee_cents: 100, free_minutes: 45, refund_cutoff_hours: 6 })[0]).toContain('within 45 minutes');
+  });
+});
 
 const venue = { name: 'Nuevo Campo', address: '2 Aristidou Street', city: 'Nicosia', google_maps_link: null };
 

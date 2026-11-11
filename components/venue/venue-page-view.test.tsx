@@ -29,6 +29,7 @@ const bare: VenuePageData = {
     is_live: true,
   },
   bookable: false,
+  cancellation: { fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 },
   photos: [],
   amenities: [],
   pitches: [],
@@ -141,6 +142,7 @@ describe('VenuePageView', () => {
     expect(screen.getByText('Peak €70.00')).toBeTruthy();
 
     expect(screen.getByText(/Cancel within 1 hour of paying/)).toBeTruthy();
+    expect(screen.getByText(/€1\.00 is kept/)).toBeTruthy();
     expect(screen.getByText(/Less than 6 hours before kickoff/)).toBeTruthy();
 
     expect(screen.getByText('Lemonade')).toBeTruthy();
@@ -152,6 +154,18 @@ describe('VenuePageView', () => {
     expect(p.onDirections).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole('button', { name: 'Book' }));
     expect(p.onBook).toHaveBeenCalledTimes(1);
+  });
+
+  it('the cancellation lines follow the server\'s numbers', async () => {
+    await render(
+      <VenuePageView
+        state={ready({ ...bare, cancellation: { fee_cents: 150, free_minutes: 90, refund_cutoff_hours: 12 } })}
+        {...props()}
+      />,
+    );
+    expect(screen.getByText(/Cancel within 90 minutes of paying.*more than 12 hours before kickoff/)).toBeTruthy();
+    expect(screen.getByText(/€1\.50 is kept/)).toBeTruthy();
+    expect(screen.getByText('Less than 12 hours before kickoff, there are no refunds.')).toBeTruthy();
   });
 
   it('a photo the server couldn\'t sign is left out', async () => {

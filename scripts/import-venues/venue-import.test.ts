@@ -7,6 +7,7 @@ import {
   readAmenity,
   readSpan,
   readWeekdays,
+  syncStorage,
   type Row,
   toRows,
   toSql,
@@ -294,6 +295,38 @@ describe('uploadPhotos', () => {
     const upload = jest.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('network'));
     await expect(uploadPhotos(uploads, upload)).rejects.toThrow('network');
     expect(upload).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('syncStorage', () => {
+  const storage = (files: Record<string, string[]>) => ({
+    list: jest.fn(async (key: string) => files[key] ?? []),
+    upload: jest.fn().mockResolvedValue(undefined),
+    remove: jest.fn().mockResolvedValue(undefined),
+  });
+
+  it('withdrawn permission: every file of that venue is deleted from storage, and nothing uploaded', async () => {
+    const s = storage({ V001: ['V001/a.jpg', 'V001/b.jpg', 'V001/items/lemonade.jpg'] });
+    const result = await syncStorage(buildImport(input()), s);
+    expect(s.upload).not.toHaveBeenCalled();
+    expect(s.remove).toHaveBeenCalledWith(['V001/a.jpg', 'V001/b.jpg', 'V001/items/lemonade.jpg']);
+    expect(result).toEqual({ uploaded: 0, deleted: ['V001/a.jpg', 'V001/b.jpg', 'V001/items/lemonade.jpg'] });
+  });
+
+  it('with permission: uploads the sheet\'s photos and deletes only the ones dropped from it', async () => {
+    const s = storage({ V001: ['V001/a.jpg', 'V001/old.jpg', 'V001/items/lemonade.jpg', 'V001/items/gone.jpg'] });
+    const result = await syncStorage(buildImport(input({ venues: [venueRow({ photo_permission_given: 'yes' })] })), s);
+    expect(s.upload).toHaveBeenCalledTimes(3);
+    expect(s.remove).toHaveBeenCalledWith(['V001/items/gone.jpg', 'V001/old.jpg']);
+    expect(result.uploaded).toBe(3);
+  });
+
+  it('nothing to delete: no delete call; venues not in this import are never touched', async () => {
+    const s = storage({ V001: [], V002: ['V002/a.jpg'] });
+    await syncStorage(buildImport(input()), s);
+    expect(s.list).toHaveBeenCalledWith('V001');
+    expect(s.list).not.toHaveBeenCalledWith('V002');
+    expect(s.remove).not.toHaveBeenCalled();
   });
 });
 

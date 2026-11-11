@@ -437,6 +437,38 @@ export async function uploadPhotos(uploads: Upload[], upload: Uploader): Promise
   return uploads.length;
 }
 
+/** Storage files to delete: every file in an imported venue's folders
+ *  (<venue_id>/ and <venue_id>/items/) that this import doesn't upload.
+ *  That's every file of a venue whose photo permission was withdrawn, and
+ *  any photo dropped from the sheet. Other venues' folders aren't touched. */
+export function filesToDelete(plan: ImportPlan, existing: Record<string, string[]>): string[] {
+  const keep = new Set(plan.uploads.map((u) => u.storagePath));
+  const imported = new Set(plan.venues.map((v) => v.import_key));
+  return Object.entries(existing)
+    .filter(([key]) => imported.has(key))
+    .flatMap(([, paths]) => paths)
+    .filter((path) => !keep.has(path))
+    .sort();
+}
+
+export type StorageClient = {
+  /** Every file path under one venue's folders, e.g. ["V001/a.jpg", "V001/items/x.jpg"]. */
+  list: (importKey: string) => Promise<string[]>;
+  upload: Uploader;
+  remove: (paths: string[]) => Promise<void>;
+};
+
+/** Brings storage in line with the import: uploads its photos, then deletes
+ *  the files it no longer has (permission withdrawn, photo dropped). */
+export async function syncStorage(plan: ImportPlan, storage: StorageClient) {
+  const existing: Record<string, string[]> = {};
+  for (const venue of plan.venues) existing[venue.import_key] = await storage.list(venue.import_key);
+  const uploaded = await uploadPhotos(plan.uploads, storage.upload);
+  const doomed = filesToDelete(plan, existing);
+  if (doomed.length > 0) await storage.remove(doomed);
+  return { uploaded, deleted: doomed };
+}
+
 /** Only the local stack, unless the person running it says otherwise. */
 export function isLocalUrl(url: string): boolean {
   try {

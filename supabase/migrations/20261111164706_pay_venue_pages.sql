@@ -9,9 +9,11 @@
 --   * venue_import_details keeps what the sheet says for our own use only
 --     (the pitch_size text, the sheet's status and notes); players never
 --     read it;
---   * a venue that isn't live is hidden from players completely: its row,
---     pitches, hours, prices, photos, amenities and items are readable only
---     by its owner;
+--   * a venue that isn't live is hidden from discovery: its row, pitches,
+--     hours, prices, photos, amenities and items are readable only by its
+--     owner and by players who already hold a booking, a debt or credit
+--     there (so their bookings still show it); it's never in the Book list
+--     and can't be booked;
 --   * import_venue loads one venue from the sheet (service_role only,
 --     idempotent on the import key); venue_page returns everything the
 --     venue page shows.
@@ -83,7 +85,9 @@ create table public.venue_menu_items (
 );
 create index venue_menu_items_venue_idx on public.venue_menu_items (venue_id) where active;
 
--- Whether the signed-in caller may see a venue: it's live, or it's theirs.
+-- Whether the signed-in caller may see a venue: it's live, it's theirs, or
+-- they already hold a booking (as its booker or with a share), a debt or
+-- credit there. Not live is hidden from discovery, not from them.
 create or replace function public.venue_visible(p_venue_id uuid)
 returns boolean
 language sql
@@ -93,16 +97,27 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.venues v
-    where v.id = p_venue_id and (v.is_live or v.owner_profile_id = (select auth.uid()))
+    where v.id = p_venue_id
+      and (
+        v.is_live
+        or v.owner_profile_id = (select auth.uid())
+        or exists (select 1 from public.venue_bookings b
+                   where b.venue_id = v.id
+                     and (b.created_by = (select auth.uid())
+                          or exists (select 1 from public.booking_payment_shares s
+                                     where s.booking_id = b.id and s.profile_id = (select auth.uid()))))
+        or exists (select 1 from public.venue_debts d where d.venue_id = v.id and d.profile_id = (select auth.uid()))
+        or exists (select 1 from public.venue_credits c where c.venue_id = v.id and c.profile_id = (select auth.uid()))
+      )
   );
 $$;
 revoke all on function public.venue_visible(uuid) from public, anon;
 grant execute on function public.venue_visible(uuid) to authenticated, service_role;
 
--- A venue that isn't live is hidden from players: only its owner reads it.
+-- A venue that isn't live is hidden from discovery (see venue_visible).
 drop policy "Signed-in users can read venues" on public.venues;
-create policy "Signed-in users read live venues, owners their own" on public.venues
-  for select to authenticated using (is_live or owner_profile_id = (select auth.uid()));
+create policy "Signed-in users read visible venues" on public.venues
+  for select to authenticated using (public.venue_visible(id));
 
 drop policy "Signed-in users read pitches" on public.pitches;
 create policy "Signed-in users read pitches of visible venues" on public.pitches
@@ -145,20 +160,34 @@ grant all on public.venue_import_details, public.venue_photos, public.venue_amen
 
 -- Photos: a private bucket. The import stores files at <import key>/<file>
 -- and <import key>/items/<file> (V001/...), so their paths are known before
--- the venue exists; a venue without an import key uses its id as the
--- folder. Readable (and so signable) only where the venue is visible;
--- written only by the import (service_role).
+-- the venue exists. A file is readable (and so signable) only when a
+-- venue_photos row or an item's photo_path points to it and the caller may
+-- see that venue (and, for an item, the item). A file nothing points to
+-- (permission withdrawn, photo dropped from the sheet) can't be read; the
+-- import deletes it through the Storage API. Written only by the import
+-- (service_role).
 insert into storage.buckets (id, name, public)
 values ('venue-photos', 'venue-photos', false)
 on conflict (id) do nothing;
 
+create or replace function public.venue_photo_readable(p_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.venue_photos p where p.storage_path = p_name and public.venue_visible(p.venue_id))
+      or exists (select 1 from public.venue_menu_items i
+                 join public.venues v on v.id = i.venue_id
+                 where i.photo_path = p_name and public.venue_visible(i.venue_id)
+                   and (i.active or v.owner_profile_id = (select auth.uid())));
+$$;
+revoke all on function public.venue_photo_readable(text) from public, anon;
+grant execute on function public.venue_photo_readable(text) to authenticated, service_role;
+
 create policy "Signed-in users read photos of visible venues" on storage.objects
-  for select to authenticated using (
-    bucket_id = 'venue-photos'
-    and exists (select 1 from public.venues v
-                where (v.import_key = (storage.foldername(objects.name))[1] or v.id::text = (storage.foldername(objects.name))[1])
-                  and public.venue_visible(v.id))
-  );
+  for select to authenticated using (bucket_id = 'venue-photos' and public.venue_photo_readable(name));
 
 -- Loads one venue from the venue sheet. Idempotent: keyed on import_key
 -- (V001...), or on an existing venue's id when the import's mapping file
@@ -292,6 +321,23 @@ $$;
 revoke all on function public.import_venue(jsonb) from public, anon, authenticated;
 grant execute on function public.import_venue(jsonb) to service_role;
 
+-- The cancellation numbers players are shown: the €1 kept in the middle
+-- window, the free cancellation after paying, and the cutoff before kickoff
+-- after which nothing comes back (spec 13, "Cancellations and refunds").
+-- The same numbers cancellation_plan, cancellation_window and
+-- money_capture_due_at use (pay-venue-pages-1 checks they agree); P10 moves
+-- them into app_rules.
+create or replace function public.cancellation_terms()
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $$
+  select jsonb_build_object('fee_cents', 100, 'free_minutes', 60, 'refund_cutoff_hours', 6);
+$$;
+revoke all on function public.cancellation_terms() from public, anon;
+grant execute on function public.cancellation_terms() to authenticated, service_role;
+
 -- Everything the venue page shows, for a venue the caller may see. Prices
 -- are the venue's hourly price per format, from price_rules; bookable is
 -- false when the venue isn't live or has no price.
@@ -316,6 +362,7 @@ begin
       'google_maps_link', v_venue.google_maps_link, 'phone', v_venue.phone, 'website', v_venue.website,
       'instagram', v_venue.instagram, 'is_live', v_venue.is_live),
     'bookable', v_venue.is_live and exists (select 1 from public.price_rules r where r.venue_id = p_venue_id),
+    'cancellation', public.cancellation_terms(),
     'photos', coalesce((select jsonb_agg(jsonb_build_object('storage_path', p.storage_path, 'pitch_id', p.pitch_id)
                                          order by p.pitch_id nulls first, p.sort_order, p.storage_path)
                         from public.venue_photos p where p.venue_id = p_venue_id), '[]'::jsonb),

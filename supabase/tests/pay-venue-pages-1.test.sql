@@ -31,14 +31,14 @@ as $$
       jsonb_build_object('kind', 'parking', 'note', 'free'),
       jsonb_build_object('kind', 'cafe_or_bar', 'note', null)),
     'photos', jsonb_build_array(
-      jsonb_build_object('storage_path', p_key || '-photo-1.jpg', 'sort_order', 1),
-      jsonb_build_object('storage_path', p_key || '-photo-2.jpg', 'sort_order', 2)),
+      jsonb_build_object('storage_path', p_key || '/photo-1.jpg', 'sort_order', 1),
+      jsonb_build_object('storage_path', p_key || '/photo-2.jpg', 'sort_order', 2)),
     'items', jsonb_build_array(
       jsonb_build_object('name', 'Lemonade', 'category', 'drink', 'description', 'Fresh lemonade, 500 ml',
                          'price_cents', 300, 'available_from', '15:00', 'available_to', '22:30',
                          'available_weekdays', jsonb_build_array(1, 2, 3, 4, 5, 6, 7), 'is_post_match_offer', true,
                          'offer_text', 'Lemonade after your match', 'offer_price_cents', 250,
-                         'photo_path', 'items/lemonade.jpg', 'dietary_tags', jsonb_build_array('vegan'), 'active', true),
+                         'photo_path', p_key || '/items/lemonade.jpg', 'dietary_tags', jsonb_build_array('vegan'), 'active', true),
       jsonb_build_object('name', 'Old pie', 'category', 'food', 'price_cents', 450, 'is_post_match_offer', true,
                          'offer_text', 'Pie deal', 'active', false))
   ) || p_extra;
@@ -213,8 +213,8 @@ begin
   assert not has_table_privilege('authenticated', 'public.venue_import_details', 'select'), 'players never read the sheet notes';
 end $$;
 
--- 7. A venue that isn't live is hidden from players completely; its owner
---    still sees it.
+-- 7. A venue that isn't live is hidden from discovery: a player with nothing
+--    there can't see it at all; its owner still sees it.
 do $$
 declare
   v_owner uuid := tests.create_user('vp-owner@futty.test');
@@ -301,24 +301,119 @@ begin
   perform tests.act_as_postgres();
 end $$;
 
--- 10. Photo files: private bucket, readable only where the venue is visible.
+-- 10. Photo files: private bucket. A file is readable only when a
+--     venue_photos row (or an active item) points to it and the venue is
+--     visible; a file nothing points to can't be read, even at a live venue.
 do $$
 declare
   v_player uuid := tests.create_user('vp-files@futty.test');
   v_hidden uuid := tests.vp_import(tests.vp_venue('V970'));
   v_live uuid := tests.vp_import(tests.vp_venue('V971'));
+  v_seen text[];
 begin
   update public.venues set is_live = true where id = v_live;
+  update public.venue_menu_items set photo_path = 'V971/items/pie.jpg' where venue_id = v_live and name = 'Old pie';
   assert not (select public from storage.buckets where id = 'venue-photos'), 'private bucket';
   insert into storage.objects (bucket_id, name) values
-    ('venue-photos', 'V970/a.jpg'), ('venue-photos', 'V971/b.jpg'), ('venue-photos', 'V971/items/lemonade.jpg'),
-    ('venue-photos', v_hidden || '/c.jpg'), ('venue-photos', v_live || '/d.jpg'), ('venue-photos', 'V999/e.jpg');
+    ('venue-photos', 'V970/photo-1.jpg'),          -- a row, but the venue isn't live
+    ('venue-photos', 'V971/photo-1.jpg'),          -- a row, live venue
+    ('venue-photos', 'V971/items/lemonade.jpg'),   -- an active item
+    ('venue-photos', 'V971/items/pie.jpg'),        -- an inactive item
+    ('venue-photos', 'V971/stray.jpg'),            -- nothing points to it
+    ('venue-photos', v_live || '/other.jpg');      -- nothing points to it
   perform tests.act_as(v_player);
-  assert (select array_agg(name order by name) from storage.objects where bucket_id = 'venue-photos')
-         = (select array_agg(x order by x) from unnest(array['V971/b.jpg', 'V971/items/lemonade.jpg', v_live || '/d.jpg']) x),
-    format('only the live venue''s files, got %s',
-           (select array_agg(name order by name) from storage.objects where bucket_id = 'venue-photos'));
+  select array_agg(name order by name) into v_seen from storage.objects where bucket_id = 'venue-photos';
+  assert v_seen = (select array_agg(x order by x) from unnest(array['V971/photo-1.jpg', 'V971/items/lemonade.jpg']) x),
+    format('only files a row points to, at a visible venue, got %s', v_seen);
   perform tests.act_as_postgres();
+
+  -- Permission withdrawn: the rows go, so the files can't be read.
+  perform tests.vp_import(tests.vp_venue('V971', '{"photo_permission": false}'));
+  perform tests.act_as(v_player);
+  assert not exists (select 1 from storage.objects where bucket_id = 'venue-photos'), 'no file readable after withdrawal';
+  perform tests.act_as_postgres();
+end $$;
+
+-- 11. A venue switched off is hidden from discovery, not from players who
+--     already hold a booking, a debt or credit there: they still read it
+--     and their booking's pitch; a player with nothing there doesn't.
+do $$
+declare
+  v_booker uuid := tests.create_user('vp-held-booker@futty.test');
+  v_debtor uuid := tests.create_user('vp-held-debtor@futty.test');
+  v_creditor uuid := tests.create_user('vp-held-creditor@futty.test');
+  v_stranger uuid := tests.create_user('vp-held-stranger@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_player uuid;
+  v_who uuid;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 1, tests.cyprus_today() + 3,
+                                          p_label => 'vp-held');
+  perform tests.act_as_postgres();
+  v_player := (tests.player(v_booking.id, 1)).profile_id;
+  perform tests.give_credit(v_creditor, v_venue, 500);
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (v_debtor, 'venue', v_venue, v_booking.id, 680, 600, 80, 'unpaid_share');
+  update public.venues set is_live = false where id = v_venue;
+
+  foreach v_who in array array[v_booker, v_player, v_debtor, v_creditor] loop
+    perform tests.act_as(v_who);
+    assert exists (select 1 from public.venues where id = v_venue), format('%s still reads the venue', v_who);
+    assert (public.venue_page(v_venue) ->> 'bookable')::boolean = false, 'its page, but it can''t be booked';
+    perform tests.act_as_postgres();
+  end loop;
+
+  perform tests.act_as(v_booker);
+  assert (select v.name from public.venue_bookings b join public.venues v on v.id = b.venue_id where b.id = v_booking.id)
+         is not null, 'the booking shows its venue';
+  assert exists (select 1 from public.booking_pitches bp join public.pitches p on p.id = bp.pitch_id
+                 where bp.booking_id = v_booking.id), 'and its pitch';
+
+  perform tests.act_as(v_stranger);
+  assert not exists (select 1 from public.venues where id = v_venue), 'a player with nothing there doesn''t see it';
+  assert tests.error_of(format('select public.venue_page(%L)', v_venue)) = 'venue_not_found', 'nor its page';
+  perform tests.act_as_postgres();
+end $$;
+
+-- 12. The cancellation numbers the page shows are the ones the cancellation
+--     code uses: the free minutes after paying, the cutoff before kickoff
+--     and the amount kept in the middle window.
+do $$
+declare
+  v_terms jsonb := public.cancellation_terms();
+  v_free interval := make_interval(mins => (v_terms ->> 'free_minutes')::integer);
+  v_cutoff interval := make_interval(hours => (v_terms ->> 'refund_cutoff_hours')::integer);
+  v_booker uuid := tests.create_user('vp-terms-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_free_share public.booking_payment_shares;
+  v_middle_share public.booking_payment_shares;
+  v_line jsonb;
+  v_paid timestamptz := '2026-11-11 10:00:00+00';
+begin
+  assert v_terms = jsonb_build_object('fee_cents', 100, 'free_minutes', 60, 'refund_cutoff_hours', 6), 'the terms';
+  assert public.money_capture_due_at(v_paid, v_paid + interval '10 days') = v_paid + v_free, 'free minutes';
+  assert not public.money_is_non_refundable(v_paid, v_paid + v_cutoff), 'exactly the cutoff is still refundable';
+  assert public.money_is_non_refundable(v_paid, v_paid + v_cutoff - interval '1 minute'), 'less than the cutoff is not';
+
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 2, tests.cyprus_today() + 3,
+                                          p_label => 'vp-terms');
+  perform tests.act_as_postgres();
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_vp_t0', interval '3 hours');
+  v_free_share := tests.pay_ago((tests.player(v_booking.id, 1)).id, 'pi_vp_t1', v_free - interval '1 minute');
+  v_middle_share := tests.pay_ago((tests.player(v_booking.id, 2)).id, 'pi_vp_t2', v_free + interval '1 minute');
+  assert tests.quote_line(tests.plan(v_booking.id, 'my_spot', v_free_share.profile_id), v_free_share.id) ->> 'window' = 'free',
+    'inside the free minutes: free';
+  v_line := tests.quote_line(tests.plan(v_booking.id, 'my_spot', v_middle_share.profile_id), v_middle_share.id);
+  assert v_line ->> 'window' = 'middle' and (v_line ->> 'kept_cents')::integer = (v_terms ->> 'fee_cents')::integer,
+    format('after them: middle, the fee kept, got %s', v_line);
+
+  perform tests.set_kickoff(v_booking.id, now() + v_cutoff - interval '1 minute');
+  assert tests.quote_line(tests.plan(v_booking.id, 'my_spot', v_middle_share.profile_id), v_middle_share.id) ->> 'window' = 'late',
+    'less than the cutoff before kickoff: late';
 end $$;
 
 select 'pay venue pages 1 passed' as result;

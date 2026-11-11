@@ -39,7 +39,7 @@ Needs Node 24, which runs `venue-import.ts` directly. Node prints a `MODULE_TYPE
 
 The script:
 - prints what it will import and a report of every cell it didn't import, such as a close after midnight, an amenity that's neither yes nor no, or an unreadable price;
-- uploads the photos with permission, if there are any. This uses the Storage API at `SUPABASE_URL` (default `http://127.0.0.1:54321`) with `SUPABASE_SERVICE_ROLE_KEY`. It refuses a URL that isn't local unless you pass `--allow-remote`;
+- with `SUPABASE_SERVICE_ROLE_KEY` set, brings storage in line through the Storage API at `SUPABASE_URL` (default `http://127.0.0.1:54321`). It uploads the photos that have permission, and deletes every other file in an imported venue's folders: all of them when permission was withdrawn, or a photo dropped from the sheet. It refuses a URL that isn't local unless you pass `--allow-remote`. Without the key, storage isn't touched (this is allowed only when there's nothing to upload) and the script says so. Players can't read a file no photo row points to anyway;
 - writes `venue-import.sql` next to the CSVs (or to `--out`). The file runs `public.import_venue` for every venue in one transaction.
 
 Then run that SQL. Locally, with only the database running (`npx supabase db start`):

@@ -3,6 +3,7 @@
 // server's venue_page function: the app only formats it. Amounts are
 // integer cents from price_rules and venue_menu_items, never computed here.
 import type { IconSymbolName } from '@/components/ui/icon-symbol';
+import { formatEuros } from '@/lib/money/format';
 
 export type AmenityKind =
   | 'parking'
@@ -31,6 +32,8 @@ export type VenuePageData = {
   };
   /** False when the venue isn't live or has no price: the Book bar is off. */
   bookable: boolean;
+  /** The cancellation numbers, from the server (cancellation_terms). */
+  cancellation: CancellationTerms;
   photos: { storage_path: string; pitch_id: string | null }[];
   amenities: { kind: AmenityKind; note: string | null }[];
   pitches: {
@@ -76,13 +79,30 @@ export const AMENITIES: Record<AmenityKind, { label: string; icon: IconSymbolNam
   other: { label: 'More', icon: 'ellipsis' },
 };
 
-/** The cancellation rules from spec 13 "Cancellations and refunds" (the
- *  same for every venue), in three lines as on checkout (spec 15). */
-export const CANCELLATION_RULES = [
-  'Cancel within 1 hour of paying and get everything back, if you booked more than 6 hours before kickoff.',
-  'After that, €1 is kept and the rest becomes credit at this venue, until 6 hours before kickoff.',
-  'Less than 6 hours before kickoff, there are no refunds.',
-] as const;
+export type CancellationTerms = { fee_cents: number; free_minutes: number; refund_cutoff_hours: number };
+
+/** 60 -> "1 hour", 120 -> "2 hours", 90 -> "90 minutes". */
+function minutesWords(minutes: number): string {
+  if (minutes % 60 === 0) return hoursWords(minutes / 60);
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+function hoursWords(hours: number): string {
+  return hours === 1 ? '1 hour' : `${hours} hours`;
+}
+
+/** The cancellation rules (spec 13 "Cancellations and refunds") in three
+ *  lines, as on checkout (spec 15), built from the server's numbers: no
+ *  amount or time is written in the app. */
+export function cancellationLines(terms: CancellationTerms): [string, string, string] {
+  const free = minutesWords(terms.free_minutes);
+  const cutoff = hoursWords(terms.refund_cutoff_hours);
+  return [
+    `Cancel within ${free} of paying and get everything back, if you booked more than ${cutoff} before kickoff.`,
+    `After that, ${formatEuros(terms.fee_cents)} is kept and the rest becomes credit at this venue, until ${cutoff} before kickoff.`,
+    `Less than ${cutoff} before kickoff, there are no refunds.`,
+  ];
+}
 
 /** Apple Maps for the venue: its address, labelled with its name. */
 export function appleMapsUrl(venue: Pick<VenuePageData['venue'], 'name' | 'address' | 'city'>): string {

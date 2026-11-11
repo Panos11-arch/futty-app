@@ -23,7 +23,7 @@ import { initials } from '@/components/ui/avatar';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { formatEuros } from '@/lib/money/format';
 import type { VenuePageState } from '@/lib/use-venue-page';
-import { AMENITIES, CANCELLATION_RULES, offerWhen, pitchSummary, type VenuePageData } from '@/lib/venue-page';
+import { AMENITIES, cancellationLines, offerWhen, pitchSummary, type VenuePageData } from '@/lib/venue-page';
 
 export type VenuePageViewProps = {
   state: VenuePageState;
@@ -142,7 +142,7 @@ export function VenuePageView({ state, onRetry, onDirections, onBook }: VenuePag
           <SectionHeader title="Cancellation" />
           <Card>
             <View style={styles.rules}>
-              {CANCELLATION_RULES.map((rule) => (
+              {cancellationLines(data.cancellation).map((rule) => (
                 <Text key={rule} variant="callout">
                   {rule}
                 </Text>

@@ -82,7 +82,7 @@ function TimeSlotButton({
 }
 
 export default function BookScreen() {
-  const { cities, ...venuesState } = useVenues();
+  const { cities, ...venuesState } = useVenues({ liveOnly: true });
   const profile = useProfile();
   const isPremium = profile.status === 'ready' && profile.profile.is_premium;
 

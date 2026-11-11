@@ -10,15 +10,18 @@
 //
 // --out defaults to venue-import.sql next to the venues CSV, outside the repo.
 //
-// Photos are uploaded through the Storage API at SUPABASE_URL (default the
-// local stack) with SUPABASE_SERVICE_ROLE_KEY. A URL that isn't local is
-// refused unless --allow-remote is given. No venue with photo permission
-// means no upload and no key needed.
+// With SUPABASE_SERVICE_ROLE_KEY set, storage is brought in line through
+// the Storage API at SUPABASE_URL (default the local stack): photos with
+// permission are uploaded, and every other file in an imported venue's
+// folders is deleted (permission withdrawn, photo dropped from the sheet).
+// A URL that isn't local is refused unless --allow-remote is given. Without
+// the key nothing in storage is touched, which is only allowed when there's
+// nothing to upload.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { buildImport, isLocalUrl, parseCsv, toRows, toSql, uploadPhotos } from './venue-import.ts';
+import { buildImport, isLocalUrl, parseCsv, syncStorage, toRows, toSql } from './venue-import.ts';
 
 const { values: args } = parseArgs({
   options: {
@@ -61,24 +64,42 @@ const plan = buildImport({
   photosDir,
 });
 
-if (plan.uploads.length > 0) {
-  const url = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (key) {
   if (!isLocalUrl(url) && !args['allow-remote']) {
-    console.error(`Refusing to upload to ${url}: not local. Pass --allow-remote to upload there.`);
-    process.exit(2);
-  }
-  if (!key) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY is needed to upload photos.');
+    console.error(`Refusing to use storage at ${url}: not local. Pass --allow-remote to use it.`);
     process.exit(2);
   }
   const { createClient } = await import('@supabase/supabase-js');
-  const storage = createClient(url, key, { auth: { persistSession: false } }).storage.from('venue-photos');
-  const uploaded = await uploadPhotos(plan.uploads, async (u) => {
-    const { error } = await storage.upload(u.storagePath, readFileSync(u.localPath), { upsert: true, contentType: u.contentType });
-    if (error) throw new Error(`upload ${u.storagePath}: ${error.message}`);
+  const bucket = createClient(url, key, { auth: { persistSession: false } }).storage.from('venue-photos');
+  const listFolder = async (folder) => {
+    const { data, error } = await bucket.list(folder, { limit: 1000 });
+    if (error) throw new Error(`list ${folder}: ${error.message}`);
+    // Folders come back without an id.
+    return (data ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`);
+  };
+  const result = await syncStorage(plan, {
+    list: async (importKey) => [...(await listFolder(importKey)), ...(await listFolder(`${importKey}/items`))],
+    upload: async (u) => {
+      const { error } = await bucket.upload(u.storagePath, readFileSync(u.localPath), { upsert: true, contentType: u.contentType });
+      if (error) throw new Error(`upload ${u.storagePath}: ${error.message}`);
+    },
+    remove: async (paths) => {
+      const { error } = await bucket.remove(paths);
+      if (error) throw new Error(`delete ${paths.join(', ')}: ${error.message}`);
+    },
   });
-  console.log(`Uploaded ${uploaded} photo(s).`);
+  console.log(`Storage: ${result.uploaded} photo(s) uploaded, ${result.deleted.length} deleted.`);
+  for (const p of result.deleted) console.log(`  - deleted ${p}`);
+} else if (plan.uploads.length > 0) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY is needed to upload photos.');
+  process.exit(2);
+} else {
+  console.log(
+    'Storage not checked (no SUPABASE_SERVICE_ROLE_KEY): files of venues without photo permission were not deleted. ' +
+      'Players still can\'t read them, since no venue_photos row points to them. Set the key to delete them.',
+  );
 }
 
 writeFileSync(out, toSql(plan.venues, new Date().toISOString()));
