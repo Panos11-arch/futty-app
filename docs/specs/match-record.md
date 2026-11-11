@@ -15,10 +15,21 @@ These rules were missing or ambiguous in the specs and were decided while writin
 5. **Forfeits.** A match can end as a forfeit, recorded with the side that forfeited and the reason (`pulled_out` or `no_show`). It appears in `match_result_confirmed` as confirmed, with the other side as the winner. A forfeit counts as a loss in form ("L (forfeit)", 05 section 3) and in stats, but **never moves skill levels**. Gipedo Pano: a team that pulls out less than 6 hours before kickoff counts as the losing team (13), and P8 records it as a `pulled_out` forfeit. What is still open is listed in section 10.
 6. **One notification type for a released spot.** `booking_spot_released` (already sent by P4b) **replaces `spot_released`** from the A1 prompt. `spot_released` isn't allowed.
 
+## 1a. Decisions (10 November, Panos's review and Anghelo, A2)
+
+1. **Check-in code is readable by venue staff.** It isn't stored as a hash only: it is stored in its own table, `match_check_in_codes`, that no app role can read, so `get_match_check_in_code` can return it to that venue's staff (section 5.4).
+2. **A booking that goes back to `pending_payment`** (P4b's undo, when the booker's payment is undone): `create_match_for_booking` leaves the match as it is, with no error. It re-syncs when the booking is confirmed again, or the match is voided if the booking is cancelled (section 6.1).
+3. **`kickoff_at` and `ends_at`** are computed with P4a's `booking_kickoff_at(day, time)` helper, not rebuilt from `booking_day` and `start_time` (section 2).
+4. **Check-in window.** The QR check-in is accepted from 60 minutes before `kickoff_at` until 1 hour after `ends_at`. `captain_mark_attendance` stays open longer, from 60 minutes before `kickoff_at` until `result_deadline_at`, so a captain can still tick who played after the game (section 5.4).
+5. **Pickup sides.** Players pick their own side (Bibs or Non-bibs) in the match screen, and the booker can move anyone. Sides lock once a result is submitted. A player with no side can't accept or reject the result. In a named game, sides come from team membership and aren't chosen (sections 4.3 and 5.4).
+6. **Quiet hours.** There are no defaults: quiet hours are off until a player turns them on and picks the times (A3b). A push held in quiet hours is sent when the player's quiet hours end, except `match_reminder_24h` and `match_reminder_2h`, which are dropped if the game has already started by then (section 6.3).
+7. **Notification types live in a table.** `notification_types` (`type`, `always_sent`) replaces the check constraint on `notifications.type`. A new type is added as a row there, not by editing a constraint.
+8. **What the schema gives today.** Venue staff = the venue's owner (`venues.owner_profile_id`), see section 10. A booking is a named game when a squad post for it (`squad_posts.venue_booking_id`) led to a friendly match (`friendly_matches.squad_post_id`); there is no link from a booking to a league fixture yet, so `league_fixture_id` stays null until one exists. In a named game the booker's team is side `a` and the friendly's other team side `b`; a player who is a member of side `b`'s team (and not side `a`'s) plays on side `b`, everyone else on side `a`.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
-- `kickoff_at = (booking_day + start_time) at time zone 'Asia/Nicosia'` and `ends_at = (booking_day + end_time) at time zone 'Asia/Nicosia'`, both `timestamptz`, copied from `venue_bookings` when the match is created and updated whenever the match is re-synced (section 6.1).
+- `kickoff_at = booking_kickoff_at(booking_day, start_time)` and `ends_at = booking_kickoff_at(booking_day, end_time)`, both `timestamptz`, using P4a's helper (decision 1a.3), set from `venue_bookings` when the match is created and updated whenever the match is re-synced (section 6.1).
 - Deadlines:
   - **Result:** `result_deadline_at = ends_at + 24 hours`.
   - **Scorers:** captains add their own side's scorers for 24 hours after the result is confirmed (05 section 3; A4).
@@ -67,7 +78,6 @@ Every table has RLS enabled. **No table can be written by `anon` or `authenticat
 | `forfeit_reason` | text null | `pulled_out` or `no_show`; set exactly when `forfeit_side` is set |
 | `confirmed_at` | timestamptz null | When the status became `confirmed` |
 | `confirmed_via` | text null | `agreed` (the other side accepted), `deadline` (stood at the deadline) or `forfeit` |
-| `check_in_code_hash` | text | Hash of the per-match QR code (section 5.4); the code itself is never stored or readable by players |
 | `created_at`, `updated_at` | timestamptz | |
 
 RLS: **select** for match members, the booker, captains of either named team, and staff of the venue. Players outside the match see confirmed matches only through the views in section 6 (form, recent matches, match page).
@@ -92,7 +102,7 @@ The booker's side is always side `a`. Team form and head-to-head count named tea
 | `match_id` | uuid | |
 | `profile_id` | uuid null | Null for a guest |
 | `guest_name` | text null | Exactly one of `profile_id` and `guest_name` is set. Guests appear on the match page but never get stats (05 section 2) |
-| `side` | text | `a` or `b`, null until a side is chosen in a pickup game |
+| `side` | text | `a` or `b`. Named game: from team membership. Pickup: null until the player picks a side or the booker moves them; locked once a result is submitted (decision 1a.5) |
 | `position` | text null | Set from the lineup (A4) |
 | `share_id` | uuid null | → `booking_payment_shares.id` the player came from (decision 1) |
 | `left_at` | timestamptz null | Set when the player's share stops holding a spot before kickoff; a player who left isn't in the match |
@@ -160,6 +170,14 @@ Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody c
 
 `match_id`, `side`, `formation` (a preset for the format), `positions` jsonb (position key → `match_players.id`), `updated_by`, `updated_at`. Written by that side's captain or the booker before kickoff, through a function. RLS: select for match members, and for everyone once the match is confirmed.
 
+### 4.9a `match_check_in_codes`
+
+`match_id` pk → `matches.id`, `code` text, `created_at`. One random code per match, made when the match is created. RLS enabled with no policies and no grants to `anon` or `authenticated`: it is read only through `get_match_check_in_code` (venue staff) and `check_in_to_match` (compares it) (decision 1a.1).
+
+### 4.9b `notification_types`
+
+`type` text pk, `always_sent` boolean. One row per type in section 6.3; `notifications.type` and `notification_settings.type` reference it. Readable by everyone signed in; written only by migrations (decision 1a.7).
+
 ### 4.10 `notification_settings`
 
 | Column | Type | Notes |
@@ -172,7 +190,9 @@ Plus `notification_quiet_hours`: `profile_id` pk, `starts_local` time, `ends_loc
 
 ### 4.11 `notification_deliveries`
 
-`id`, `notification_id` → `notifications.id`, `push_token_id` → `push_tokens.id`, `channel` (`push`; `whatsapp` later, A9), `status` (`queued`, `sent`, `failed`, `held_quiet_hours`), `sent_at`, `error`. One row per push. RLS: none for players; service_role only.
+`id`, `notification_id` → `notifications.id`, `push_token_id` → `push_tokens.id`, `channel` (`push`; `whatsapp` later, A9), `status` (`queued`, `sending`, `sent`, `failed`, `held_quiet_hours`, `dropped`), `send_after` (when a held push becomes due: the end of the quiet hours), `sent_at`, `error`, `created_at`. One row per push. RLS: none for players; service_role only.
+
+Pushes are sent by the `notify-send-pushes` Edge Function (every minute): it claims the due deliveries (`queued`, and `held_quiet_hours` whose `send_after` has passed) through `push_deliveries_due`, which hands each delivery out once, sends them to Expo, and records each outcome with `push_delivery_result`.
 
 ## 5. Functions
 
@@ -194,7 +214,7 @@ Every function is `security definer` with `set search_path = ''`. Functions mark
 | `submit_match_result(p_match_id uuid, p_side_a_score integer, p_side_b_score integer)` | void | The caller is a captain of a side (decision 3), else `not_captain`; between `kickoff_at` and `result_deadline_at`, else `result_window_closed`; no earlier submission, else `result_already_submitted`; scores 0 or more, else `invalid_score`. Notifies the other side (`match_result_submitted`) |
 | `respond_to_match_result(p_match_id uuid, p_accept boolean)` | void | The caller is on the other side from the submission: its captain in a named game, any of its players in a pickup game (decision 3), else `not_allowed`; before `result_deadline_at`, else `result_window_closed`; not yet answered, else `already_answered`. Accept → `confirmed` (`confirmed_via = 'agreed'`); reject → `disputed`. Notifies both sides |
 
-A player who wasn't in the match gets `not_in_match` from both (A2 test).
+A player who wasn't in the match gets `not_in_match` from both (A2 test). Answering when nothing was submitted gives `no_result_submitted`; an answer that is neither accept nor reject gives `invalid_answer`. In a pickup game the submission notifies the other side and the players who haven't picked a side.
 
 ### 5.3 Goals, man of the match (authenticated, A4)
 
@@ -207,9 +227,11 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test).
 
 | Function | Caller | What it does |
 | --- | --- | --- |
-| `get_match_check_in_code(p_match_id uuid)` returns text | authenticated, staff of the match's venue only (`not_venue_staff`) | Returns the per-match code the venue shows as a QR. Generated once per match; only its hash is stored |
-| `check_in_to_match(p_match_id uuid, p_code text)` returns void | authenticated | The caller is a player of the match (`not_in_match`); the code matches (`invalid_code`); within the check-in window (open, section 10). Idempotent |
-| `captain_mark_attendance(p_match_id uuid, p_profile_ids uuid[])` returns void | authenticated | The caller is a captain (`not_captain`); every profile is a player on the captain's side (`not_in_match`) |
+| `get_match_check_in_code(p_match_id uuid)` returns text | authenticated, staff of the match's venue only (`not_venue_staff`) | Returns the per-match code the venue shows as a QR. Generated once per match, stored in `match_check_in_codes` (decision 1a.1) |
+| `check_in_to_match(p_match_id uuid, p_code text)` returns void | authenticated | The caller is a player of the match (`not_in_match`); the code matches (`invalid_code`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `ends_at + 1 hour` (`check_in_closed`, decision 1a.4). Idempotent |
+| `captain_mark_attendance(p_match_id uuid, p_profile_ids uuid[])` returns void | authenticated | The caller is a captain (`not_captain`); every profile is a player on the captain's side (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`) |
+| `choose_match_side(p_match_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is a player of the match (`not_in_match`); `a` or `b`, and the booker stays on `a` (`invalid_side`, decision 3); no result submitted yet and the match is `scheduled` or `played` (`sides_locked`) |
+| `set_match_player_side(p_match_id uuid, p_player_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is the booker (`not_booker`); the player row is in the match (`not_in_match`); `a`, `b` or null, and the booker stays on `a` (`invalid_side`); `sides_locked` as above |
 
 ## 6. The contracts
 
@@ -227,7 +249,8 @@ security definer, set search_path = '', service_role only
   - after `kickoff_at` the roster is no longer changed.
 - **Sides:** a booking linked to a friendly match or league fixture gets `kind = 'named'` with the two teams (the booker's team as side `a`); any other booking gets `kind = 'pickup'` with Bibs and Non-bibs. The booker is side `a`'s captain.
 - **Cancelled booking:** if the booking's status is `cancelled` and the match hasn't ended, the match becomes `void` (and stays void).
-- **Errors:** `booking_not_found`; `booking_not_confirmed` when it is called on a booking that has never been confirmed (`pending_payment`); an `owner_block` booking is refused (`not_a_game`).
+- **Back to `pending_payment`** (decision 1a.2): when the booking is `pending_payment` and its match already exists, the function returns the match id and changes nothing, with no error.
+- **Errors:** `booking_not_found`; `booking_not_confirmed` when it is called on a booking that has never been confirmed (`pending_payment` and no match yet); an `owner_block` booking is refused (`not_a_game`).
 
 ### 6.2 Contract 3: `match_result_confirmed` view
 
@@ -272,7 +295,7 @@ The signature is the one the stub already has (`supabase/migrations/202611090100
   1. refuses a type that isn't in the list below (`unknown_notification_type`);
   2. writes **one** `notifications` row, always, whatever the settings;
   3. for a type the player turned off (section 4.10), stops there;
-  4. otherwise sends **one push per push token** of that profile, recording a `notification_deliveries` row for each. During the player's quiet hours the push is held (`held_quiet_hours`) and not sent;
+  4. otherwise sends **one push per push token** of that profile, recording a `notification_deliveries` row for each. During the player's quiet hours the push is held (`held_quiet_hours`) and sent when the quiet hours end; a held `match_reminder_24h` or `match_reminder_2h` whose match has kicked off by then is dropped (`dropped`) instead (decision 1a.6);
   5. WhatsApp comes later (A9) as a second channel chosen per type; the signature doesn't change.
 - **Failures:** a failed push never fails the caller; it is recorded in `notification_deliveries`.
 
@@ -346,9 +369,10 @@ Each one is decided with Panos before the prompt that needs it, and written into
    - whether a forfeit has a score (it is null for now);
    - whether a forfeit counts as a win in the winner's stats;
    - what happens to the match when a Gipedo Pano team pulls out more than 6 hours before kickoff (13 takes €1 per player; is the match `void`?).
-2. **Check-in window:** from when to when the QR check-in is accepted.
+2. ~~Check-in window~~: decided 10 November (decision 1a.4).
 3. **Ratings window:** "within 24 hours" (05 section 4) of the match end or of confirmation.
 4. **Skill level maths** (A5): Elo constants, the size of moves in the first 10 matches, reliability %, and down-weighting raters who give everyone the same score.
 5. **Formation presets** per format, including 6 v 6 (A4).
-6. **Quiet hours:** whether there are defaults; until decided, none.
+6. ~~Quiet hours defaults~~: decided 10 November, none (decision 1a.6).
 7. **A disputed match's goals:** whether scorers can be entered for a disputed match (for now, no: only confirmed).
+8. **Venue staff accounts.** Venue staff is only the venue's owner (`venues.owner_profile_id`) today. Staff accounts (front desk, manager) come later, and they must also be allowed to get the check-in code (`get_match_check_in_code`) and see the venue's matches.
