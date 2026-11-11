@@ -1,7 +1,6 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
@@ -15,6 +14,7 @@ import type { MatchedContact, UnmatchedContact } from '@/lib/contacts';
 import { shareContactInvite } from '@/lib/invite';
 import { listTeams, type TeamListing } from '@/lib/community';
 import { submitReport } from '@/lib/moderation';
+import { playHref } from '@/lib/play-segments';
 import { useAuth } from '@/lib/auth';
 import { useBlocks } from '@/lib/use-blocks';
 import { useContacts } from '@/lib/use-contacts';
@@ -349,7 +349,9 @@ function TeamsTab() {
   );
 }
 
-export default function CommunityScreen() {
+/** Contacts and teams, shown in Play's Community segment
+ *  (app/(tabs)/play.tsx). Scrolls itself. */
+export function CommunityContent() {
   const [view, setView] = useState<CommunityView>('contacts');
   // Once a tab has been opened, its component stays mounted for the rest of
   // the screen's lifetime (toggled with display:none below) instead of
@@ -366,26 +368,27 @@ export default function CommunityScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <IconLabel icon="globe" type="title" iconSize={26}>Community</IconLabel>
+    <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
+      <View style={styles.wrapRow}>
+        <Chip icon="person.2.fill" label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
+        <Chip icon="shield.fill" label="Teams" selected={view === 'teams'} onPress={selectTeams} />
+      </View>
 
-        <View style={styles.wrapRow}>
-          <Chip icon="person.2.fill" label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
-          <Chip icon="shield.fill" label="Teams" selected={view === 'teams'} onPress={selectTeams} />
+      <View style={view === 'contacts' ? undefined : styles.hidden}>
+        <ContactsTab />
+      </View>
+      {openedTeams ? (
+        <View style={view === 'teams' ? undefined : styles.hidden}>
+          <TeamsTab />
         </View>
-
-        <View style={view === 'contacts' ? undefined : styles.hidden}>
-          <ContactsTab />
-        </View>
-        {openedTeams ? (
-          <View style={view === 'teams' ? undefined : styles.hidden}>
-            <TeamsTab />
-          </View>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      ) : null}
+    </ScrollView>
   );
+}
+
+/** /community is no longer a tab: it opens Play on Community. */
+export default function CommunityRoute() {
+  return <Redirect href={playHref('community')} />;
 }
 
 const styles = StyleSheet.create({
