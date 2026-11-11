@@ -24,7 +24,18 @@ These rules were missing or ambiguous in the specs and were decided while writin
 5. **Pickup sides.** Players pick their own side (Bibs or Non-bibs) in the match screen, and the booker can move anyone. Sides lock once a result is submitted. A player with no side can't accept or reject the result. In a named game, sides come from team membership and aren't chosen (sections 4.3 and 5.4).
 6. **Quiet hours.** There are no defaults: quiet hours are off until a player turns them on and picks the times (A3b). A push held in quiet hours is sent when the player's quiet hours end, except `match_reminder_24h` and `match_reminder_2h`, which are dropped if the game has already started by then (section 6.3).
 7. **Notification types live in a table.** `notification_types` (`type`, `always_sent`) replaces the check constraint on `notifications.type`. A new type is added as a row there, not by editing a constraint.
-8. **What the schema gives today.** Venue staff = the venue's owner (`venues.owner_profile_id`), see section 10. A booking is a named game when a squad post for it (`squad_posts.venue_booking_id`) led to a friendly match (`friendly_matches.squad_post_id`); there is no link from a booking to a league fixture yet, so `league_fixture_id` stays null until one exists. In a named game the booker's team is side `a` and the friendly's other team side `b`; a player who is a member of side `b`'s team (and not side `a`'s) plays on side `b`, everyone else on side `a`.
+8. **What the schema gives today.** Venue staff = the venue's owner (`venues.owner_profile_id`), see section 10. A booking is a named game when a squad post for it (`squad_posts.venue_booking_id`) led to a friendly match (`friendly_matches.squad_post_id`); there is no link from a booking to a league fixture yet, so `league_fixture_id` stays null until one exists. In a named game the booker's team is side `a` and the friendly's other team side `b`; a player who is a member of side `b`'s team (and not side `a`'s) plays on side `b`, everyone else on side `a`. Side `b` also lists every member of its team (decision 1b.1).
+
+## 1b. Decisions (11 November, agreed with Panos)
+
+1. **A pickup becomes a named game when a friendly is agreed later.** When `create_match_for_booking` is called again for a booking that is now linked to a friendly (`squad_posts.venue_booking_id` → `friendly_matches.squad_post_id`), a pickup match becomes a named game (section 6.1):
+   - `kind = 'named'`, `friendly_match_id` set. Side `a` = the booker's team, side `b` = the opponent team; each side's `team_id` is set and its label is the team name.
+   - Side `a` = every player holding a spot in the booking. Side `b` = every member of the opponent team (any `team_members.role`: captain, player or substitute), with no share if they hold no spot. A spot holder who is on the opponent team and not on the booker's team plays on `b`; a player in both teams stays on side `a`, the side they booked with.
+   - Captains come from `team_members.role = 'captain'`; the booker captains side `a` (decision 3).
+   - This replaces any sides players picked. Check-ins (`match_attendance`) and the check-in code are kept.
+   - It happens only while the match is `scheduled`, before kickoff and with no result submitted. Otherwise (a submission, `confirmed`, `disputed`, `no_result`, `void`, or past kickoff) the function changes nothing and raises no error.
+   - Calling it twice gives the same result. A booking that is named on its first call gets the same roster, and a member who leaves the opponent team before kickoff gets `left_at`.
+2. **Only checked-in players count.** Because side `b` now lists every member of the opponent team, including substitutes who may not come, `match_players` is the squad, not who played. Form, stats, ratings, man of the match (voters and nominees) and skill levels count only players with a `match_attendance` row (QR check-in or ticked by their captain). This affects A3 (form guide, recent matches), A4 (man of the match), A5 (ratings and levels) and A7 (stats). The match result itself is not affected: it belongs to the two sides.
 
 ## 2. Time
 
@@ -102,10 +113,10 @@ The booker's side is always side `a`. Team form and head-to-head count named tea
 | `match_id` | uuid | |
 | `profile_id` | uuid null | Null for a guest |
 | `guest_name` | text null | Exactly one of `profile_id` and `guest_name` is set. Guests appear on the match page but never get stats (05 section 2) |
-| `side` | text | `a` or `b`. Named game: from team membership. Pickup: null until the player picks a side or the booker moves them; locked once a result is submitted (decision 1a.5) |
+| `side` | text | `a` or `b`. Named game: from team membership, set again on every re-sync before kickoff (decision 1b.1). Pickup: null until the player picks a side or the booker moves them; locked once a result is submitted (decision 1a.5) |
 | `position` | text null | Set from the lineup (A4) |
-| `share_id` | uuid null | → `booking_payment_shares.id` the player came from (decision 1) |
-| `left_at` | timestamptz null | Set when the player's share stops holding a spot before kickoff; a player who left isn't in the match |
+| `share_id` | uuid null | → `booking_payment_shares.id` the player came from (decision 1). Null for a side `b` team member without a spot (decision 1b.1) |
+| `left_at` | timestamptz null | Set when the player's share stops holding a spot before kickoff (or, for a side `b` team member without a spot, when they leave that team); a player who left isn't in the match |
 | `created_at` | timestamptz | |
 
 Unique (`match_id`, `profile_id`) where `profile_id` is not null. RLS: select as for `matches`.
@@ -119,7 +130,7 @@ Unique (`match_id`, `profile_id`) where `profile_id` is not null. RLS: select as
 | `method` | text | `qr` (the player scanned the venue's code) or `captain` (ticked by their captain) |
 | `checked_in_by` | uuid | The player themselves, or the captain who ticked them |
 
-Checked-in players are the only ones who can vote for man of the match and rate (05 sections 3 and 4). The venue's no-show record (05 section 10) is the match players without a row here. RLS: select for match members and venue staff.
+Checked-in players are the only ones who can vote for man of the match and rate (05 sections 3 and 4), and the only ones counted in form, stats, ratings, man of the match and levels (decision 1b.2). The venue's no-show record (05 section 10) is the match players without a row here. RLS: select for match members and venue staff.
 
 ### 4.5 `match_result_submissions`
 
@@ -246,8 +257,10 @@ security definer, set search_path = '', service_role only
 - **Idempotent:** one match per booking (`matches.booking_id` is unique). A second call returns the same id and re-syncs the match:
   - kickoff, end and venue are copied again from the booking;
   - every share that holds a spot (`status in ('pending', 'authorized', 'paid', 'covered')`, decision 1) has a `match_players` row; a player whose share no longer holds a spot gets `left_at`;
+  - in a named game, every member of side `b`'s team also has a row on side `b` (no share), and sides are set again from team membership (decision 1b.1);
   - after `kickoff_at` the roster is no longer changed.
 - **Sides:** a booking linked to a friendly match or league fixture gets `kind = 'named'` with the two teams (the booker's team as side `a`); any other booking gets `kind = 'pickup'` with Bibs and Non-bibs. The booker is side `a`'s captain.
+- **Friendly agreed later** (decision 1b.1, 11 November): a pickup match whose booking is now linked to a friendly becomes `named` on the next call, if it is `scheduled`, before kickoff and has no result submitted. Picked sides are replaced; check-ins are kept. Otherwise nothing changes and no error is raised.
 - **Cancelled booking:** if the booking's status is `cancelled` and the match hasn't ended, the match becomes `void` (and stays void).
 - **Back to `pending_payment`** (decision 1a.2): when the booking is `pending_payment` and its match already exists, the function returns the match id and changes nothing, with no error.
 - **Errors:** `booking_not_found`; `booking_not_confirmed` when it is called on a booking that has never been confirmed (`pending_payment` and no match yet); an `owner_block` booking is refused (`not_a_game`).
@@ -343,6 +356,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 - **Stats** (A7): built from confirmed matches only. A forfeit counts as a loss for the side that forfeited.
 - **Skill level** (A5): only confirmed, competitive matches move levels; **forfeits never move levels**, and `disputed`, `no_result` and `void` matches never count.
 - Guests never get stats (05 section 2).
+- **Only checked-in players count** (decision 1b.2, 11 November): a player counts in form (A3), man of the match (A4), ratings and levels (A5) and stats (A7) only with a `match_attendance` row for the match. Being in `match_players` isn't enough, because a named game's side `b` lists the whole opponent team.
 
 These are read through views (`player_form`, `team_form`, `player_recent_matches`, `head_to_head`), which A3 and A7 define. Each view exposes confirmed matches only and never exposes individual ratings or votes.
 
@@ -377,3 +391,4 @@ Each one is decided with Panos before the prompt that needs it, and written into
 6. ~~Quiet hours defaults~~: decided 10 November, none (decision 1a.6).
 7. **A disputed match's goals:** whether scorers can be entered for a disputed match (for now, no: only confirmed).
 8. **Venue staff accounts.** Venue staff is only the venue's owner (`venues.owner_profile_id`) today. Staff accounts (front desk, manager) come later, and they must also be allowed to get the check-in code (`get_match_check_in_code`) and see the venue's matches.
+9. **The venue's no-show record** (section 4.4) counts match players without a check-in. Since decision 1b.1, side `b` of a named game lists every opponent team member, including substitutes who were never expected to come. Who counts as a no-show in a named game (spot holders only? the opponent's starting players?) is open (11 November).
