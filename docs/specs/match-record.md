@@ -253,6 +253,7 @@ create_match_for_booking(p_booking_id uuid) returns uuid
 security definer, set search_path = '', service_role only
 ```
 
+- **When the payment code calls it, and what happens when it fails:** see 13 Payments & Bookings, "Bookings and their match".
 - **Called by** the payment code whenever a booking reaches `venue_bookings.status = 'confirmed'`, and again whenever its roster changes before kickoff (a share added, cancelled or refunded). Calling it is always safe.
 - **Idempotent:** one match per booking (`matches.booking_id` is unique). A second call returns the same id and re-syncs the match:
   - kickoff, end and venue are copied again from the booking;

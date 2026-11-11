@@ -604,6 +604,31 @@ as $$
   select coalesce(sum(amount_cents), 0)::integer from public.venue_debts where profile_id = p_profile and settled_at is null;
 $$;
 
+-- Bookings and their match.
+
+-- The match for a booking.
+create or replace function tests.match_of(p_booking uuid)
+returns public.matches
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.matches where booking_id = p_booking;
+$$;
+
+-- A player's row in a booking's match.
+create or replace function tests.in_match(p_booking uuid, p_profile uuid)
+returns public.match_players
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select mp.* from public.match_players mp join public.matches m on m.id = mp.match_id
+  where m.booking_id = p_booking and mp.profile_id = p_profile;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

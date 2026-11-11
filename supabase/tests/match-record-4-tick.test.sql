@@ -75,7 +75,11 @@ declare
 begin
   insert into public.match_result_submissions (match_id, side, side_a_score, side_b_score, submitted_by, submitted_at)
   values (v_silent_match, 'a', 3, 2, v_silent.created_by, now() - interval '28 hours');
+  -- The payment code's trigger (pay_match_sync) voids a cancelled booking's
+  -- match at once. Off here, so the tick's own void path is tested.
+  alter table public.venue_bookings disable trigger booking_match_on_booking;
   update public.venue_bookings set status = 'cancelled' where id in (v_cancelled.id, v_late.id);
+  alter table public.venue_bookings enable trigger booking_match_on_booking;
   insert into public.booking_cancellations (booking_id, scope, cancelled_by, cancelled_at, quote, plan)
   values (v_late.id, 'whole_team', v_late.created_by, now() - interval '1 hour', 'test', '{}');
 
@@ -103,6 +107,18 @@ begin
   assert v_snapshot = (select count(*)::text from public.notifications)
     || (select string_agg(id || status || coalesce(confirmed_at::text, '') || updated_at, ',' order by id) from public.matches),
     'the second run changed nothing';
+end $$;
+
+-- With the payment code's trigger on, cancelling voids the match at once:
+-- the tick has nothing left to void.
+do $$
+declare
+  v_booking public.venue_bookings := tests.mr_booking(1, date_trunc('minute', now()) + interval '1 day', 'mr4g');
+  v_match uuid := tests.mr_create(v_booking.id);
+begin
+  update public.venue_bookings set status = 'cancelled' where id = v_booking.id;
+  assert (select status from public.matches where id = v_match) = 'void', 'cancelled: void at once';
+  assert (tests.mr_tick() ->> 'voided')::integer = 0, 'nothing left for the tick to void';
 end $$;
 
 select 'match record 4 (match_jobs_tick) passed' as result;

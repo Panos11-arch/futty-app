@@ -237,12 +237,13 @@ begin
     (v_home, v_booker, 'captain'), (v_away, v_away_captain, 'captain'), (v_away, v_away_player, 'player');
   v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.next_weekday(5));
   perform tests.act_as_postgres();
-  perform tests.set_kickoff(v_booking.id, now() - interval '1 hour');
   update public.venue_bookings set status = 'confirmed', team_id = v_home where id = v_booking.id;
   perform public.add_booking_share_internal(v_booking.id, v_away_player);
   insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id)
   values ('opposition', v_home, v_venue, v_booking.id, v_booker, v_away) returning id into v_post;
   insert into public.friendly_matches (squad_post_id, home_team_id, away_team_id) values (v_post, v_home, v_away);
+  -- The friendly is agreed before kickoff, as in the app; then the game is played.
+  perform tests.set_kickoff(v_booking.id, now() - interval '1 hour');
   v_match := tests.mr_create(v_booking.id);
 
   assert tests.mr_as(v_away_player, format('select public.submit_match_result(%L, 0, 2)', v_match)) = 'not_captain',

@@ -20,7 +20,11 @@
 //      booker's whole-team charge every 6 hours until the original
 //      kickoff, and expires venue credit 12 months after it was issued;
 //   7. gives back venue credit set aside for a payment not completed within
-//      15 minutes (the intent is cancelled at Stripe first).
+//      15 minutes (the intent is cancelled at Stripe first);
+//   8. retries every booking's match sync that failed (spec 13, "Bookings
+//      and their match"): after 1, 5, 15, then every 60 minutes, until it
+//      succeeds or the match is void. The database records each failure
+//      and raises the one admin alert at the third.
 // Which ones are due is decided in the database, in Cyprus time. One item
 // failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
@@ -57,6 +61,7 @@ export async function runPaymentJobs(deps: Deps) {
     feePaid: 0, feeFailed: 0, feeRetry: 0,
     creditExpired: 0,
     creditReleased: 0,
+    matchSynced: 0, matchSyncFailed: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -155,8 +160,33 @@ export async function runPaymentJobs(deps: Deps) {
   } catch (err) {
     console.error('run-payment-jobs: releasing unfinished credit failed:', err);
   }
+  try {
+    const sync = await retryMatchSyncs(deps);
+    summary.matchSynced = sync.synced;
+    summary.matchSyncFailed = sync.failed;
+  } catch (err) {
+    console.error('run-payment-jobs: match sync retries failed:', err);
+  }
 
   return summary;
+}
+
+/** Failed match syncs whose next try is due. sync_booking_match catches the
+ *  match code's error itself, records it and returns false; one booking
+ *  failing never stops the others. */
+async function retryMatchSyncs(deps: Deps): Promise<{ synced: number; failed: number }> {
+  const result = { synced: 0, failed: 0 };
+  for (const { booking_id } of await rpc<{ booking_id: string }[]>(deps.db, 'booking_match_syncs_due')) {
+    try {
+      if (await rpc<boolean>(deps.db, 'sync_booking_match', { p_booking_id: booking_id })) result.synced += 1;
+      else result.failed += 1;
+    } catch (err) {
+      // Still queued: found again next run.
+      console.error(`run-payment-jobs: match sync for booking ${booking_id} failed:`, err);
+      result.failed += 1;
+    }
+  }
+  return result;
 }
 
 /** A booking past its 15-minute window: what the booker started is checked
