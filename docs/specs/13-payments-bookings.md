@@ -81,6 +81,8 @@ Step 3 applies only when the booker is responsible.
     - **Decided 10 November (collection):**
       - **The booker's hold covers a share that was never paid in full, service fee included:** €6.80 for an unpaid €6.80 share, the same as that player would owe in just-my-spot mode. The total taken is capped at the hold (the pitch price, €60), pitch money first, then fees.
       - **The venue can run collection early only once the match has ended**, so late joiners can still make the top-ups smaller.
+      - **The booker is told when money is taken from their hold:** "€X was taken from your hold for unpaid spots: \[names\]." (always sent, type `guarantee_charged`). Nothing is sent when the whole hold is released.
+      - **A late cancellation whose card payment was never taken** (the hold went before it could be taken) still counts toward the pitch price, and that card payment is collected like any unpaid amount: from the booker's hold in responsible mode, or as that player's debt in just-my-spot mode.
 10. **The old 3-hour auto-cancel is removed.** Unpaid spots no longer cancel a booking.
 
 **When a booker's payment fails (agreed 7 Nov), they owe it as debt to the venue, and the game still goes ahead:**
@@ -161,6 +163,7 @@ If fewer players join than the booking is for, the players who joined split the 
 - **A failed top-up:** the player is asked to pay in the app. If they don't, the booker's hold covers it (responsible mode) or it becomes the player's debt (just my spot).
 - **Booker pays for everyone:** there are no top-ups, because the booker already paid the full pitch price.
 - **Confirmed:** "joined" means everyone who holds a spot in the booking, not who turns up. A no-show still owes their share; a venue-provided player counts as an empty spot.
+- **Leftover cents when the booker gave up their spot (decided 10 November):** they go on the share of the first player who joined.
 - **A late cancellation's kept money counts toward the pitch price (decided 10 November).** The players who joined pay only what's still missing. For example, 10 players, one cancels less than 6 hours before kickoff and nobody takes the spot: their €6.00 pitch part is kept, so the other 9 owe only the remaining €54 and nobody gets a top-up. The joined players never pay less than their normal share, so a late-cancelled spot that gets filled still pays the venue twice (above).
 
 ### 6 v 6 on a 5-a-side pitch
@@ -182,11 +185,13 @@ Debt and credit are between the player and the venue, and the venue manages them
 - A player who picks cash still **pays the €0.80 service fee by card** when joining.
 - The venue dashboard lists every player in each booking with their payment choice and status: *paid in app*, *cash – not yet paid*, *cash – paid*. Staff tick cash players as they pay in person.
 - After the match, an unticked cash player gets: **"Pay €6.00 by card now, or remain in debt to \[venue\]."**
+  - **Decided 10 November:** that wording is for just-my-spot mode. When the booker is responsible, it's **"Pay €6.00 by card now, or \[booker name\] will be charged for your spot."**
 - Unpaid at collection time (2 hours after the match): the booker's hold pays (responsible mode) and the player settles with the booker outside the app. Otherwise the player goes into debt to the venue (just my spot).
 
 ### Debt
 - **A player in debt to any venue can't book, join a booking or choose cash anywhere on Futty** until it's cleared. Paying off the debt is always allowed.
 - Debt is cleared by paying it in the app by card, or by the venue marking it settled in its dashboard.
+  - **Decided 10 November:** when the venue marks settled a debt that includes Futty's service fee (for example €6.80 = €6.00 pitch + €0.80 fee), the player's debt is fully cleared and Futty's part is owed by the venue: it comes off the venue's next payout.
 - The player sees how much they owe and to which venue. The venue sees everyone who owes it.
 - **Decided 10 November:** a debt can be owed to a venue or to Futty (for example the booker's unpaid €1-per-player charge for cancelling the whole team). Both block booking everywhere on Futty, and both are paid with "Pay what I owe".
 - **Confirmed:** paying a debt adds no new fee. Futty absorbs Stripe's cost, about €0.34 on €6.00, because the fee was already paid at booking.
