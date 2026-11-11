@@ -7,6 +7,8 @@
 --   - when a confirmed booking is moved (day, time or venue), so the
 --     match's kickoff, end and result deadline follow it;
 --   - when the booking is cancelled and has a match, which voids it.
+--   - when a friendly is agreed for the booking (or moved to another
+--     squad post), so a pickup match can become a named game.
 -- A booking going back to pending_payment needs no call (decision 1a.2), nor
 -- does a share moving between the states that hold a spot (pending, held,
 -- paid, covered). Only bookings made since P4a (with a payment mode) get a
@@ -161,9 +163,43 @@ create trigger booking_match_on_share
   after insert or update of status or delete on public.booking_payment_shares
   for each row execute function public.booking_match_on_share();
 
+-- A friendly was agreed for a booking (or moved to another squad post): the
+-- booking's match is re-synced so it can become a named game. The booking
+-- is found through squad_posts.venue_booking_id; sync_booking_match applies
+-- the payment-mode rule and queues a retry on failure, so creating the
+-- friendly is never blocked. A friendly moved off a booking re-syncs that
+-- booking too.
+create or replace function public.booking_match_on_friendly()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_new uuid;
+  v_old uuid;
+begin
+  select sp.venue_booking_id into v_new from public.squad_posts sp where sp.id = new.squad_post_id;
+  if tg_op = 'UPDATE' then
+    select sp.venue_booking_id into v_old from public.squad_posts sp where sp.id = old.squad_post_id;
+  end if;
+  if v_new is not null then
+    perform public.sync_booking_match(v_new);
+  end if;
+  if v_old is not null and v_old is distinct from v_new then
+    perform public.sync_booking_match(v_old);
+  end if;
+  return null;
+end;
+$$;
+create trigger booking_match_on_friendly
+  after insert or update of squad_post_id on public.friendly_matches
+  for each row execute function public.booking_match_on_friendly();
+
 revoke all on function public.sync_booking_match(uuid) from public, anon, authenticated;
 grant execute on function public.sync_booking_match(uuid) to service_role;
 revoke all on function public.booking_match_syncs_due() from public, anon, authenticated;
 grant execute on function public.booking_match_syncs_due() to service_role;
 revoke all on function public.booking_match_on_booking() from public, anon, authenticated;
 revoke all on function public.booking_match_on_share() from public, anon, authenticated;
+revoke all on function public.booking_match_on_friendly() from public, anon, authenticated;

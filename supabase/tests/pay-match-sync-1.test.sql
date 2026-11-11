@@ -354,7 +354,130 @@ begin
 end $$;
 rollback;
 
--- 13. Who may call what.
+-- 13. A friendly agreed for a booking re-syncs its match (so a pickup can
+--     become a named game), found through squad_posts.venue_booking_id.
+--     The payment-mode rule still applies. Here the match code only records
+--     that it was called; match-record 1, 2 and 6 test what it then does.
+begin;
+create temp table sync_calls (booking_id uuid);
+grant all on sync_calls to public;
+do $$
+declare
+  v_booker uuid := tests.create_user('sync-friendly-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 2);
+  v_home uuid;
+  v_away uuid;
+  v_confirmed public.venue_bookings;
+  v_other public.venue_bookings;
+  v_pending public.venue_bookings;
+  v_legacy uuid;
+  v_post uuid;
+  v_other_post uuid;
+  v_pending_post uuid;
+  v_legacy_post uuid;
+  v_open_post uuid;
+  v_friendly uuid;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  insert into public.teams (name) values ('Sync Home') returning id into v_home;
+  insert into public.teams (name) values ('Sync Away') returning id into v_away;
+  v_confirmed := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                            '12:00', '13:00', 'sync-friendly-a');
+  v_other := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                        '14:00', '15:00', 'sync-friendly-b');
+  v_pending := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                          '16:00', '17:00', 'sync-friendly-c');
+  perform tests.act_as_postgres();
+  insert into public.venue_bookings (venue_id, booking_day, start_time, end_time, pitches, capacity, format, status,
+                                     created_by, amount_cents, booking_type, payment_mode)
+  values (v_venue, tests.cyprus_today() + 3, '20:00', '21:00', 1, 10, '5-a-side', 'confirmed', v_booker, 6000,
+          'user_booking', null)
+  returning id into v_legacy;
+
+  alter function public.create_match_for_booking(uuid) rename to create_match_for_booking_real;
+  execute $f$ create function public.create_match_for_booking(p_booking_id uuid) returns uuid
+              language plpgsql as $b$ begin insert into pg_temp.sync_calls values (p_booking_id); return null; end $b$ $f$;
+  update public.venue_bookings set status = 'confirmed' where id in (v_confirmed.id, v_other.id);
+  delete from pg_temp.sync_calls;
+
+  insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id) values
+    ('opposition', v_home, v_venue, v_confirmed.id, v_booker, v_away) returning id into v_post;
+  insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id) values
+    ('opposition', v_home, v_venue, v_other.id, v_booker, v_away) returning id into v_other_post;
+  insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id) values
+    ('opposition', v_home, v_venue, v_pending.id, v_booker, v_away) returning id into v_pending_post;
+  insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id) values
+    ('opposition', v_home, v_venue, v_legacy, v_booker, v_away) returning id into v_legacy_post;
+  insert into public.squad_posts (type, team_id, venue_id, posted_by, matched_team_id) values
+    ('opposition', v_home, v_venue, v_booker, v_away) returning id into v_open_post;
+
+  -- Agreed for a confirmed booking: its match is re-synced.
+  insert into public.friendly_matches (squad_post_id, home_team_id, away_team_id) values (v_post, v_home, v_away)
+  returning id into v_friendly;
+  assert (select array_agg(booking_id) from pg_temp.sync_calls) = array[v_confirmed.id],
+    format('re-synced the booking, got %s', (select array_agg(booking_id) from pg_temp.sync_calls));
+
+  -- Something else about the friendly changes: nothing to do.
+  delete from pg_temp.sync_calls;
+  update public.friendly_matches set status = 'confirmed', home_score = 2, away_score = 1 where id = v_friendly;
+  assert not exists (select 1 from pg_temp.sync_calls), 'a score is not a reason to re-sync';
+
+  -- Moved to another booking's post: both bookings are re-synced.
+  update public.friendly_matches set squad_post_id = v_other_post where id = v_friendly;
+  assert (select array_agg(booking_id order by booking_id) from pg_temp.sync_calls)
+         = (select array_agg(x order by x) from unnest(array[v_confirmed.id, v_other.id]) x),
+    format('both bookings, got %s', (select array_agg(booking_id) from pg_temp.sync_calls));
+
+  -- Not a booking with a match to have: nothing is called.
+  delete from pg_temp.sync_calls;
+  insert into public.friendly_matches (squad_post_id, home_team_id, away_team_id) values
+    (v_pending_post, v_home, v_away), (v_legacy_post, v_home, v_away), (v_open_post, v_home, v_away), (null, v_home, v_away);
+  assert not exists (select 1 from pg_temp.sync_calls), 'waiting for payment, before P4a, no booking or no post: nothing';
+  assert not exists (select 1 from public.booking_match_syncs), 'and nothing is queued';
+
+  drop function public.create_match_for_booking(uuid);
+  alter function public.create_match_for_booking_real(uuid) rename to create_match_for_booking;
+end $$;
+rollback;
+
+-- 14. The match code failing never blocks agreeing the friendly: it is
+--     created, and the retry is queued.
+begin;
+do $$
+declare
+  v_booker uuid := tests.create_user('sync-friendly-fail-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_home uuid;
+  v_away uuid;
+  v_booking public.venue_bookings;
+  v_post uuid;
+  v_sync public.booking_match_syncs;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  insert into public.teams (name) values ('Fail Home') returning id into v_home;
+  insert into public.teams (name) values ('Fail Away') returning id into v_away;
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 3,
+                                          p_label => 'sync-friendly-fail');
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_sync_ff0', interval '10 minutes');
+  perform tests.act_as_postgres();
+  assert (tests.match_of(v_booking.id)).id is not null, 'the pickup match exists';
+  insert into public.squad_posts (type, team_id, venue_id, venue_booking_id, posted_by, matched_team_id)
+  values ('opposition', v_home, v_venue, v_booking.id, v_booker, v_away) returning id into v_post;
+
+  alter function public.create_match_for_booking(uuid) rename to create_match_for_booking_real;
+  execute $f$ create function public.create_match_for_booking(p_booking_id uuid) returns uuid
+              language plpgsql as $b$ begin raise exception 'match_code_broken'; end $b$ $f$;
+  insert into public.friendly_matches (squad_post_id, home_team_id, away_team_id) values (v_post, v_home, v_away);
+  assert exists (select 1 from public.friendly_matches where squad_post_id = v_post), 'the friendly is agreed';
+  select * into v_sync from public.booking_match_syncs where booking_id = v_booking.id;
+  assert v_sync.attempts = 1 and v_sync.last_error = 'match_code_broken', format('retry queued, got %s', row_to_json(v_sync));
+
+  drop function public.create_match_for_booking(uuid);
+  alter function public.create_match_for_booking_real(uuid) rename to create_match_for_booking;
+end $$;
+rollback;
+
+-- 15. Who may call what.
 begin;
 do $$
 begin
