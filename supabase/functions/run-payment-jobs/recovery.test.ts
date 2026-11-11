@@ -56,7 +56,7 @@ function world(dies: 'db_error' | 'crash') {
   fake.respond('queue_money_release', 'r1');
   fake.respond('expire_venue_credits', 0);
   for (const fn of ['shares_due_for_capture', 'bookings_past_payment_window', 'guarantees_due_for_hold', 'money_releases_due',
-                    'cancellation_work', 'cancellation_fees_due', 'credit_reservations_to_release']) {
+                    'cancellation_work', 'cancellation_fees_due', 'credit_reservations_to_release', 'booking_match_syncs_due']) {
     fake.respond(fn, []);
   }
 

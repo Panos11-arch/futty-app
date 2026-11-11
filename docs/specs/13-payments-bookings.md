@@ -270,6 +270,17 @@ The forecast only reaches about 10 days ahead. Further out, the app shows "Forec
 - **Joining (decided 9 November):** players can still join a game that was booked before the block. The join screen shows the venue's notice that it has closed new bookings.
 - If the venue then cancels one of those games, the venue-cancels rule applies: full refund or credit, and the venue pays Stripe's €0.35 per player.
 
+## Bookings and their match (decided 11 November)
+
+Every game booking has one match record (docs/specs/match-record.md, section 6.1).
+
+- **Which bookings:** only bookings with a payment mode (made since P4a) get a match. Owner blocks and older bookings never do.
+- **Created or re-synced** when a booking is confirmed, when it is moved (day, time or venue), and when a player joins or leaves.
+- **Cancelled:** a cancelled booking voids its match.
+- **A failure never blocks money:** if the match sync fails, the booking, payment or cancellation still goes through and is never rolled back. The error is caught and a retry is queued.
+- **Retries** run after 1, 5 and 15 minutes, then every 60 minutes, until the sync succeeds or the booking's match is void.
+- **Alert:** the founders get the existing admin alert once, at the third failure.
+
 ## Server-side checks that make it airtight
 
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.

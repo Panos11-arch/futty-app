@@ -205,10 +205,15 @@ declare
   v_after public.matches;
   v_players_before integer;
   v_new uuid := tests.create_user('mr1-new@futty.test');
+  v_pending public.venue_bookings;
 begin
-  update public.venue_bookings set status = 'pending_payment' where id = v_booking.id;
-  assert tests.mr_create_error(v_booking.id) = 'booking_not_confirmed', 'never confirmed: booking_not_confirmed';
-  assert not exists (select 1 from public.matches where booking_id = v_booking.id), 'no match made';
+  -- A booking still waiting for its first payment. (mr_booking's bookings
+  -- are confirmed, so the payment code's trigger has already made their
+  -- match: see pay_match_sync.)
+  v_pending := tests.booking_with_players(tests.create_user('mr1-pending-booker@futty.test'), tests.create_venue(),
+                                          'each_pays_own_spot', 0, tests.next_weekday(3), '12:00', '13:00', 'mr1-pending');
+  assert tests.mr_create_error(v_pending.id) = 'booking_not_confirmed', 'never confirmed: booking_not_confirmed';
+  assert not exists (select 1 from public.matches where booking_id = v_pending.id), 'no match made';
 
   update public.venue_bookings set status = 'confirmed' where id = v_booking.id;
   v_match := tests.mr_create(v_booking.id);

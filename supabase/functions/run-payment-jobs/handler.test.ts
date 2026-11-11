@@ -39,6 +39,7 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   db.respond('expire_venue_credits', 0);
   db.respond('credit_reservations_to_release', []);
   db.respond('credit_release_started', true);
+  db.respond('booking_match_syncs_due', []);
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
   }
@@ -450,4 +451,40 @@ Deno.test('credit set aside for a payment not completed within 15 minutes goes b
   const summary = await runPaymentJobs(deps);
   strictEqual(summary.creditReleased, 1);
   deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_unfinished'], 'cancelled first');
+});
+
+Deno.test('retries every due match sync; one failing never stops the others', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('booking_match_syncs_due', [{ booking_id: 'b1', attempts: 1 }, { booking_id: 'b2', attempts: 2 }, { booking_id: 'b3', attempts: 3 }]);
+  db.respond('sync_booking_match', (args: Record<string, unknown>) => {
+    if (args.p_booking_id === 'b2') throw new Error('connection reset');
+    return args.p_booking_id === 'b1'; // b3: the match code failed again (recorded in the database)
+  });
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.matchSynced, 1);
+  strictEqual(summary.matchSyncFailed, 2);
+  deepStrictEqual(db.callsTo('sync_booking_match').map((c) => c.args), [
+    { p_booking_id: 'b1' }, { p_booking_id: 'b2' }, { p_booking_id: 'b3' },
+  ]);
+  strictEqual(stripe.calls.length, 0, 'no money moves');
+});
+
+Deno.test('the match sync retries failing to load never stop the payment jobs', async () => {
+  const { db, deps } = setup({ shares: [dueShare] });
+  db.fail('booking_match_syncs_due', 'database unavailable');
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.captured, 1);
+  strictEqual(summary.matchSynced, 0);
+  strictEqual(db.callsTo('sync_booking_match').length, 0);
+});
+
+Deno.test('nothing due: no match sync is tried', async () => {
+  const { db, deps } = setup();
+  const summary = await runPaymentJobs(deps);
+  strictEqual(summary.matchSynced + summary.matchSyncFailed, 0);
+  strictEqual(db.callsTo('sync_booking_match').length, 0);
 });
