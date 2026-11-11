@@ -41,7 +41,7 @@ export function scoreLineContent(item: MatchListItem): ScoreLineContent {
     case 'played':
       return withCaption('Waiting for the result');
     case 'disputed':
-      return withCaption("Disputed · won't count");
+      return withCaption('Disputed · not in stats');
     case 'no_result':
       return withCaption('No result entered');
     case 'confirmed':

@@ -53,7 +53,7 @@ describe('ScoreLine', () => {
   });
 
   it.each([
-    ['disputed', mockDisputed, "Disputed · won't count"],
+    ['disputed', mockDisputed, 'Disputed · not in stats'],
     ['no_result', mockNoResult, 'No result entered'],
     ['played', mockPlayed, 'Waiting for the result'],
   ] as const)('%s: a dash and why', async (_, item, caption) => {

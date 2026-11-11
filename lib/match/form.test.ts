@@ -79,8 +79,9 @@ describe('formSide (decisions 1b.2 and 1b.3)', () => {
 
 describe('playerForm', () => {
   it('is the last 5 confirmed matches, newest first', () => {
-    // 7 Nov W, 5 Nov L, 3 Nov D, 31 Oct W (forfeit win, no check-in), 17 Oct W; 10 Oct is the sixth.
-    expect(playerForm(mockFormEntries, PROFILE.anghelo)).toEqual(['W', 'L', 'D', 'W', 'W']);
+    // 7 Nov W, 5 Nov L, 3 Nov D, 31 Oct W (forfeit win, no check-in), 24 Oct L (forfeit, no check-in);
+    // 17 Oct and 10 Oct are the sixth and seventh.
+    expect(playerForm(mockFormEntries, PROFILE.anghelo)).toEqual(['W', 'L', 'D', 'W', 'L_forfeit']);
   });
 
   it('leaves out disputed and no_result matches the player checked in to', () => {

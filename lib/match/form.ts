@@ -6,6 +6,10 @@
 //   player holding a spot (share_id set, not left) on either side gets it too,
 //   with or without a check-in.
 //   Team form: every confirmed match the team played, whoever checked in.
+//
+// These helpers are the reference rules for tests and mocks only. The app
+// reads form from the server views A3 builds (player_form, team_form), which
+// must give the same results; it never computes form from raw rows.
 import type { FormResult, MatchFormEntry, MatchResultConfirmed, Side } from '@/lib/match/types';
 
 const FORM_LENGTH = 5;

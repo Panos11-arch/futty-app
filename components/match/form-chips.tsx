@@ -30,9 +30,9 @@ export function spokenForm(result: FormResult): string {
 }
 
 export function FormChip({ result }: { result: FormResult }) {
-  const { label, tone } = looks[result];
+  const { label, spoken, tone } = looks[result];
   return (
-    <View testID="form-chip" style={styles.pill}>
+    <View testID="form-chip" accessible accessibilityLabel={spoken} style={styles.pill}>
       <Text variant="caption" tone={tone}>
         {label}
       </Text>

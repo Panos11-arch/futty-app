@@ -224,15 +224,17 @@ export const mockFormEntries: MatchFormEntry[] = [
     { profile: PROFILE.awaySpot, side: 'b', spot: true, checkedIn: false },
     { profile: PROFILE.awaySub, side: 'b', spot: false, checkedIn: false },
   ]),
-  // Home FC didn't show: Sami's side forfeited.
+  // Home FC didn't show: the viewer's and Sami's side forfeited. Both held a
+  // spot, so both get "L (forfeit)" without a check-in (1b.3).
   entry(mockForfeitNoShow, [
+    { profile: PROFILE.anghelo, side: 'a', spot: true, checkedIn: false },
     { profile: PROFILE.sami, side: 'a', spot: true, checkedIn: false },
     { profile: PROFILE.awayCaptain, side: 'b', spot: false, checkedIn: true },
   ]),
   // Settled but not confirmed: never in form.
   entry(mockDisputed, [viewerCheckedIn]),
   entry(mockNoResult, [viewerCheckedIn]),
-  // Two older matches, so the viewer has six confirmed matches and form shows five.
+  // Two older matches, so the viewer has seven confirmed matches and form shows five.
   entry(item('m-older', 'named', 'confirmed', '2026-10-17T16:00:00.000Z', { status: 'confirmed', score: [1, 0] }), [
     viewerCheckedIn,
   ]),
