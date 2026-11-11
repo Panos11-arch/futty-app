@@ -1,25 +1,34 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
+import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-card';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { Banner, type BannerProps } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { IconButton } from '@/components/ui/icon-button';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Text as UIText } from '@/components/ui/text';
-import { colors, FuttyColors, FuttyFonts, radius, space } from '@/constants/futty-theme';
-import { dateKeyAndTimeToDate, dateKeyToDate, dayLabel } from '@/lib/days';
+import { ListRow } from '@/components/ui/list-row';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { colors, radius, space } from '@/constants/futty-theme';
+import { dateKeyAndTimeToDate } from '@/lib/days';
 import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
+import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
 import { useNotifications } from '@/lib/use-notifications';
-import { useRecentResults } from '@/lib/use-recent-results';
 import { useProfile } from '@/lib/use-profile';
+import { useRecentResults } from '@/lib/use-recent-results';
+import { useSquadPosts } from '@/lib/use-squad-posts';
 import { useVenues } from '@/lib/use-venues';
 
 // No match duration is tracked anywhere (friendly_matches or league_fixtures)
@@ -27,34 +36,19 @@ import { useVenues } from '@/lib/use-venues';
 // game, matching supabase/scores.sql's server-side "too_early" check.
 const MATCH_DURATION_MS = 2 * 60 * 60 * 1000;
 
-// A different accent color per action, Playtomic-style — makes the row easy
-// to scan at a glance instead of four identical green circles.
-const QUICK_ACTIONS = [
-  {
-    icon: 'calendar' as const,
-    label: 'Book',
-    color: FuttyColors.emerald700,
-    onPress: () => router.push('/book'),
-  },
-  {
-    icon: 'person.2.fill' as const,
-    label: 'Players',
-    color: FuttyColors.sky500,
-    onPress: () => router.push({ pathname: '/squads', params: { view: 'players' } }),
-  },
-  {
-    icon: 'flag.fill' as const,
-    label: 'Match',
-    color: FuttyColors.coral500,
-    onPress: () => router.push({ pathname: '/squads', params: { view: 'opposition' } }),
-  },
-  {
-    icon: 'trophy.fill' as const,
-    label: 'League',
-    color: FuttyColors.violet500,
-    onPress: () => router.push('/leagues'),
-  },
-];
+// However many unscored plain bookings pile up, only this many show inline
+// on Home — the rest sit behind "View all" (app/previous-games.tsx) so a run
+// of forgotten games doesn't turn Home into a wall of forms.
+const INLINE_UNSCORED_CAP = 2;
+
+/** Bookings after the next one shown as rows ("Also booked"). */
+const MORE_BOOKINGS = 2;
+const VENUES_SHOWN = 5;
+const POSTS_SHOWN = 5;
+
+const openBook = () => router.push('/book');
+const openFindGame = () => router.push({ pathname: '/squads', params: { view: 'players' } });
+const openMyBookings = () => router.push('/my-bookings');
 
 /** A friendly match only needs logging once its (assumed) end time has
  *  passed and no final score has been agreed yet. */
@@ -63,22 +57,24 @@ function isReadyToScore(match: FriendlyMatch) {
   return new Date(match.post.scheduled_at).getTime() + MATCH_DURATION_MS < Date.now();
 }
 
+function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <Banner tone="danger" message={message} action={{ label: 'Try again', onPress: onRetry }} />;
+}
+
 function FriendlyScoreForm({ match, onSubmitted }: { match: FriendlyMatch; onSubmitted: () => void }) {
   const [homeScore, setHomeScore] = useState('');
   const [awayScore, setAwayScore] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const home = match.home_team?.name ?? 'Home team';
+  const away = match.away_team?.name ?? 'Away team';
 
   async function submit() {
     if (homeScore.trim() === '' || awayScore.trim() === '' || busy) return;
 
     setBusy(true);
     setError(null);
-    const { error: submitError } = await submitFriendlyScore(
-      match.id,
-      Number(homeScore),
-      Number(awayScore)
-    );
+    const { error: submitError } = await submitFriendlyScore(match.id, Number(homeScore), Number(awayScore));
     setBusy(false);
 
     if (submitError) {
@@ -92,88 +88,144 @@ function FriendlyScoreForm({ match, onSubmitted }: { match: FriendlyMatch; onSub
 
   return (
     <View style={styles.scoreForm}>
-      <Text style={styles.scoreFormTitle}>
-        {match.home_team?.name ?? 'Team'} vs {match.away_team?.name ?? 'Team'}
+      <Text variant="headline">
+        {home} vs {away}
       </Text>
       <View style={styles.scoreInputsRow}>
-        <AuthField
-          value={homeScore}
-          onChangeText={setHomeScore}
-          placeholder="0"
-          keyboardType="number-pad"
-          style={styles.scoreInput}
-        />
-        <Text style={styles.scoreDash}>–</Text>
-        <AuthField
-          value={awayScore}
-          onChangeText={setAwayScore}
-          placeholder="0"
-          keyboardType="number-pad"
-          style={styles.scoreInput}
-        />
-        <AuthButton
-          label="Log score"
-          onPress={submit}
-          disabled={!homeScore.trim() || !awayScore.trim()}
-          busy={busy}
-        />
+        <View style={styles.scoreInput}>
+          <TextField label={home} value={homeScore} onChangeText={setHomeScore} placeholder="0" keyboardType="number-pad" />
+        </View>
+        <View style={styles.scoreInput}>
+          <TextField label={away} value={awayScore} onChangeText={setAwayScore} placeholder="0" keyboardType="number-pad" />
+        </View>
       </View>
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? (
+        <Text variant="callout" tone="danger">
+          {error}
+        </Text>
+      ) : null}
+      <Button
+        label="Log score"
+        onPress={submit}
+        disabled={!homeScore.trim() || !awayScore.trim()}
+        loading={busy}
+        fullWidth
+      />
     </View>
   );
 }
 
-// However many unscored plain bookings pile up, only this many show inline
-// on the home card — the rest sit behind "View all" (app/previous-games.tsx)
-// so a run of forgotten games doesn't turn the card into a wall of forms.
-const INLINE_UNSCORED_CAP = 2;
-
-function NextGameCard({ onScored }: { onScored: () => void }) {
+function NextGameSection() {
   const myBookings = useMyBookings();
+  const venuesState = useVenues();
+
+  // Home stays mounted in the background while you cancel a booking on My
+  // bookings — without this, its own useMyBookings state never learns the
+  // cancellation happened until some other reload.
+  useFocusEffect(
+    useCallback(() => {
+      myBookings.reload();
+      // Only re-run when the screen refocuses, not on every state change.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
+  function venueFor(venueId: string) {
+    const venue = venuesState.status === 'ready' ? venuesState.venues.find((v) => v.id === venueId) : null;
+    return venue ? { name: venue.name, city: venue.city } : null;
+  }
+
+  if (myBookings.status === 'loading') {
+    return (
+      <View testID="next-game-skeleton" style={styles.cards}>
+        <SkeletonBlock width="100%" height={180} />
+        <SkeletonText lines={2} />
+      </View>
+    );
+  }
+
+  if (myBookings.status === 'error') {
+    return <InlineError message="Could not load your bookings." onRetry={myBookings.reload} />;
+  }
+
+  const [next, ...rest] = myBookings.bookings;
+  if (!next) {
+    return (
+      <Card>
+        <EmptyState icon="calendar" message="No games booked" action={{ label: 'Book a pitch', onPress: openBook }} />
+      </Card>
+    );
+  }
+
+  const more = rest.slice(0, MORE_BOOKINGS);
+  return (
+    <View style={styles.cards}>
+      <NextBookingCard booking={next} venue={venueFor(next.venue_id)} onPress={openMyBookings} />
+      {more.length > 0 ? (
+        <View style={styles.section}>
+          <SectionHeader title="Also booked" />
+          <Card padded={false}>
+            {more.map((booking) => (
+              <ListRow
+                key={booking.id}
+                title={venueFor(booking.venue_id)?.name ?? 'Booked venue'}
+                subtitle={bookingWhen(booking)}
+                leading={{ icon: 'calendar' }}
+                chevron
+                onPress={openMyBookings}
+              />
+            ))}
+          </Card>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function QuickActions() {
+  return (
+    <View style={styles.quickActions}>
+      <View style={styles.quickAction}>
+        <Button label="Book a pitch" onPress={openBook} fullWidth />
+      </View>
+      <View style={styles.quickAction}>
+        <Button label="Find a game" variant="secondary" onPress={openFindGame} fullWidth />
+      </View>
+    </View>
+  );
+}
+
+/** Score forms for games that have ended. Same rules as before U3: a friendly
+ *  match, a league fixture you captain, or a plain booking you made. */
+function LogScoreSection({ onScored }: { onScored: () => void }) {
   const venuesState = useVenues();
   const friendlyMatches = useMyFriendlyMatches();
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
   const unscoredBookings = useMyUnscoredBookings();
 
-  // Home stays mounted in the background while you cancel a booking on the
-  // separate "Your bookings" screen — without this, its own useMyBookings
-  // state never learns the cancellation happened until some other reload.
   useFocusEffect(
     useCallback(() => {
-      myBookings.reload();
       friendlyMatches.reload();
       fixtures.reload();
       unscoredBookings.reload();
-      // Only re-run when the screen refocuses, not on every state change —
-      // reload/refetch would otherwise re-trigger this same effect.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
 
-  // Was just the single soonest booking (bookings[0]) — showing a short list
-  // instead means a 2nd booking you just made is directly visible here
-  // rather than trusting a one-line summary to have picked the right one.
-  const upcoming = myBookings.status === 'ready' ? myBookings.bookings.slice(0, 3) : [];
-
-  function venueFor(venueId: string) {
-    return venuesState.status === 'ready' ? venuesState.venues.find((v) => v.id === venueId) : null;
+  function venueName(venueId: string) {
+    return (venuesState.status === 'ready' ? venuesState.venues.find((v) => v.id === venueId)?.name : null) ?? 'Booked venue';
   }
 
-  const readyToScore =
-    friendlyMatches.status === 'ready' ? friendlyMatches.matches.filter(isReadyToScore) : [];
+  const readyToScore = friendlyMatches.status === 'ready' ? friendlyMatches.matches.filter(isReadyToScore) : [];
   const readyToScoreFixtures =
     fixtures.status === 'ready' ? fixtures.fixtures.filter((f) => canLogFixtureScore(f, myCaptainTeamIds)) : [];
 
-  // A booking that was later turned into a "Need opposition" post and got
-  // matched already has a friendly_matches row for the exact same game — show
-  // only that (it has the real two-sided scoring + dispute mechanic), not
-  // also this booking's own plain self-reported log, or the same game's
-  // score prompt would appear twice. Matched primarily via the post's
-  // venue_booking_id (exact); venue+time is kept only as a fallback for any
-  // post created before that column existed, since its scheduled_at may
-  // predate booking-actions.sql's timezone fix and no longer line up with a
-  // freshly recomputed instant.
+  // A booking later turned into a "Need opposition" post that got matched
+  // already has a friendly_matches row for the same game — show only that
+  // (it has the two-sided scoring), not also this booking's own plain log.
+  // Matched by the post's venue_booking_id; venue+time is a fallback for
+  // posts created before that column existed.
   const linkedBookingIds = new Set(
     friendlyMatches.status === 'ready'
       ? friendlyMatches.matches.map((m) => m.post?.venue_booking_id).filter((id): id is string => !!id)
@@ -204,76 +256,25 @@ function NextGameCard({ onScored }: { onScored: () => void }) {
   const visibleUnscored = unscored.slice(0, INLINE_UNSCORED_CAP);
   const hiddenUnscoredCount = unscored.length - visibleUnscored.length;
 
+  const errors = [
+    friendlyMatches.status === 'error' ? { key: 'friendly', message: 'Could not load friendly matches.', retry: friendlyMatches.reload } : null,
+    fixtures.status === 'error' ? { key: 'fixtures', message: 'Could not load fixtures.', retry: fixtures.reload } : null,
+    unscoredBookings.status === 'error'
+      ? { key: 'unscored', message: 'Could not load past bookings.', retry: unscoredBookings.reload }
+      : null,
+  ].filter((e) => e !== null);
+
+  const hasForms = readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0;
+  if (!hasForms && errors.length === 0) return null;
+
   return (
-    <View style={styles.nextGameCard}>
-      <View style={styles.cardTitleRow}>
-        <IconSymbol name="sportscourt.fill" size={14} color={FuttyColors.emerald950} />
-        <Text style={styles.cardTitleInRow}>Your next games</Text>
-      </View>
-      {myBookings.status === 'loading' ? (
-        <Text style={styles.cardBody}>Loading…</Text>
-      ) : upcoming.length === 0 ? (
-        <View style={styles.cardTitleRow}>
-          <IconSymbol name="magnifyingglass" size={12} color={FuttyColors.stone400} />
-          <Text style={styles.cardEmpty}>No games booked yet.</Text>
-        </View>
-      ) : (
-        <View style={styles.upcomingList}>
-          {upcoming.map((booking, index) => {
-            const bookingVenue = venueFor(booking.venue_id);
-            return (
-              // Opens My bookings, where the booking can be viewed and
-              // cancelled — previously that screen was only reachable from a
-              // notification or the Match Found popup.
-              <Pressable
-                key={booking.id}
-                onPress={() => router.push('/my-bookings')}
-                accessibilityRole="button"
-                accessibilityHint="Opens My bookings, where you can view or cancel this booking"
-                style={({ pressed }) => [
-                  styles.upcomingPressable,
-                  index > 0 ? styles.upcomingRow : undefined,
-                  pressed ? styles.upcomingPressed : undefined,
-                ]}>
-                <View style={styles.upcomingText}>
-                  <Text style={styles.nextGameVenue}>{bookingVenue?.name ?? 'Booked venue'}</Text>
-                  <Text style={styles.cardBody}>
-                    {bookingVenue?.city ? `${bookingVenue.city} · ` : ''}
-                    {dayLabel(dateKeyToDate(booking.booking_day))} · {booking.start_time.slice(0, 5)}–
-                    {booking.end_time.slice(0, 5)} · {booking.format}
-                  </Text>
-                </View>
-                <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} />
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-
-      {friendlyMatches.status === 'error' ? (
-        <View style={styles.scoreSection}>
-          <Text style={styles.cardBody}>Could not load friendly matches: {friendlyMatches.message}</Text>
-        </View>
-      ) : null}
-
-      {fixtures.status === 'error' ? (
-        <View style={styles.scoreSection}>
-          <Text style={styles.cardBody}>Could not load fixtures: {fixtures.message}</Text>
-        </View>
-      ) : null}
-
-      {unscoredBookings.status === 'error' ? (
-        <View style={styles.scoreSection}>
-          <Text style={styles.cardBody}>Could not load bookings: {unscoredBookings.message}</Text>
-        </View>
-      ) : null}
-
-      {readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0 ? (
-        <View style={styles.scoreSection}>
-          <View style={styles.cardTitleRow}>
-            <IconSymbol name="pencil" size={14} color={FuttyColors.emerald950} />
-            <Text style={styles.cardTitleInRow}>Log a score</Text>
-          </View>
+    <View style={styles.section}>
+      <SectionHeader title="Log a score" />
+      {errors.map((e) => (
+        <InlineError key={e.key} message={e.message} onRetry={e.retry} />
+      ))}
+      {hasForms ? (
+        <Card style={styles.cardStack}>
           {readyToScore.map((match) => (
             <FriendlyScoreForm
               key={match.id}
@@ -298,48 +299,39 @@ function NextGameCard({ onScored }: { onScored: () => void }) {
             <BookingResultForm
               key={booking.id}
               booking={booking}
-              venueName={venueFor(booking.venue_id)?.name ?? 'Booked venue'}
+              venueName={venueName(booking.venue_id)}
               onSubmitted={() => {
+                // Also covers a cancel, not just a logged score
+                // (BookingResultForm uses this callback for both).
                 unscoredBookings.reload();
-                // Also covers a cancel, not just a logged score (BookingResultForm
-                // uses this same callback for both) — an extra, otherwise-unused
-                // refetch on cancel is harmless and not worth a 2nd prop to avoid.
                 onScored();
               }}
             />
           ))}
           {hiddenUnscoredCount > 0 ? (
-            <Pressable accessibilityRole="button" onPress={() => router.push('/previous-games')}>
-              <Text style={styles.viewAllLink}>View all {unscored.length} pending →</Text>
-            </Pressable>
+            <Button
+              label={`View all ${unscored.length} pending`}
+              variant="plain"
+              onPress={() => router.push('/previous-games')}
+            />
           ) : null}
-        </View>
+        </Card>
       ) : null}
     </View>
   );
 }
 
-function formatResultDate(iso: string) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-}
-
 /** Shows once a score is confirmed — a plain booking's self-reported result,
- *  or both sides agreeing on a friendly match (submit_friendly_score) /
- *  league fixture (submit_fixture_score) — all three feed this via
- *  lib/use-recent-results.ts. The hook lives in HomeScreen, not here: logging
- *  a score in NextGameCard's "Log a score" section needs to refresh this
- *  card immediately, and two sibling components can't reload each other's
- *  own independent hook state — only a shared parent can. */
-function RecentResultsCard({ recentResults }: { recentResults: ReturnType<typeof useRecentResults> }) {
+ *  or both sides agreeing on a friendly match / league fixture — all three
+ *  feed this via lib/use-recent-results.ts. The hook lives in HomeScreen:
+ *  logging a score in LogScoreSection must refresh this card at once, and
+ *  only a shared parent can reload it. */
+function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typeof useRecentResults> }) {
   if (recentResults.status === 'error') {
     return (
-      <View style={styles.nextGameCard}>
-        <View style={styles.cardTitleRow}>
-          <IconSymbol name="trophy.fill" size={14} color={FuttyColors.emerald950} />
-          <Text style={styles.cardTitleInRow}>Previous game</Text>
-        </View>
-        <Text style={styles.cardBody}>Could not load: {recentResults.message}</Text>
+      <View style={styles.section}>
+        <SectionHeader title="Previous game" />
+        <InlineError message="Could not load your results." onRetry={recentResults.reload} />
       </View>
     );
   }
@@ -347,63 +339,148 @@ function RecentResultsCard({ recentResults }: { recentResults: ReturnType<typeof
   if (recentResults.status !== 'ready' || recentResults.results.length === 0) return null;
 
   return (
-    <View style={styles.nextGameCard}>
-      <View style={styles.cardTitleRow}>
-        <IconSymbol name="trophy.fill" size={14} color={FuttyColors.emerald950} />
-        <Text style={styles.cardTitleInRow}>Previous game</Text>
-      </View>
-      {recentResults.results.map((result) => (
-        <View key={result.key} style={styles.resultRow}>
-          <Text style={styles.resultTeams}>
-            {result.kind === 'booking'
-              ? `You ${result.homeScore}–${result.awayScore}`
-              : `${result.homeTeamName} ${result.homeScore}–${result.awayScore} ${result.awayTeamName}`}
-          </Text>
-          <Text style={styles.cardBody}>
-            {result.kind === 'league' ? 'League' : result.kind === 'friendly' ? 'Friendly' : 'Pickup game'} ·{' '}
-            {formatResultDate(result.playedAt)}
-          </Text>
-        </View>
-      ))}
+    <View style={styles.section}>
+      <SectionHeader title="Previous game" action={{ label: 'See all', onPress: () => router.push('/previous-games') }} />
+      <Card padded={false}>
+        {recentResults.results.map((result) => {
+          const kind = result.kind === 'league' ? 'League' : result.kind === 'friendly' ? 'Friendly' : 'Pickup game';
+          return (
+            <ListRow
+              key={result.key}
+              title={
+                result.kind === 'booking'
+                  ? `You ${result.homeScore}–${result.awayScore}`
+                  : `${result.homeTeamName} ${result.homeScore}–${result.awayScore} ${result.awayTeamName}`
+              }
+              subtitle={result.playedAt ? `${kind} · ${formatMatchDate(result.playedAt)}` : kind}
+              leading={{ icon: 'trophy.fill' }}
+            />
+          );
+        })}
+      </Card>
     </View>
   );
 }
 
-function PremiumBox() {
+/** Live venues as rows. Becomes VenueCards (photo, price per player, next free
+ *  times) once the server returns a per-player price and photos (P5/P9): the
+ *  app never works a price out itself. */
+function VenuesSection() {
+  const venuesState = useVenues();
+
+  if (venuesState.status === 'loading') {
+    return (
+      <View style={styles.section}>
+        <SectionHeader title="Venues" />
+        <SkeletonText lines={3} />
+      </View>
+    );
+  }
+
+  if (venuesState.status === 'error') {
+    return (
+      <View style={styles.section}>
+        <SectionHeader title="Venues" />
+        <InlineError message="Could not load venues." onRetry={venuesState.reload} />
+      </View>
+    );
+  }
+
+  const venues = venuesState.venues.filter((v) => v.is_live).slice(0, VENUES_SHOWN);
+  if (venues.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Venues" action={{ label: 'See all', onPress: openBook }} />
+      <Card padded={false}>
+        {venues.map((venue) => (
+          <ListRow
+            key={venue.id}
+            title={venue.name}
+            subtitle={venue.city}
+            leading={{ avatar: { name: venue.name } }}
+            chevron
+            onPress={openBook}
+          />
+        ))}
+      </Card>
+    </View>
+  );
+}
+
+function NeedPlayersSection() {
+  const posts = useSquadPosts('players');
+
+  useFocusEffect(
+    useCallback(() => {
+      posts.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
+  let content;
+  if (posts.status === 'loading') {
+    content = <SkeletonText lines={3} />;
+  } else if (posts.status === 'error') {
+    content = <InlineError message="Could not load games looking for players." onRetry={posts.reload} />;
+  } else {
+    const open = posts.posts
+      .filter((p) => p.status === 'open' && (p.players_needed == null || p.joined_count < p.players_needed))
+      .slice(0, POSTS_SHOWN);
+    content =
+      open.length === 0 ? (
+        <Card>
+          <EmptyState icon="person.2.fill" message="No games need players right now" action={{ label: 'Find a game', onPress: openFindGame }} />
+        </Card>
+      ) : (
+        <Card padded={false}>
+          {open.map((post) => {
+            const level = post.level_needed ?? post.level;
+            const when = formatMatchWhen(post.scheduled_at);
+            return (
+              <ListRow
+                key={post.id}
+                title={post.venue_name}
+                subtitle={level ? `${level} · ${when}` : when}
+                leading={{ icon: 'person.2.fill' }}
+                chevron
+                onPress={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
+              />
+            );
+          })}
+        </Card>
+      );
+  }
+
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Need players" action={{ label: 'See all', onPress: openFindGame }} />
+      {content}
+    </View>
+  );
+}
+
+function PremiumSection() {
   const profile = useProfile();
   const isPremium = profile.status === 'ready' && profile.profile.is_premium;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() => router.push('/account/premium')}
-      style={styles.premiumBox}>
-      <View style={styles.premiumIconCircle}>
-        <IconSymbol name="star.fill" size={20} color={FuttyColors.emerald950} />
-      </View>
-      <View style={styles.premiumTextBlock}>
-        <Text style={styles.premiumTitle}>{isPremium ? "You're on Premium" : 'Go Futty Premium'}</Text>
-        <Text style={styles.premiumSubtitle}>
-          {isPremium ? 'Manage your plan' : 'Book further ahead + get the verified badge'}
-        </Text>
-      </View>
-      <IconSymbol name="chevron.right" size={18} color={FuttyColors.emerald950} />
-    </Pressable>
-  );
-}
-
-function TeamPremiumBox() {
-  return (
-    <Pressable accessibilityRole="button" onPress={() => router.push('/team')} style={styles.teamPremiumBox}>
-      <View style={styles.teamPremiumIconCircle}>
-        <IconSymbol name="shield.fill" size={20} color={FuttyColors.white} />
-      </View>
-      <View style={styles.premiumTextBlock}>
-        <Text style={styles.teamPremiumTitle}>Team Premium</Text>
-        <Text style={styles.teamPremiumSubtitle}>Unlock 9-a-side & 11-a-side leagues for your team</Text>
-      </View>
-      <IconSymbol name="chevron.right" size={18} color={FuttyColors.white} />
-    </Pressable>
+    <Card padded={false}>
+      <ListRow
+        title={isPremium ? "You're on Premium" : 'Go Futty Premium'}
+        subtitle={isPremium ? 'Manage your plan' : 'Book further ahead and get the verified badge'}
+        leading={{ icon: 'star.fill' }}
+        chevron
+        onPress={() => router.push('/account/premium')}
+      />
+      <ListRow
+        title="Team Premium"
+        subtitle="Unlock 9-a-side and 11-a-side leagues for your team"
+        leading={{ icon: 'shield.fill' }}
+        chevron
+        onPress={() => router.push('/team')}
+      />
+    </Card>
   );
 }
 
@@ -416,9 +493,9 @@ export function HomeHeader() {
 
   return (
     <View style={styles.header}>
-      <UIText variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header" style={styles.headerTitle}>
+      <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header" style={styles.headerTitle}>
         Home
-      </UIText>
+      </Text>
       <View style={styles.headerActions}>
         <View>
           <IconButton
@@ -434,12 +511,19 @@ export function HomeHeader() {
   );
 }
 
-export default function HomeScreen() {
+export type HomeScreenProps = {
+  /** Anything owed (debt or a failed payment). Expo Router passes no props,
+   *  so this slot stays empty in the app. TODO after P5: fill it from
+   *  useOwed() in lib/use-owed.ts. Tests pass it to check the layout. */
+  owedBanner?: BannerProps | null;
+};
+
+export default function HomeScreen({ owedBanner }: HomeScreenProps = {}) {
   const recentResults = useRecentResults();
 
-  // Refetch whenever Home itself regains focus (e.g. back from Book or from
-  // app/previous-games.tsx) — NextGameCard separately calls reload() the
-  // instant a score is logged without leaving this screen at all.
+  // Refetch whenever Home regains focus (e.g. back from Book or from
+  // app/previous-games.tsx). LogScoreSection also reloads it the instant a
+  // score is logged.
   useFocusEffect(
     useCallback(() => {
       recentResults.reload();
@@ -454,38 +538,26 @@ export default function HomeScreen() {
       </SafeAreaView>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        <View style={styles.quickActions}>
-          {QUICK_ACTIONS.map(({ icon, label, color, onPress }) => (
-            <Pressable
-              key={label}
-              accessibilityRole="button"
-              onPress={onPress}
-              style={styles.quickAction}>
-              <View style={[styles.quickActionCircle, { backgroundColor: color }]}>
-                <IconSymbol name={icon} size={20} color={FuttyColors.white} />
-              </View>
-              <Text style={styles.quickActionLabel}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <NextGameCard onScored={recentResults.reload} />
-        <RecentResultsCard recentResults={recentResults} />
-        <PremiumBox />
-        <TeamPremiumBox />
+        {owedBanner ? (
+          <View testID="owed-banner">
+            <Banner {...owedBanner} />
+          </View>
+        ) : null}
+        <NextGameSection />
+        <QuickActions />
+        <LogScoreSection onScored={recentResults.reload} />
+        <RecentResultsSection recentResults={recentResults} />
+        <VenuesSection />
+        <NeedPlayersSection />
+        <PremiumSection />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: FuttyColors.stone50,
-  },
-  headerSafeArea: {
-    backgroundColor: colors.canvas,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  headerSafeArea: { backgroundColor: colors.canvas },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -493,13 +565,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.sm,
   },
-  headerTitle: {
-    flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  headerTitle: { flex: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   unreadDot: {
     position: 'absolute',
     top: space.md - space.xs,
@@ -509,191 +576,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.danger,
   },
-  body: {
-    flex: 1,
-  },
+  body: { flex: 1 },
   bodyContent: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 32,
-    gap: 16,
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: space.xxl,
+    gap: space.xl,
   },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickAction: {
-    alignItems: 'center',
-    gap: 6,
-    width: 72,
-  },
-  quickActionCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 10,
-    color: FuttyColors.stone700,
-    textAlign: 'center',
-    lineHeight: 13,
-  },
-  nextGameCard: {
-    backgroundColor: FuttyColors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    padding: 16,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  cardTitleInRow: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 14,
-    color: FuttyColors.stone900,
-  },
-  cardEmpty: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone400,
-  },
-  cardBody: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  nextGameVenue: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 14,
-    color: FuttyColors.stone900,
-    marginBottom: 2,
-  },
-  upcomingList: {
-    gap: 0,
-  },
-  upcomingPressable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  upcomingText: {
-    flex: 1,
-  },
-  upcomingPressed: {
-    opacity: 0.6,
-  },
-  upcomingRow: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
-  },
-  resultRow: {
-    marginTop: 8,
-    gap: 2,
-  },
-  resultTeams: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 13,
-    color: FuttyColors.stone900,
-  },
-  scoreSection: {
-    marginTop: 14,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
-    gap: 10,
-  },
-  viewAllLink: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 12,
-    color: FuttyColors.emerald700,
-  },
-  scoreForm: {
-    gap: 6,
-  },
-  scoreFormTitle: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 13,
-    color: FuttyColors.stone900,
-  },
-  scoreInputsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  scoreInput: {
-    width: 48,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-  scoreDash: {
-    fontFamily: FuttyFonts.sans,
-    color: FuttyColors.stone500,
-  },
-  premiumBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: FuttyColors.amber400,
-    borderRadius: 18,
-    padding: 14,
-  },
-  premiumIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: FuttyColors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  premiumTextBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  premiumTitle: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 14,
-    color: FuttyColors.stone900,
-  },
-  premiumSubtitle: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone900,
-    opacity: 0.8,
-  },
-  teamPremiumBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: FuttyColors.emerald800,
-    borderRadius: 18,
-    padding: 14,
-  },
-  teamPremiumIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: FuttyColors.emerald950,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  teamPremiumTitle: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 14,
-    color: FuttyColors.white,
-  },
-  teamPremiumSubtitle: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.white,
-    opacity: 0.85,
-  },
+  section: { gap: space.md },
+  cards: { gap: space.md },
+  cardStack: { gap: space.lg },
+  quickActions: { flexDirection: 'row', gap: space.md },
+  quickAction: { flex: 1 },
+  scoreForm: { gap: space.sm },
+  scoreInputsRow: { flexDirection: 'row', gap: space.md },
+  scoreInput: { flex: 1 },
 });
