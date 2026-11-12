@@ -67,7 +67,30 @@ export type BookingQuote = {
   cancellation: CancellationTerms;
 };
 
-/** booking_detail(): the parts the Pay my share view uses. */
+/** A player's paid state on the roster (spec 13 "Booking screens"):
+ *  in_app paid by card, cash to pay at the venue, cash_paid ticked by the
+ *  venue, unpaid, covered by the booker paying for everyone. */
+export type RosterState = 'in_app' | 'cash' | 'cash_paid' | 'unpaid' | 'covered';
+
+/** One player on booking_detail's roster. The amounts are null unless the
+ *  caller is the booker or this is the caller's own spot. */
+export type RosterEntry = {
+  share_id: string;
+  profile_id: string;
+  name: string | null;
+  username: string | null;
+  is_booker: boolean;
+  is_me: boolean;
+  state: RosterState;
+  amount_cents: number | null;
+  cash_cents: number | null;
+};
+
+/** The caller's next cancellation cutoff: their free hour ending, else
+ *  refunds stopping before kickoff; null once refunds have stopped. */
+export type NextCutoff = { kind: 'free_hour_ends' | 'refunds_stop'; at: string } | null;
+
+/** booking_detail(): a booking the caller is in. */
 export type BookingDetail = {
   booking: {
     id: string;
@@ -103,6 +126,9 @@ export type BookingDetail = {
     cash_cents: number;
     free_until: string | null;
   } | null;
+  roster: RosterEntry[];
+  next_cutoff: NextCutoff;
+  can_cancel: { my_spot: boolean; whole_team: boolean };
 };
 
 // ---- The search choices ------------------------------------------------

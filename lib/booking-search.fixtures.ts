@@ -76,5 +76,8 @@ export function detailFixture(
     },
     is_booker: false,
     me,
+    roster: [],
+    next_cutoff: { kind: 'refunds_stop', at: '2026-11-16T11:00:00+00:00' },
+    can_cancel: { my_spot: me !== null, whole_team: false },
   };
 }

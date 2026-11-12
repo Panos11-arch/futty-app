@@ -7,6 +7,7 @@ import { CheckoutView } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
 import type { PaymentMode } from '@/lib/booking-actions';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
+import { afterPayment } from '@/lib/booking-navigation';
 import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
 
 type Params = {
@@ -47,9 +48,10 @@ export default function BookingPaymentScreen() {
   return <Checkout slot={slot} venueName={params.venueName ?? ''} sheet={sheet} />;
 }
 
-function paid() {
+/** Paid: on to this booking's detail (roster, invite, cancel). */
+function paid(bookingId: string | null) {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  router.replace('/my-bookings');
+  afterPayment(bookingId, router);
 }
 
 function failed() {
@@ -69,7 +71,7 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
     const outcome = await payForSlot({ slot, mode, pay, bookingId }, sheet);
     setPaying(false);
     setBookingId(outcome.bookingId);
-    if (outcome.status === 'paid') paid();
+    if (outcome.status === 'paid') paid(outcome.bookingId);
     else if (outcome.status === 'error') {
       failed();
       setError(outcome.message);
@@ -104,7 +106,7 @@ function PayMyShare({ bookingId, sheet }: { bookingId: string; sheet: PaymentShe
     setError(null);
     const outcome = await payShare(data.state.data.detail.me.share_id, options, sheet);
     setPaying(false);
-    if (outcome.status === 'paid') paid();
+    if (outcome.status === 'paid') paid(bookingId);
     else if (outcome.status === 'error') {
       failed();
       setError(outcome.message);
