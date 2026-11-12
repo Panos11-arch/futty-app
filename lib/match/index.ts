@@ -5,3 +5,11 @@ export type * from './types';
 export { captainSideOf, otherSide, resultState, submittedScoreLine, toListItem, viewerRole } from './result';
 export type { ResultMatch, ResultState, ViewerRole } from './result';
 export { describeMatchResultError } from './result-errors';
+export {
+  getHeadToHead,
+  getMyTeammates,
+  getPlayerForm,
+  getPlayerRecentMatches,
+  getTeamForm,
+  recentRowToListItem,
+} from './profile-api';
