@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
+import { TeamHeadToHead } from '@/components/match/head-to-head';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
@@ -331,6 +332,10 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
               ))}
             </View>
           )}
+          {/* A3b-2b: head-to-head before accepting (05 section 3). */}
+          {teamId && post.team_id ? (
+            <TeamHeadToHead teamId={teamId} opponentTeamId={post.team_id} teamName={captainTeams.find((t) => t.team.id === teamId)?.team.name ?? 'Your team'} opponentName={post.team_name ?? 'Them'} />
+          ) : null}
           <ThemedText style={styles.note}>
             {post.payment_mode === 'gipedo_pano'
               ? 'Gipedo Pano: you and your opponents each authorize a hold for your normal share, but only the losing team is actually charged once the result is confirmed — the winners are released. A draw falls back to a normal split.'

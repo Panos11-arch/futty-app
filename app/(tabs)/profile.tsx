@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconLabel } from '@/components/icon-label';
+import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
@@ -148,6 +149,9 @@ function ProfileStatus() {
       return (
         <>
           <ProfileCard profile={profile.profile} />
+
+          {/* A3b-2b: form, recent matches and "Players you play with most". */}
+          <PlayerMatchSections profileId={profile.profile.id} own />
 
           <View style={styles.card}>
             <View style={styles.premiumRow}>

@@ -13,13 +13,30 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { useAuth } from '@/lib/auth';
 import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
 import { toDateKey } from '@/lib/days';
-import { updateProfile, useProfile } from '@/lib/use-profile';
+import {
+  PREFERRED_DAYS,
+  PREFERRED_TIMES,
+  updateProfile,
+  useProfile,
+  type PreferredDay,
+  type PreferredTime,
+} from '@/lib/use-profile';
 import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
 
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 const CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'];
 const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Striker'];
 const FEET = ['Left', 'Right', 'Both'];
+const DAY_LABELS: Record<PreferredDay, string> = {
+  mon: 'Mon',
+  tue: 'Tue',
+  wed: 'Wed',
+  thu: 'Thu',
+  fri: 'Fri',
+  sat: 'Sat',
+  sun: 'Sun',
+};
+const TIME_LABELS: Record<PreferredTime, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
 
 type FormState = {
   username: string;
@@ -32,6 +49,8 @@ type FormState = {
   city: string;
   position: string;
   preferredFoot: string;
+  preferredDays: PreferredDay[];
+  preferredTimes: PreferredTime[];
   showPhonePublicly: boolean;
 };
 
@@ -58,6 +77,35 @@ function PickerRow({
       {options.map((option) => (
         <Chip key={option} label={option} selected={value === option} onPress={() => onChange(option)} />
       ))}
+    </View>
+  );
+}
+
+/** Several at once (preferred days and times); saved in the fixed order of `options`. */
+function MultiPickerRow<T extends string>({
+  options,
+  labels,
+  value,
+  onChange,
+}: {
+  options: readonly T[];
+  labels: Record<T, string>;
+  value: T[];
+  onChange: (next: T[]) => void;
+}) {
+  return (
+    <View style={styles.pickerRow}>
+      {options.map((option) => {
+        const selected = value.includes(option);
+        return (
+          <Chip
+            key={option}
+            label={labels[option]}
+            selected={selected}
+            onPress={() => onChange(options.filter((o) => (o === option ? !selected : value.includes(o))))}
+          />
+        );
+      })}
     </View>
   );
 }
@@ -136,6 +184,8 @@ export default function EditProfileScreen() {
       city: p.city ?? '',
       position: p.position ?? '',
       preferredFoot: p.preferred_foot ?? '',
+      preferredDays: p.preferred_days ?? [],
+      preferredTimes: p.preferred_times ?? [],
       showPhonePublicly: p.show_phone_publicly,
     });
     // Seeded once when the row first loads — re-running on every `profile`
@@ -195,6 +245,8 @@ export default function EditProfileScreen() {
       city: form.city || null,
       position: form.position || null,
       preferred_foot: form.preferredFoot || null,
+      preferred_days: form.preferredDays,
+      preferred_times: form.preferredTimes,
       show_phone_publicly: form.showPhonePublicly,
     });
 
@@ -271,6 +323,24 @@ export default function EditProfileScreen() {
 
         <Field label="Preferred foot">
           <PickerRow options={FEET} value={form.preferredFoot} onChange={(v) => set('preferredFoot', v)} />
+        </Field>
+
+        <Field label="Days you like to play">
+          <MultiPickerRow
+            options={PREFERRED_DAYS}
+            labels={DAY_LABELS}
+            value={form.preferredDays}
+            onChange={(v) => set('preferredDays', v)}
+          />
+        </Field>
+
+        <Field label="Times you like to play">
+          <MultiPickerRow
+            options={PREFERRED_TIMES}
+            labels={TIME_LABELS}
+            value={form.preferredTimes}
+            onChange={(v) => set('preferredTimes', v)}
+          />
         </Field>
 
         {error ? <AuthError>{error}</AuthError> : null}

@@ -51,6 +51,17 @@ These rules were missing or ambiguous in the specs and were decided while writin
 6. **"Players you play with most"** (`player_teammates`): confirmed matches where both players checked in on the same side. It is personal: a player reads only their own list.
 7. **Head-to-head** counts a forfeit as a win for one team and a loss for the other (section 7: a forfeit counts as a loss in stats), with no goals.
 
+## 1d. Decisions (12 November, Anghelo, A3b-2b; to confirm with Panos)
+
+1. **Notification settings groups** (section 4.10). The settings screen lists each type a player can turn off under one of three groups:
+   - **Your games:** `match_reminder_24h`, `match_reminder_2h`, `match_after_game`, `match_result_submitted`, `match_result_confirmed`, `match_result_disputed`, `motm_vote_open`, `fixture_agreed`, `fixture_message`, `booking_invite`.
+   - **Teams you follow:** `followed_team_match`, `followed_team_result`, `followed_team_opponent_wanted`.
+   - **Community:** `squad_post`, `booking_slot`, `team_invite`.
+   - Which types exist and which are always sent come from `notification_types`. A switchable type the app doesn't know yet shows under "Other", so it is never hidden. A new type is added to a group in the same PR that adds it.
+2. **Always sent.** Every `always_sent` type is listed under "Always sent" with no switch and one shared reason: "About money or a cancelled game, so we always send these."
+3. **Profile preferences.** Position and preferred foot are the existing `profiles.position` and `profiles.preferred_foot`. Preferred days are `profiles.preferred_days text[]` (`mon` … `sun`) and preferred times `profiles.preferred_times text[]` (`morning`, `afternoon`, `evening`), each checked by a constraint and empty by default (migration `match_profile_prefs`). They are visible to their owner only: profiles' select policy shows a player only their own row, and `get_public_profile` and `get_public_profiles` don't return them. Later matching reads them on the server.
+4. **Quiet hours on screen.** Off until the player turns them on and picks both times (decision 1a.6: no defaults). Times are Cyprus wall-clock times; a start later than the end spans midnight ("ends the next day"). Turning them off deletes the row.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.

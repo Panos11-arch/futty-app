@@ -135,3 +135,76 @@ export type MatchResultSubmission = {
   responded_by: string | null;
   responded_at: string | null;
 };
+
+// The A3b views (section 7). Rows as the server sends them; the app shows
+// them unchanged and never recomputes form.
+
+/** `public.player_form`: a player's last 5, position 1 = newest. */
+export type PlayerFormRow = {
+  profile_id: string;
+  position: number;
+  match_id: string;
+  kickoff_at: string;
+  result: FormResult;
+};
+
+/** `public.team_form`: a named team's last 5, position 1 = newest. */
+export type TeamFormRow = {
+  team_id: string;
+  position: number;
+  match_id: string;
+  kickoff_at: string;
+  result: FormResult;
+};
+
+/** `public.player_recent_matches`: one confirmed match that counts for the player, from their side. */
+export type PlayerRecentMatchRow = {
+  profile_id: string;
+  match_id: string;
+  kickoff_at: string;
+  kickoff_local: string;
+  venue_id: string | null;
+  venue_name: string | null;
+  kind: MatchKind;
+  side: Side;
+  label: string;
+  opponent_label: string;
+  team_id: string | null;
+  opponent_team_id: string | null;
+  /** Null for a forfeit. */
+  goals_for: number | null;
+  goals_against: number | null;
+  result: FormResult;
+  forfeit_side: Side | null;
+  forfeit_reason: ForfeitReason | null;
+};
+
+/** One of the last 3 meetings in `head_to_head.last_3`, newest first. */
+export type HeadToHeadMeeting = {
+  matchId: string;
+  kickoffAt: string;
+  result: FormResult;
+  goalsFor: number | null;
+  goalsAgainst: number | null;
+};
+
+/** `public.head_to_head`: the record between two named teams, from team_id's side. */
+export type HeadToHeadRow = {
+  team_id: string;
+  opponent_team_id: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  last_3: HeadToHeadMeeting[];
+};
+
+/** `public.player_teammates`: the caller's own list only. */
+export type TeammateRow = {
+  profile_id: string;
+  teammate_profile_id: string;
+  matches_together: number;
+  last_played_at: string;
+};

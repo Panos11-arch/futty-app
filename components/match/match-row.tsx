@@ -15,11 +15,17 @@ import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
 import { formResult } from '@/lib/match/form';
 import { formatMatchWhen } from '@/lib/match/format';
-import type { MatchListItem } from '@/lib/match/types';
+import type { FormResult, MatchListItem } from '@/lib/match/types';
 
 export type MatchRowProps =
-  | { item: MatchListItem; onPress?: () => void; loading?: false }
-  | { loading: true; item?: undefined; onPress?: undefined };
+  | {
+      item: MatchListItem;
+      onPress?: () => void;
+      /** The viewer's result as a server view gave it (player_recent_matches); shown as is. */
+      viewerResult?: FormResult;
+      loading?: false;
+    }
+  | { loading: true; item?: undefined; onPress?: undefined; viewerResult?: undefined };
 
 export function MatchRow(props: MatchRowProps) {
   if (props.loading) {
@@ -32,9 +38,10 @@ export function MatchRow(props: MatchRowProps) {
     );
   }
 
-  const { item, onPress } = props;
+  const { item, onPress, viewerResult } = props;
   const when = formatMatchWhen(item.match.kickoff_at);
-  const result = item.result && item.viewerSide ? formResult(item.result, item.viewerSide) : null;
+  const result =
+    viewerResult ?? (item.result && item.viewerSide ? formResult(item.result, item.viewerSide) : null);
   const spoken = [
     scoreLineContent(item).spoken,
     `${when}, ${item.venueName}`,
