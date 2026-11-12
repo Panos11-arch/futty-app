@@ -84,6 +84,21 @@ export function describeBookingErrorMessage(message: string) {
       return 'Less than 6 hours to kickoff, so this booking can no longer be refunded.';
     case 'booking_cancelled':
       return 'This booking has been cancelled.';
+    case 'booking_not_found':
+      return 'This booking could not be found.';
+    case 'quote_changed':
+      return 'What happens to the money has changed. Check it again before you confirm.';
+    case 'quote_required':
+    case 'invalid_request':
+      return 'Check what happens to the money first, then confirm.';
+    case 'booking_started':
+      return 'The game has started, so it can no longer be cancelled.';
+    case 'not_in_booking':
+      return "You don't have a spot in this booking.";
+    case 'use_whole_team':
+      return 'You paid for everyone, so you can only cancel the whole booking.';
+    case 'legacy_booking':
+      return 'This booking can only be cancelled as a whole.';
     case 'already_logged':
       return "You've already logged a result for this booking.";
     case 'too_early':
