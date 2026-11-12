@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { PopupModal } from '@/components/popup-modal';
-import { ThemedText } from '@/components/themed-text';
+import { MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Text } from '@/components/ui/text';
+import { colors, radius, space, type } from '@/constants/futty-theme';
 import { COUNTRIES, type Country } from '@/lib/countries';
 
 /** Dial-code picker + national number field, replacing a plain free-text
- *  phone input — tapping the flag/code pill opens a country list; the number
- *  typed next to it is always just the national number, never the code. */
+ *  phone input — tapping the code pill opens a country list; the number
+ *  typed next to it is always just the national number, never the code.
+ *  Countries show as their two-letter code, not a flag (no emoji in the UI). */
 export function PhoneField({
   country,
   national,
@@ -23,27 +24,28 @@ export function PhoneField({
   onChangeNational: (national: string) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const textColor = useThemeColor({}, 'text');
 
   return (
     <View style={styles.row}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Country code, ${country.name} ${country.dialCode}`}
         onPress={() => setPickerOpen(true)}
-        style={[styles.codePill, { borderColor: border }]}>
-        <ThemedText style={styles.flag}>{country.flag}</ThemedText>
-        <ThemedText style={styles.codeText}>{country.dialCode}</ThemedText>
-        <IconSymbol name="chevron.down" size={14} color={FuttyColors.stone500} />
+        style={styles.codePill}>
+        <Text variant="body" tabular>
+          {country.iso2} {country.dialCode}
+        </Text>
+        <IconSymbol name="chevron.down" size={20} color={colors.inkMuted} />
       </Pressable>
 
       <TextInput
+        accessibilityLabel="Phone number"
         value={national}
         onChangeText={onChangeNational}
         placeholder="99 123456"
-        placeholderTextColor={border}
+        placeholderTextColor={colors.inkMuted}
         keyboardType="phone-pad"
-        style={[styles.input, { borderColor: border, color: textColor }]}
+        style={styles.input}
       />
 
       <PopupModal visible={pickerOpen} onClose={() => setPickerOpen(false)} title="Select country">
@@ -53,14 +55,19 @@ export function PhoneField({
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={`${item.name} ${item.dialCode}`}
+              accessibilityState={{ selected: item.iso2 === country.iso2 }}
               onPress={() => {
                 onChangeCountry(item);
                 setPickerOpen(false);
               }}
               style={[styles.countryRow, item.iso2 === country.iso2 && styles.countryRowSelected]}>
-              <ThemedText style={styles.flag}>{item.flag}</ThemedText>
-              <ThemedText style={styles.countryName}>{item.name}</ThemedText>
-              <ThemedText style={styles.countryDial}>{item.dialCode}</ThemedText>
+              <Text variant="body" style={styles.countryName}>
+                {item.name}
+              </Text>
+              <Text variant="callout" tone="inkMuted" tabular>
+                {item.dialCode}
+              </Text>
             </Pressable>
           )}
         />
@@ -70,50 +77,40 @@ export function PhoneField({
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  row: { flexDirection: 'row', gap: space.sm },
   codePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: space.xs,
+    minHeight: MIN_TOUCH,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-  },
-  flag: {
-    fontSize: 18,
-  },
-  codeText: {
-    fontSize: 15,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    paddingHorizontal: space.md,
   },
   input: {
+    ...type.body,
     flex: 1,
+    color: colors.ink,
+    minHeight: MIN_TOUCH,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 16,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
   countryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: FuttyColors.stone200,
+    gap: space.md,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  countryRowSelected: {
-    backgroundColor: FuttyColors.stone50,
-  },
-  countryName: {
-    flex: 1,
-    fontSize: 15,
-  },
-  countryDial: {
-    fontSize: 14,
-    color: FuttyColors.stone500,
-  },
+  countryRowSelected: { backgroundColor: colors.brandSoft },
+  countryName: { flex: 1 },
 });

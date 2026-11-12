@@ -2,17 +2,19 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 
 import {
-  AuthButton,
   AuthError,
-  AuthField,
   AuthLink,
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  AuthWordmark,
   PasswordStrengthMeter,
 } from '@/components/auth-form';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
+import { passwordError, useTouched } from '@/lib/auth-fields';
 import { getPasswordLengthError } from '@/lib/password';
 
 export default function ResetPasswordScreen() {
@@ -22,6 +24,7 @@ export default function ResetPasswordScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { touch, shown } = useTouched<'password' | 'confirmation'>();
 
   const passwordLengthError = getPasswordLengthError(password);
 
@@ -55,12 +58,10 @@ export default function ResetPasswordScreen() {
   if (linkError) {
     return (
       <AuthScreen>
+        <AuthWordmark />
         <AuthTitle>Link expired</AuthTitle>
         <AuthSubtitle>{linkError}</AuthSubtitle>
-        <AuthButton
-          label="Request a new link"
-          onPress={() => router.replace('/forgot-password')}
-        />
+        <Button label="Request a new link" onPress={() => router.replace('/forgot-password')} fullWidth />
       </AuthScreen>
     );
   }
@@ -69,6 +70,7 @@ export default function ResetPasswordScreen() {
   if (!session) {
     return (
       <AuthScreen>
+        <AuthWordmark />
         <AuthTitle>Open your reset link</AuthTitle>
         <AuthSubtitle>
           This screen needs the link from your reset email. Open that link on this device to
@@ -81,13 +83,17 @@ export default function ResetPasswordScreen() {
 
   return (
     <AuthScreen>
-      <AuthTitle icon="key.fill">New password</AuthTitle>
+      <AuthWordmark />
+      <AuthTitle>New password</AuthTitle>
       <AuthSubtitle>Choose a new password for {session.user.email}.</AuthSubtitle>
 
-      <AuthField
+      <TextField
+        label="New password"
         value={password}
         onChangeText={setPassword}
-        placeholder="New password"
+        onBlur={touch('password')}
+        // The length rule shows as soon as there's input, as before.
+        error={passwordLengthError ?? shown('password', passwordError(password, { isNew: true }))}
         autoCapitalize="none"
         autoComplete="new-password"
         secureTextEntry
@@ -96,12 +102,13 @@ export default function ResetPasswordScreen() {
       />
 
       <PasswordStrengthMeter password={password} />
-      {passwordLengthError ? <AuthError>{passwordLengthError}</AuthError> : null}
 
-      <AuthField
+      <TextField
+        label="Confirm new password"
         value={confirmation}
         onChangeText={setConfirmation}
-        placeholder="Confirm new password"
+        onBlur={touch('confirmation')}
+        error={shown('confirmation', confirmation.length === 0 ? 'Enter the password again.' : null)}
         autoCapitalize="none"
         autoComplete="new-password"
         secureTextEntry
@@ -113,11 +120,12 @@ export default function ResetPasswordScreen() {
 
       {error ? <AuthError>{error}</AuthError> : null}
 
-      <AuthButton
+      <Button
         label="Update password"
         onPress={submit}
         disabled={password.length === 0 || confirmation.length === 0 || !!passwordLengthError}
-        busy={busy}
+        loading={busy}
+        fullWidth
       />
     </AuthScreen>
   );

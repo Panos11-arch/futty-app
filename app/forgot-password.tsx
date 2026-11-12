@@ -3,17 +3,19 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import {
-  AuthButton,
   AuthError as AuthErrorText,
-  AuthField,
   AuthLink,
   AuthNotice,
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  AuthWordmark,
 } from '@/components/auth-form';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
+import { emailError, useTouched } from '@/lib/auth-fields';
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -35,6 +37,7 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [cooldown, setCooldown] = useState(secondsRemaining);
+  const { touch, shown } = useTouched<'email'>();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -74,7 +77,8 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AuthScreen>
-      <AuthTitle icon="key.fill">Reset password</AuthTitle>
+      <AuthWordmark />
+      <AuthTitle>Reset password</AuthTitle>
       <AuthSubtitle>
         {sent
           ? 'If that address has an account, a reset link is on its way.'
@@ -92,9 +96,12 @@ export default function ForgotPasswordScreen() {
         </>
       ) : (
         <>
-          <AuthField
+          <TextField
+            label="Email"
             value={email}
             onChangeText={setEmail}
+            onBlur={touch('email')}
+            error={shown('email', emailError(email))}
             placeholder="you@example.com"
             autoCapitalize="none"
             autoComplete="email"
@@ -108,11 +115,12 @@ export default function ForgotPasswordScreen() {
 
           {error ? <AuthErrorText>{error}</AuthErrorText> : null}
 
-          <AuthButton
+          <Button
             label={cooldown > 0 ? `Try again in ${cooldown}s` : 'Send reset link'}
             onPress={submit}
             disabled={email.trim().length === 0 || cooldown > 0}
-            busy={busy}
+            loading={busy}
+            fullWidth
           />
         </>
       )}

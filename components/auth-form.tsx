@@ -1,3 +1,7 @@
+// The sign-in and onboarding shell and its pieces (U6, docs/specs/15-design.md).
+// Tokens only. AuthButton, AuthField, AuthError, AuthNotice and AuthLink are
+// also used by older screens, so their props stay as they were; new screens
+// use components/ui directly.
 import type { ComponentProps, PropsWithChildren } from 'react';
 import {
   ActivityIndicator,
@@ -11,58 +15,51 @@ import {
   type TextInputProps,
 } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { DISABLED_OPACITY, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Text, type TextTone } from '@/components/ui/text';
+import { colors, radius, space, type } from '@/constants/futty-theme';
 import { getPasswordStrength } from '@/lib/password';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
-/** Vertically centred, keyboard-aware shell shared by the auth screens. */
+/** One column on the canvas, keyboard-aware, vertically centred. */
 export function AuthScreen({ children }: PropsWithChildren) {
   return (
-    <ThemedView style={styles.flex}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.screen}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
-    </ThemedView>
-  );
-}
-
-export function AuthTitle({ icon, children }: PropsWithChildren<{ icon?: IconName }>) {
-  const tint = useThemeColor({}, 'tint');
-  if (!icon) return <ThemedText type="title">{children}</ThemedText>;
-  return (
-    <View style={styles.titleRow}>
-      <View style={[styles.titleIconCircle, { backgroundColor: tint }]}>
-        <IconSymbol name={icon} size={20} color={FuttyColors.white} />
-      </View>
-      <ThemedText type="title">{children}</ThemedText>
     </View>
   );
 }
 
-export function AuthSubtitle({ children }: PropsWithChildren) {
-  return <ThemedText style={styles.subtitle}>{children}</ThemedText>;
+/** The Futty wordmark, in ink. No illustration. */
+export function AuthWordmark() {
+  return (
+    <Text variant="display" accessibilityRole="header" style={styles.wordmark}>
+      Futty
+    </Text>
+  );
 }
 
-export function AuthField(props: TextInputProps) {
-  const textColor = useThemeColor({}, 'text');
-  const borderColor = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
+export function AuthTitle({ children }: PropsWithChildren) {
+  return <Text variant="title">{children}</Text>;
+}
 
+export function AuthSubtitle({ children }: PropsWithChildren) {
   return (
-    <TextInput
-      placeholderTextColor={borderColor}
-      {...props}
-      style={[styles.input, { color: textColor, borderColor }, props.style]}
-    />
+    <Text variant="body" tone="inkMuted">
+      {children}
+    </Text>
   );
+}
+
+/** A bare input for older screens; the auth screens use components/ui TextField. */
+export function AuthField(props: TextInputProps) {
+  return <TextInput placeholderTextColor={colors.inkMuted} {...props} style={[styles.input, props.style]} />;
 }
 
 type AuthButtonProps = {
@@ -72,52 +69,37 @@ type AuthButtonProps = {
   busy?: boolean;
   /** Renders as a low-emphasis outline instead of a filled button. */
   variant?: 'primary' | 'secondary';
-  /** Trailing icon — e.g. a checkmark on a toggle button that's currently on. */
+  /** Trailing icon, e.g. a checkmark on a toggle button that's currently on. */
   icon?: IconName;
-  /** Sizes to its label instead of stretching to fill its container (item
-   *  9) — for a single standalone action in a card/row (e.g. "Join squad",
-   *  "Cancel"), not a full-screen primary CTA or one half of a paired
-   *  confirm/cancel row (those still want to fill their own flex:1 cell).
-   *  Default is unchanged (stretches) so no existing call site is affected
-   *  by adding this. */
+  /** Sizes to its label instead of stretching to fill its container. */
   compact?: boolean;
 };
 
-export function AuthButton({
-  label,
-  onPress,
-  disabled,
-  busy,
-  variant = 'primary',
-  icon,
-  compact,
-}: AuthButtonProps) {
-  const tint = useThemeColor({}, 'tint');
-  // A filled button's label needs to invert against tint (emerald-950) rather
-  // than reuse the base text color, or it renders dark-on-dark.
-  const onTint = useThemeColor({}, 'background');
+export function AuthButton({ label, onPress, disabled, busy, variant = 'primary', icon, compact }: AuthButtonProps) {
   const isPrimary = variant === 'primary';
+  const tone: TextTone = isPrimary ? 'onBrand' : 'brand';
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled, busy: !!busy }}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled || !!busy, busy: !!busy }}
       onPress={onPress}
       disabled={disabled || busy}
       style={[
         styles.button,
-        isPrimary ? { backgroundColor: tint } : { borderWidth: 1, borderColor: tint },
+        isPrimary ? styles.buttonPrimary : styles.buttonSecondary,
         compact && styles.buttonCompact,
-        (disabled || busy) && styles.buttonDisabled,
+        (disabled || busy) && styles.inactive,
       ]}>
       {busy ? (
-        <ActivityIndicator color={isPrimary ? onTint : tint} />
+        <ActivityIndicator color={colors[tone]} />
       ) : (
         <View style={styles.buttonLabelRow}>
-          <ThemedText style={[styles.buttonLabel, { color: isPrimary ? onTint : tint }]}>
+          <Text variant="headline" tone={tone}>
             {label}
-          </ThemedText>
-          {icon ? <IconSymbol name={icon} size={14} color={isPrimary ? onTint : tint} /> : null}
+          </Text>
+          {icon ? <IconSymbol name={icon} size={20} color={colors[tone]} /> : null}
         </View>
       )}
     </Pressable>
@@ -125,13 +107,25 @@ export function AuthButton({
 }
 
 export function AuthError({ children }: PropsWithChildren) {
-  return <ThemedText style={{ color: FuttyColors.rose600 }}>{children}</ThemedText>;
+  return (
+    <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+      {children}
+    </Text>
+  );
+}
+
+export function AuthNotice({ children }: PropsWithChildren) {
+  return (
+    <Text variant="callout" tone="success">
+      {children}
+    </Text>
+  );
 }
 
 const STRENGTH_CONFIG = {
-  weak: { label: 'Weak', color: FuttyColors.rose600, filled: 1 },
-  medium: { label: 'Medium', color: FuttyColors.amber400, filled: 2 },
-  strong: { label: 'Strong', color: FuttyColors.emerald700, filled: 3 },
+  weak: { label: 'Weak', tone: 'danger', filled: 1 },
+  medium: { label: 'Medium', tone: 'warning', filled: 2 },
+  strong: { label: 'Strong', tone: 'success', filled: 3 },
 } as const;
 
 /** Live weak/medium/strong indicator, based on length + character variety. */
@@ -141,115 +135,77 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
   const config = STRENGTH_CONFIG[strength];
 
   return (
-    <View style={styles.strengthWrap}>
+    <View style={styles.strengthWrap} accessible accessibilityLabel={`Password strength: ${config.label}`}>
       <View style={styles.strengthBars}>
         {[0, 1, 2].map((i) => (
           <View
             key={i}
-            style={[
-              styles.strengthBar,
-              { backgroundColor: i < config.filled ? config.color : FuttyColors.stone200 },
-            ]}
+            style={[styles.strengthBar, { backgroundColor: i < config.filled ? colors[config.tone] : colors.border }]}
           />
         ))}
       </View>
-      <ThemedText style={[styles.strengthLabel, { color: config.color }]}>{config.label}</ThemedText>
+      <Text variant="caption" tone={config.tone}>
+        {config.label}
+      </Text>
     </View>
   );
 }
 
-export function AuthNotice({ children }: PropsWithChildren) {
-  return <ThemedText style={{ color: FuttyColors.emerald600 }}>{children}</ThemedText>;
-}
-
+/** A plain text link, at least 44 points tall. */
 export function AuthLink({ label, onPress, disabled }: Omit<AuthButtonProps, 'variant' | 'busy'>) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled}>
-      <ThemedText type="link" style={[styles.link, disabled && styles.buttonDisabled]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      onPress={onPress}
+      disabled={disabled}
+      style={[styles.link, disabled && styles.inactive]}>
+      <Text variant="body" tone="brand" style={styles.linkText}>
         {label}
-      </ThemedText>
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
   content: {
     flexGrow: 1,
     justifyContent: 'center',
-    gap: 12,
-    padding: 24,
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.xl,
   },
-  subtitle: {
-    marginBottom: 8,
-    opacity: 0.7,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  titleIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  wordmark: { marginBottom: space.lg },
   input: {
+    ...type.body,
+    color: colors.ink,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    fontSize: 16,
+    borderRadius: radius.control,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-    marginTop: 8,
-    minHeight: 50,
-    paddingHorizontal: 16,
+    borderRadius: radius.control,
+    marginTop: space.sm,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.lg,
   },
-  buttonCompact: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 22,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  buttonLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  link: {
-    textAlign: 'center',
-  },
-  strengthWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: -4,
-  },
-  strengthBars: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  strengthBar: {
-    flex: 1,
-    height: 4,
-    borderRadius: 2,
-  },
-  strengthLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  buttonPrimary: { backgroundColor: colors.brand },
+  buttonSecondary: { borderWidth: 1, borderColor: colors.brand, backgroundColor: colors.surface },
+  buttonCompact: { alignSelf: 'flex-start', paddingHorizontal: space.xl },
+  inactive: { opacity: DISABLED_OPACITY },
+  buttonLabelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  link: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  linkText: { textAlign: 'center' },
+  strengthWrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  strengthBars: { flex: 1, flexDirection: 'row', gap: space.xs },
+  strengthBar: { flex: 1, height: space.xs, borderRadius: radius.pill },
 });
