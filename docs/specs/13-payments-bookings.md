@@ -311,6 +311,15 @@ Venues are loaded from the Futty Venue Data sheet by an import script (`scripts/
 - A live venue with no price shows its page with the Book bar off and "Not taking bookings yet".
 - **Directions:** on iPhone, "Directions" offers Apple Maps or Google Maps. On Android it opens Google Maps.
 
+## Booking screens (decided 12 November)
+
+The booking screens (P5) show only amounts the server computes: `booking_quote` for checkout, `venues_free_at` for the Book list, `booking_detail` for a booking, `my_owed` and `my_credit` for debt and credit.
+
+- **Players per side:** the Book flow picks the format before the venue. "Players per side: 5 v 5 / 6 v 6" shows after 5-a-side is picked, only when at least one live venue allows 6 v 6 on 5-a-side pitches. Picking 6 v 6 lists only those venues. Coming from a venue page, it shows only if that venue allows it.
+- **Cash:** offered by the server's rules only, in the two each-pays modes. Never with venue credit, and never to a player in debt. There is no venue setting for cash; every venue accepts it.
+- **Who sees the roster:** everyone in a booking sees each player's name and paid state (in app, cash, cash paid, unpaid). Only the booker sees everyone's amounts; the other players see only their own.
+- **Testing a booking end to end:** the SQL tests run `book_slot` in each of the three modes through to a confirmed booking against the local database. The app's Jest tests check that the chosen mode reaches `book_slot`; they don't need a database.
+
 ## Server-side checks that make it airtight
 
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.
