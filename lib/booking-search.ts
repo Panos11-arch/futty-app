@@ -331,6 +331,24 @@ export async function fetchBookingQuote(slot: Slot): Promise<BookingQuote> {
   return data as BookingQuote;
 }
 
+/** A roster player's name: "You" for the caller. */
+export function rosterName(entry: Pick<RosterEntry, 'is_me' | 'name' | 'username'>): string {
+  return entry.is_me ? 'You' : (entry.name ?? entry.username ?? 'Player');
+}
+
+/** Who hasn't paid (state 'unpaid' on booking_detail's roster), for the
+ *  next-game card. A cash player who'll pay at the venue isn't in it. */
+export function whoHasntPaid(roster: RosterEntry[]): string[] {
+  return roster.filter((e) => e.state === 'unpaid').map(rosterName);
+}
+
+/** booking_detail's roster only (names and paid state), for the next-game card. */
+export async function fetchBookingRoster(bookingId: string): Promise<RosterEntry[]> {
+  const { data, error } = await supabase.rpc('booking_detail', { p_booking_id: bookingId });
+  if (error) fail(error.message);
+  return (data as BookingDetail).roster ?? [];
+}
+
 export type PayShareData = { detail: BookingDetail; blocked: boolean; cancellation: CancellationTerms };
 
 /** A booking the caller is in, whether they're blocked by debt, and the

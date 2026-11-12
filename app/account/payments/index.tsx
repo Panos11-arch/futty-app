@@ -15,6 +15,11 @@ export default function PaymentsScreen() {
             onPress={() => router.push('/account/payments/methods')}
           />
           <MenuRow
+            icon="exclamationmark.circle.fill"
+            label="Debt and credit"
+            onPress={() => router.push('/account/payments/owed')}
+          />
+          <MenuRow
             icon="doc.text.fill"
             label="All transactions"
             onPress={() => router.push('/account/payments/transactions')}

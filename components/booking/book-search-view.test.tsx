@@ -173,3 +173,30 @@ describe('BookSearchView', () => {
     expect(p.onRetryResults).toHaveBeenCalled();
   });
 });
+
+describe('debt banner (spec 13, "Debt")', () => {
+  const debtMessage = 'You owe €6.80. Pay it before booking.';
+
+  it('blocks booking and links to payment when the player owes money', async () => {
+    const p = props({ results: { status: 'ready', data: [nuevo] }, debtMessage, onPayOwed: jest.fn() });
+    await render(<BookSearchView {...p} />);
+    expect(within(screen.getByTestId('debt-banner')).getByText(debtMessage)).toBeTruthy();
+
+    await pickSlot();
+    await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
+    await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:30' }));
+    expect(p.onChoose).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
+    expect(p.onPayOwed).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no banner and books as usual when nothing is owed', async () => {
+    const p = props({ results: { status: 'ready', data: [nuevo] }, debtMessage: null, onPayOwed: jest.fn() });
+    await render(<BookSearchView {...p} />);
+    expect(screen.queryByTestId('debt-banner')).toBeNull();
+    await pickSlot();
+    await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
+    expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
+  });
+});
