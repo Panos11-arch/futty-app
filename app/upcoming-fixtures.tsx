@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthButton, AuthError } from '@/components/auth-form';
-import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
 import { FuttyColors } from '@/constants/futty-theme';
@@ -90,7 +90,7 @@ function FixtureRow({
           Captains couldn&apos;t agree a score after 3 tries — locked.
         </IconLabel>
       ) : null}
-      {canLogScore ? <FixtureScoreForm fixture={fixture} onSubmitted={onChanged} /> : null}
+      {canLogScore ? <FixtureScoreEntry fixture={fixture} onSubmitted={onChanged} /> : null}
       {needsAction ? (
         <AuthButton
           label="Go to matchmaking"

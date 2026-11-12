@@ -121,3 +121,17 @@ export type MatchFormEntry = {
 };
 
 export type FormResult = 'W' | 'D' | 'L' | 'L_forfeit';
+
+/** `public.match_result_submissions` (4.5): at most one per match. */
+export type MatchResultSubmission = {
+  id: string;
+  match_id: string;
+  side: Side;
+  side_a_score: number;
+  side_b_score: number;
+  submitted_by: string;
+  submitted_at: string;
+  response: 'accepted' | 'rejected' | null;
+  responded_by: string | null;
+  responded_at: string | null;
+};

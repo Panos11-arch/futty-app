@@ -12,9 +12,11 @@ import type {
   MatchPlayerRecord,
   MatchResultConfirmed,
   MatchSideRecord,
+  MatchResultSubmission,
   MatchStatus,
   Side,
 } from '@/lib/match/types';
+import type { ResultMatch } from '@/lib/match/result';
 
 export const TEAM_HOME = 'team-home';
 export const TEAM_AWAY = 'team-away';
@@ -242,3 +244,99 @@ export const mockFormEntries: MatchFormEntry[] = [
     viewerCheckedIn,
   ]),
 ];
+
+// Kickoff 19:00, end 20:00 Cyprus time on Sat 14 Nov 2026 (UTC+2); the
+// result deadline is 24 hours after the end (decision 2).
+const RESULT_KICKOFF = '2026-11-14T17:00:00.000Z';
+const RESULT_ENDS = '2026-11-14T18:00:00.000Z';
+export const RESULT_DEADLINE = '2026-11-15T18:00:00.000Z';
+export const RESULT_BEFORE_KICKOFF = Date.parse('2026-11-14T16:00:00.000Z');
+export const RESULT_AFTER_END = Date.parse('2026-11-14T19:00:00.000Z');
+
+/** The people in mockResultMatch. */
+export const RESULT_PEOPLE = { me: 'me', booker: 'booker', awayCaptain: 'away-captain' } as const;
+const BOOKER = RESULT_PEOPLE.booker;
+const AWAY_CAPTAIN = RESULT_PEOPLE.awayCaptain;
+
+/** One match for the result screen (lib/match/result.ts), played on Sat 14 Nov 2026 19:00–20:00 Cyprus time. */
+export function mockResultMatch({
+  kind = 'pickup',
+  status = 'played',
+  submission = null,
+  mySide = null,
+  inMatch = true,
+  sideACaptain = BOOKER,
+  sideBCaptain = kind === 'named' ? AWAY_CAPTAIN : null,
+  scores = [null, null],
+  forfeit = null,
+}: {
+  kind?: MatchKind;
+  status?: MatchStatus;
+  submission?: Partial<MatchResultSubmission> | null;
+  mySide?: Side | null;
+  inMatch?: boolean;
+  sideACaptain?: string | null;
+  sideBCaptain?: string | null;
+  scores?: [number | null, number | null];
+  forfeit?: { side: Side; reason: 'pulled_out' | 'no_show' } | null;
+} = {}): ResultMatch {
+  const named = kind === 'named';
+  return {
+    match: {
+      id: 'm1',
+      booking_id: 'b1',
+      venue_id: 'v1',
+      friendly_match_id: named ? 'f1' : null,
+      league_fixture_id: null,
+      kind,
+      format: '5-a-side',
+      players_per_side: 5,
+      kickoff_at: RESULT_KICKOFF,
+      ends_at: RESULT_ENDS,
+      status,
+      result_deadline_at: RESULT_DEADLINE,
+      side_a_score: scores[0],
+      side_b_score: scores[1],
+      forfeit_side: forfeit?.side ?? null,
+      forfeit_reason: forfeit?.reason ?? null,
+      confirmed_at: status === 'confirmed' ? RESULT_DEADLINE : null,
+      confirmed_via: forfeit ? 'forfeit' : status === 'confirmed' ? 'agreed' : null,
+      created_at: RESULT_KICKOFF,
+      updated_at: RESULT_KICKOFF,
+    },
+    sides: {
+      a: {
+        match_id: 'm1',
+        side: 'a',
+        team_id: named ? 'team-home' : null,
+        label: named ? 'Home FC' : 'Bibs',
+        captain_profile_id: sideACaptain,
+      },
+      b: {
+        match_id: 'm1',
+        side: 'b',
+        team_id: named ? 'team-away' : null,
+        label: named ? 'Away FC' : 'Non-bibs',
+        captain_profile_id: sideBCaptain,
+      },
+    },
+    submission: submission
+      ? {
+          id: 's1',
+          match_id: 'm1',
+          side: 'a',
+          side_a_score: 5,
+          side_b_score: 3,
+          submitted_by: BOOKER,
+          submitted_at: RESULT_ENDS,
+          response: null,
+          responded_by: null,
+          responded_at: null,
+          ...submission,
+        }
+      : null,
+    myPlayer: inMatch ? { id: 'p-me', side: mySide } : null,
+    venueName: 'Nuevo Campo',
+  };
+}
+

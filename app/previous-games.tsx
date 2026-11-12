@@ -1,12 +1,16 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookingResultForm } from '@/components/booking-result-form';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ListRow } from '@/components/ui/list-row';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { dateKeyAndTimeToDate } from '@/lib/days';
+import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
+import { formatMatchWhen } from '@/lib/match/format';
+import { useMatchLinks } from '@/lib/match/use-match-result';
 import { useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useVenues } from '@/lib/use-venues';
 
@@ -17,10 +21,14 @@ import { useVenues } from '@/lib/use-venues';
 export function PreviousGamesList() {
   const unscoredBookings = useMyUnscoredBookings();
   const venuesState = useVenues();
+  const matchLinks = useMatchLinks({
+    bookingIds: unscoredBookings.status === 'ready' ? unscoredBookings.bookings.map((b) => b.id) : [],
+  });
 
   useFocusEffect(
     useCallback(() => {
       unscoredBookings.reload();
+      matchLinks.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
@@ -31,8 +39,10 @@ export function PreviousGamesList() {
       : 'Booked venue';
   }
 
+  // A booking with a match (made since A2) is scored in the match screen,
+  // never with the old form; wait until we know which ones have one.
   const sorted =
-    unscoredBookings.status === 'ready'
+    unscoredBookings.status === 'ready' && matchLinks.status === 'ready'
       ? [...unscoredBookings.bookings].sort(
           (a, b) =>
             dateKeyAndTimeToDate(b.booking_day, b.start_time).getTime() -
@@ -42,17 +52,34 @@ export function PreviousGamesList() {
 
   return (
     <View style={styles.list}>
-      {unscoredBookings.status === 'loading' ? <ActivityIndicator /> : null}
+      {unscoredBookings.status === 'loading' || matchLinks.status === 'loading' ? <ActivityIndicator /> : null}
       {unscoredBookings.status === 'error' ? (
         <Text style={styles.note}>Could not load: {unscoredBookings.message}</Text>
       ) : null}
-      {unscoredBookings.status === 'ready' && sorted.length === 0 ? (
+      {matchLinks.status === 'error' ? (
+        <Text style={styles.note} onPress={matchLinks.reload}>
+          Could not load your matches. Tap to try again.
+        </Text>
+      ) : null}
+      {unscoredBookings.status === 'ready' && matchLinks.status === 'ready' && sorted.length === 0 ? (
         <View style={styles.emptyRow}>
           <IconSymbol name="checkmark.circle.fill" size={12} color={FuttyColors.stone400} />
           <Text style={styles.note}>Nothing left to log — you&apos;re all caught up.</Text>
         </View>
       ) : null}
-      {sorted.map((booking) => (
+      {sorted.map((booking) => {
+        const matchId = matchLinks.links.byBookingId.get(booking.id);
+        return matchId ? (
+          <View key={booking.id} style={styles.card}>
+            <ListRow
+              title={venueNameFor(booking.venue_id)}
+              subtitle={`${formatMatchWhen(cyprusWallTime(booking.booking_day, booking.start_time.slice(0, 5)).toISOString())} · enter or check the result`}
+              leading={{ icon: 'sportscourt.fill' }}
+              chevron
+              onPress={() => router.push({ pathname: '/match/[id]', params: { id: matchId } })}
+            />
+          </View>
+        ) : (
         <View key={booking.id} style={styles.card}>
           <BookingResultForm
             booking={booking}
@@ -60,7 +87,8 @@ export function PreviousGamesList() {
             onSubmitted={unscoredBookings.reload}
           />
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
