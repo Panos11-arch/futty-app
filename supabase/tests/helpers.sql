@@ -780,6 +780,70 @@ begin
 end;
 $$;
 
+-- A4: goals, man of the match, lineups.
+
+-- The error p_sql raises when p_user runs it (null if it succeeds); back to
+-- postgres afterwards.
+create or replace function tests.error_as(p_user uuid, p_sql text)
+returns text
+language plpgsql
+as $$
+declare
+  v_error text;
+begin
+  perform tests.act_as(p_user);
+  v_error := tests.error_of(p_sql);
+  perform tests.act_as_postgres();
+  return v_error;
+end;
+$$;
+
+-- p_profile's match_players id in p_match.
+create or replace function tests.player_id(p_match uuid, p_profile uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select id from public.match_players where match_id = p_match and profile_id = p_profile;
+$$;
+
+-- A guest called p_name on p_side of p_match; returns their match_players id.
+create or replace function tests.guest_player(p_match uuid, p_side text, p_name text)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.match_players (match_id, guest_name, side) values (p_match, p_name, p_side) returning id;
+$$;
+
+-- p_profile joins team p_team as p_role (captain, player or substitute).
+create or replace function tests.join_team(p_team uuid, p_profile uuid, p_role text default 'player')
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.team_members (team_id, profile_id, role) values (p_team, p_profile, p_role);
+$$;
+
+-- The match page as p_user reads it.
+create or replace function tests.page_as(p_user uuid, p_match uuid)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_page jsonb;
+begin
+  perform tests.act_as(p_user);
+  v_page := public.get_match_page(p_match);
+  perform tests.act_as_postgres();
+  return v_page;
+end;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
