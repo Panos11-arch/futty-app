@@ -1,6 +1,6 @@
 # Placeholder app icon and splash
 
-The app icon (a white "F" on brand green #0E5A3A) and the splash (the "Futty" wordmark in ink #0B1215 on canvas #F4F5F7) are **placeholders**. They stay until Dimitris finishes the brand work: the logo and wordmark, doc 13 task 8.
+The app icon (a white "F" on brand green #0E5A3A) and the splash (the "Futty" wordmark in ink #0B1215 on canvas #F4F5F7) are **placeholders**. They stay until Dimitris finishes the brand work (the logo and wordmark): the Google Drive doc "Futty – Dimitris: Pitch Deck & Business Tasks", task 8 (brand basics and App Store listing).
 
 They were made in U6, set in Inter Bold. The files are:
 
