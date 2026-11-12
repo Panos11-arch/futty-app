@@ -41,6 +41,16 @@ These rules were missing or ambiguous in the specs and were decided while writin
    - **Team form** (a named team's last 5) counts every confirmed match that team played, whatever the check-ins. 1b.2 applies to player form and player stats only.
    - The app's helpers are `playerForm` and `teamForm` in `lib/match/form.ts` (A1b), the reference rules for tests and mocks. A3's `player_form` and `team_form` views follow the same rules, and the app reads form from those views (section 7).
 
+## 1c. Decisions (11 November, Anghelo, A3b-1)
+
+1. **Reminder times.** `match_reminder_24h` is due at `kickoff_at - 24 hours` and `match_reminder_2h` at `kickoff_at - 2 hours`: elapsed hours, like `result_deadline_at`, so across the 25 October clock change a 20:00 Sunday kickoff gets its 24h reminder at 21:00 on Saturday. Each is due until the next one (24h until 2h before, 2h until kickoff). `match_after_game` is due from `ends_at` until `result_deadline_at`. Only `scheduled` matches get the 24h and 2h reminders; `void` matches get nothing.
+2. **Late bookings.** A reminder is sent only if the match existed when it fell due (`matches.created_at <= due time`): a game booked 5 hours ahead gets the 2h reminder only.
+3. **Once each.** Each reminder and followed-team message is sent once per player (or follower) per match, however often the job runs (`match_notification_log`).
+4. **Who's in and who hasn't paid** (24h and 2h reminders: "6 in, 2 haven't paid."). Who's in: players holding a spot (or guests) who haven't left; a named game's side `b` squad members without a spot aren't counted. Who hasn't paid uses the venue roster's meaning (13, "Cash at the venue": *paid in app*, *cash – not yet paid*, *cash – paid*), over the shares that hold a spot: a card share is paid in app once `authorized`, `paid` or `covered` and unpaid while `pending`; a cash share is paid once `cash_received_at` is set (ticked by the venue, or paid by card afterwards) and otherwise not yet paid (`booking_unpaid_count`).
+5. **Followed teams** (`user_follows`, `target_type = 'team'`): `followed_team_match` goes with the 2h reminder ("Home FC play Away FC tonight at 20:00, <venue>.", "today" before 18:00); `followed_team_result` when a named match becomes `confirmed` ("Result: Home FC 5–3 Away FC"; a forfeit: "Result: Home FC v Away FC · Forfeit, Away FC pulled out" or "didn't show"); `followed_team_opponent_wanted` when a team posts "Need opposition" ("Lions want an opponent on Thursday.", the day in Cyprus time), from a trigger on `squad_posts`, which replaces the push `notify-squad-post` sent for opposition posts. People in the match are left out (they get the match's own notifications), a follower of both teams gets one message, and the poster isn't told about their own post.
+6. **"Players you play with most"** (`player_teammates`): confirmed matches where both players checked in on the same side. It is personal: a player reads only their own list.
+7. **Head-to-head** counts a forfeit as a win for one team and a loss for the other (section 7: a forfeit counts as a loss in stats), with no goals.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
@@ -221,6 +231,7 @@ Every function is `security definer` with `set search_path = ''`. Functions mark
 | `record_match_forfeit(p_match_id uuid, p_side text, p_reason text)` | void | Sets `forfeit_side`, `forfeit_reason`, `status = 'confirmed'`, `confirmed_via = 'forfeit'`, `confirmed_at = now()`. Refused once the match is `confirmed`, `no_result` or `void` (`match_closed`), for a side other than `a`/`b` (`invalid_side`) or a reason other than `pulled_out`/`no_show` (`invalid_reason`). Called by P8 for a Gipedo Pano pull-out under 6 hours (13) |
 | `match_jobs_tick()` | jsonb (counts) | Every 15 minutes: `scheduled` → `played` after `ends_at`; at `result_deadline_at` an unanswered submission → `confirmed` (`confirmed_via = 'deadline'`) and no submission → `no_result`; voids matches whose booking was cancelled before `ends_at`. Idempotent |
 | `send_notification(p_profile_id uuid, p_type text, p_data jsonb)` | void | Contract 4, section 6.3 |
+| `match_reminders_tick(p_now timestamptz default now())` | jsonb (counts) | A3b: the reminders and `followed_team_match` due at `p_now` (decision 1c). `match_jobs_tick` calls it with `now()` after its own steps |
 
 ### 5.2 Result (authenticated)
 
@@ -367,6 +378,16 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 - **Match page link** (A1b, 11 November): a match row shows a chevron and opens the match page only when the screen passes `onPress`, and screens pass it for `confirmed` matches only, because only confirmed matches have a match page (05 section 3).
 
 These are read through views (`player_form`, `team_form`, `player_recent_matches`, `head_to_head`), which A3 and A7 define. Each view exposes confirmed matches only and never exposes individual ratings or votes.
+
+The A3b views (signed-in players read them; signed-out users can't):
+
+| View | Columns |
+| --- | --- |
+| `player_form` | `profile_id`, `position` (1 = newest, at most 5), `match_id`, `kickoff_at`, `result` (`W`, `D`, `L`, `L_forfeit`) |
+| `team_form` | `team_id`, `position`, `match_id`, `kickoff_at`, `result` |
+| `player_recent_matches` | `profile_id`, `match_id`, `kickoff_at`, `kickoff_local`, `venue_id`, `venue_name`, `kind`, `side`, `label`, `opponent_label`, `team_id`, `opponent_team_id`, `goals_for`, `goals_against`, `result`, `forfeit_side`, `forfeit_reason` |
+| `head_to_head` | `team_id`, `opponent_team_id`, `played`, `won`, `drawn`, `lost`, `goals_for`, `goals_against`, `last_3` (`[{matchId, kickoffAt, result, goalsFor, goalsAgainst}]`, newest first) |
+| `player_teammates` | `profile_id` (always the caller), `teammate_profile_id`, `matches_together`, `last_played_at` |
 
 ## 8. Contract 2: what the match code needs from `booking_participants`
 

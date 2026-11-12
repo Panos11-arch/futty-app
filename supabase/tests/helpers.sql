@@ -629,6 +629,157 @@ as $$
   where m.booking_id = p_booking and mp.profile_id = p_profile;
 $$;
 
+-- A3b: form, reminders, followed teams.
+
+-- A team called p_name.
+create or replace function tests.create_team(p_name text)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.teams (name) values (p_name) returning id;
+$$;
+
+-- Some booking share, for match_players.share_id ("holds a spot"): only
+-- the foreign key matters to the form views, so one share serves them all.
+create or replace function tests.any_share()
+returns uuid
+language plpgsql
+as $$
+declare
+  v_share uuid;
+begin
+  select id into v_share from public.booking_payment_shares order by created_at desc limit 1;
+  if v_share is null then
+    perform tests.booking_with_players(tests.create_user(format('spot-%s@futty.test', left(gen_random_uuid()::text, 8))),
+                                       tests.create_venue(), 'each_pays_own_spot', 0, tests.next_weekday(3));
+    perform tests.act_as_postgres();
+    select id into v_share from public.booking_payment_shares order by created_at desc limit 1;
+  end if;
+  return v_share;
+end;
+$$;
+
+-- A match written straight into the tables (no booking), one hour long,
+-- in p_status. Named when both teams are given (sides labelled with the
+-- team names), otherwise a pickup (Bibs v Non-bibs). A forfeit has no
+-- score.
+create or replace function tests.form_match(
+  p_kickoff timestamptz,
+  p_status text,
+  p_a integer default null,
+  p_b integer default null,
+  p_team_a uuid default null,
+  p_team_b uuid default null,
+  p_forfeit_side text default null,
+  p_forfeit_reason text default null,
+  p_venue uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_named boolean := p_team_a is not null and p_team_b is not null;
+begin
+  insert into public.matches (kind, format, players_per_side, kickoff_at, ends_at, status, result_deadline_at,
+                              side_a_score, side_b_score, forfeit_side, forfeit_reason, confirmed_at, confirmed_via,
+                              venue_id)
+  values (case when v_named then 'named' else 'pickup' end, '5-a-side', 5, p_kickoff, p_kickoff + interval '1 hour',
+          p_status, p_kickoff + interval '25 hours',
+          case when p_forfeit_side is null then p_a end, case when p_forfeit_side is null then p_b end,
+          p_forfeit_side, p_forfeit_reason,
+          case when p_status = 'confirmed' then p_kickoff + interval '2 hours' end,
+          case when p_status = 'confirmed' then case when p_forfeit_side is null then 'agreed' else 'forfeit' end end,
+          p_venue)
+  returning id into v_id;
+  insert into public.match_sides (match_id, side, team_id, label) values
+    (v_id, 'a', p_team_a, coalesce((select name from public.teams where id = p_team_a), 'Bibs')),
+    (v_id, 'b', p_team_b, coalesce((select name from public.teams where id = p_team_b), 'Non-bibs'));
+  return v_id;
+end;
+$$;
+
+-- A player in a form_match: on p_side, holding a spot or not, checked in
+-- or not, and left before kickoff or not.
+create or replace function tests.form_player(
+  p_match uuid,
+  p_profile uuid,
+  p_side text,
+  p_spot boolean,
+  p_checked_in boolean,
+  p_left boolean default false
+)
+returns void
+language plpgsql
+as $$
+declare
+  v_kickoff timestamptz := (select kickoff_at from public.matches where id = p_match);
+begin
+  insert into public.match_players (match_id, profile_id, side, share_id, left_at)
+  values (p_match, p_profile, p_side, case when p_spot then tests.any_share() end,
+          case when p_left then v_kickoff - interval '1 day' end);
+  if p_checked_in then
+    insert into public.match_attendance (match_id, profile_id, checked_in_at, method, checked_in_by)
+    values (p_match, p_profile, v_kickoff, 'qr', p_profile);
+  end if;
+end;
+$$;
+
+-- p_follower follows team p_team (user_follows, as the app writes it).
+create or replace function tests.follow_team(p_follower uuid, p_team uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.user_follows (follower_id, target_type, target_id) values (p_follower, 'team', p_team);
+$$;
+
+-- How many notifications of p_type p_profile has (for p_match, if given).
+create or replace function tests.notified(p_profile uuid, p_type text, p_match uuid default null)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select count(*)::integer from public.notifications n
+  where n.profile_id = p_profile and n.type = p_type
+    and (p_match is null or n.data ->> 'matchId' = p_match::text);
+$$;
+
+-- The latest notification of p_type for p_profile.
+create or replace function tests.last_notification(p_profile uuid, p_type text)
+returns public.notifications
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.notifications n
+  where n.profile_id = p_profile and n.type = p_type
+  order by n.created_at desc, n.id desc limit 1;
+$$;
+
+-- Runs match_reminders_tick at p_now, as the scheduled job does.
+create or replace function tests.reminders_at(p_now timestamptz)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_counts jsonb;
+begin
+  perform tests.act_as_service_role();
+  v_counts := public.match_reminders_tick(p_now);
+  perform tests.act_as_postgres();
+  return v_counts;
+end;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

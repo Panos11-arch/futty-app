@@ -1,6 +1,7 @@
-// Sends a push notification to everyone who follows the poster (for a
-// 'players' post) or the posting team (for an 'opposition' post), via Expo's
-// push API. Triggered by a Supabase Database Webhook on squad_posts INSERT —
+// Sends a push notification to everyone who follows the poster of a
+// 'players' post, via Expo's push API. An 'opposition' post is not pushed
+// here: the team's followers get followed_team_opponent_wanted through
+// send_notification (A3b, see handler.ts). Triggered by a Supabase Database Webhook on squad_posts INSERT —
 // see the deployment steps at the bottom of this file. Nothing calls this
 // function directly from the app.
 //
@@ -9,6 +10,7 @@
 // configured (this app has neither set up yet — see AGENTS notes elsewhere).
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { followerTarget, type SquadPostRecord } from './handler.ts';
 
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected automatically by the
 // Edge Functions runtime — do not set these as secrets yourself.
@@ -17,15 +19,6 @@ const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // You DO need to set this one — see step 2 below. Without it, anyone who
 // finds this function's URL could trigger notifications to your users.
 const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
-
-type SquadPostRecord = {
-  id: string;
-  venue_id: string;
-  type: 'players' | 'opposition';
-  posted_by: string | null;
-  team_id: string | null;
-  players_needed: number | null;
-};
 
 Deno.serve(async (req) => {
   if (!webhookSecret || req.headers.get('x-webhook-secret') !== webhookSecret) {
@@ -39,12 +32,11 @@ Deno.serve(async (req) => {
     return new Response('ignored', { status: 200 });
   }
 
-  const targetType = post.type === 'opposition' ? 'team' : 'player';
-  const targetId = post.type === 'opposition' ? post.team_id : post.posted_by;
-
-  if (!targetId) {
-    return new Response('no target', { status: 200 });
+  const target = followerTarget(post);
+  if (!target) {
+    return new Response(post.type === 'opposition' ? 'handled by send_notification' : 'no target', { status: 200 });
   }
+  const { targetType, targetId } = target;
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -76,23 +68,15 @@ Deno.serve(async (req) => {
   const venueName = venue?.name ?? 'a venue';
 
   let who = 'Someone you follow';
-  if (targetType === 'team') {
-    const { data: team } = await supabase.from('teams').select('name').eq('id', targetId).maybeSingle();
-    if (team?.name) who = team.name;
-  } else {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', targetId)
-      .maybeSingle();
-    if (profile?.username) who = profile.username;
-  }
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', targetId)
+    .maybeSingle();
+  if (profile?.username) who = profile.username;
 
-  const title = post.type === 'opposition' ? 'Looking for opposition' : 'Looking for players';
-  const body =
-    post.type === 'opposition'
-      ? `${who} wants a match at ${venueName}`
-      : `${who} needs players at ${venueName}`;
+  const title = 'Looking for players';
+  const body = `${who} needs players at ${venueName}`;
 
   const messages = tokenRows.map((row) => ({
     to: row.token as string,
@@ -116,6 +100,12 @@ Deno.serve(async (req) => {
 
 /*
 DEPLOYMENT — none of this happens automatically, unlike the SQL files:
+
+0. A3b (12 November): redeploy this function together with the migration
+   20261112000801_match_followed_teams.sql. That migration's squad_posts
+   trigger tells team followers about an opposition post through
+   send_notification; this function no longer does. The migration alone,
+   with the old function still deployed, pushes them twice.
 
 1. Install the Supabase CLI and log in:
      npm install -g supabase
