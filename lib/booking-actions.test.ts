@@ -16,9 +16,9 @@ beforeEach(() => {
 });
 
 describe('bookSlot', () => {
-  it('sends the venue, slot and format; the server picks the pitches (no count from the app)', async () => {
+  it('sends the venue, slot, format and mode; the server picks the pitches (no count from the app)', async () => {
     mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
-    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '7-a-side' });
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '7-a-side', mode: 'pay_all' });
     expect(mockRpc).toHaveBeenCalledWith('book_slot', {
       p_venue_id: 'v1',
       p_day: '2026-11-16',
@@ -27,8 +27,18 @@ describe('bookSlot', () => {
       p_pitches: 1,
       p_format: '7-a-side',
       p_players_per_side: 5,
+      p_mode: 'pay_all',
     });
   });
+
+  it.each(['pay_all', 'each_pays_responsible', 'each_pays_own_spot'] as const)(
+    'the chosen mode %s reaches book_slot',
+    async (mode) => {
+      mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+      await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '5-a-side', playersPerSide: 6, mode });
+      expect(mockRpc).toHaveBeenCalledWith('book_slot', expect.objectContaining({ p_mode: mode, p_players_per_side: 6 }));
+    },
+  );
 });
 
 describe('getCancellationQuote', () => {

@@ -29,6 +29,8 @@ export type VenuePageData = {
     website: string | null;
     instagram: string | null;
     is_live: boolean;
+    /** The venue allows 6 v 6 on its 5-a-side pitches ("Players per side"). */
+    allows_6v6_on_5s?: boolean;
   };
   /** False when the venue isn't live or has no price: the Book bar is off. */
   bookable: boolean;

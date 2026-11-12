@@ -9,7 +9,12 @@ export type BookSlotParams = {
   /** 5, or 6 for 6 v 6 on a 5-a-side pitch where the venue allows it. The
    *  server derives how many players that is; the app never sends a count. */
   playersPerSide?: 5 | 6;
+  /** Who pays (spec 13, "Booking modes"). Always chosen by the booker: the
+   *  server refuses a booking without one (mode_required). */
+  mode: PaymentMode;
 };
+
+export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot';
 
 /** Wraps book_slot (supabase/legacy/booking-payments.sql), the only writable path
  *  into venue_bookings — RLS blocks a direct insert/update so the capacity
@@ -29,6 +34,7 @@ export async function bookSlot(params: BookSlotParams) {
     p_pitches: 1,
     p_format: params.format,
     p_players_per_side: params.playersPerSide ?? 5,
+    p_mode: params.mode,
   });
 }
 
