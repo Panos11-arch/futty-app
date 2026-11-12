@@ -11,10 +11,10 @@ import {
   type MatchLinks,
 } from '@/lib/match/results-api';
 
-type Loadable<T> = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & T);
+export type Loadable<T> = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & T);
 
 /** Runs `load` on mount and on reload(); a superseded response is dropped. */
-function useLoad<T>(load: (() => Promise<{ value: T } | { error: string }>) | null, key: string) {
+export function useLoad<T>(load: (() => Promise<{ value: T } | { error: string }>) | null, key: string) {
   const [state, setState] = useState<Loadable<T>>({ status: 'loading' });
   const requestIdRef = useRef(0);
   const loadRef = useRef(load);

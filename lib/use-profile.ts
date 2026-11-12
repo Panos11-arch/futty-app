@@ -3,6 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
+export const PREFERRED_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export const PREFERRED_TIMES = ['morning', 'afternoon', 'evening'] as const;
+export type PreferredDay = (typeof PREFERRED_DAYS)[number];
+export type PreferredTime = (typeof PREFERRED_TIMES)[number];
+
 export type Profile = {
   id: string;
   email: string | null;
@@ -15,6 +20,9 @@ export type Profile = {
   city: string | null;
   position: string | null;
   preferred_foot: string | null;
+  /** Owner only (match_profile_prefs): never in PublicProfile or the public profile functions. */
+  preferred_days: PreferredDay[];
+  preferred_times: PreferredTime[];
   show_phone_publicly: boolean;
   /** 'venue_owner' unlocks the venue owner dashboard
    *  (app/venue-dashboard.tsx) — set manually in the database for now, see
@@ -42,6 +50,8 @@ type EditableProfileFields = Pick<
   | 'city'
   | 'position'
   | 'preferred_foot'
+  | 'preferred_days'
+  | 'preferred_times'
   | 'show_phone_publicly'
 >;
 
@@ -66,7 +76,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, show_phone_publicly, role, is_premium, xp, played, won, drawn, lost, goals, created_at'
+        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, xp, played, won, drawn, lost, goals, created_at'
       )
       .eq('id', user.id)
       .maybeSingle();
@@ -121,6 +131,8 @@ export function publicProfileAsProfile(p: PublicProfile): Profile {
     city: p.city,
     position: p.position,
     preferred_foot: p.preferred_foot,
+    preferred_days: [],
+    preferred_times: [],
     show_phone_publicly: false,
     role: 'player',
     is_premium: false,
