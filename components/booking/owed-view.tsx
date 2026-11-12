@@ -1,6 +1,6 @@
 // "Pay what I owe" (spec 15 section 5, "Debt and credit"; spec 13 "Cash,
-// debt and venue credit"): each debt with who it's owed to, each payment that
-// didn't go through, and credit per venue with its expiry. Every amount is
+// debt and venue credit"): each debt with who it's owed to, each payment to
+// finish, and credit per venue with its expiry. Every amount is
 // my_owed's or my_credit's, shown as it is: paying a debt adds no fee.
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -11,25 +11,18 @@ import { formatEuros } from '@/lib/money/format';
 import {
   debtReasonLabel,
   expiryLabel,
+  holdLabel,
+  owedItemKey,
   owedToName,
   owedWhen,
   paymentActionLabel,
+  paymentAmountCents,
   paymentSentence,
   type Owed,
-  type OwedDebt,
-  type OwedPayment,
+  type OwedItem,
+  type OwedMessage,
   type VenueCredit,
 } from '@/lib/use-owed';
-
-/** One thing on the screen that can be paid. */
-export type OwedItem = { type: 'debt'; debt: OwedDebt } | { type: 'payment'; payment: OwedPayment };
-
-/** A stable key for an item, so the screen knows which one is paying. */
-export function owedItemKey(item: OwedItem): string {
-  return item.type === 'debt'
-    ? `debt:${item.debt.debt_id}`
-    : `${item.payment.kind}:${item.payment.booking_id}:${item.payment.share_id ?? ''}`;
-}
 
 export type OwedViewProps = {
   owed: LoadState<Owed>;
@@ -40,7 +33,7 @@ export type OwedViewProps = {
   /** owedItemKey of the item being paid, or null. */
   payingKey: string | null;
   /** After paying (info) or when it failed (danger). */
-  message: { tone: 'info' | 'danger'; text: string } | null;
+  message: OwedMessage | null;
 };
 
 export function OwedView(props: OwedViewProps) {
@@ -121,6 +114,9 @@ function OwedSections({ owed, onRetryOwed, onPay, payingKey }: OwedViewProps) {
           {payments.map((payment) => {
             const item: OwedItem = { type: 'payment', payment };
             const key = owedItemKey(item);
+            // A failed guarantee's amount is the hold, not money owed.
+            const amount = paymentAmountCents(payment);
+            const hold = holdLabel(payment);
             return (
               <Card key={key} testID={`payment-${key}`} style={styles.card}>
                 <View style={styles.titleRow}>
@@ -130,13 +126,18 @@ function OwedSections({ owed, onRetryOwed, onPay, payingKey }: OwedViewProps) {
                       {owedWhen(payment)}
                     </Text>
                   </View>
-                  {payment.amount_cents !== null ? (
+                  {amount !== null ? (
                     <Text variant="headline" tabular>
-                      {formatEuros(payment.amount_cents)}
+                      {formatEuros(amount)}
                     </Text>
                   ) : null}
                 </View>
                 <Text variant="body">{paymentSentence(payment.kind)}</Text>
+                {hold ? (
+                  <Text variant="caption" tone="inkMuted" tabular>
+                    {hold}
+                  </Text>
+                ) : null}
                 <Button
                   label={paymentActionLabel(payment)}
                   loading={payingKey === key}

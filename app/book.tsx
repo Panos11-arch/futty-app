@@ -1,5 +1,5 @@
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 
 import { BookSearchView } from '@/components/booking/book-search-view';
 import {
@@ -10,7 +10,7 @@ import {
   type FreeAtQuery,
   type FreeVenueWithPhoto,
 } from '@/lib/booking-search';
-import { debtBlockMessage, useOwed } from '@/lib/use-owed';
+import { useDebtBlock } from '@/lib/use-owed';
 import { useVenuePage } from '@/lib/use-venue-page';
 
 /** Book a pitch (P5): the server's window, free venues and prices; checkout
@@ -19,20 +19,8 @@ export default function BookScreen() {
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const options = useLoad('options', fetchSearchOptions);
   const venuePage = useVenuePage(venueId);
-  const owed = useOwed();
-
-  // Back from "Pay what I owe": check the debt again (not on the first focus,
-  // which useOwed already loads).
-  const focusedOnce = useRef(false);
-  const reloadOwed = owed.reload;
-  useFocusEffect(
-    useCallback(() => {
-      if (focusedOnce.current) reloadOwed();
-      focusedOnce.current = true;
-    }, [reloadOwed]),
-  );
-  // Only debt blocks booking (spec 13, "Debt"); a failed payment doesn't.
-  const debtMessage = owed.state.status === 'ready' ? debtBlockMessage(owed.state.data) : null;
+  // Only debt blocks booking (spec 13, "Debt"); checked again on return.
+  const debt = useDebtBlock();
 
   const [query, setQuery] = useState<FreeAtQuery | null>(null);
   const loadFree = useCallback(() => fetchVenuesFreeAt(query!), [query]);
@@ -85,7 +73,7 @@ export default function BookScreen() {
         venuePage.reload();
       }}
       onRetryResults={results.reload}
-      debtMessage={debtMessage}
+      debtMessage={debt.message}
       onPayOwed={() => router.push('/account/payments/owed')}
     />
   );

@@ -20,6 +20,7 @@ import {
   Text,
   VenueCard,
 } from '@/components/ui';
+import { DISABLED_OPACITY } from '@/components/ui/foundation';
 import { colors, space } from '@/constants/futty-theme';
 import { PITCH_FORMATS } from '@/lib/booking';
 import {
@@ -214,16 +215,26 @@ function BookSearchReady({
           ) : null}
           {shown.map((v) => (
             <View key={v.venue_id} style={styles.card}>
-              <VenueCard
-                testID={`free-venue-${v.venue_id}`}
-                name={v.name}
-                area={v.city ?? v.address ?? ''}
-                pricePerPlayerCents={v.player_cents}
-                photoUrl={v.photoUrl}
-                nextTimes={v.next_starts.map((t) => t.slice(0, 5))}
-                onPress={() => startTime && choose(v, startTime)}
-                onTimePress={(t) => choose(v, t)}
-              />
+              {/* Blocked by debt: the card and its time chips show disabled
+                  and take no taps. VenueCard has no disabled prop yet (a
+                  components/ui change for its own PR), so it's done here. */}
+              <View
+                testID={`free-venue-${v.venue_id}-slot`}
+                pointerEvents={blocked ? 'none' : 'auto'}
+                aria-disabled={blocked}
+                style={blocked ? styles.disabled : undefined}
+              >
+                <VenueCard
+                  testID={`free-venue-${v.venue_id}`}
+                  name={v.name}
+                  area={v.city ?? v.address ?? ''}
+                  pricePerPlayerCents={v.player_cents}
+                  photoUrl={v.photoUrl}
+                  nextTimes={v.next_starts.map((t) => t.slice(0, 5))}
+                  onPress={() => startTime && choose(v, startTime)}
+                  onTimePress={(t) => choose(v, t)}
+                />
+              </View>
               <Button label="Venue info" variant="plain" onPress={() => onVenueInfo(v.venue_id)} />
             </View>
           ))}
@@ -240,4 +251,5 @@ const styles = StyleSheet.create({
   row: { gap: space.sm },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   card: { gap: space.xs },
+  disabled: { opacity: DISABLED_OPACITY },
 });

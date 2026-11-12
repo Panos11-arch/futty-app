@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Image } from 'expo-image';
+import { StyleSheet } from 'react-native';
 
 import { BookSearchView, type BookSearchViewProps } from '@/components/booking/book-search-view';
+import { DISABLED_OPACITY } from '@/components/ui/foundation';
 import { loadWithFile } from '@/components/ui/test-utils';
 import type { FreeVenueWithPhoto, SearchOptions } from '@/lib/booking-search';
 
@@ -186,6 +188,11 @@ describe('debt banner (spec 13, "Debt")', () => {
     await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
     await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:30' }));
     expect(p.onChoose).not.toHaveBeenCalled();
+    // The card and its time chips show disabled and take no taps.
+    const slot = screen.getByTestId('free-venue-v1-slot');
+    expect(slot.props.pointerEvents).toBe('none');
+    expect(slot.props['aria-disabled']).toBe(true);
+    expect(StyleSheet.flatten(slot.props.style)?.opacity).toBe(DISABLED_OPACITY);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
     expect(p.onPayOwed).toHaveBeenCalledTimes(1);
@@ -196,6 +203,9 @@ describe('debt banner (spec 13, "Debt")', () => {
     await render(<BookSearchView {...p} />);
     expect(screen.queryByTestId('debt-banner')).toBeNull();
     await pickSlot();
+    const slot = screen.getByTestId('free-venue-v1-slot');
+    expect(slot.props.pointerEvents).toBe('auto');
+    expect(StyleSheet.flatten(slot.props.style)?.opacity).toBeUndefined();
     await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
     expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
   });

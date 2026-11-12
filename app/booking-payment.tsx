@@ -9,6 +9,9 @@ import type { PaymentMode } from '@/lib/booking-actions';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
 import { afterPayment } from '@/lib/booking-navigation';
 import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
+import { useReloadOnReturn } from '@/lib/use-owed';
+
+const openPayOwed = () => router.push('/account/payments/owed');
 
 type Params = {
   bookingId?: string;
@@ -61,6 +64,8 @@ function failed() {
 function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; sheet: PaymentSheet }) {
   const load = useCallback(() => fetchBookingQuote(slot), [slot]);
   const quote = useLoad(JSON.stringify(slot), load);
+  // Back from "Pay what I owe": price it again, only if the debt blocked it.
+  useReloadOnReturn(quote.reload, quote.state.status === 'ready' && quote.state.data.in_debt);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +94,7 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
         paying={paying}
         error={error}
         bookingHeld={bookingId !== null}
+        onPayOwed={openPayOwed}
       />
     </>
   );
@@ -97,6 +103,7 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
 function PayMyShare({ bookingId, sheet }: { bookingId: string; sheet: PaymentSheet }) {
   const load = useCallback(() => fetchPayShareData(bookingId), [bookingId]);
   const data = useLoad(bookingId || null, load);
+  useReloadOnReturn(data.reload, data.state.status === 'ready' && data.state.data.blocked);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +130,7 @@ function PayMyShare({ bookingId, sheet }: { bookingId: string; sheet: PaymentShe
         onPay={pay}
         paying={paying}
         error={error}
+        onPayOwed={openPayOwed}
       />
     </>
   );

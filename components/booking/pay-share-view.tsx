@@ -4,7 +4,14 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { CancellationRules, cashSentence, DEBT_LINE, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
+import {
+  CancellationRules,
+  cashSentence,
+  DEBT_LINE,
+  NonRefundableNotice,
+  payLabel,
+  payOwedAction,
+} from '@/components/booking/checkout-parts';
 import {
   Banner,
   EmptyState,
@@ -24,6 +31,8 @@ export type PayShareViewProps = {
   onPay: (pay: PayOptions) => void;
   paying: boolean;
   error: string | null;
+  /** Opens "Pay what I owe" from the debt line. */
+  onPayOwed?: () => void;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -61,6 +70,7 @@ function PayShareReady({
   onPay,
   paying,
   error,
+  onPayOwed,
   now: nowOverride,
 }: Omit<PayShareViewProps, 'data' | 'onRetry'> & { data: PayShareData }) {
   const clock = useNow();
@@ -96,7 +106,7 @@ function PayShareReady({
         {!me ? <Text variant="body">You don’t have a spot in this booking.</Text> : null}
         {me && !pending ? <Text variant="headline">{SETTLED[me.status] ?? 'Nothing to pay for this spot.'}</Text> : null}
 
-        {me && pending && blocked ? <Banner tone="danger" message={DEBT_LINE} /> : null}
+        {me && pending && blocked ? <Banner tone="danger" message={DEBT_LINE} action={payOwedAction(onPayOwed)} /> : null}
 
         {me && pending ? (
           <View style={styles.section}>

@@ -122,6 +122,21 @@ describe('Pay what I owe', () => {
     expect(p.onPay).toHaveBeenLastCalledWith({ type: 'payment', payment: owed.payments[1] });
   });
 
+  it('a failed guarantee shows its hold small and labelled, never as money owed (6000 -> Hold: €60.00)', async () => {
+    await render(<OwedView {...props()} />);
+    const row = within(screen.getByTestId('payment-card_failed:b3:'));
+    expect(row.getByText('Hold: €60.00')).toBeTruthy();
+    expect(row.queryByText('€60.00')).toBeNull();
+    expect(row.getByText(/Your booking stays on\./)).toBeTruthy();
+  });
+
+  it('unticked cash shows the server’s amount and words true in both modes', async () => {
+    await render(<OwedView {...props()} />);
+    const row = within(screen.getByTestId('payment-cash_unpaid:b4:s4'));
+    expect(row.getByText('€6.00')).toBeTruthy();
+    expect(row.getByText('Cash for your spot wasn’t ticked as paid. You can pay it by card now.')).toBeTruthy();
+  });
+
   it('disables every pay button while one is paying', async () => {
     const p = props({ payingKey: 'debt:d1' });
     await render(<OwedView {...p} />);
