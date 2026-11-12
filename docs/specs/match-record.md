@@ -62,6 +62,26 @@ These rules were missing or ambiguous in the specs and were decided while writin
 3. **Profile preferences.** Position and preferred foot are the existing `profiles.position` and `profiles.preferred_foot`. Preferred days are `profiles.preferred_days text[]` (`mon` … `sun`) and preferred times `profiles.preferred_times text[]` (`morning`, `afternoon`, `evening`), each checked by a constraint and empty by default (migration `match_profile_prefs`). They are visible to their owner only: profiles' select policy shows a player only their own row, and `get_public_profile` and `get_public_profiles` don't return them. Later matching reads them on the server.
 4. **Quiet hours on screen.** Off until the player turns them on and picks both times (decision 1a.6: no defaults). Times are Cyprus wall-clock times; a start later than the end spans midnight ("ends the next day"). Turning them off deletes the row.
 
+## 1e. Decisions (12 November, Anghelo, A4a; to confirm with Panos)
+
+1. **Who writes goals and lineups.** In a named game, each side's captain writes only their own side (`match_captain_side`). In a pickup game Non-bibs has no captain (decision 3), so the booker writes both Bibs and Non-bibs; `set_match_goals` takes an optional `p_side` for that (required when the caller may write both sides). A Non-bibs player can't.
+2. **No man of the match for a forfeit.** No game was played: `cast_motm_vote` refuses it (`match_not_confirmed`, as for goals) and no `motm_vote_open` is sent. Disputed matches have no goals and no vote either (closes section 10, question 7).
+3. **The man of the match is shown once voting closes** (`confirmed_at + 24 hours`). Until then the match page shows only that voting is open and the caller's own vote. Ties are shared: every player with the most votes is man of the match, each shown with their vote count. Nobody ever sees who voted for whom.
+4. **Formation presets** (closes section 10, question 5). Outfield lines from back to front; the goalkeeper is always added. Stored in `match_formation_presets`:
+
+   | Players per side | Presets |
+   | --- | --- |
+   | 5 | 1-2-1, 2-1-1, 2-2, 1-1-2 |
+   | 6 | 2-2-1, 3-1-1, 2-1-2, 1-2-2 |
+   | 7 | 2-3-1, 3-2-1, 3-3, 2-2-2 |
+   | 9 | 3-3-2, 3-2-3, 4-3-1, 3-4-1 |
+   | 11 | 4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 4-5-1, 3-4-3 |
+
+   Position keys: `gk`, then `d1`, `d2`, … for the first line, `f1`, … for the last line, and `m1`, … for every line between (4-2-3-1: `gk`, `d1`–`d4`, `m1`–`m5`, `f1`). The key is what `match_players.position` holds; team of the week (A7) reads a keeper from `gk`.
+5. **A change of players per side clears the lineups.** `create_match_for_booking` re-syncs `players_per_side` from the booking's capacity, so a 5 v 5 switched to 6 v 6 (P12) changes it. The saved lineups then no longer fit the presets, so a trigger on `matches.players_per_side` deletes that match's lineups and clears `match_players.position`; the captains set them again. P12 needs nothing more than calling `create_match_for_booking` after the switch.
+6. **Smaller rules.** Scorers and assisters are players on that side who haven't left; guests can score (they never get stats); a null scorer is an own goal or an unknown scorer; an assist needs a scorer and can't be the scorer. The man of the match nominee is a player who checked in (1b.2), on either side, never a guest. A lineup can leave positions empty (the app shows "Need players"); each player fills at most one position.
+7. **A position belongs to a side.** A player who changes side (`choose_match_side`, `set_match_player_side`, the named-game re-sync) or leaves the match (`left_at`) loses their `match_players.position` and is taken out of the lineup; the rest of the lineup stays. A pickup that becomes a named game (decision 1b.1) has its sides rebuilt, so all its lineups and positions are cleared, as in 1e.5. The match page also leaves out any lineup entry whose player isn't on that side.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
@@ -179,12 +199,13 @@ At most one submission per match: the second side accepts or rejects it, and can
 | `id` | uuid pk | |
 | `match_id` | uuid | |
 | `side` | text | The side that scored |
+| `sort` | integer | The order the captain entered them (1, 2, …) |
 | `scorer_player_id` | uuid null | → `match_players.id`; null for an own goal or an unknown scorer |
-| `assist_player_id` | uuid null | → `match_players.id` |
-| `entered_by` | uuid | That side's captain |
+| `assist_player_id` | uuid null | → `match_players.id`; only with a scorer |
+| `entered_by` | uuid | That side's captain (or the pickup booker, decision 1e.1) |
 | `created_at` | timestamptz | |
 
-A side's goals must add up to its confirmed score (05 section 2). RLS: select for everyone who can see the match page (confirmed matches).
+A side's goals must add up to its confirmed score (05 section 2). RLS: select for everyone who can see the match page (`match_page_visible`: match members, and everyone signed in once confirmed).
 
 ### 4.7 `motm_votes`
 
@@ -194,7 +215,7 @@ A side's goals must add up to its confirmed score (05 section 2). RLS: select fo
 | `nominee_player_id` | uuid | → `match_players.id`, never the voter's own row |
 | `created_at` | timestamptz | |
 
-Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody can select other people's votes. The result is shown through the match-page view.
+Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody can select other people's votes. The result is shown through `get_match_page`, once voting closes (decision 1e.3).
 
 ### 4.8 `match_ratings` and `player_levels` (outline for A5)
 
@@ -204,7 +225,7 @@ Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody c
 
 ### 4.9 `match_lineups` (outline for A4)
 
-`match_id`, `side`, `formation` (a preset for the format), `positions` jsonb (position key → `match_players.id`), `updated_by`, `updated_at`. Written by that side's captain or the booker before kickoff, through a function. RLS: select for match members, and for everyone once the match is confirmed.
+`match_id`, `side` (primary key together), `formation` (a preset for the match's `players_per_side`, from `match_formation_presets`, decision 1e.4), `positions` jsonb (position key → `match_players.id`; empty positions are left out), `updated_by`, `updated_at`. Written by that side's captain (or the booker, for either side of a pickup) before kickoff, through `set_match_lineup`, which also sets `match_players.position`. Cleared when `players_per_side` changes or a pickup becomes a named game (decisions 1e.5, 1e.7); a player who changes side or leaves is taken out (1e.7). RLS: select for match members, and for everyone once the match is confirmed (`match_page_visible`). `match_formation_presets` (`players_per_side`, `formation`, `sort`) is readable by everyone signed in; `match_formation_positions(formation)` returns its position keys.
 
 ### 4.9a `match_check_in_codes`
 
@@ -257,8 +278,12 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test). Answer
 
 | Function | Returns | Checks and errors |
 | --- | --- | --- |
-| `set_match_goals(p_match_id uuid, p_goals jsonb)` | void | Replaces the caller's side's goals. The caller is that side's captain (`not_captain`); the match is `confirmed` and not a forfeit (`match_not_confirmed`); less than 24 hours after `confirmed_at` (`scorers_window_closed`); the number of goals equals that side's score (`score_mismatch`); scorers and assisters are players of the match (`not_in_match`) |
-| `cast_motm_vote(p_match_id uuid, p_nominee_player_id uuid)` | void | The caller is checked in (`not_checked_in`); the match is `confirmed` (`match_not_confirmed`); less than 24 hours after `confirmed_at` (`voting_closed`); not their own row (`cannot_vote_for_self`); no earlier vote (`already_voted`) |
+| `set_match_goals(p_match_id uuid, p_goals jsonb, p_side text default null)` | void | Replaces the caller's side's goals. `p_goals` = `[{"scorerPlayerId": uuid or null, "assistPlayerId": uuid or null}]`. The caller is in the match (`not_in_match`) and writes that side: its captain, or the booker for either side of a pickup (`not_captain`, decision 1e.1); `p_side` is `a`/`b`, and given when the caller may write both sides (`invalid_side`); the match is `confirmed` and not a forfeit (`match_not_confirmed`, so disputed matches too); less than 24 hours after `confirmed_at` (`scorers_window_closed`); `p_goals` is an array of goals with valid ids, an assist only with a scorer and not the scorer (`invalid_goals`); the number of goals equals that side's score (`score_mismatch`); scorers and assisters are players on that side who haven't left (`not_in_match`) |
+| `cast_motm_vote(p_match_id uuid, p_nominee_player_id uuid)` | void | The caller checked in (`not_checked_in`); the match is `confirmed` and not a forfeit (`match_not_confirmed`, decision 1e.2); less than 24 hours after `confirmed_at` (`voting_closed`); not their own row (`cannot_vote_for_self`); the nominee is a player of the match who checked in and hasn't left, not a guest (`nominee_not_eligible`); no earlier vote (`already_voted`) |
+| `set_match_lineup(p_match_id uuid, p_side text, p_formation text, p_positions jsonb)` | void | `p_side` is `a` or `b` (`invalid_side`); the caller writes that side as for goals (`not_in_match`, `not_captain`); the match is `scheduled` and before `kickoff_at` (`lineup_locked`); the formation is a preset for the match's `players_per_side` (`unknown_formation`); `p_positions` is an object whose keys are the formation's positions and whose values are player ids or null (`invalid_position`); no player twice (`duplicate_player`); every player is on that side and hasn't left (`not_in_match`). Upserts the lineup and sets `match_players.position` for that side |
+| `get_match_page(p_match_id uuid)` | jsonb | Match members at any time, everyone signed in once `confirmed`; anyone else `match_not_found`. Returns `matchId`, `status`, `kind`, `format`, `playersPerSide`, `kickoffAt`, `kickoffLocal` (Cyprus), `endsAt`, `venue {id, name}`, `sides [{side, label, teamId, score}]`, `forfeit {side, reason}`, `confirmedAt`, `scorersOpenUntil`, `motmVotingClosesAt`, `motmOpen`, `goals [{side, scorer, assist}]`, `motm [{…player, votes}]` (all tied leaders, once voting closes), `myVote` (the caller's nominee), `lineups [{side, formation, positions [{key, …player}]}]`. A player is `{playerId, profileId, name, guestName}`. Score, goals and man of the match only for a confirmed match that isn't a forfeit |
+
+`motm_vote_open` is sent through `send_notification` when a match becomes `confirmed` other than by forfeit (agreed, or at the deadline), to every player who checked in and hasn't left, and to a player ticked in by their captain later while voting is open; once per player per match (`match_notification_log`). Text: "Man of the match" / "Bibs 4–2 Non-bibs. Who was man of the match? Voting closes tomorrow at 20:00." (Cyprus time).
 
 ### 5.4 Check-in (A2)
 
@@ -427,9 +452,9 @@ Each one is decided with Panos before the prompt that needs it, and written into
 2. ~~Check-in window~~: decided 10 November (decision 1a.4).
 3. **Ratings window:** "within 24 hours" (05 section 4) of the match end or of confirmation.
 4. **Skill level maths** (A5): Elo constants, the size of moves in the first 10 matches, reliability %, and down-weighting raters who give everyone the same score.
-5. **Formation presets** per format, including 6 v 6 (A4).
+5. ~~Formation presets~~: decided 12 November (decision 1e.4).
 6. ~~Quiet hours defaults~~: decided 10 November, none (decision 1a.6).
-7. **A disputed match's goals:** whether scorers can be entered for a disputed match (for now, no: only confirmed).
+7. ~~A disputed match's goals~~: decided 12 November, no (decision 1e.2).
 8. **Venue staff accounts.** Venue staff is only the venue's owner (`venues.owner_profile_id`) today. Staff accounts (front desk, manager) come later, and they must also be allowed to get the check-in code (`get_match_check_in_code`) and see the venue's matches.
 9. **The venue's no-show record** (section 4.4) counts match players without a check-in. Since decision 1b.1, side `b` of a named game lists every opponent team member, including substitutes who were never expected to come. Who counts as a no-show in a named game (spot holders only? the opponent's starting players?) is open (11 November).
 10. **A pickup player who checked in but never picked a side** gets no form: `formSide` needs `match_players.side`, so a `match_attendance` row with no side counts for nothing. Whether such a player should get the result (and on which side), or be made to pick a side at check-in, is open (11 November).
