@@ -1,10 +1,10 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Modal, Text } from 'react-native';
 
-import { BookingDetailView, type BookingDetailViewProps } from '@/components/booking/booking-detail-view';
+import { BookingDetailView, OLD_RULES_WORDS, type BookingDetailViewProps } from '@/components/booking/booking-detail-view';
 import { loadWithFile } from '@/components/ui/test-utils';
+import type { BookingDetailData } from '@/lib/booking-detail';
 import { bookerDetail, mySpotQuote, playerDetail, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
-import type { BookingDetail } from '@/lib/booking-search';
 
 // The cancel sheet is a Modal: load it with the file, not in the first test.
 loadWithFile(Modal, BookingDetailView);
@@ -22,7 +22,7 @@ jest.mock('@/components/ui/icon-symbol', () =>
 const now = new Date('2026-11-16T08:00:00Z');
 const at = (minutes: number) => new Date(now.getTime() + minutes * 60_000).toISOString();
 
-function props(detail: BookingDetail, overrides: Partial<BookingDetailViewProps> = {}): BookingDetailViewProps {
+function props(detail: BookingDetailData, overrides: Partial<BookingDetailViewProps> = {}): BookingDetailViewProps {
   return {
     state: { status: 'ready', data: detail },
     onRetry: jest.fn(),
@@ -107,15 +107,35 @@ describe('BookingDetailView: cancel', () => {
     expect(screen.getByRole('button', { name: 'Cancel whole team' })).toBeTruthy();
   });
 
-  it('a booking made before P4a asks once more, without amounts, and cancels the whole booking', async () => {
+  it('a booking made before P4a: no money promise, says the old rules apply, and still needs a second tap', async () => {
     const detail = bookerDetail();
     const p = props({ ...detail, booking: { ...detail.booking, payment_mode: null } });
     await render(<BookingDetailView {...p} />);
     expect(screen.queryByRole('button', { name: 'Cancel my spot' })).toBeNull();
+    expect(screen.queryByText(/You see exactly what happens to the money/)).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Cancel whole team' }));
     expect(p.onQuote).not.toHaveBeenCalled();
-    await fireEvent.press(await screen.findByRole('button', { name: 'Confirm: cancel the whole team' }));
+    expect(await screen.findByText(OLD_RULES_WORDS)).toBeTruthy();
+    expect(OLD_RULES_WORDS).toBe('This booking was made under the old rules. Cancelling follows those rules.');
+    expect(p.onConfirmCancel).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirm: cancel the whole team' }));
     expect(p.onConfirmCancel).toHaveBeenCalledWith({ scope: 'whole_team', quote: null });
+  });
+
+  it('a booking with a quote says the money is shown first', async () => {
+    await render(<BookingDetailView {...props(playerDetail())} />);
+    expect(screen.getByText('You see exactly what happens to the money before anything is cancelled.')).toBeTruthy();
+  });
+
+  it('closing the sheet while the quote loads keeps it closed when the quote arrives', async () => {
+    let resolve: (r: { quote: ReturnType<typeof mySpotQuote> }) => void = () => {};
+    const p = props(playerDetail(), { onQuote: jest.fn(() => new Promise((r) => (resolve = r))) });
+    await render(<BookingDetailView {...p} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel my spot' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Keep my spot' }));
+    await act(async () => resolve({ quote: mySpotQuote() }));
+    expect(screen.queryByRole('button', { name: 'Confirm: cancel my spot' })).toBeNull();
+    expect(screen.queryByText('€1.00 is kept. €5.80 becomes credit at Nuevo Campo.')).toBeNull();
   });
 });
 
@@ -146,11 +166,18 @@ describe('BookingDetailView: countdown', () => {
     await render(<BookingDetailView {...p} />);
     expect(screen.getByText('Free cancellation ends in 42 min')).toBeTruthy();
 
-    await render(<BookingDetailView {...props(playerDetail({ next_cutoff: { kind: 'refunds_stop', at: at(28 * 60) } }))} />);
-    expect(screen.getByText('Refunds stop in 1 d 4 h')).toBeTruthy();
+    // The booker paid €5.80 by card; the free hour is over.
+    await render(<BookingDetailView {...props(bookerDetail({ next_cutoff: { kind: 'refunds_stop', at: at(28 * 60) } }))} />);
+    expect(screen.getByText('Cancel in the next 1 d 4 h and you get credit at Nuevo Campo, minus €1.00.')).toBeTruthy();
 
-    await render(<BookingDetailView {...props(playerDetail({ next_cutoff: null }))} />);
-    expect(screen.getByText('Refunds have stopped for this game')).toBeTruthy();
+    await render(<BookingDetailView {...props(bookerDetail({ next_cutoff: null }))} />);
+    expect(screen.getByText('Cancelling now gives no money back.')).toBeTruthy();
+  });
+
+  it('no countdown for a player who hasn’t paid', async () => {
+    const detail = bookerDetail({ next_cutoff: { kind: 'refunds_stop', at: at(28 * 60) } });
+    await render(<BookingDetailView {...props({ ...detail, me: { ...detail.me!, status: 'pending' } })} />);
+    expect(screen.queryByText(/Cancel in the next/)).toBeNull();
   });
 
   it('asks the server for the next cutoff once this one passes', async () => {
@@ -160,10 +187,28 @@ describe('BookingDetailView: countdown', () => {
   });
 
   it('no countdown on a cancelled booking', async () => {
-    const detail = playerDetail({ next_cutoff: null });
+    const detail = bookerDetail({ next_cutoff: null });
     await render(<BookingDetailView {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } })} />);
-    expect(screen.queryByText(/Refunds/)).toBeNull();
+    expect(screen.queryByText(/money back/)).toBeNull();
     expect(screen.getByText('This booking was cancelled.')).toBeTruthy();
+  });
+});
+
+describe('BookingDetailView: paying a pending booking', () => {
+  it('the booker sees the server’s deadline, in Cyprus time', async () => {
+    const detail = bookerDetail();
+    const pending = {
+      ...detail,
+      booking: { ...detail.booking, status: 'pending_payment', payment_window_ends_at: '2026-11-16T08:15:00+00:00' },
+      me: { ...detail.me!, status: 'pending' },
+    };
+    await render(<BookingDetailView {...props(pending)} />);
+    expect(screen.getByText('Pay by 10:15 or the booking is released.')).toBeTruthy();
+  });
+
+  it('not once the booking is confirmed', async () => {
+    await render(<BookingDetailView {...props(bookerDetail())} />);
+    expect(screen.queryByText(/or the booking is released/)).toBeNull();
   });
 });
 

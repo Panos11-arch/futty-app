@@ -8,17 +8,20 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share } from 'react-native';
 
-import { BookingDetailView, type ConfirmResult, type DetailCancelScope, type QuoteResult } from '@/components/booking/booking-detail-view';
+import { BookingDetailView } from '@/components/booking/booking-detail-view';
 import { SquadNeed } from '@/components/booking/squad-need';
 import { Sheet } from '@/components/ui';
-import { cancelBooking, getCancellationQuote, type CancellationQuote, type CancelResult } from '@/lib/booking-actions';
+import { cancelBooking, getCancellationQuote, type CancellationQuote } from '@/lib/booking-actions';
 import {
   addDetailToCalendar,
   calendarMessage,
-  cancelledMessage,
+  confirmCancellation,
   fetchBookingDetail,
   shareText,
   syncDetailInCalendar,
+  type ConfirmResult,
+  type DetailCancelScope,
+  type QuoteResult,
 } from '@/lib/booking-detail';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { useLoad } from '@/lib/booking-search';
@@ -52,35 +55,22 @@ export default function BookingDetailScreen() {
     return { quote: data as CancellationQuote };
   }
 
-  /** The booker's €1-per-player charge may need 3-D Secure; the booking is
-   *  cancelled either way (spec 13). */
-  async function finishFee(result: CancelResult): Promise<CancelResult> {
-    const fee = result.fee;
-    if (fee?.status !== 'requires_action' || !fee.clientSecret) return result;
-    const { error } = await handleNextAction(fee.clientSecret);
-    return { ...result, fee: { ...fee, status: error ? 'failed' : 'processing' } };
-  }
-
-  async function confirmCancel({ scope, quote: shown }: { scope: DetailCancelScope; quote: string | null }): Promise<ConfirmResult> {
-    const { data, error } = await cancelBooking(id, shown ? { scope, quote: shown } : undefined);
-    if (error || !data) {
-      const code = error ? await describeFunctionError(error) : 'Something went wrong.';
-      if (code === 'quote_changed') {
-        const again = await quote(scope);
-        if ('quote' in again) return { status: 'changed', quote: again.quote };
-        return { status: 'error', message: again.error };
-      }
+  async function confirmCancel(confirmed: { scope: DetailCancelScope; quote: string | null }): Promise<ConfirmResult> {
+    const result = await confirmCancellation(id, confirmed, {
+      cancel: cancelBooking,
+      quote,
+      errorCode: describeFunctionError,
+      handleNextAction,
+      removeFromCalendar: removeBookingFromCalendar,
+    });
+    if (result.status === 'error') {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-      return { status: 'error', message: describeBookingErrorMessage(code) };
+    } else if (result.status === 'cancelled') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setNotice(result.notice ?? null);
+      reload();
     }
-    const result = await finishFee(data);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    // Left the game: take it off the calendar. A cancelled booking is
-    // removed by the sync after the reload.
-    if (scope === 'my_spot') void removeBookingFromCalendar(id).catch(() => {});
-    setNotice(cancelledMessage(scope, result));
-    reload();
-    return { status: 'cancelled' };
+    return result;
   }
 
   async function invite(username: string): Promise<string | null> {

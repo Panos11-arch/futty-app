@@ -7,6 +7,7 @@ import { CheckoutView } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
 import type { PaymentMode } from '@/lib/booking-actions';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
+import { afterPayment } from '@/lib/booking-navigation';
 import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
 
 type Params = {
@@ -50,8 +51,7 @@ export default function BookingPaymentScreen() {
 /** Paid: on to this booking's detail (roster, invite, cancel). */
 function paid(bookingId: string | null) {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  if (bookingId) router.replace({ pathname: '/booking/[id]', params: { id: bookingId } });
-  else router.replace('/my-bookings');
+  afterPayment(bookingId, router);
 }
 
 function failed() {

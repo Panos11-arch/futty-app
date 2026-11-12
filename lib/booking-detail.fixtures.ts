@@ -1,9 +1,14 @@
 // Test data only: booking_detail and cancellation_quote responses shaped as
 // the server returns them (supabase/migrations/20261112090000_pay_booking_screens.sql,
-// 20261109180834_pay_cancellations_plan.sql), with spec 13's amounts.
+// 20261110124905_pay_cancellations_fixes.sql, 20261112220000_pay_quote_guarantee_held.sql),
+// with spec 13's amounts.
 import type { CancellationLine, CancellationQuote } from './booking-actions';
+import type { BookingDetailData } from './booking-detail';
 import { detailFixture } from './booking-search.fixtures';
-import type { BookingDetail, RosterEntry } from './booking-search';
+import type { RosterEntry } from './booking-search';
+
+/** cancellation_terms() as the server returns it. */
+export const TERMS = { fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 };
 
 function entry(overrides: Partial<RosterEntry> & Pick<RosterEntry, 'share_id' | 'profile_id' | 'name'>): RosterEntry {
   return {
@@ -18,13 +23,14 @@ function entry(overrides: Partial<RosterEntry> & Pick<RosterEntry, 'share_id' | 
 }
 
 /** The booker's view of a 6 v 6 each-pays booking: every amount is sent. */
-export function bookerDetail(overrides: Partial<BookingDetail> = {}): BookingDetail {
+export function bookerDetail(overrides: Partial<BookingDetailData> = {}): BookingDetailData {
   const base = detailFixture({
     me: { share_id: 's1', status: 'authorized', amount_cents: 580, pitch_cents: 500, fee_cents: 80 },
     booking: { capacity: 12, players_per_side: 6, payment_mode: 'each_pays_responsible' },
   });
   return {
     ...base,
+    cancellation: TERMS,
     is_booker: true,
     roster: [
       entry({ share_id: 's1', profile_id: 'p1', name: 'Dimitris', is_booker: true, is_me: true, state: 'in_app', amount_cents: 580, cash_cents: 0 }),
@@ -39,13 +45,14 @@ export function bookerDetail(overrides: Partial<BookingDetail> = {}): BookingDet
 }
 
 /** Andreas's view of the same booking: only his own amounts are sent. */
-export function playerDetail(overrides: Partial<BookingDetail> = {}): BookingDetail {
+export function playerDetail(overrides: Partial<BookingDetailData> = {}): BookingDetailData {
   const base = detailFixture({
     me: { share_id: 's2', status: 'authorized', payment_method: 'cash', amount_cents: 80, pitch_cents: 0, fee_cents: 80, cash_cents: 500 },
     booking: { capacity: 12, players_per_side: 6, payment_mode: 'each_pays_responsible' },
   });
   return {
     ...base,
+    cancellation: TERMS,
     is_booker: false,
     roster: [
       entry({ share_id: 's1', profile_id: 'p1', name: 'Dimitris', is_booker: true, state: 'in_app' }),
@@ -65,10 +72,15 @@ export function line(overrides: Partial<CancellationLine> & Pick<CancellationLin
     guarantee_id: null,
     is_booker: false,
     window: 'middle',
+    paid_cents: 0,
+    fee_cents: 0,
+    credit_used_cents: 0,
     value_cents: 0,
     kept_cents: 0,
     credit_cents: 0,
     refund_cents: 0,
+    needs_capture: false,
+    stripe_intent_id: null,
     ...overrides,
   };
 }
@@ -83,6 +95,7 @@ export function mySpotQuote(overrides: Partial<CancellationQuote> = {}): Cancell
     cancels_booking: false,
     lines: [line({ profile_id: 'p2', action: 'keep_and_credit', value_cents: 680, kept_cents: 100, credit_cents: 580 })],
     booker_fee: null,
+    guarantee_hold_placed: false,
     quote: 'q1',
     ...overrides,
   };
@@ -101,9 +114,10 @@ export function wholeTeamQuote(overrides: Partial<CancellationQuote> = {}): Canc
       line({ profile_id: 'p2', window: 'other', action: 'refund_choice', value_cents: 580, refund_cents: 580 }),
       line({ profile_id: 'p3', window: 'other', action: 'release', value_cents: 580, refund_cents: 580 }),
       line({ profile_id: 'p4', window: 'other', action: 'none' }),
-      line({ profile_id: 'p1', share_id: null, guarantee_id: 'g1', is_booker: true, window: null, action: 'release' }),
+      line({ profile_id: 'p1', share_id: null, guarantee_id: 'g1', is_booker: true, window: null, action: 'release', stripe_intent_id: 'pi_g1' }),
     ],
     booker_fee: { profile_id: 'p1', players: 6, amount_cents: 600 },
+    guarantee_hold_placed: true,
     quote: 'q2',
     ...overrides,
   };

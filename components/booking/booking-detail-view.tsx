@@ -22,19 +22,28 @@ import {
 } from '@/components/ui';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
-import { cutoffLabel, cutoffPassed, describeQuote, rosterRow } from '@/lib/booking-detail';
-import { slotLabel, useNow, type BookingDetail, type LoadState } from '@/lib/booking-search';
+import {
+  countdownLabel,
+  cutoffPassed,
+  describeQuote,
+  paymentDeadlineLabel,
+  rosterRow,
+  type BookingDetailData,
+  type ConfirmResult,
+  type DetailCancelScope,
+  type QuoteResult,
+} from '@/lib/booking-detail';
+import { slotLabel, useNow, type LoadState } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
 
-export type DetailCancelScope = 'my_spot' | 'whole_team';
-export type QuoteResult = { quote: CancellationQuote } | { error: string };
-export type ConfirmResult =
-  | { status: 'cancelled' }
-  | { status: 'changed'; quote: CancellationQuote }
-  | { status: 'error'; message: string };
+export type { ConfirmResult, DetailCancelScope, QuoteResult };
+
+/** Bookings made before P4a have no quote: the old rules apply. Panos to
+ *  confirm this wording. */
+export const OLD_RULES_WORDS = 'This booking was made under the old rules. Cancelling follows those rules.';
 
 export type BookingDetailViewProps = {
-  state: LoadState<BookingDetail>;
+  state: LoadState<BookingDetailData>;
   onRetry: () => void;
   /** The server's cutoff has passed: load the booking again for the next one. */
   onRefresh: () => void;
@@ -104,7 +113,7 @@ function BookingDetailReady({
   notice,
   squadNeed,
   now: nowOverride,
-}: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetail }) {
+}: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
   const now = nowOverride ?? clock;
   const { booking, venue, me, roster, is_booker: isBooker } = detail;
@@ -124,14 +133,19 @@ function BookingDetailReady({
     refreshedFor.current = detail.next_cutoff.at;
     onRefresh();
   }, [passed, detail.next_cutoff, onRefresh]);
-  const countdown = live && (meActive || isBooker) ? cutoffLabel(detail.next_cutoff, now) : null;
+  const countdown = live ? countdownLabel(detail, now) : null;
+  const deadline = live ? paymentDeadlineLabel(detail) : null;
 
   // ---- Cancel: quote first, confirm second -----------------------------
   const [asking, setAsking] = useState<Asking | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  // Bumped each time the sheet opens or closes, so a quote that arrives after
+  // the player closed the sheet doesn't open it again.
+  const askRef = useRef(0);
 
   async function startCancel(scope: DetailCancelScope) {
+    const ask = ++askRef.current;
     setConfirmError(null);
     if (legacy) {
       setAsking({ scope, step: 'quote', quote: null, changed: false });
@@ -139,7 +153,14 @@ function BookingDetailReady({
     }
     setAsking({ scope, step: 'loading' });
     const result = await onQuote(scope);
+    if (askRef.current !== ask) return;
     setAsking('quote' in result ? { scope, step: 'quote', quote: result.quote, changed: false } : { scope, step: 'error', message: result.error });
+  }
+
+  function closeSheet() {
+    if (confirming) return;
+    askRef.current += 1;
+    setAsking(null);
   }
 
   async function confirm() {
@@ -201,6 +222,8 @@ function BookingDetailReady({
         {notice ? <Banner tone="info" message={notice} /> : null}
 
         {countdown ? <ListRow title={countdown} leading={{ icon: 'clock.fill' }} /> : null}
+
+        {deadline ? <Banner tone="warning" message={deadline} /> : null}
 
         {pending ? (
           <Button label={`Pay my share: ${formatEuros(me.amount_cents)}`} onPress={onPayShare} fullWidth />
@@ -279,18 +302,18 @@ function BookingDetailReady({
             {detail.can_cancel.whole_team ? (
               <Button label="Cancel whole team" variant="destructive" onPress={() => startCancel('whole_team')} fullWidth />
             ) : null}
-            <Text variant="caption" tone="inkMuted">
-              You see exactly what happens to the money before anything is cancelled.
-            </Text>
+            {legacy ? null : (
+              <Text variant="caption" tone="inkMuted">
+                You see exactly what happens to the money before anything is cancelled.
+              </Text>
+            )}
           </View>
         ) : null}
       </ScrollView>
 
       <Sheet
         visible={asking !== null}
-        onClose={() => {
-          if (!confirming) setAsking(null);
-        }}
+        onClose={closeSheet}
         title={sheetTitle}
         primaryAction={
           asking?.step === 'quote' ? { label: confirmLabel, onPress: confirm, loading: confirming } : undefined
@@ -309,7 +332,7 @@ function BookingDetailReady({
             ))
           : null}
         {asking?.step === 'quote' && !asking.quote ? (
-          <Text variant="body">This booking was made before the current payment rules. It is cancelled as a whole.</Text>
+          <Text variant="body">{OLD_RULES_WORDS}</Text>
         ) : null}
         {confirmError ? <Banner tone="danger" message={confirmError} /> : null}
       </Sheet>
