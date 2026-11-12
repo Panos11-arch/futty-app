@@ -116,6 +116,9 @@ describe('CheckoutView', () => {
     await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Use my €50.00 credit' }));
     expect(screen.getByText('-€50.00')).toBeTruthy();
+    // The sticky bar's label follows the breakdown: credit means "By card now".
+    expect(within(screen.getByTestId('sticky-action-bar')).getByText('By card now')).toBeTruthy();
+    expect(within(screen.getByTestId('sticky-action-bar')).queryByText('Total')).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Pay €15.50' }));
     expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', pay: { method: 'card', acceptNonRefundable: false, useCredit: true } });
 
@@ -131,15 +134,29 @@ describe('CheckoutView', () => {
     expect(screen.queryByRole('button', { name: /Use my/ })).toBeNull();
   });
 
-  it('shows the cancellation rules in three lines', async () => {
+  it('shows the cancellation rules in three lines that hold in every mode', async () => {
     await render(<CheckoutView {...props()} />);
-    expect(screen.getByText(/Cancel within 1 hour of paying/)).toBeTruthy();
-    expect(screen.getByText(/€1.00 is kept and the rest becomes credit/)).toBeTruthy();
+    expect(
+      screen.getByText('Cancel for a full refund until 1 hour after paying or 6 hours before kickoff, whichever comes first.'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'After that, until 6 hours before kickoff, €1.00 is kept for each player paid for and the rest becomes credit at this venue. Paying the pitch in cash, only the service fee is at stake.',
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Less than 6 hours before kickoff, there are no refunds.')).toBeTruthy();
   });
 
+  it('once payment has started, says who pays is fixed and an unpaid booking is released after 15 minutes', async () => {
+    await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
+    expect(
+      screen.getByText("Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 15 minutes."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/pick the time again/)).toBeNull();
+  });
+
   describe('the non-refundable notice', () => {
-    it('appears at 5h59m before kickoff, and Pay is disabled until it is accepted', async () => {
+    it('appears at 5h59m before kickoff (the server’s non_refundable flag is set), and Pay is disabled until it is accepted', async () => {
       const p = props(quoteFixture({ non_refundable: true, kickoff_at: at(359), refunds_stop_at: at(-1) }));
       await render(<CheckoutView {...p} />);
       expect(screen.getByText('This booking is non-refundable')).toBeTruthy();
@@ -151,7 +168,7 @@ describe('CheckoutView', () => {
       expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', pay: { method: 'card', acceptNonRefundable: true, useCredit: false } });
     });
 
-    it('does not appear at 6h01m before kickoff', async () => {
+    it('does not appear at 6h01m before kickoff (the server’s non_refundable flag is not set)', async () => {
       await render(<CheckoutView {...props(quoteFixture({ non_refundable: false, kickoff_at: at(361), refunds_stop_at: at(1) }))} />);
       expect(screen.queryByText('This booking is non-refundable')).toBeNull();
       await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));

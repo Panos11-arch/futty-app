@@ -72,6 +72,20 @@ describe('payForSlot', () => {
     expect(outcome).toMatchObject({ status: 'error', bookingId: null });
   });
 
+  it.each(['authorized', 'paid'])('a booker share already %s counts as paid', async (status) => {
+    mockListShares.mockResolvedValue({ data: [{ id: 's1', is_booker: true, status }], error: null });
+    const s = sheet();
+    expect(await payForSlot({ slot, mode: 'pay_all', pay: card, bookingId: 'b1' }, s)).toEqual({ status: 'paid', bookingId: 'b1' });
+    expect(mockCreateSharePayment).not.toHaveBeenCalled();
+  });
+
+  it.each(['cancelled', 'refunded', 'covered'])('a booker share that is %s is an error and stays on checkout', async (status) => {
+    mockListShares.mockResolvedValue({ data: [{ id: 's1', is_booker: true, status }], error: null });
+    const outcome = await payForSlot({ slot, mode: 'pay_all', pay: card, bookingId: 'b1' }, sheet());
+    expect(outcome).toEqual({ status: 'error', message: expect.stringMatching(/can no longer be paid/), bookingId: null });
+    expect(mockCreateSharePayment).not.toHaveBeenCalled();
+  });
+
   it('a free venue is booked with nothing to pay', async () => {
     mockBookSlot.mockResolvedValue({ data: { id: 'b2', amount_cents: 0 }, error: null });
     const s = sheet();

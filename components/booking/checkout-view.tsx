@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { CancellationRules, cashSentence, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
+import { CancellationRules, cashSentence, DEBT_LINE, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
 import {
   Banner,
   Chip,
@@ -57,7 +57,10 @@ const MODE_SENTENCES: Record<Who | Each, string> = {
     "Just my spot: each player pays their own share. A player who doesn't pay owes the venue themselves.",
 };
 
-export const DEBT_LINE = 'You owe money to a venue. Pay it before booking.';
+// Spec 13, "When money is held and taken" rule 5: an unpaid booking is
+// released after 15 minutes.
+export const HELD_LINE =
+  "Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 15 minutes.";
 
 export function CheckoutView(props: CheckoutViewProps) {
   const { quote } = props;
@@ -108,6 +111,7 @@ function CheckoutReady({
   const cashOn = cash && cashOffered;
   const amounts = checkoutAmounts(quote, { mode, cash: cashOn, credit: creditOn });
   const nonRefundable = showNonRefundable(quote, now);
+  const totalLabel = amounts && (amounts.cashCents !== null || creditOn) ? 'By card now' : 'Total';
 
   const canPay = mode !== null && amounts !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying;
 
@@ -169,7 +173,7 @@ function CheckoutReady({
           ) : null}
           {bookingHeld ? (
             <Text variant="callout" tone="inkMuted">
-              Your booking is held while you pay. To change who pays, go back and pick the time again.
+              {HELD_LINE}
             </Text>
           ) : null}
         </View>
@@ -194,7 +198,7 @@ function CheckoutReady({
             {cashOffered ? (
               <Chip label="Pay the pitch in cash at the venue" selected={cashOn} onPress={() => setCash((c) => !c)} />
             ) : null}
-            <PriceBreakdown lines={amounts.lines} totalCents={amounts.totalCents} totalLabel={amounts.cashCents !== null || creditOn ? 'By card now' : 'Total'} />
+            <PriceBreakdown lines={amounts.lines} totalCents={amounts.totalCents} totalLabel={totalLabel} />
             {amounts.cashCents !== null ? (
               <Text variant="callout">{cashSentence(amounts.totalCents, amounts.cashCents)}</Text>
             ) : null}
@@ -211,7 +215,7 @@ function CheckoutReady({
       </ScrollView>
       <StickyActionBar
         totalCents={amounts?.totalCents}
-        totalLabel={amounts?.cashCents !== null && amounts ? 'By card now' : 'Total'}
+        totalLabel={totalLabel}
         actionLabel={amounts ? payLabel(amounts.totalCents) : 'Choose who pays'}
         loading={paying}
         disabled={!canPay}

@@ -4,10 +4,9 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { CancellationRules, cashSentence, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
+import { CancellationRules, cashSentence, DEBT_LINE, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
 import {
   Banner,
-  Chip,
   EmptyState,
   PriceBreakdown,
   SkeletonBlock,
@@ -66,19 +65,18 @@ function PayShareReady({
 }: Omit<PayShareViewProps, 'data' | 'onRetry'> & { data: PayShareData }) {
   const clock = useNow();
   const now = nowOverride ?? clock;
-  const [cash, setCash] = useState(false);
   const [accepted, setAccepted] = useState(false);
 
   const { detail, blocked, cancellation } = data;
   const { booking, venue, me } = detail;
   const pending = me?.status === 'pending';
+  // Card only here: choosing cash needs booking_detail to say whether cash is
+  // allowed and what it costs (a server change). A share the server already
+  // records as cash is shown with the server's card and cash amounts.
   const alreadyCash = me?.payment_method === 'cash';
-  // Cash only in the each-pays modes and never for a player in debt (spec 13).
-  const cashOffered =
-    pending && !alreadyCash && !blocked && (booking.payment_mode === 'each_pays_responsible' || booking.payment_mode === 'each_pays_own_spot');
-  const cashOn = cash && cashOffered;
   const nonRefundable = pending && showNonRefundable(booking, now);
-  const canPay = pending && (!nonRefundable || accepted) && !paying;
+  // my_owed says the player owes money: they can't pay into a booking (spec 13, "Debt").
+  const canPay = pending && !blocked && (!nonRefundable || accepted) && !paying;
 
   return (
     <View style={styles.screen}>
@@ -98,16 +96,11 @@ function PayShareReady({
         {!me ? <Text variant="body">You don’t have a spot in this booking.</Text> : null}
         {me && !pending ? <Text variant="headline">{SETTLED[me.status] ?? 'Nothing to pay for this spot.'}</Text> : null}
 
+        {me && pending && blocked ? <Banner tone="danger" message={DEBT_LINE} /> : null}
+
         {me && pending ? (
           <View style={styles.section}>
-            {cashOffered ? (
-              <Chip label="Pay the pitch in cash at the venue" selected={cashOn} onPress={() => setCash((c) => !c)} />
-            ) : null}
-            {cashOn ? (
-              <Text variant="callout">
-                You pay the service fee by card now and your part of the pitch in cash at the venue. The next screen shows the exact amount.
-              </Text>
-            ) : alreadyCash ? (
+            {alreadyCash ? (
               <>
                 <PriceBreakdown lines={[{ label: 'Service fee', cents: me.fee_cents }]} totalCents={me.amount_cents} totalLabel="By card now" />
                 <Text variant="callout">{cashSentence(me.amount_cents, me.cash_cents)}</Text>
@@ -132,15 +125,15 @@ function PayShareReady({
       </ScrollView>
       {me && pending ? (
         <StickyActionBar
-          totalCents={cashOn ? undefined : me.amount_cents}
+          totalCents={me.amount_cents}
           totalLabel={alreadyCash ? 'By card now' : 'Total'}
-          actionLabel={cashOn ? 'Continue to pay the service fee' : payLabel(me.amount_cents, 'Save my card')}
+          actionLabel={payLabel(me.amount_cents, 'Save my card')}
           loading={paying}
           disabled={!canPay}
           onPress={() => {
             if (!canPay) return;
             onPay({
-              method: cashOn || alreadyCash ? 'cash' : 'card',
+              method: alreadyCash ? 'cash' : 'card',
               acceptNonRefundable: nonRefundable && accepted,
               useCredit: false,
             });

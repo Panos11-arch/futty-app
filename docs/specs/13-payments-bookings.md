@@ -315,6 +315,7 @@ Venues are loaded from the Futty Venue Data sheet by an import script (`scripts/
 
 The booking screens (P5) show only amounts the server computes: `booking_quote` for checkout, `venues_free_at` for the Book list, `booking_detail` for a booking, `my_owed` and `my_credit` for debt and credit.
 
+- **Game length and start times:** the Book flow offers games of 60, 90 or 120 minutes (60 by default), starting every half hour from 07:00 to 23:30, Cyprus time. A start time is offered only if the game ends by midnight. The server still checks every slot against the venue's opening hours.
 - **Players per side:** the Book flow picks the format before the venue. "Players per side: 5 v 5 / 6 v 6" shows after 5-a-side is picked, only when at least one live venue allows 6 v 6 on 5-a-side pitches. Picking 6 v 6 lists only those venues. Coming from a venue page, it shows only if that venue allows it.
 - **Cash:** offered by the server's rules only, in the two each-pays modes. Never with venue credit, and never to a player in debt. There is no venue setting for cash; every venue accepts it.
 - **Who sees the roster:** everyone in a booking sees each player's name and paid state (in app, cash, cash paid, unpaid). Only the booker sees everyone's amounts; the other players see only their own.

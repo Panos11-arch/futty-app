@@ -5,14 +5,42 @@ import { StyleSheet, View } from 'react-native';
 import { Banner, Chip, SectionHeader, Text } from '@/components/ui';
 import { space } from '@/constants/futty-theme';
 import { formatEuros } from '@/lib/money/format';
-import { cancellationLines, type CancellationTerms } from '@/lib/venue-page';
+import type { CancellationTerms } from '@/lib/venue-page';
+
+/** A player in debt can't book or pay into a booking (spec 13, "Debt"). */
+export const DEBT_LINE = 'You owe money to a venue. Pay it before booking.';
+
+function hoursWords(hours: number): string {
+  return hours === 1 ? '1 hour' : `${hours} hours`;
+}
+
+/** 60 -> "1 hour", 90 -> "90 minutes". */
+function minutesWords(minutes: number): string {
+  if (minutes % 60 === 0) return hoursWords(minutes / 60);
+  return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+}
+
+/** The cancellation rules on checkout and Pay my share, in three lines that
+ *  hold in every mode (spec 13, "Cancellations and refunds"): the free window
+ *  ends after the free minutes or at the cutoff, whichever is first; the fee
+ *  is kept per player; a cash player only risks the service fee. Every number
+ *  is the server's. */
+export function checkoutCancellationLines(terms: CancellationTerms): [string, string, string] {
+  const free = minutesWords(terms.free_minutes);
+  const cutoff = hoursWords(terms.refund_cutoff_hours);
+  return [
+    `Cancel for a full refund until ${free} after paying or ${cutoff} before kickoff, whichever comes first.`,
+    `After that, until ${cutoff} before kickoff, ${formatEuros(terms.fee_cents)} is kept for each player paid for and the rest becomes credit at this venue. Paying the pitch in cash, only the service fee is at stake.`,
+    `Less than ${cutoff} before kickoff, there are no refunds.`,
+  ];
+}
 
 /** The cancellation rules in three lines (spec 15, checkout). */
 export function CancellationRules({ terms }: { terms: CancellationTerms }) {
   return (
     <View style={styles.section}>
       <SectionHeader title="Cancelling" />
-      {cancellationLines(terms).map((line) => (
+      {checkoutCancellationLines(terms).map((line) => (
         <Text key={line} variant="callout" tone="inkMuted">
           {line}
         </Text>

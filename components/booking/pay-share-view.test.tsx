@@ -50,22 +50,30 @@ describe('PayShareView', () => {
     expect(screen.getByRole('button', { name: 'Pay €0.80' })).toBeTruthy();
   });
 
-  it('cash can be chosen in an each-pays booking; the next screen shows the exact amount', async () => {
-    const p = props();
+  it('card only: the app offers no cash choice, even in an each-pays booking', async () => {
+    const p = props({ detail: detailFixture({ booking: { payment_mode: 'each_pays_own_spot' } }) });
     await render(<PayShareView {...p} />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay the pitch in cash at the venue' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Continue to pay the service fee' }));
-    expect(p.onPay).toHaveBeenCalledWith({ method: 'cash', acceptNonRefundable: false, useCredit: false });
+    expect(screen.queryByRole('button', { name: /cash/i })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay €6.80' }));
+    expect(p.onPay).toHaveBeenCalledWith({ method: 'card', acceptNonRefundable: false, useCredit: false });
   });
 
-  it('no cash for a player in debt, or when the booker pays for everyone', async () => {
-    await render(<PayShareView {...props({ blocked: true })} />);
-    expect(screen.queryByRole('button', { name: 'Pay the pitch in cash at the venue' })).toBeNull();
-    await render(<PayShareView {...props({ detail: detailFixture({ booking: { payment_mode: 'pay_all' } }) })} />);
-    expect(screen.queryByRole('button', { name: 'Pay the pitch in cash at the venue' })).toBeNull();
+  it('a player who owes money (my_owed blocked) sees the debt line and can’t pay', async () => {
+    const p = props({ blocked: true });
+    await render(<PayShareView {...p} />);
+    expect(screen.getByText('You owe money to a venue. Pay it before booking.')).toBeTruthy();
+    expect(isDisabled('Pay €6.80')).toBe(true);
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay €6.80' }));
+    expect(p.onPay).not.toHaveBeenCalled();
   });
 
-  it('the notice appears at 5h59m before kickoff and must be accepted', async () => {
+  it('no debt line when the player owes nothing', async () => {
+    await render(<PayShareView {...props()} />);
+    expect(screen.queryByText('You owe money to a venue. Pay it before booking.')).toBeNull();
+    expect(isDisabled('Pay €6.80')).toBe(false);
+  });
+
+  it('the notice appears at 5h59m before kickoff (past the server’s refunds_stop_at) and must be accepted', async () => {
     const p = props({ detail: detailFixture({ booking: { kickoff_at: at(359), refunds_stop_at: at(-1) } }) });
     await render(<PayShareView {...p} />);
     expect(screen.getByText('This booking is non-refundable')).toBeTruthy();
@@ -75,7 +83,7 @@ describe('PayShareView', () => {
     expect(p.onPay).toHaveBeenCalledWith({ method: 'card', acceptNonRefundable: true, useCredit: false });
   });
 
-  it('no notice at 6h01m before kickoff', async () => {
+  it('no notice at 6h01m before kickoff (before the server’s refunds_stop_at)', async () => {
     await render(<PayShareView {...props({ detail: detailFixture({ booking: { kickoff_at: at(361), refunds_stop_at: at(1) } }) })} />);
     expect(screen.queryByText('This booking is non-refundable')).toBeNull();
     expect(isDisabled('Pay €6.80')).toBe(false);
@@ -96,8 +104,10 @@ describe('PayShareView', () => {
     expect(screen.getByText('You don’t have a spot in this booking.')).toBeTruthy();
   });
 
-  it('shows the cancellation rules in three lines', async () => {
+  it('shows the checkout cancellation rules in three lines', async () => {
     await render(<PayShareView {...props()} />);
+    expect(screen.getByText(/whichever comes first\.$/)).toBeTruthy();
+    expect(screen.getByText(/is kept for each player paid for/)).toBeTruthy();
     expect(screen.getByText('Less than 6 hours before kickoff, there are no refunds.')).toBeTruthy();
   });
 

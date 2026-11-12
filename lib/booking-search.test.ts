@@ -27,11 +27,20 @@ describe('dateStrip', () => {
 });
 
 describe('timeGrid', () => {
-  it('lists every half hour from 07:00 to 23:30 on a later day', () => {
-    const grid = timeGrid('2026-11-16', new Date('2026-11-12T10:00:00Z'));
+  const earlier = new Date('2026-11-12T10:00:00Z');
+
+  it('lists every half hour from 07:00 on a later day', () => {
+    const grid = timeGrid('2026-11-16', earlier, 60);
     expect(grid[0]).toBe('07:00');
-    expect(grid[grid.length - 1]).toBe('23:30');
-    expect(grid).toHaveLength(34);
+    expect(grid[1]).toBe('07:30');
+    expect(grid).toHaveLength(33);
+  });
+
+  it('hides start times where the game would run past midnight', () => {
+    expect(timeGrid('2026-11-16', earlier, 60).slice(-1)).toEqual(['23:00']);
+    expect(timeGrid('2026-11-16', earlier, 90).slice(-1)).toEqual(['22:30']);
+    expect(timeGrid('2026-11-16', earlier, 120).slice(-1)).toEqual(['22:00']);
+    expect(timeGrid('2026-11-16', earlier, 60)).not.toContain('23:30');
   });
 
   describe.each(['America/New_York', 'Asia/Tokyo', 'UTC'])('with the phone in %s', (zone) => {
@@ -45,7 +54,7 @@ describe('timeGrid', () => {
 
     it('hides times already past in Cyprus today', () => {
       // 16:10 UTC on 12 Nov = 18:10 in Cyprus (winter, UTC+2).
-      const grid = timeGrid('2026-11-12', new Date('2026-11-12T16:10:00Z'));
+      const grid = timeGrid('2026-11-12', new Date('2026-11-12T16:10:00Z'), 60);
       expect(grid[0]).toBe('18:30');
       expect(grid).not.toContain('18:00');
     });
@@ -81,12 +90,12 @@ describe('showNonRefundable', () => {
   const at = (ms: number) => new Date(now.getTime() + ms).toISOString();
   const minute = 60_000;
 
-  it('shows at 5h59m before kickoff', () => {
+  it('shows at 5h59m before kickoff, when the server’s non_refundable flag is set', () => {
     const quote = { non_refundable: true, kickoff_at: at(359 * minute), refunds_stop_at: at(-minute) };
     expect(showNonRefundable(quote, now)).toBe(true);
   });
 
-  it('does not show at 6h01m before kickoff', () => {
+  it('does not show at 6h01m before kickoff, when the server’s non_refundable flag is not set', () => {
     const quote = { non_refundable: false, kickoff_at: at(361 * minute), refunds_stop_at: at(minute) };
     expect(showNonRefundable(quote, now)).toBe(false);
   });

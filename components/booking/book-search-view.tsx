@@ -99,7 +99,7 @@ function BookSearchReady({
   const [format, setFormat] = useState<string | null>(null);
   const [playersPerSide, setPlayersPerSide] = useState<5 | 6>(5);
 
-  const times = timeGrid(day, now);
+  const times = timeGrid(day, now, minutes);
   const sixAllowed = venue ? venue.allowsSixOnFive : options.six_on_five_available;
   const showSides = showPlayersPerSide(format, sixAllowed);
   const sides: 5 | 6 = showSides ? playersPerSide : 5;

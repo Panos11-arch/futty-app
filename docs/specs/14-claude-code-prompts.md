@@ -43,18 +43,20 @@ About 50 hours before 20 November and 45 after.
 
 ### Dimitris, from 12 November
 
-Dimitris takes over Panos's remaining P prompts; Panos keeps P9 and P5 (11 November), reviews every money PR before it's merged, and alone changes production. Dimitris works on his local database only, with `stripe-fake.ts`, and never holds the service_role key, a Stripe `sk_` key, the database password or the Apple login. The prompts are the ones below, with these notes: P8 creates matches in its tests with `create_match_for_booking`; P6 leaves out the bad-forecast nudge, which P11 adds; P11 and P4d use fakes and list the secrets and Stripe settings Panos must set; P7 is code and `docs/release-checklist.md` only, and Panos runs the build, the upload and the production steps.
+Dimitris takes over Panos's remaining P prompts; Panos keeps P9 and P5's server part (PR #59), reviews every money PR before it's merged, and alone changes production. From 12 November Dimitris runs P5's screens, in three pull requests: **P5a** (items 1, 2 and 6: Book flow and checkout, PR #60), **P5b** (item 3: booking detail, invite and share, the cutoff countdown, Add to calendar, Directions, and Cancel with `cancellation_quote`, with the "cancel button shows the quote before cancelling" test) and **P5c** (items 4 and 5: the debt banner on Book linking to "Pay what I owe", `useOwed()`, the credit list and `NextBookingCard`, with the "debt banner blocks booking and links to payment" test). Dimitris works on his local database only, with `stripe-fake.ts`, and never holds the service_role key, a Stripe `sk_` key, the database password or the Apple login. The prompts are the ones below, with these notes: P8 creates matches in its tests with `create_match_for_booking`; P6 leaves out the bad-forecast nudge, which P11 adds; P11 and P4d use fakes and list the secrets and Stripe settings Panos must set; P7 is code and `docs/release-checklist.md` only, and Panos runs the build, the upload and the production steps.
 
 | Order | Prompt | Waits for | Hours |
 | --- | --- | --- | --- |
 | 1 | P8 Gipedo Pano | — | 10 |
-| 2 | P10 Shared rules and Futty AI | P5 and P9 merged | 6 |
-| 3 | P13 Sign in with Apple and Google (added 11 November) | agree the order with Anghelo's U6 (same screen) | 6 |
-| 4 | P6 Venue dashboard (revenue by source, CSV export, customers added 11 November) | P9 | 22 |
-| 5 | P12 6 v 6 switching | P5 | 4 |
-| 6 | P11 Weather | P9, P10 | 6 |
-| 7 | P4d Venue payouts | P6 | 8 |
-| 8 | P7 Release build (code part) | P5, P10, Anghelo's "Now" prompts | 3 |
+| 2 | P5b Booking detail, invite and cancel (P5 item 3) | P5a | — |
+| 3 | P5c Debt, credit and NextBookingCard (P5 items 4 and 5) | P5b | — |
+| 4 | P10 Shared rules and Futty AI | P5 and P9 merged | 6 |
+| 5 | P13 Sign in with Apple and Google (added 11 November) | agree the order with Anghelo's U6 (same screen) | 6 |
+| 6 | P6 Venue dashboard (revenue by source, CSV export, customers added 11 November) | P9 | 22 |
+| 7 | P12 6 v 6 switching | P5 | 4 |
+| 8 | P11 Weather | P9, P10 | 6 |
+| 9 | P4d Venue payouts | P6 | 8 |
+| 10 | P7 Release build (code part) | P5, P10, Anghelo's "Now" prompts | 3 |
 
 `panos/match-sync` was finished by Panos (PR #48).
 
@@ -333,6 +335,8 @@ Plan first.
 ```
 
 ### P5 Booking flow screens
+
+The server part is PR #59 (Panos). Dimitris runs the screens below as P5a (items 1, 2, 6), P5b (item 3) and P5c (items 4, 5); each PR carries the tests for its items (see "Dimitris, from 12 November").
 
 ```
 Read docs/specs/13-payments-bookings.md (all sections the player sees) and docs/specs/15-design.md sections 3-5. Rebuild the booking screens I own with components/ui only.

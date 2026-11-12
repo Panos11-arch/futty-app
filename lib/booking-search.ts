@@ -107,11 +107,11 @@ export type BookingDetail = {
 
 // ---- The search choices ------------------------------------------------
 
-/** Game lengths offered, in minutes (decided 12 November). */
+/** Game lengths offered, in minutes (spec 13, "Booking screens"). */
 export const GAME_LENGTHS = [60, 90, 120] as const;
 export type GameLength = (typeof GAME_LENGTHS)[number];
 
-/** Start times offered, Cyprus time (decided 12 November). */
+/** Start times offered, Cyprus time (spec 13, "Booking screens"). */
 const FIRST_START = '07:00';
 const LAST_START = '23:30';
 const STEP_MINUTES = 30;
@@ -127,11 +127,13 @@ export function dateStrip(today: string, windowDays: number): string[] {
 }
 
 /** Every half hour from 07:00 to 23:30 on `day`, without the ones already
- *  past in Cyprus at `now`, whatever time zone the phone is in. */
-export function timeGrid(day: string, now: Date): string[] {
+ *  past in Cyprus at `now` (whatever time zone the phone is in) and without
+ *  the ones where a game of `minutes` would run past midnight. */
+export function timeGrid(day: string, now: Date, minutes: number): string[] {
   const times: string[] = [];
   for (let min = timeToMin(FIRST_START); min <= timeToMin(LAST_START); min += STEP_MINUTES) {
     const time = minToTime(min);
+    if (endTime(time, minutes) === null) continue;
     if (cyprusWallTime(day, time).getTime() > now.getTime()) times.push(time);
   }
   return times;

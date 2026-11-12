@@ -93,6 +93,16 @@ describe('BookSearchView', () => {
     expect(p.onQueryChange).toHaveBeenLastCalledWith(expect.objectContaining({ minutes: 90 }));
   });
 
+  it('hides start times where the chosen length would run past midnight', async () => {
+    await render(<BookSearchView {...props()} />);
+    expect(screen.getByRole('button', { name: '23:00' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '23:30' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: '120 min' }));
+    expect(screen.getByRole('button', { name: '22:00' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '22:30' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '23:00' })).toBeNull();
+  });
+
   it('hides "players per side" when no venue allows 6 v 6', async () => {
     await render(<BookSearchView {...props()} />);
     await pickSlot();

@@ -28,6 +28,9 @@ export type PayOutcome = { status: 'paid' } | { status: 'cancelled' } | { status
 /** Errors after which the booking is gone: the next Pay books again. */
 const BOOKING_GONE = new Set(['payment_window_closed', 'booking_cancelled']);
 
+/** A booker's share that's held ('authorized') or taken ('paid'). */
+const PAID_SHARE = new Set(['authorized', 'paid']);
+
 /** Pays one share: asks the server for the payment, then shows the sheet
  *  (Apple Pay / Google Pay on top, the card form below). */
 export async function payShare(shareId: string, pay: PayOptions, sheet: PaymentSheet): Promise<PayOutcome & { code?: string }> {
@@ -74,7 +77,12 @@ export async function payForSlot(
   if (sharesError) return { status: 'error', message: describeBookingErrorMessage(sharesError.message), bookingId: id };
   const mine = ((shares ?? []) as { id: string; is_booker: boolean; status: string }[]).find((s) => s.is_booker);
   if (!mine) return { status: 'error', message: 'Could not find your spot in this booking.', bookingId: id };
-  if (mine.status !== 'pending') return { status: 'paid', bookingId: id };
+  // Held or taken: already paid. Any other state (cancelled, refunded) can't
+  // be paid, so the next tap books again.
+  if (PAID_SHARE.has(mine.status)) return { status: 'paid', bookingId: id };
+  if (mine.status !== 'pending') {
+    return { status: 'error', message: 'This booking can no longer be paid. Tap Pay to book this time again.', bookingId: null };
+  }
 
   const outcome = await payShare(mine.id, pay, sheet);
   const gone = outcome.status === 'error' && outcome.code !== undefined && BOOKING_GONE.has(outcome.code);
