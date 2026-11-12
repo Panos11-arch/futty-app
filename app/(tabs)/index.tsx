@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-card';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { MatchResultPanel } from '@/components/match/result-panel';
 import { Banner, type BannerProps } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +23,8 @@ import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
+import { viewerRole, type ResultMatch } from '@/lib/match/result';
+import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
@@ -195,20 +198,34 @@ function QuickActions() {
   );
 }
 
-/** Score forms for games that have ended. Same rules as before U3: a friendly
- *  match, a league fixture you captain, or a plain booking you made. */
+/** Whether Home shows this open match: the viewer can enter or answer its
+ *  score, or their side entered it and is waiting for the answer. */
+function needsViewer(match: ResultMatch, viewerId: string | null, captainTeamIds: Set<string>) {
+  const role = viewerRole(match, viewerId, captainTeamIds);
+  return role.canSubmit || role.canRespond || (match.submission !== null && role.captainSide === match.submission.side);
+}
+
+const openMatch = (id: string) => router.push({ pathname: '/match/[id]', params: { id } });
+
+/** Score forms for games that have ended. A game with a match (made since
+ *  A2) is entered and answered with submit_match_result and
+ *  respond_to_match_result only; games recorded before A2 keep the old
+ *  forms: a friendly match, a league fixture you captain, or a plain booking
+ *  you made. */
 function LogScoreSection({ onScored }: { onScored: () => void }) {
   const venuesState = useVenues();
   const friendlyMatches = useMyFriendlyMatches();
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
   const unscoredBookings = useMyUnscoredBookings();
+  const openResults = useOpenResultMatches();
 
   useFocusEffect(
     useCallback(() => {
       friendlyMatches.reload();
       fixtures.reload();
       unscoredBookings.reload();
+      openResults.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
@@ -217,9 +234,25 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
     return (venuesState.status === 'ready' ? venuesState.venues.find((v) => v.id === venueId)?.name : null) ?? 'Booked venue';
   }
 
-  const readyToScore = friendlyMatches.status === 'ready' ? friendlyMatches.matches.filter(isReadyToScore) : [];
-  const readyToScoreFixtures =
+  const oldFriendlies = friendlyMatches.status === 'ready' ? friendlyMatches.matches.filter(isReadyToScore) : [];
+  const oldFixtures =
     fixtures.status === 'ready' ? fixtures.fixtures.filter((f) => canLogFixtureScore(f, myCaptainTeamIds)) : [];
+  const matchLinks = useMatchLinks({
+    bookingIds: unscoredBookings.status === 'ready' ? unscoredBookings.bookings.map((b) => b.id) : [],
+    friendlyMatchIds: oldFriendlies.map((m) => m.id),
+    leagueFixtureIds: oldFixtures.map((f) => f.id),
+  });
+  // Until we know which games have a match, show no old form: a game with a
+  // match must never be scored the old way.
+  const linksReady = matchLinks.status === 'ready';
+  const readyToScore = linksReady ? oldFriendlies.filter((m) => !matchLinks.links.byFriendlyMatchId.has(m.id)) : [];
+  const readyToScoreFixtures = linksReady
+    ? oldFixtures.filter((f) => !matchLinks.links.byLeagueFixtureId.has(f.id))
+    : [];
+  const resultMatches =
+    openResults.status === 'ready'
+      ? openResults.matches.filter((m) => needsViewer(m, openResults.viewerId, myCaptainTeamIds))
+      : [];
 
   // A booking later turned into a "Need opposition" post that got matched
   // already has a friendly_matches row for the same game — show only that
@@ -239,9 +272,10 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
       : []
   );
   const unscored = (
-    unscoredBookings.status === 'ready'
+    unscoredBookings.status === 'ready' && linksReady
       ? unscoredBookings.bookings.filter(
           (booking) =>
+            !matchLinks.links.byBookingId.has(booking.id) &&
             !linkedBookingIds.has(booking.id) &&
             !friendlyMatchSlots.has(
               `${booking.venue_id}|${dateKeyAndTimeToDate(booking.booking_day, booking.start_time).getTime()}`
@@ -262,9 +296,16 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
     unscoredBookings.status === 'error'
       ? { key: 'unscored', message: 'Could not load past bookings.', retry: unscoredBookings.reload }
       : null,
+    openResults.status === 'error'
+      ? { key: 'results', message: 'Could not load your matches.', retry: openResults.reload }
+      : null,
+    matchLinks.status === 'error'
+      ? { key: 'links', message: 'Could not load your matches.', retry: matchLinks.reload }
+      : null,
   ].filter((e) => e !== null);
 
-  const hasForms = readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0;
+  const hasForms =
+    resultMatches.length > 0 || readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0;
   if (!hasForms && errors.length === 0) return null;
 
   return (
@@ -275,6 +316,19 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
       ))}
       {hasForms ? (
         <Card style={styles.cardStack}>
+          {resultMatches.map((match) => (
+            <MatchResultPanel
+              key={match.match.id}
+              match={match}
+              viewerId={openResults.viewerId}
+              captainTeamIds={myCaptainTeamIds}
+              onChanged={() => {
+                openResults.reload();
+                onScored();
+              }}
+              onOpen={() => openMatch(match.match.id)}
+            />
+          ))}
           {readyToScore.map((match) => (
             <FriendlyScoreForm
               key={match.id}

@@ -12,6 +12,7 @@ import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
 import { markNotificationRead, type AppNotification, type NotificationType } from '@/lib/notifications';
+import { routeForPushData } from '@/lib/push-tap';
 import { supabase } from '@/lib/supabase';
 import { useNotifications } from '@/lib/use-notifications';
 
@@ -24,6 +25,9 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   match_payment_due: 'creditcard.fill',
   team_invite: 'person.crop.circle.badge.plus',
   booking_invite: 'calendar',
+  match_result_submitted: 'sportscourt.fill',
+  match_result_confirmed: 'sportscourt.fill',
+  match_result_disputed: 'sportscourt.fill',
 };
 
 function inviteIdOf(notification: AppNotification) {
@@ -49,6 +53,12 @@ function timeAgo(iso: string) {
  *  writes. */
 async function openNotification(notification: AppNotification) {
   const data = notification.data as Record<string, unknown>;
+
+  // A match notification (A2) opens the match screen, as its push does.
+  if (typeof data.matchId === 'string') {
+    router.push(routeForPushData(data));
+    return;
+  }
 
   if (notification.type === 'fixture_message' && typeof data.fixtureId === 'string') {
     router.push({ pathname: '/fixture-chat', params: { fixtureId: data.fixtureId } });

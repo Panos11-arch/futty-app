@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import HomeScreen from '@/app/(tabs)/index';
+import { mockResultMatch } from '@/lib/match/mock';
 
 type HookState = { status: string; [key: string]: unknown };
 const mockReloads = {
@@ -21,6 +22,10 @@ const mockReloads = {
 let mockBookings: HookState;
 let mockVenues: HookState;
 let mockPosts: HookState;
+let mockUnscored: { id: string; venue_id: string; booking_day: string; start_time: string }[] = [];
+let mockFriendlies: Record<string, unknown>[] = [];
+let mockLinks: { bookings: Map<string, string>; friendlies: Map<string, string> } = { bookings: new Map(), friendlies: new Map() };
+let mockOpenMatches: unknown[] = [];
 
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
@@ -32,12 +37,12 @@ jest.mock('expo-router', () => {
 jest.mock('@/lib/use-notifications', () => ({ useNotifications: () => ({ unreadCount: 0 }) }));
 jest.mock('@/lib/use-my-bookings', () => ({
   useMyBookings: () => ({ ...mockBookings, reload: mockReloads.bookings }),
-  useMyUnscoredBookings: () => ({ status: 'ready', bookings: [], reload: mockReloads.unscored }),
+  useMyUnscoredBookings: () => ({ status: 'ready', bookings: mockUnscored, reload: mockReloads.unscored }),
 }));
 jest.mock('@/lib/use-venues', () => ({ useVenues: () => ({ ...mockVenues, cities: [], reload: mockReloads.venues }) }));
 jest.mock('@/lib/use-squad-posts', () => ({ useSquadPosts: () => ({ ...mockPosts, reload: mockReloads.posts }) }));
 jest.mock('@/lib/use-friendly-matches', () => ({
-  useMyFriendlyMatches: () => ({ status: 'ready', matches: [], reload: mockReloads.friendly }),
+  useMyFriendlyMatches: () => ({ status: 'ready', matches: mockFriendlies, reload: mockReloads.friendly }),
 }));
 jest.mock('@/lib/use-fixtures', () => ({
   useMyFixtures: () => ({ status: 'ready', fixtures: [], reload: mockReloads.fixtures }),
@@ -47,7 +52,24 @@ jest.mock('@/lib/use-recent-results', () => ({
   useRecentResults: () => ({ status: 'ready', results: [], reload: mockReloads.results }),
 }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
-jest.mock('@/components/booking-result-form', () => ({ BookingResultForm: () => null }));
+jest.mock('@/components/booking-result-form', () => {
+  const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { BookingResultForm: ({ booking }: { booking: { id: string } }) => <Text>{`old booking form ${booking.id}`}</Text> };
+});
+jest.mock('@/components/match/result-panel', () => {
+  const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    MatchResultPanel: ({ match }: { match: { match: { id: string } } }) => <Text>{`new result panel ${match.match.id}`}</Text>,
+  };
+});
+jest.mock('@/lib/match/use-match-result', () => ({
+  useOpenResultMatches: () => ({ status: 'ready', matches: mockOpenMatches, viewerId: 'booker', reload: jest.fn() }),
+  useMatchLinks: () => ({
+    status: 'ready',
+    links: { byBookingId: mockLinks.bookings, byFriendlyMatchId: mockLinks.friendlies, byLeagueFixtureId: new Map() },
+    reload: jest.fn(),
+  }),
+}));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
 
 const booking = {
@@ -199,6 +221,72 @@ describe('Home', () => {
     mockPosts = { status: 'error', message: 'offline' };
     await render(<HomeScreen />);
     expect(screen.getByText('Could not load games looking for players.')).toBeTruthy();
+  });
+});
+
+describe('Home score logging: new matches use A2, old ones the old form', () => {
+  const pastBooking = (id: string) => ({ id, venue_id: 'v1', booking_day: '2026-11-01', start_time: '19:00:00' });
+
+  beforeEach(() => {
+    mockBookings = { status: 'ready', bookings: [] };
+    mockVenues = { status: 'ready', venues: [venue] };
+    mockPosts = { status: 'ready', posts: [] };
+    mockUnscored = [];
+    mockFriendlies = [];
+    mockLinks = { bookings: new Map(), friendlies: new Map() };
+    mockOpenMatches = [];
+  });
+
+  afterAll(() => {
+    mockUnscored = [];
+    mockFriendlies = [];
+    mockOpenMatches = [];
+  });
+
+  it('a booking recorded before A2 keeps the old form', async () => {
+    mockUnscored = [pastBooking('old')];
+    await render(<HomeScreen />);
+    expect(screen.getByText('old booking form old')).toBeTruthy();
+  });
+
+  it('a booking with a match shows the result panel, never the old form', async () => {
+    mockUnscored = [pastBooking('new'), pastBooking('old')];
+    mockLinks.bookings.set('new', 'm1');
+    mockOpenMatches = [mockResultMatch()];
+    await render(<HomeScreen />);
+    expect(screen.getByText('new result panel m1')).toBeTruthy();
+    expect(screen.queryByText('old booking form new')).toBeNull();
+    expect(screen.getByText('old booking form old')).toBeTruthy();
+  });
+
+  it('a friendly with a match hides its old score form', async () => {
+    mockFriendlies = [
+      {
+        id: 'f1',
+        status: 'pending_score',
+        home_team: { name: 'Home FC' },
+        away_team: { name: 'Away FC' },
+        post: { scheduled_at: '2026-11-01T17:00:00.000Z', venue_booking_id: null, venue: null },
+      },
+    ];
+    await render(<HomeScreen />);
+    expect(screen.getByText('Home FC vs Away FC')).toBeTruthy();
+
+    mockLinks.friendlies.set('f1', 'm2');
+    await render(<HomeScreen />);
+    expect(screen.queryByText('Home FC vs Away FC')).toBeNull();
+  });
+
+  it('a non-captain with nothing to do sees no panel on Home', async () => {
+    mockOpenMatches = [mockResultMatch({ mySide: 'a', sideACaptain: 'someone-else' })];
+    await render(<HomeScreen />);
+    expect(screen.queryByText(/new result panel/)).toBeNull();
+  });
+
+  it('the other side sees the panel to answer', async () => {
+    mockOpenMatches = [mockResultMatch({ submission: { submitted_by: 'x' }, mySide: 'b', sideACaptain: 'x' })];
+    await render(<HomeScreen />);
+    expect(screen.getByText('new result panel m1')).toBeTruthy();
   });
 });
 

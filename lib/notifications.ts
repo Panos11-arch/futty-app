@@ -8,7 +8,10 @@ export type NotificationType =
   | 'fixture_agreed'
   | 'match_payment_due'
   | 'team_invite'
-  | 'booking_invite';
+  | 'booking_invite'
+  | 'match_result_submitted'
+  | 'match_result_confirmed'
+  | 'match_result_disputed';
 
 export type AppNotification = {
   id: string;

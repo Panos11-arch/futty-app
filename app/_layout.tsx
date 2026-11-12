@@ -19,6 +19,7 @@ import { LockScreen } from '@/components/lock-screen';
 import { FuttyColors, FuttyFonts, FuttyNavigationTheme } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { PushTapHandler } from '@/lib/push-tap';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -208,6 +209,7 @@ function RootNavigator() {
           screen rather than needing its own route. Signed-in only, since it
           calls an authenticated Edge Function. */}
       {signedIn ? <FuttyAiChat /> : null}
+      {signedIn ? <PushTapHandler /> : null}
     </View>
   );
 }

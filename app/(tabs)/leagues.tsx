@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { AddPlayerRow } from '@/components/add-player-row';
 import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
-import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
 import { IconLabel } from '@/components/icon-label';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -451,7 +451,7 @@ function FixturesSection() {
       </View>
 
       {canLogFixtureScore(next, myCaptainTeamIds) ? (
-        <FixtureScoreForm fixture={next} onSubmitted={fixtures.reload} />
+        <FixtureScoreEntry fixture={next} onSubmitted={fixtures.reload} />
       ) : null}
 
       <Pressable accessibilityRole="button" onPress={() => router.push('/upcoming-fixtures')}>
