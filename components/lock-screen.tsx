@@ -1,13 +1,7 @@
 import { useEffect, useState } from 'react';
 
-import {
-  AuthButton,
-  AuthError,
-  AuthLink,
-  AuthScreen,
-  AuthSubtitle,
-  AuthTitle,
-} from '@/components/auth-form';
+import { AuthError, AuthLink, AuthScreen, AuthSubtitle, AuthTitle, AuthWordmark } from '@/components/auth-form';
+import { Button } from '@/components/ui/button';
 import { useAppLock } from '@/lib/app-lock';
 import { useAuth } from '@/lib/auth';
 
@@ -40,12 +34,13 @@ export function LockScreen() {
 
   return (
     <AuthScreen>
+      <AuthWordmark />
       <AuthTitle>Locked</AuthTitle>
       <AuthSubtitle>Unlock with {label} to get back in.</AuthSubtitle>
 
       {failed ? <AuthError>Not recognised. Try again, or sign out.</AuthError> : null}
 
-      <AuthButton label={`Unlock with ${label}`} onPress={attempt} busy={busy} />
+      <Button label={`Unlock with ${label}`} onPress={attempt} loading={busy} fullWidth />
 
       <AuthLink label="Sign out instead" onPress={signOut} disabled={busy} />
     </AuthScreen>

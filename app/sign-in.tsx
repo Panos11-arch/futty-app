@@ -3,18 +3,22 @@ import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import {
-  AuthButton,
   AuthError,
-  AuthField,
   AuthLink,
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  AuthWordmark,
   PasswordStrengthMeter,
 } from '@/components/auth-form';
-import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { MIN_TOUCH } from '@/components/ui/foundation';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { colors, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
+import { emailError, passwordError, usernameError, useTouched } from '@/lib/auth-fields';
 import { getPasswordLengthError } from '@/lib/password';
 import { preferences } from '@/lib/preferences';
 import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
@@ -34,6 +38,7 @@ export default function SignInScreen() {
   const [rememberEmail, setRememberEmail] = useState(rememberedEmail !== null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { touch, shown, reset } = useTouched<'email' | 'username' | 'password'>();
 
   const isSignUp = mode === 'sign-up';
   const passwordLengthError = isSignUp ? getPasswordLengthError(password) : null;
@@ -46,6 +51,7 @@ export default function SignInScreen() {
   function switchMode() {
     setMode(isSignUp ? 'sign-in' : 'sign-up');
     setError(null);
+    reset();
   }
 
   async function submit() {
@@ -108,18 +114,20 @@ export default function SignInScreen() {
 
   return (
     <AuthScreen>
-      <AuthTitle icon={isSignUp ? 'sparkles' : 'hand.wave.fill'}>
-        {isSignUp ? 'Create account' : 'Welcome back'}
-      </AuthTitle>
+      <AuthWordmark />
+      <AuthTitle>{isSignUp ? 'Create account' : 'Welcome back'}</AuthTitle>
       <AuthSubtitle>
         {isSignUp
           ? 'Pick a username and sign up with your email.'
           : 'Sign in to pick up where you left off.'}
       </AuthSubtitle>
 
-      <AuthField
+      <TextField
+        label="Email"
         value={email}
         onChangeText={setEmail}
+        onBlur={touch('email')}
+        error={shown('email', emailError(email))}
         placeholder="you@example.com"
         autoCapitalize="none"
         autoComplete="email"
@@ -131,19 +139,21 @@ export default function SignInScreen() {
 
       {isSignUp ? (
         <>
-          <AuthField
+          <TextField
+            label="Username"
             value={username}
             onChangeText={setUsername}
-            placeholder="Username"
+            onBlur={touch('username')}
+            error={shown('username', usernameError(username))}
             autoCapitalize="none"
             autoComplete="username-new"
             autoCorrect={false}
             editable={!busy}
           />
-          <AuthField
+          <TextField
+            label="Full name (optional)"
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Full name (optional)"
             autoCapitalize="words"
             autoComplete="name"
             textContentType="name"
@@ -152,10 +162,13 @@ export default function SignInScreen() {
         </>
       ) : null}
 
-      <AuthField
+      <TextField
+        label="Password"
         value={password}
         onChangeText={setPassword}
-        placeholder="Password"
+        onBlur={touch('password')}
+        // The length rule shows as soon as there's input, as before.
+        error={passwordLengthError ?? shown('password', passwordError(password, { isNew: isSignUp }))}
         autoCapitalize="none"
         autoComplete={isSignUp ? 'new-password' : 'current-password'}
         secureTextEntry
@@ -166,20 +179,28 @@ export default function SignInScreen() {
       />
 
       {isSignUp ? <PasswordStrengthMeter password={password} /> : null}
-      {passwordLengthError ? <AuthError>{passwordLengthError}</AuthError> : null}
 
       <View style={styles.toggleRow}>
-        <ThemedText>Remember my email</ThemedText>
-        <Switch value={rememberEmail} onValueChange={setRememberEmail} disabled={busy} />
+        <Text variant="body">Remember my email</Text>
+        <Switch
+          accessibilityLabel="Remember my email"
+          value={rememberEmail}
+          onValueChange={setRememberEmail}
+          disabled={busy}
+          trackColor={{ false: colors.border, true: colors.brand }}
+          thumbColor={colors.surface}
+          ios_backgroundColor={colors.border}
+        />
       </View>
 
       {error ? <AuthError>{error}</AuthError> : null}
 
-      <AuthButton
+      <Button
         label={isSignUp ? 'Sign up' : 'Sign in'}
         onPress={submit}
         disabled={!canSubmit}
-        busy={busy}
+        loading={busy}
+        fullWidth
       />
 
       <AuthLink
@@ -204,6 +225,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: space.md,
+    minHeight: MIN_TOUCH,
   },
 });

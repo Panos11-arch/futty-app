@@ -2,15 +2,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import {
-  AuthButton,
   AuthError,
   AuthLink,
   AuthNotice,
   AuthScreen,
   AuthSubtitle,
   AuthTitle,
+  AuthWordmark,
 } from '@/components/auth-form';
-import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
 
@@ -46,11 +47,11 @@ export default function ConfirmEmailScreen() {
 
   return (
     <AuthScreen>
-      <AuthTitle icon="envelope.fill">Check your inbox</AuthTitle>
+      <AuthWordmark />
+      <AuthTitle>Check your inbox</AuthTitle>
       <AuthSubtitle>
         We sent a confirmation link to{' '}
-        <ThemedText type="defaultSemiBold">{email ?? 'your email address'}</ThemedText>. Click it,
-        then come back and sign in.
+        <Text variant="headline">{email ?? 'your email address'}</Text>. Click it, then come back and sign in.
       </AuthSubtitle>
 
       {error ? <AuthError>{error}</AuthError> : null}
@@ -61,18 +62,20 @@ export default function ConfirmEmailScreen() {
         </AuthNotice>
       ) : null}
 
-      <AuthButton
-        label="I've confirmed — sign in"
+      <Button
+        label="I've confirmed, sign in"
         onPress={() => router.replace('/sign-in')}
         disabled={busy}
+        fullWidth
       />
 
-      <AuthButton
+      <Button
         label="Resend confirmation email"
         variant="secondary"
         onPress={resend}
         disabled={!email}
-        busy={busy}
+        loading={busy}
+        fullWidth
       />
 
       <AuthLink label="Use a different email" onPress={() => router.replace('/sign-in')} />
