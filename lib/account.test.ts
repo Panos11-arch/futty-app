@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 import { deleteMyAccount } from '@/lib/account';
@@ -24,8 +25,9 @@ function userWith(...providers: string[]) {
   return { data: { user: { id: 'u1', identities: providers.map((provider) => ({ provider })) } }, error: null };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
+  await AsyncStorage.clear();
   Platform.OS = 'ios';
   mockInvoke.mockResolvedValue({ data: { deleted: true }, error: null });
 });
@@ -94,6 +96,21 @@ describe('deleteMyAccount', () => {
     await expect(deleteMyAccount()).resolves.toBeNull();
     expect(mockGetAppleDeletionCode).not.toHaveBeenCalled();
     expect(mockInvoke).toHaveBeenCalledWith('delete-account', { body: { platform: 'ios' } });
+  });
+
+  it("a successful deletion clears this user's stored has-a-username flag", async () => {
+    await AsyncStorage.setItem('futty.has_username.u1', 'true');
+    mockGetUser.mockResolvedValue(userWith('google'));
+    await expect(deleteMyAccount()).resolves.toBeNull();
+    expect(await AsyncStorage.getItem('futty.has_username.u1')).toBeNull();
+  });
+
+  it('a refused deletion keeps the flag (the account still exists)', async () => {
+    await AsyncStorage.setItem('futty.has_username.u1', 'true');
+    mockGetUser.mockResolvedValue(userWith('google'));
+    mockInvoke.mockResolvedValue({ data: null, error: { message: 'You still have upcoming games.' } });
+    await deleteMyAccount();
+    expect(await AsyncStorage.getItem('futty.has_username.u1')).toBe('true');
   });
 
   it("the server's error is shown", async () => {

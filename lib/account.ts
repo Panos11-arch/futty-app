@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 
 import { getAppleDeletionCode } from '@/lib/auth-providers';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { clearHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
 const NETWORK_ERROR = 'Could not reach Futty. Check your internet connection and try again.';
@@ -17,9 +18,11 @@ const NETWORK_ERROR = 'Could not reach Futty. Check your internet connection and
  *  server logs (decided 13 November, for Panos to confirm). */
 export async function deleteMyAccount(): Promise<string | null> {
   let usesApple: boolean;
+  let userId: string;
   try {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) return NETWORK_ERROR;
+    userId = data.user.id;
     usesApple = data.user.identities?.some((identity) => identity.provider === 'apple') ?? false;
   } catch {
     return NETWORK_ERROR;
@@ -38,5 +41,7 @@ export async function deleteMyAccount(): Promise<string | null> {
 
   const { error } = await supabase.functions.invoke<{ deleted: boolean }>('delete-account', { body });
   if (error) return describeFunctionError(error);
+  // The account is gone: this device must not remember it as having a username.
+  await clearHasUsername(userId);
   return null;
 }
