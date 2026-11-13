@@ -25,11 +25,35 @@ export async function addBookingPlayer(bookingId: string, username: string) {
   return supabase.rpc('add_booking_player', { p_booking_id: bookingId, p_username: username });
 }
 
-/** Creates (or re-fetches) a Stripe PaymentIntent for exactly one share —
+/** How the player pays their share. Only choices: the amounts are the
+ *  server's (create-share-payment prices the share itself). */
+export type SharePaymentOptions = {
+  method?: 'card' | 'cash';
+  /** The player accepted "This booking is non-refundable" (kickoff is less
+   *  than 6 hours away). The server checks it again. */
+  acceptNonRefundable?: boolean;
+  /** Pay the pitch part with the player's credit at this venue. */
+  useCredit?: boolean;
+};
+
+/** What create-share-payment returns: a PaymentIntent to confirm, or a
+ *  SetupIntent when there's nothing to charge and only a card to save. */
+export type SharePaymentResponse = {
+  clientSecret?: string | null;
+  setupIntentClientSecret?: string | null;
+  customerId?: string;
+  amountCents?: number;
+  cashCents?: number;
+  creditCents?: number;
+  nonRefundable?: boolean;
+  paid?: boolean;
+};
+
+/** Creates (or re-fetches) the Stripe payment for exactly one share —
  *  see supabase/functions/create-share-payment. Only the share's own owner
  *  can call this for themselves. */
-export async function createSharePayment(shareId: string) {
-  return supabase.functions.invoke<{ clientSecret: string }>('create-share-payment', {
-    body: { shareId },
+export async function createSharePayment(shareId: string, options?: SharePaymentOptions) {
+  return supabase.functions.invoke<SharePaymentResponse>('create-share-payment', {
+    body: options ? { shareId, ...options } : { shareId },
   });
 }

@@ -28,6 +28,15 @@ describe('describeBookingErrorMessage', () => {
     'guarantee_closed',
     'no_guarantee_to_update',
     'no_saved_card',
+    // booking_detail, cancellation_quote and cancel-booking (P5b)
+    'booking_not_found',
+    'quote_changed',
+    'quote_required',
+    'booking_started',
+    'not_in_booking',
+    'use_whole_team',
+    'legacy_booking',
+    'invalid_request',
   ])('%s has a message', (code) => {
     const message = describeBookingErrorMessage(code);
     expect(message).not.toBe(code);

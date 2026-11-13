@@ -9,7 +9,12 @@ export type BookSlotParams = {
   /** 5, or 6 for 6 v 6 on a 5-a-side pitch where the venue allows it. The
    *  server derives how many players that is; the app never sends a count. */
   playersPerSide?: 5 | 6;
+  /** Who pays (spec 13, "Booking modes"). Always chosen by the booker: the
+   *  server refuses a booking without one (mode_required). */
+  mode: PaymentMode;
 };
+
+export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot';
 
 /** Wraps book_slot (supabase/legacy/booking-payments.sql), the only writable path
  *  into venue_bookings — RLS blocks a direct insert/update so the capacity
@@ -29,6 +34,7 @@ export async function bookSlot(params: BookSlotParams) {
     p_pitches: 1,
     p_format: params.format,
     p_players_per_side: params.playersPerSide ?? 5,
+    p_mode: params.mode,
   });
 }
 
@@ -43,10 +49,18 @@ export type CancellationLine = {
   is_booker: boolean;
   window: 'free' | 'middle' | 'late' | 'other' | 'venue' | null;
   action: 'none' | 'release' | 'keep' | 'keep_and_credit' | 'refund_choice';
+  /** The card part of the share (0 when paid with credit only, or unpaid). */
+  paid_cents: number;
+  fee_cents: number;
+  /** The credit that paid for the share: it goes back to that credit. */
+  credit_used_cents: number;
   value_cents: number;
   kept_cents: number;
   credit_cents: number;
   refund_cents: number;
+  needs_capture: boolean;
+  /** The share's card payment at Stripe, or the guarantee's hold. */
+  stripe_intent_id: string | null;
 };
 
 /** What cancelling would do (public.cancellation_quote). Show it before the
@@ -61,6 +75,9 @@ export type CancellationQuote = {
   /** The booker's charge for cancelling the whole team (100 per other player
    *  whose payment was taken), or null. */
   booker_fee: { profile_id: string; players: number; amount_cents: number } | null;
+  /** The booker's guarantee hold has actually been placed (before that it
+   *  is only a saved card). Always false for my_spot. */
+  guarantee_hold_placed: boolean;
   quote: string;
 };
 
