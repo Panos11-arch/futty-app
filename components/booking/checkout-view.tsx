@@ -27,6 +27,8 @@ import {
 import { colors, space } from '@/constants/futty-theme';
 import type { PaymentMode } from '@/lib/booking-actions';
 import type { PayOptions } from '@/lib/booking-checkout';
+import { describeBookingErrorMessage } from '@/lib/booking-errors';
+import { gipedoModeSentence } from '@/lib/booking-gipedo';
 import {
   checkoutAmounts,
   cyprusDateLabel,
@@ -42,7 +44,7 @@ export type CheckoutViewProps = {
   venueName: string;
   quote: LoadState<BookingQuote>;
   onRetry: () => void;
-  onPay: (choice: { mode: PaymentMode; pay: PayOptions }) => void;
+  onPay: (choice: { mode: PaymentMode; teamId?: string; pay: PayOptions }) => void;
   paying: boolean;
   error: string | null;
   /** Opens "Pay what I owe" from the debt line. */
@@ -53,11 +55,11 @@ export type CheckoutViewProps = {
   now?: Date;
 };
 
-type Who = 'pay_all' | 'each_pays';
+type Who = 'pay_all' | 'each_pays' | 'gipedo_pano';
 type Each = 'each_pays_responsible' | 'each_pays_own_spot';
 
 // Spec 13, "Booking modes": who pays, and who covers a spot nobody paid.
-const MODE_SENTENCES: Record<Who | Each, string> = {
+const MODE_SENTENCES: Record<Exclude<Who, 'gipedo_pano'> | Each, string> = {
   pay_all: 'You pay for the whole pitch in one payment.',
   each_pays: 'Each player pays their own share, by card or cash.',
   each_pays_responsible:
@@ -113,8 +115,17 @@ function CheckoutReady({
   const [cash, setCash] = useState(false);
   const [accepted, setAccepted] = useState(false);
 
-  const mode: PaymentMode | null = who === 'pay_all' ? 'pay_all' : who === 'each_pays' ? each : null;
-  const creditSplit = mode === 'pay_all' ? quote.pay_all.with_credit : mode ? quote.each_pays.mine.with_credit : null;
+  // Gipedo Pano (P8): offered only to a captain, for one of their teams; the
+  // server says whether this slot allows it. Card only.
+  const teams = quote.captain_teams;
+  const [team, setTeam] = useState<string | null>(teams.length === 1 ? teams[0].id : null);
+  const gipedo = who === 'gipedo_pano';
+  const gipedoBlocked = gipedo && !quote.gipedo_pano.available;
+
+  const mode: PaymentMode | null =
+    who === 'pay_all' ? 'pay_all' : who === 'each_pays' ? each : gipedo && !gipedoBlocked ? 'gipedo_pano' : null;
+  const creditSplit =
+    mode === 'pay_all' ? quote.pay_all.with_credit : mode && !gipedo ? quote.each_pays.mine.with_credit : null;
   const creditOn = credit && creditSplit !== null;
   // Cash only in the each-pays modes, where the server allows it, never with credit.
   const cashOffered = who === 'each_pays' && quote.cash_allowed && !creditOn;
@@ -123,7 +134,9 @@ function CheckoutReady({
   const nonRefundable = showNonRefundable(quote, now);
   const totalLabel = amounts && (amounts.cashCents !== null || creditOn) ? 'By card now' : 'Total';
 
-  const canPay = mode !== null && amounts !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying;
+  const canPay =
+    mode !== null && amounts !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying && (!gipedo || team !== null);
+  const actionLabel = amounts ? (gipedo ? `Hold ${formatEuros(amounts.totalCents)}` : payLabel(amounts.totalCents)) : 'Choose who pays';
 
   const choose = <T,>(set: (v: T) => void) => (v: T) => {
     if (!bookingHeld) set(v);
@@ -153,14 +166,36 @@ function CheckoutReady({
             options={[
               { value: 'pay_all', label: `Pay for everyone: ${formatEuros(quote.pay_all.card_cents)}` },
               { value: 'each_pays', label: `Each pays: ${formatEuros(quote.each_pays.player_cents)} each` },
+              ...(teams.length > 0
+                ? [{ value: 'gipedo_pano' as const, label: `Gipedo Pano: ${formatEuros(quote.gipedo_pano.hold_cents)} held` }]
+                : []),
             ]}
             value={(who ?? '') as Who}
             onChange={choose(setWho)}
           />
-          {who ? (
+          {who && who !== 'gipedo_pano' ? (
             <Text variant="callout" tone="inkMuted">
               {MODE_SENTENCES[who]}
             </Text>
+          ) : null}
+          {gipedo ? (
+            <>
+              <Text variant="callout" tone="inkMuted">
+                {gipedoModeSentence(quote.gipedo_pano.hold_cents)}
+              </Text>
+              {gipedoBlocked && quote.gipedo_pano.unavailable_reason ? (
+                <Banner tone="warning" message={describeBookingErrorMessage(quote.gipedo_pano.unavailable_reason)} />
+              ) : teams.length === 1 ? (
+                <Text variant="callout">{`For ${teams[0].name}`}</Text>
+              ) : (
+                <SegmentedControl<string>
+                  accessibilityLabel="Your team"
+                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
+                  value={team ?? ''}
+                  onChange={choose(setTeam)}
+                />
+              )}
+            </>
           ) : null}
           {who === 'each_pays' ? (
             <>
@@ -226,12 +261,13 @@ function CheckoutReady({
       <StickyActionBar
         totalCents={amounts?.totalCents}
         totalLabel={totalLabel}
-        actionLabel={amounts ? payLabel(amounts.totalCents) : 'Choose who pays'}
+        actionLabel={actionLabel}
         loading={paying}
         disabled={!canPay}
         onPress={() => {
           if (!canPay || !mode) return;
-          onPay({ mode, pay: { method: cashOn ? 'cash' : 'card', acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn } });
+          const pay = { method: cashOn ? ('cash' as const) : ('card' as const), acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn };
+          onPay(gipedo && team ? { mode, teamId: team, pay } : { mode, pay });
         }}
       />
     </View>

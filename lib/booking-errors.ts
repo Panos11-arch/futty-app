@@ -41,7 +41,38 @@ export function describeBookingErrorMessage(message: string) {
       return "6 v 6 isn't available at this venue — book it as 5 v 5.";
     case 'mode_required':
     case 'invalid_payment_mode':
-      return 'Choose who pays: you for everyone, each player with you responsible, or each player for their own spot.';
+      return 'Choose who pays: you for everyone, each player with you responsible, each player for their own spot, or Gipedo Pano.';
+    // Gipedo Pano (P8; spec 13, "Gipedo Pano").
+    case 'team_required':
+      return 'Choose the team this game is for.';
+    case 'not_captain':
+      return 'Only a team captain can do this.';
+    case 'gipedo_too_far_ahead':
+      return 'Gipedo Pano can only be booked up to 6 days ahead.';
+    case 'gipedo_too_soon':
+      return 'Gipedo Pano needs at least 24 hours before kickoff, so there is time to find an opponent.';
+    case 'credit_not_allowed':
+      return "Venue credit can't be used for a Gipedo Pano hold. Pay by card.";
+    case 'use_gipedo_pull_out':
+      return 'In Gipedo Pano a team leaves by pulling out. Use Pull out to see what it costs.';
+    case 'cannot_pull_out':
+      return "You can't pull out of this game.";
+    case 'match_not_ready':
+      return "The match isn't ready yet. Try again in a minute.";
+    case 'not_gipedo':
+      return "This isn't a Gipedo Pano game any more.";
+    case 'choice_not_due':
+      return 'There is still time for an opponent to take this game on.';
+    case 'already_chosen':
+      return "You've already chosen what happens to this game.";
+    case 'choice_closed':
+      return 'Kickoff is less than 6 hours away, so the game has been cancelled free.';
+    case 'invalid_choice':
+      return 'Choose to play it as a normal booking or cancel it free.';
+    case 'post_closed':
+      return 'This game is no longer looking for an opponent.';
+    case 'cannot_rejoin':
+      return "Your team pulled out of this game, so it can't take it on again.";
     case 'non_refundable_not_accepted':
       return 'This game starts in less than 6 hours, so it is non-refundable. Accept that to pay.';
     case 'cash_not_allowed':

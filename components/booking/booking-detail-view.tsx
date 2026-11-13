@@ -20,6 +20,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { GipedoPanel } from '@/components/booking/gipedo-panel';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import {
@@ -60,6 +61,10 @@ export type BookingDetailViewProps = {
   onPayShare: () => void;
   /** A message from the screen (calendar, cancellation done). */
   notice: string | null;
+  /** Gipedo Pano (P8): pull out, and the no-opponent choice. Each resolves
+   *  to an error message, or null when it went through. */
+  onGipedoPullOut?: () => Promise<string | null>;
+  onGipedoChoose?: (choice: 'play_normal' | 'cancel') => Promise<string | null>;
   /** The booker's Need players / Need opposition panel. */
   squadNeed?: ReactNode;
   /** For tests; the screen uses the clock. */
@@ -112,6 +117,8 @@ function BookingDetailReady({
   onPayShare,
   notice,
   squadNeed,
+  onGipedoPullOut,
+  onGipedoChoose,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -200,6 +207,8 @@ function BookingDetailReady({
   const keepLabel = asking?.scope === 'whole_team' ? 'Keep the booking' : 'Keep my spot';
   const bookingPill = PILL_FOR_BOOKING[booking.status];
   const pending = meActive && me.status === 'pending';
+  const gipedo = detail.gipedo ?? null;
+  const payLabel = gipedo?.my_side ? `Hold my card: ${formatEuros(me?.amount_cents ?? 0)}` : `Pay my share: ${formatEuros(me?.amount_cents ?? 0)}`;
 
   return (
     <View style={styles.screen}>
@@ -225,8 +234,18 @@ function BookingDetailReady({
 
         {deadline ? <Banner tone="warning" message={deadline} /> : null}
 
+        {gipedo && (gipedo.my_side || gipedo.choice_due || gipedo.settlement) ? (
+          <GipedoPanel
+            gipedo={gipedo}
+            feePerPlayerCents={detail.cancellation.fee_cents}
+            live={live}
+            onPullOut={onGipedoPullOut ?? (async () => null)}
+            onChoose={onGipedoChoose ?? (async () => null)}
+          />
+        ) : null}
+
         {pending ? (
-          <Button label={`Pay my share: ${formatEuros(me.amount_cents)}`} onPress={onPayShare} fullWidth />
+          <Button label={payLabel} onPress={onPayShare} fullWidth />
         ) : null}
 
         <View style={styles.section}>
@@ -236,7 +255,7 @@ function BookingDetailReady({
           </Text>
           <View style={styles.list}>
             {roster.map((entry) => {
-              const row = rosterRow(entry, isBooker);
+              const row = rosterRow(entry, isBooker, Boolean(gipedo));
               return (
                 <ListRow
                   key={entry.share_id}

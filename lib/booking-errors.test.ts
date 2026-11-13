@@ -66,3 +66,32 @@ describe('describeBookingErrorMessage', () => {
     expect(describeBookingErrorMessage('something else')).toBe('something else');
   });
 });
+
+describe('Gipedo Pano (P8)', () => {
+  it.each([
+    'team_required',
+    'not_captain',
+    'gipedo_too_soon',
+    'credit_not_allowed',
+    'use_gipedo_pull_out',
+    'cannot_pull_out',
+    'match_not_ready',
+    'not_gipedo',
+    'choice_not_due',
+    'already_chosen',
+    'choice_closed',
+    'invalid_choice',
+    'post_closed',
+    'cannot_rejoin',
+  ])('%s has a message', (code) => {
+    expect(describeBookingErrorMessage(code)).not.toBe(code);
+  });
+
+  it('more than 6 days ahead says exactly what spec 13 says', () => {
+    expect(describeBookingErrorMessage('gipedo_too_far_ahead')).toBe('Gipedo Pano can only be booked up to 6 days ahead.');
+  });
+
+  it('who pays now names all four ways', () => {
+    expect(describeBookingErrorMessage('mode_required')).toContain('Gipedo Pano');
+  });
+});

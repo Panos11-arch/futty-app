@@ -338,7 +338,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           ) : null}
           <ThemedText style={styles.note}>
             {post.payment_mode === 'gipedo_pano'
-              ? 'Gipedo Pano: you and your opponents each authorize a hold for your normal share, but only the losing team is actually charged once the result is confirmed — the winners are released. A draw falls back to a normal split.'
+              ? "Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. Place the hold within 15 minutes or the offer lapses. After the match the loser's hold is taken, a draw or a dispute is split 50/50, and the winner's hold is released."
               : 'Split payment: both full rosters share the pitch cost evenly, regardless of the result.'}
           </ThemedText>
           {error ? <AuthError>{error}</AuthError> : null}

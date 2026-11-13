@@ -266,3 +266,43 @@ describe('BookingDetailView: actions', () => {
     expect(p.onPayShare).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('BookingDetailView: Gipedo Pano (P8)', () => {
+  const gipedo = {
+    team: { id: 't1', name: 'Lions' },
+    opponent: { state: 'offered' as const, team: { id: 't2', name: 'Tigers' } },
+    my_side: 'b' as const,
+    pull_out: null,
+    choice_due: false,
+    choice: null,
+    play_normal_cents: 6550,
+    settlement: null,
+  };
+
+  it('the opponent captain holds their card from here, and sees where the game stands', async () => {
+    const detail = playerDetail({ gipedo, me: { ...playerDetail().me!, status: 'pending', amount_cents: 6550 } });
+    const p = props(detail);
+    await render(<BookingDetailView {...p} />);
+    expect(screen.getByText('Tigers offered to play. Waiting for their card to be held.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Hold my card: €65.50' }));
+    expect(p.onPayShare).toHaveBeenCalled();
+  });
+
+  it('a captain pulls out through the panel', async () => {
+    const detail = bookerDetail({
+      gipedo: { ...gipedo, my_side: 'a', opponent: { state: 'held', team: { id: 't2', name: 'Tigers' } }, pull_out: { kind: 'fee', cents: 1000 } },
+      can_cancel: { my_spot: false, whole_team: false },
+    });
+    const onGipedoPullOut = jest.fn(async () => null);
+    await render(<BookingDetailView {...props(detail, { onGipedoPullOut })} />);
+    expect(screen.queryByRole('button', { name: 'Cancel whole team' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Pull out' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirm: pull out' }));
+    expect(onGipedoPullOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('no Gipedo panel on an ordinary booking', async () => {
+    await render(<BookingDetailView {...props(playerDetail())} />);
+    expect(screen.queryByText('Gipedo Pano')).toBeNull();
+  });
+});

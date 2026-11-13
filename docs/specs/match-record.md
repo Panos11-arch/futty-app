@@ -389,6 +389,10 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `venue_condition_warning` | payments | ✓ |
 | `gipedo_result_needed` | payments (P8) | ✓ |
 | `guarantee_charged` | payments (P4c): money taken from the booker's hold at collection | ✓ |
+| `gipedo_opponent_left` | payments (P8): a Gipedo Pano opponent's offer lapsed or was withdrawn | ✓ |
+| `gipedo_no_opponent` | payments (P8): no opponent 24 hours before kickoff, play as normal or cancel free | ✓ |
+| `gipedo_pulled_out` | payments (P8): the other team pulled out | ✓ |
+| `gipedo_settled` | payments (P8): what a Gipedo Pano hold paid after the match | ✓ |
 | `match_result_submitted` | match (A2) | |
 | `match_result_confirmed` | match (A2) | |
 | `match_result_disputed` | match (A2) | |

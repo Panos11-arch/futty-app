@@ -70,10 +70,10 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function pay({ mode, pay }: { mode: PaymentMode; pay: PayOptions }) {
+  async function pay({ mode, teamId, pay }: { mode: PaymentMode; teamId?: string; pay: PayOptions }) {
     setPaying(true);
     setError(null);
-    const outcome = await payForSlot({ slot, mode, pay, bookingId }, sheet);
+    const outcome = await payForSlot({ slot, mode, teamId, pay, bookingId }, sheet);
     setPaying(false);
     setBookingId(outcome.bookingId);
     if (outcome.status === 'paid') paid(outcome.bookingId);

@@ -146,3 +146,23 @@ Deno.test('a refund is keyed on the intent and what is left, whatever the reason
   strictEqual(idempotencyKeys.refund('pi_1', 680), idempotencyKeys.refund('pi_1', 680));
   strictEqual(idempotencyKeys.refund('pi_1', 380), 'refund-pi_1-380', 'a later partial refund is a new request');
 });
+
+Deno.test('Gipedo Pano: each captain is held for the pitch plus 55 per player, card only (P8)', () => {
+  const hold = { ...each, mode: 'gipedo_pano', isBooker: true } as const;
+  const cases = [
+    { label: 'EUR 60 5 v 5 hold', input: hold, want: [6000, 550, 6550, 0] },
+    { label: 'Premium captain', input: { ...hold, isPremium: true }, want: [6000, 495, 6495, 0] },
+    { label: '6 v 6 hold', input: { ...hold, players: 12 }, want: [6000, 660, 6660, 0] },
+    { label: 'a covered player', input: { ...hold, isBooker: false }, want: [0, 0, 0, 0] },
+  ] as const;
+  for (const { label, input, want } of cases) {
+    const got = shareAmounts(input);
+    deepStrictEqual([got.pitchCents, got.feeCents, got.cardCents, got.cashCents], [...want], label);
+  }
+  throws(() => shareAmounts({ ...hold, method: 'cash' }), /cash_not_allowed/);
+});
+
+Deno.test('P8 key: a Gipedo Pano settlement takes one amount once, retries included', () => {
+  strictEqual(idempotencyKeys.gipedoCapture('g1', 3275), 'gipedo-capture-g1-3275');
+  strictEqual(idempotencyKeys.gipedoCapture('g1', 3275), idempotencyKeys.gipedoCapture('g1', 3275));
+});
