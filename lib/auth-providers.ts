@@ -3,6 +3,7 @@
 // or Google secret ever lives in the app.
 import { useEffect, useState } from 'react';
 
+import { clearHasUsername, hasStoredUsername, storeHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
 // ---------------------------------------------------------------------------
@@ -29,13 +30,20 @@ const PROFILE_READ_RETRY_MAX_MS = 30_000;
  * 'loading' until the profile has been read, and while a failed read is being
  * retried: the root layout holds a loading screen until it knows, so a user
  * with no username never reaches (tabs). False when signed out.
+ *
+ * A user this device has already seen with a username (lib/profile-setup-flag)
+ * is let in at once, so an existing user isn't held offline; the read still
+ * runs in the background and its answer wins.
  */
 export function useNeedsProfileSetup(userId: string | null): boolean | 'loading' {
   const [known, setKnown] = useState<{ userId: string; needs: boolean } | null>(null);
 
   useEffect(() => {
     if (!userId) return;
+    const id = userId;
     let active = true;
+    // Once the server has answered, the stored flag no longer counts.
+    let answered = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let retryDelay = PROFILE_READ_RETRY_FIRST_MS;
 
@@ -49,18 +57,29 @@ export function useNeedsProfileSetup(userId: string | null): boolean | 'loading'
       supabase
         .from('profiles')
         .select('username')
-        .eq('id', userId)
+        .eq('id', id)
         .maybeSingle()
         .then(({ data, error }) => {
           if (!active) return;
           if (error) return retry();
-          setKnown({ userId: userId as string, needs: !data?.username });
+          answered = true;
+          const needs = !data?.username;
+          setKnown({ userId: id, needs });
+          if (needs) clearHasUsername(id);
+          else storeHasUsername(id);
         }, retry);
     }
 
+    hasStoredUsername(id).then((stored) => {
+      if (active && stored && !answered) setKnown({ userId: id, needs: false });
+    });
     read();
 
-    const onDone = () => setKnown({ userId, needs: false });
+    const onDone = () => {
+      answered = true;
+      setKnown({ userId: id, needs: false });
+      storeHasUsername(id);
+    };
     setupDoneListeners.add(onDone);
 
     return () => {

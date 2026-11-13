@@ -1,6 +1,7 @@
 // The root layout's guard for profile setup (P13): a signed-in user with no
 // username sees only choose-username, and never reaches (tabs), not even
 // while their profile is still loading or the read keeps failing.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { Slot } from 'expo-router';
 import { Text } from 'react-native';
@@ -82,10 +83,11 @@ const signedInAs = (id: string) => {
   mockAuthState.session = { user: { id } };
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   mockAuthState.session = null;
   mockAuthState.isRecovering = false;
+  await AsyncStorage.clear();
 });
 
 describe('profile setup guard', () => {
@@ -138,6 +140,23 @@ describe('profile setup guard', () => {
     await settle();
     expect(mockProfileRead).toHaveBeenCalledTimes(3);
     expect(screen.getByText('Choose username screen')).toBeTruthy();
+    expect(homeRenders).not.toHaveBeenCalled();
+  });
+
+  it('a user stored on this device as having a username renders Home at once, with the profile read failing', async () => {
+    await AsyncStorage.setItem('futty.has_username.u1', 'true');
+    signedInAs('u1');
+    mockProfileRead.mockResolvedValue({ data: null, error: { message: 'offline' } });
+    await open('/');
+    expect(screen.getByText('Home screen')).toBeTruthy();
+    expect(screen.queryByLabelText('Loading your profile')).toBeNull();
+  });
+
+  it('a user with no stored flag still waits while the profile read fails', async () => {
+    signedInAs('u1');
+    mockProfileRead.mockResolvedValue({ data: null, error: { message: 'offline' } });
+    await open('/');
+    expect(screen.getByLabelText('Loading your profile')).toBeTruthy();
     expect(homeRenders).not.toHaveBeenCalled();
   });
 

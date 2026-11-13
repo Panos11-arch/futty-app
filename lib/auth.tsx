@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 
+import { clearHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
 /** Hand-rolled rather than URLSearchParams, whose React Native polyfill has
@@ -227,6 +228,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
 
       async signOut() {
+        // The next person on this device must not inherit "has a username" (P13).
+        if (session) await clearHasUsername(session.user.id);
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       },
