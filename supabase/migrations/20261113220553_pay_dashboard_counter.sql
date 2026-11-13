@@ -11,7 +11,10 @@
 -- walk-in or phone, the customer (venue_contacts), the venue's price for the
 -- slot and the amount actually charged (staff may change it, e.g. a regular's
 -- discount; this money never goes through Futty or Stripe), and how it was
--- paid at the counter (cash or card). Marking it paid writes one
+-- paid at the counter (cash or card). Both prices live only there:
+-- venue_bookings.amount_cents is what app players are priced from, so a
+-- counter booking's is always 0 and the staff-typed amount can't reach a
+-- path that charges by card. Marking it paid writes one
 -- counter_paid ledger row; cancelling a paid one writes the reversal.
 -- Only the venue's own staff can do or see any of it.
 
@@ -267,7 +270,8 @@ begin
   insert into public.venue_bookings (venue_id, booking_day, start_time, end_time, pitches, capacity, format,
                                      status, booking_type, created_by, amount_cents)
   values (p_venue_id, p_day, p_start, p_end, cardinality(v_pitch_ids), public.format_player_count(p_format) * 2,
-          p_format, 'confirmed', 'counter', auth.uid(), v_charged)
+          -- 0: the prices are in venue_counter_bookings, never an app price.
+          p_format, 'confirmed', 'counter', auth.uid(), 0)
   returning id into v_booking_id;
 
   begin

@@ -5,9 +5,11 @@
 -- venue takes in person is recorded too:
 --   cash_received  staff tick an app player's cash as paid: the share's
 --                  pitch part at that moment (cash_cents), once per share
---                  (+amount); the venue hands it back when the share is
---                  later cancelled, refunded or forfeited, or the booking
---                  is cancelled (-amount, the reversal, once).
+--                  (+amount); the venue hands it back only when the
+--                  cancellation rules would give a card player money back
+--                  (-amount, the reversal, once; cancellation_plan's
+--                  cash_back_cents, applied by cancel_booking_internal in
+--                  pay_dashboard_guards).
 --   counter_paid   a walk-in or phone booking marked paid at the counter
 --                  (+amount), or a paid one cancelled (-amount, the reversal).
 -- Neither went through Futty or Stripe: the venue already holds the money.
@@ -97,7 +99,8 @@ grant execute on function public.mark_cash_received(uuid) to authenticated, serv
 
 -- Ticked cash handed back (decided 13 November, Dimitris; for Panos to
 -- confirm): the reversing cash_received row for one share, once (ref
--- cash_reversal:<share>). Nothing if its cash was never ticked.
+-- cash_reversal:<share>). Nothing if its cash was never ticked. Called only
+-- by cancel_booking_internal, when cancellation_plan says the cash goes back.
 create or replace function public.reverse_cash_received(p_share_id uuid)
 returns boolean
 language plpgsql
@@ -116,56 +119,9 @@ begin
 end;
 $$;
 
--- A share stops holding its spot (cancelled, refunded, credited, forfeited
--- or refund due): its ticked cash goes back.
-create or replace function public.cash_back_on_share()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  if new.cash_received_at is not null
-     and old.status in ('pending', 'authorized', 'paid', 'covered')
-     and new.status not in ('pending', 'authorized', 'paid', 'covered') then
-    perform public.reverse_cash_received(new.id);
-  end if;
-  return null;
-end;
-$$;
-create trigger cash_back_on_share
-  after update of status on public.booking_payment_shares
-  for each row execute function public.cash_back_on_share();
-
--- A game is cancelled (by the venue, or the whole team): every ticked
--- cash share in it goes back, whatever happened to the share.
-create or replace function public.cash_back_on_booking()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_share_id uuid;
-begin
-  if new.status = 'cancelled' and old.status is distinct from 'cancelled' and new.booking_type = 'user_booking' then
-    for v_share_id in
-      select s.id from public.booking_payment_shares s where s.booking_id = new.id and s.cash_received_at is not null
-    loop
-      perform public.reverse_cash_received(v_share_id);
-    end loop;
-  end if;
-  return null;
-end;
-$$;
-create trigger cash_back_on_booking
-  after update of status on public.venue_bookings
-  for each row execute function public.cash_back_on_booking();
 
 revoke all on function public.reverse_cash_received(uuid) from public, anon, authenticated;
 grant execute on function public.reverse_cash_received(uuid) to service_role;
-revoke all on function public.cash_back_on_share() from public, anon, authenticated;
-revoke all on function public.cash_back_on_booking() from public, anon, authenticated;
 
 -- The books for one booking: venue + Futty + Stripe + refunds + credit =
 -- taken (spec 13, "The books always balance"). Money the venue took in

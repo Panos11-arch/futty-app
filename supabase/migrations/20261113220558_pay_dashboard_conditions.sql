@@ -3,10 +3,12 @@
 -- November).
 --
 -- Staff flag "conditions may be unsuitable" for a day, or a time range on a
--- day, for one pitch or the whole venue. Every player booked in a game it
--- covers that hasn't ended is notified, once per game however many flags
--- overlap it (venue_condition_warnings), so they hear in time to cancel before the 6-hour
--- cutoff. Normal cancellation rules apply: nothing is cancelled, no money
+-- day, for one pitch or the whole venue. Every player still in a game it
+-- covers that hasn't ended (share pending, authorized, paid or covered, as
+-- cancellation_plan counts them; the booker too, only while still in) is
+-- notified, once per game however many flags overlap it
+-- (venue_condition_warnings), so they hear in time to cancel before the
+-- 6-hour cutoff. Normal cancellation rules apply: nothing is cancelled, no money
 -- moves. Clearing a flag tells nobody.
 --
 -- Sent as venue_condition_warning, the type contract 4 already reserves for
@@ -98,17 +100,22 @@ begin
   select name into v_venue_name from public.venues where id = p_venue_id;
   v_venue_name := coalesce(v_venue_name, 'The venue');
 
-  -- The booker and every player still in each game the flag covers that
-  -- hasn't ended (Cyprus time), each once per game: a game already warned
-  -- about by an earlier flag isn't warned again.
+  -- Every player still in each game the flag covers that hasn't ended
+  -- (Cyprus time), each once per game: a game already warned about by an
+  -- earlier flag isn't warned again. Still in = a share pending, authorized,
+  -- paid or covered (as cancellation_plan counts them), so a player who left
+  -- with credit, by forfeit or for a refund isn't told; that includes the
+  -- booker, who holds a share like everyone else. A free game has no shares
+  -- at all: its booker can't have left, so they're told.
   for v_row in
     select distinct b.id as booking_id, b.booking_day, b.start_time, player.profile_id
     from public.venue_bookings b
     cross join lateral (
-      select b.created_by as profile_id
-      union
       select s.profile_id from public.booking_payment_shares s
-      where s.booking_id = b.id and s.status not in ('cancelled', 'refunded')
+      where s.booking_id = b.id and s.status in ('pending', 'authorized', 'paid', 'covered')
+      union
+      select b.created_by
+      where not exists (select 1 from public.booking_payment_shares s where s.booking_id = b.id)
     ) as player
     where b.venue_id = p_venue_id
       and b.booking_day = p_day

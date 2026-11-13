@@ -20,6 +20,8 @@ declare
   v_counter uuid;
   v_invite uuid;
   v_scope text;
+  v_app public.venue_bookings;
+  v_err text;
 begin
   perform tests.set_price(v_venue, '5-a-side', 5000);
   update public.profiles set username = 'counterguardplayer' where id = v_player;
@@ -40,6 +42,19 @@ begin
   assert tests.error_of(format('select public.booking_detail(%L)', v_counter)) = 'counter_booking',
     'not in the booker''s booking screens';
   perform tests.act_as_postgres();
+
+  -- Anyone else asking for a quote learns nothing about it: the same error
+  -- they get for someone else's app booking, never counter_booking.
+  v_app := tests.booking_with_players(v_owner, v_venue, 'each_pays_own_spot', 0, v_day, '12:00', '13:00', 'cg-app');
+  foreach v_scope in array array['my_spot', 'whole_team', 'venue'] loop
+    v_err := tests.error_as(v_player, format('select public.cancellation_quote(%L, %L)', v_counter, v_scope));
+    assert v_err = tests.error_as(v_player, format('select public.cancellation_quote(%L, %L)', v_app.id, v_scope))
+       and v_err = case v_scope when 'my_spot' then 'not_in_booking' when 'whole_team' then 'not_your_booking'
+                                else 'not_your_venue' end,
+      format('a stranger''s %s quote of a walk-in: got %s', v_scope, v_err);
+  end loop;
+  assert tests.error_as(null, format($q$ select public.cancellation_quote(%L, 'venue') $q$, v_counter))
+         = 'not_authenticated', 'signed out';
 
   -- The cancel-booking Edge Function's two paths (service role).
   assert tests.error_of(format($q$ select public.cancel_booking_internal(%L, 'whole_team', %L, null) $q$, v_counter, v_owner))

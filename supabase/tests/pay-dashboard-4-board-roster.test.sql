@@ -22,7 +22,10 @@ declare
   v_entry jsonb;
 begin
   perform tests.set_price(v_venue, '5-a-side', 6000);
-  v_app := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 3, v_day, '12:00', '13:00', 'board');
+  v_app := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 5, v_day, '12:00', '13:00', 'board');
+  -- Two players left (with credit, by forfeit): not counted as joined.
+  update public.booking_payment_shares set status = 'credited' where id = (tests.player(v_app.id, 4)).id;
+  update public.booking_payment_shares set status = 'forfeited' where id = (tests.player(v_app.id, 5)).id;
   v_gone := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, v_day, '14:00', '15:00', 'board-g');
   update public.venue_bookings set status = 'cancelled' where id = v_gone.id;
   perform tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, v_day + 1, '12:00', '13:00', 'board-t');
@@ -93,8 +96,11 @@ declare
   v_match uuid;
 begin
   perform tests.set_price(v_venue, '5-a-side', 6000);
-  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 4, tests.cyprus_today() + 2,
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 6, tests.cyprus_today() + 2,
                                           '12:00', '13:00', 'roster');
+  -- Players 5 and 6 left (with credit, by forfeit): not on the roster.
+  update public.booking_payment_shares set status = 'credited' where id = (tests.player(v_booking.id, 5)).id;
+  update public.booking_payment_shares set status = 'forfeited' where id = (tests.player(v_booking.id, 6)).id;
   perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_roster_0', interval '2 hours');          -- in app
   perform tests.pay_ago((tests.player(v_booking.id, 1)).id, 'pi_roster_1', interval '2 hours', 'cash');  -- cash
   perform tests.pay_ago((tests.player(v_booking.id, 2)).id, 'pi_roster_2', interval '2 hours', 'cash');  -- cash, ticked
@@ -117,7 +123,10 @@ begin
   assert v_roster ->> 'kind' = 'app' and v_roster ->> 'payment_mode' = 'each_pays_own_spot'
          and (v_roster ->> 'collection_started')::boolean = false and (v_roster ->> 'can_run_collection')::boolean = false,
     format('an app booking before its match, got %s', v_roster - 'players');
-  assert jsonb_array_length(v_roster -> 'players') = 5, 'every player';
+  assert jsonb_array_length(v_roster -> 'players') = 5, format('every player still in, got %s', v_roster -> 'players');
+  assert not exists (select 1 from jsonb_array_elements(v_roster -> 'players') p
+                     where (p ->> 'share_id')::uuid in ((tests.player(v_booking.id, 5)).id, (tests.player(v_booking.id, 6)).id)),
+    'players who left with credit or by forfeit aren''t on it';
   assert (select jsonb_agg(p ->> 'state' order by ord) from jsonb_array_elements(v_roster -> 'players') with ordinality as t(p, ord))
          = '["in_app", "cash", "cash_paid", "unpaid", "covered"]'::jsonb,
     format('each player''s state, in join order, got %s', v_roster -> 'players');

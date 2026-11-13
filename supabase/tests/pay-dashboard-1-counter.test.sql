@@ -39,9 +39,11 @@ begin
     format('walk-in at the venue price, got %s / %s', v_row.venue_price_cents, v_row.charged_cents);
   assert v_row.paid_method = 'cash' and v_row.paid_at is not null and v_row.paid_by = v_owner, 'paid cash at once';
   select * into v_booking from public.venue_bookings where id = v_walk_in;
-  assert v_booking.booking_type = 'counter' and v_booking.status = 'confirmed' and v_booking.amount_cents = 5000
+  -- The prices live only in venue_counter_bookings: venue_bookings.amount_cents
+  -- is what app players are priced from, so a walk-in's is always 0.
+  assert v_booking.booking_type = 'counter' and v_booking.status = 'confirmed' and v_booking.amount_cents = 0
          and v_booking.payment_mode is null and v_booking.capacity = 10 and v_booking.created_by = v_owner,
-    'a confirmed counter booking with no payment mode';
+    format('a confirmed counter booking with no payment mode and no app price, got amount %s', v_booking.amount_cents);
   assert (select count(*) from public.booking_pitches where booking_id = v_walk_in) = 1, 'holds a pitch';
   assert (select count(*) from public.money_ledger where booking_id = v_walk_in) = 1, 'one ledger row';
   assert (select kind = 'counter_paid' and amount_cents = 5000 and venue_cents = 5000 and futty_cents = 0
@@ -64,6 +66,7 @@ begin
   perform public.add_counter_booking(v_venue, v_day, '21:00', '22:00', '5-a-side', 'phone', 'Maria P.', '99 000 001');
   perform tests.act_as_postgres();
 
+  assert (select amount_cents = 0 from public.venue_bookings where id = v_phone), 'the override isn''t an app price either';
   assert (select amount_cents = 4000 and venue_cents = 4000 and reason = 'counter_paid_card'
           from public.money_ledger where booking_id = v_phone and kind = 'counter_paid'), 'the charged amount, card';
   assert (select count(*) from public.money_ledger where booking_id = v_phone) = 1, 'once';
@@ -77,6 +80,26 @@ begin
   -- No match, and not in anyone's bookings or the money balance check.
   assert tests.match_of(v_walk_in) is null, 'no match';
   assert (select balanced from public.money_balance(v_walk_in)), 'counter money is outside the balance check';
+end $$;
+
+-- The old 3-hour auto-cancel (bookings_needing_share_cancellation, for
+-- bookings from before P4a) never picks up a paid walk-in, even one whose
+-- amount_cents isn't 0, and even close to kickoff.
+do $$
+declare
+  v_owner uuid := tests.create_user('counter-autocancel-owner@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+  v_counter uuid;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 5000);
+  perform tests.act_as(v_owner);
+  v_counter := public.add_counter_booking(v_venue, tests.cyprus_today() + 2, '18:00', '19:00', '5-a-side', 'walk_in',
+                                          'Andreas', null, p_paid_method => 'cash');
+  perform tests.act_as_postgres();
+  perform tests.set_kickoff(v_counter, now() + interval '2 hours');
+  update public.venue_bookings set amount_cents = 5000 where id = v_counter;
+  assert not exists (select 1 from public.bookings_needing_share_cancellation() c where c.booking_id = v_counter),
+    'a walk-in is never auto-cancelled for unpaid shares';
 end $$;
 
 -- The app can never double-book it, and the slot must make sense.

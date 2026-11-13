@@ -1,8 +1,10 @@
 -- Venue condition warning (docs/specs/13-payments-bookings.md "Venue
 -- condition warning"; 05 section 12 launch item 6): staff flag "conditions
 -- may be unsuitable" for a day or a time slot (one pitch or the whole
--- venue). Every player booked then is notified, once per flag, with the
--- words decided on 13 November. Normal cancellation rules apply: nothing is
+-- venue). Every player still in a game then (share pending, authorized,
+-- paid or covered, as cancellation_plan counts them; the booker too, only
+-- while still in) is notified, once per game, with the words decided on 13
+-- November. Normal cancellation rules apply: nothing is
 -- cancelled and no money moves.
 begin;
 
@@ -21,6 +23,8 @@ declare
   v_c public.venue_bookings;
   v_x public.venue_bookings;
   v_left public.booking_payment_shares;
+  v_credited public.booking_payment_shares;
+  v_forfeited public.booking_payment_shares;
   v_flag uuid;
   v_note public.notifications;
   v_ledger_before integer;
@@ -28,7 +32,7 @@ declare
 begin
   perform tests.set_price(v_venue, '5-a-side', 6000);
   select name into v_name from public.venues where id = v_venue;
-  v_a := tests.booking_with_players(v_booker_a, v_venue, 'each_pays_own_spot', 2, v_day, '12:00', '13:00', 'cond-a');
+  v_a := tests.booking_with_players(v_booker_a, v_venue, 'each_pays_own_spot', 4, v_day, '12:00', '13:00', 'cond-a');
   v_b := tests.booking_with_players(v_booker_b, v_venue, 'each_pays_own_spot', 1, v_day, '18:00', '19:00', 'cond-b');
   -- Cancelled game: nobody in it is told.
   v_c := tests.booking_with_players(v_booker_c, v_venue, 'each_pays_own_spot', 1, v_day, '20:00', '21:00', 'cond-c');
@@ -38,6 +42,13 @@ begin
   -- A player who left game A isn't told.
   v_left := tests.player(v_a.id, 2);
   update public.booking_payment_shares set status = 'cancelled' where id = v_left.id;
+  -- Nor do players who left with credit or by forfeit.
+  v_credited := tests.player(v_a.id, 3);
+  v_forfeited := tests.player(v_a.id, 4);
+  update public.booking_payment_shares set status = 'credited' where id = v_credited.id;
+  update public.booking_payment_shares set status = 'forfeited' where id = v_forfeited.id;
+  -- Game B's booker left their own spot: they aren't told; their player is.
+  update public.booking_payment_shares set status = 'credited' where id = (tests.player(v_b.id, 0)).id;
   -- An owner block and a walk-in: no players to tell.
   perform tests.act_as(v_owner);
   perform public.add_counter_booking(v_venue, v_day, '15:00', '16:00', '5-a-side', 'walk_in', 'A', null);
@@ -54,15 +65,21 @@ begin
   v_flag := public.flag_conditions(v_venue, v_day, null, null, null, 'Waterlogged');
   perform tests.act_as_postgres();
 
-  assert (select count(*) from public.notifications where type = 'venue_condition_warning') = 4,
-    format('booker A, A''s player still in, booker B, B''s player: got %s',
+  assert (select count(*) from public.notifications where type = 'venue_condition_warning') = 3,
+    format('booker A, A''s player still in, B''s player: got %s',
            (select count(*) from public.notifications where type = 'venue_condition_warning'));
   assert (select count(*) from public.notifications where type = 'venue_condition_warning' and profile_id = v_booker_a) = 1,
     'the booker (who also holds a share) is told once';
   assert not exists (select 1 from public.notifications where type = 'venue_condition_warning'
                      and profile_id in (v_booker_c, v_booker_x, v_left.profile_id, v_owner)), 'nobody else';
+  assert not exists (select 1 from public.notifications where type = 'venue_condition_warning'
+                     and profile_id in (v_credited.profile_id, v_forfeited.profile_id)),
+    'players who left with credit or by forfeit aren''t told';
+  assert not exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_booker_b),
+    'a booker who left their own spot isn''t told';
 
-  select * into v_note from public.notifications where type = 'venue_condition_warning' and profile_id = v_booker_b;
+  select * into v_note from public.notifications where type = 'venue_condition_warning'
+    and profile_id = (tests.player(v_b.id, 1)).profile_id;
   assert v_note.title = 'Conditions may be unsuitable', format('title, got %s', v_note.title);
   assert v_note.body = format('%s says conditions may be unsuitable on %s at 18:00. Normal cancellation rules apply: '
                               || 'cancel at least 6 hours before kickoff to keep your money as credit at %s.',

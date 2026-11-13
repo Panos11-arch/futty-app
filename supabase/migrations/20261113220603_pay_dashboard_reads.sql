@@ -68,7 +68,8 @@ begin
                       select jsonb_build_object(
                                'booker_name', public.profile_display_name(b.created_by),
                                'payment_mode', b.payment_mode,
-                               'joined', count(*) filter (where s.status not in ('cancelled', 'refunded')),
+                               -- still in, as cancellation_plan counts them
+                               'joined', count(*) filter (where s.status in ('pending', 'authorized', 'paid', 'covered')),
                                'unpaid', count(*) filter (where s.status = 'pending'),
                                'cash_to_tick', count(*) filter (where s.payment_method = 'cash'
                                                                 and s.cash_received_at is null
@@ -199,7 +200,9 @@ begin
                  select 1 from public.match_attendance a where a.match_id = v_match_id and a.profile_id = s.profile_id))
              order by s.is_booker desc, s.created_at, s.id)
       from public.booking_payment_shares s
-      where s.booking_id = v_booking.id and s.status not in ('cancelled', 'refunded')), '[]'::jsonb));
+      -- Still in, as cancellation_plan counts them: not a player who left
+      -- with credit, by forfeit or for a refund.
+      where s.booking_id = v_booking.id and s.status in ('pending', 'authorized', 'paid', 'covered')), '[]'::jsonb));
 end;
 $$;
 

@@ -15,7 +15,22 @@
 -- owner block (not_a_game). Only cancel_counter_booking cancels it.
 --
 -- The functions below are their current definitions with only that check
--- added; CREATE OR REPLACE keeps their grants.
+-- added; CREATE OR REPLACE keeps their grants. The old 3-hour auto-cancel
+-- (bookings_needing_share_cancellation) also requires an app booking.
+--
+-- Ticked cash in cancellations (decided 13 November, Dimitris; for Panos to
+-- confirm): cancellation_plan works out each share's ticked cash beside its
+-- card amounts, as if it had been paid by card (cash_cents, cash_back_cents,
+-- cash_credit_cents); cancel_booking_internal hands back cash_back_cents
+-- (a reversing cash_received row) and cancellation_issue_credit adds
+-- cash_credit_cents to the share's credit. The card amounts, which alone
+-- reach Stripe, are unchanged.
+
+alter table public.booking_cancellation_lines
+  add column cash_cents integer not null default 0 check (cash_cents >= 0),
+  add column cash_back_cents integer not null default 0 check (cash_back_cents >= 0),
+  add column cash_credit_cents integer not null default 0 check (cash_credit_cents >= 0),
+  add constraint booking_cancellation_lines_cash_check check (cash_back_cents + cash_credit_cents <= cash_cents);
 
 create or replace function public.cancellation_quote(p_booking_id uuid, p_scope text)
 returns jsonb
@@ -26,10 +41,25 @@ set search_path = ''
 as $$
 declare
   v_plan jsonb;
+  v_booking public.venue_bookings;
 begin
-  -- A walk-in or phone booking is never an app booking.
-  if exists (select 1 from public.venue_bookings b where b.id = p_booking_id and b.booking_type = 'counter') then
-    raise exception 'counter_booking';
+  -- A walk-in or phone booking is never an app booking. Only its own staff
+  -- (and the staff member who added it) are told so; anyone else gets the
+  -- error they'd get for someone else's app booking, so it can't be probed.
+  select * into v_booking from public.venue_bookings b where b.id = p_booking_id;
+  if v_booking.booking_type = 'counter' then
+    if auth.uid() is null then
+      raise exception 'not_authenticated';
+    end if;
+    if p_scope is null or p_scope not in ('my_spot', 'whole_team', 'venue') then
+      raise exception 'invalid_scope';
+    end if;
+    if v_booking.created_by = auth.uid() or public.is_venue_staff(v_booking.venue_id) then
+      raise exception 'counter_booking';
+    end if;
+    raise exception '%', case p_scope when 'whole_team' then 'not_your_booking'
+                                      when 'venue' then 'not_your_venue'
+                                      else 'not_in_booking' end;
   end if;
   v_plan := public.cancellation_plan(p_booking_id, p_scope, auth.uid(), now());
   return v_plan || jsonb_build_object(
@@ -497,7 +527,7 @@ begin
     insert into public.booking_cancellation_lines (
       cancellation_id, booking_id, share_id, guarantee_id, profile_id, venue_id, is_booker, "window", action,
       paid_cents, fee_cents, credit_used_cents, value_cents, kept_cents, credit_cents, refund_cents, needs_capture,
-      stripe_intent_id, reason, work, next_attempt_at, choose_by)
+      stripe_intent_id, reason, work, next_attempt_at, choose_by, cash_cents, cash_back_cents, cash_credit_cents)
     values (
       v_cancellation_id, p_booking_id, (v_line ->> 'share_id')::uuid, (v_line ->> 'guarantee_id')::uuid,
       (v_line ->> 'profile_id')::uuid, v_booking.venue_id, (v_line ->> 'is_booker')::boolean, v_line ->> 'window',
@@ -508,7 +538,9 @@ begin
       case when v_work then 'pending' else 'none' end,
       case when v_line ->> 'action' = 'refund_choice' then now() + interval '48 hours'
            when v_work then now() + interval '2 minutes' end,
-      case when v_line ->> 'action' = 'refund_choice' then now() + interval '48 hours' end)
+      case when v_line ->> 'action' = 'refund_choice' then now() + interval '48 hours' end,
+      coalesce((v_line ->> 'cash_cents')::integer, 0), coalesce((v_line ->> 'cash_back_cents')::integer, 0),
+      coalesce((v_line ->> 'cash_credit_cents')::integer, 0))
     returning * into v_row;
 
     if v_row.guarantee_id is not null then
@@ -522,6 +554,11 @@ begin
     update public.booking_payment_shares set status = v_status where id = v_row.share_id;
     if not v_row.needs_capture then
       perform public.cancellation_issue_credit(v_row, p_scope);
+    end if;
+    -- Ticked cash a card player would get back: the venue hands it back
+    -- (once; a reversing cash_received row).
+    if v_row.cash_back_cents > 0 then
+      perform public.reverse_cash_received(v_row.share_id);
     end if;
   end loop;
 
@@ -788,4 +825,311 @@ begin
 
   return v_match.id;
 end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.cancellation_plan(p_booking_id uuid, p_scope text, p_profile_id uuid, p_at timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_booking public.venue_bookings;
+  v_kickoff timestamptz;
+  v_own public.booking_payment_shares;
+  v_share public.booking_payment_shares;
+  v_guarantee public.booking_guarantees;
+  v_late_team boolean;
+  v_lines jsonb := '[]'::jsonb;
+  v_has_money boolean;
+  v_value integer;
+  v_paid integer;
+  v_card_taken boolean;
+  v_window text;
+  v_action text;
+  v_kept integer;
+  v_credit integer;
+  v_refund integer;
+  v_capture boolean;
+  v_keep_unit integer;
+  v_taken integer;
+  v_fee jsonb := null;
+  v_cash integer;
+  v_cash_back integer;
+  v_cash_credit integer;
+  v_cash_share public.booking_payment_shares;
+  v_cash_window text;
+begin
+  if p_profile_id is null then
+    raise exception 'not_authenticated';
+  end if;
+  if p_scope is null or p_scope not in ('my_spot', 'whole_team', 'venue') then
+    raise exception 'invalid_scope';
+  end if;
+  select * into v_booking from public.venue_bookings where id = p_booking_id;
+  if v_booking.id is null then
+    raise exception 'not_found';
+  end if;
+  if v_booking.payment_mode is null then
+    raise exception 'legacy_booking';
+  end if;
+  if v_booking.status = 'cancelled' then
+    raise exception 'already_cancelled';
+  end if;
+  v_kickoff := public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time);
+  if p_at >= v_kickoff then
+    raise exception 'booking_started';
+  end if;
+
+  if p_scope = 'whole_team' and v_booking.created_by is distinct from p_profile_id then
+    raise exception 'not_your_booking';
+  end if;
+  if p_scope = 'venue' and not exists (
+    select 1 from public.venues where id = v_booking.venue_id and owner_profile_id = p_profile_id
+  ) then
+    raise exception 'not_your_venue';
+  end if;
+  if p_scope = 'my_spot' then
+    select * into v_own from public.booking_payment_shares
+    where booking_id = p_booking_id and profile_id = p_profile_id
+      and status in ('pending', 'authorized', 'paid', 'covered');
+    if v_own.id is null then
+      raise exception 'not_in_booking';
+    end if;
+    if v_own.is_booker and v_booking.payment_mode = 'pay_all' then
+      raise exception 'use_whole_team';
+    end if;
+  end if;
+
+  v_late_team := p_at > v_kickoff - interval '6 hours';
+  v_keep_unit := 100;
+
+  for v_share in
+    select s.* from public.booking_payment_shares s
+    where s.booking_id = p_booking_id
+      and (s.status in ('pending', 'authorized', 'paid', 'covered')
+           -- Q1: forfeited by a late cancellation of the player's own spot
+           -- (not the €1 of a middle-window one).
+           or (p_scope = 'venue' and s.status = 'forfeited'
+               and exists (select 1 from public.booking_cancellation_lines l
+                           where l.share_id = s.id and l."window" = 'late')))
+      and (p_scope <> 'my_spot' or s.id = v_own.id)
+    order by s.is_booker desc, s.created_at, s.id
+  loop
+    v_kept := 0;
+    v_credit := 0;
+    v_refund := 0;
+    v_capture := false;
+    v_window := null;
+
+    if v_share.status = 'forfeited' then
+      v_card_taken := v_share.amount_cents > 0 and v_share.stripe_payment_intent_id is not null
+        and exists (select 1 from public.money_ledger m
+                    where m.kind = 'capture' and m.stripe_id = v_share.stripe_payment_intent_id);
+      v_window := 'venue';
+      if v_share.amount_cents > 0 and v_share.stripe_payment_intent_id is not null and not v_card_taken then
+        -- The card part was never taken: whatever hold is left is released.
+        v_paid := v_share.amount_cents;
+        v_value := v_paid + v_share.credit_cents;
+        v_action := 'release';
+      else
+        v_paid := case when v_card_taken then v_share.amount_cents else 0 end;
+        v_value := v_paid + v_share.credit_cents;
+        v_action := case when v_value > 0 then 'refund_choice' else 'none' end;
+        if v_value = 0 then
+          v_window := null;
+        end if;
+      end if;
+      v_refund := v_value;
+      v_has_money := v_value > 0;
+    else
+      v_has_money := v_share.status in ('authorized', 'paid') and v_share.amount_cents + v_share.credit_cents > 0;
+      v_value := case when v_has_money then v_share.amount_cents + v_share.credit_cents else 0 end;
+      v_paid := case when v_has_money then v_share.amount_cents else 0 end;
+
+      if not v_has_money then
+        v_action := case when v_share.stripe_payment_intent_id is not null and v_share.status = 'pending'
+                         then 'release' else 'none' end;
+      elsif p_scope = 'venue' then
+        v_window := 'venue';
+        v_action := case when v_share.status = 'authorized' then 'release' else 'refund_choice' end;
+        v_refund := v_value;
+      elsif p_scope = 'my_spot' or v_share.is_booker then
+        v_window := public.cancellation_window(v_share, v_kickoff, p_at);
+        if v_window = 'free' then
+          v_action := 'release';
+          v_refund := v_value;
+        elsif v_window = 'middle' then
+          v_kept := least(v_value, v_keep_unit * case when v_booking.payment_mode = 'pay_all' then v_booking.capacity else 1 end);
+          v_credit := v_value - v_kept;
+          v_action := case when v_credit > 0 then 'keep_and_credit' else 'keep' end;
+          v_capture := v_share.status = 'authorized';
+        else
+          v_action := 'keep';
+          v_kept := v_value;
+          v_capture := v_share.status = 'authorized';
+        end if;
+      else
+        v_window := 'other';
+        if v_late_team then
+          v_action := 'keep';
+          v_kept := v_value;
+          v_capture := v_share.status = 'authorized';
+        elsif v_share.status = 'authorized' then
+          v_action := 'release';
+          v_refund := v_value;
+        else
+          v_action := 'refund_choice';
+          v_refund := v_value;
+        end if;
+      end if;
+    end if;
+
+    -- Ticked cash (decided 13 November, Dimitris; for Panos to confirm)
+    -- follows the cancellation rules as if it had been paid by card, beside
+    -- the card amounts above, which alone reach Stripe: it goes back where a
+    -- card player gets money back (the venue cancelling, a cancel in the
+    -- free hour, a whole-team cancel more than 6 hours before kickoff); in
+    -- the middle window the €1 is kept over card and cash together and the
+    -- rest of the cash becomes credit at the venue; a late cancel keeps it.
+    v_cash := coalesce((select sum(m.venue_cents) from public.money_ledger m
+                        where m.share_id = v_share.id and m.kind = 'cash_received'), 0);
+    v_cash_back := 0;
+    v_cash_credit := 0;
+    if v_cash > 0 then
+      if p_scope = 'venue' then
+        v_cash_back := v_cash;
+      elsif p_scope = 'my_spot' or v_share.is_booker then
+        -- The window a card player who paid then would be in; with nothing
+        -- paid in the app, the cash is the payment.
+        v_cash_share := v_share;
+        if v_cash_share.held_at is null and v_cash_share.paid_at is null then
+          v_cash_share.held_at := v_cash_share.cash_received_at;
+          v_cash_share.capture_due_at := null;
+        end if;
+        v_cash_window := public.cancellation_window(v_cash_share, v_kickoff, p_at);
+        if v_cash_window = 'free' then
+          v_cash_back := v_cash;
+        elsif v_cash_window = 'middle' then
+          v_cash_credit := v_cash - (least(v_value + v_cash,
+                                           v_keep_unit * case when v_booking.payment_mode = 'pay_all'
+                                                              then v_booking.capacity else 1 end)
+                                     - v_kept);
+          if v_cash_credit > 0 and v_action in ('keep', 'none') then
+            v_action := 'keep_and_credit';
+          end if;
+        end if;
+        v_window := coalesce(v_window, v_cash_window);
+      elsif not v_late_team then
+        v_cash_back := v_cash;
+      end if;
+    end if;
+
+    v_lines := v_lines || jsonb_build_array(jsonb_build_object(
+      'share_id', v_share.id,
+      'guarantee_id', null,
+      'profile_id', v_share.profile_id,
+      'is_booker', v_share.is_booker,
+      'window', v_window,
+      'action', v_action,
+      'paid_cents', v_paid,
+      'fee_cents', case when v_paid > 0 then coalesce(v_share.fee_cents, 0) else 0 end,
+      'credit_used_cents', case when v_has_money then v_share.credit_cents else 0 end,
+      'value_cents', v_value,
+      'kept_cents', v_kept,
+      'credit_cents', v_credit,
+      'refund_cents', v_refund,
+      'needs_capture', v_capture,
+      'stripe_intent_id', v_share.stripe_payment_intent_id,
+      'cash_cents', v_cash,
+      'cash_back_cents', v_cash_back,
+      'cash_credit_cents', v_cash_credit
+    ));
+  end loop;
+
+  if p_scope <> 'my_spot' then
+    select * into v_guarantee from public.booking_guarantees where booking_id = p_booking_id and status <> 'cancelled';
+    if v_guarantee.id is not null then
+      v_lines := v_lines || jsonb_build_array(jsonb_build_object(
+        'share_id', null, 'guarantee_id', v_guarantee.id, 'profile_id', v_guarantee.profile_id, 'is_booker', true,
+        'window', null, 'action', 'release', 'paid_cents', 0, 'fee_cents', 0, 'credit_used_cents', 0,
+        'value_cents', 0, 'kept_cents', 0, 'credit_cents', 0, 'refund_cents', 0, 'needs_capture', false,
+        'stripe_intent_id', v_guarantee.stripe_payment_intent_id,
+        'cash_cents', 0, 'cash_back_cents', 0, 'cash_credit_cents', 0));
+    end if;
+  end if;
+
+  if p_scope = 'whole_team' and v_booking.payment_mode <> 'pay_all' and not v_late_team then
+    select count(*) into v_taken from public.booking_payment_shares
+    where booking_id = p_booking_id and not is_booker and status = 'paid' and amount_cents > 0;
+    if v_taken > 0 then
+      v_fee := jsonb_build_object('profile_id', v_booking.created_by, 'players', v_taken, 'amount_cents', 100 * v_taken);
+    end if;
+  end if;
+
+  return jsonb_build_object(
+    'booking_id', p_booking_id,
+    'scope', p_scope,
+    'payment_mode', v_booking.payment_mode,
+    'kickoff_at', v_kickoff,
+    'refunds_stop_at', v_kickoff - interval '6 hours',
+    'cancels_booking', p_scope <> 'my_spot',
+    'lines', v_lines,
+    'booker_fee', v_fee,
+    'quote', md5(jsonb_build_object('booking_id', p_booking_id, 'scope', p_scope, 'lines', v_lines,
+                                    'booker_fee', v_fee)::text)
+  );
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.cancellation_issue_credit(p_line public.booking_cancellation_lines, p_scope text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_kept_card integer := least(p_line.kept_cents, p_line.paid_cents);
+  v_kept_credit integer := p_line.kept_cents - least(p_line.kept_cents, p_line.paid_cents);
+  v_new integer;
+  v_back integer;
+begin
+  if p_line."window" <> 'middle' then
+    return;
+  end if;
+  -- With the credit from ticked cash (cancellation_plan's cash_credit_cents):
+  -- one credit per share, as issue_venue_credit keeps one per share and source.
+  v_new := p_line.paid_cents - v_kept_card + p_line.cash_credit_cents;
+  v_back := p_line.credit_used_cents - v_kept_credit;
+  if v_new > 0 then
+    perform public.issue_venue_credit(p_line.profile_id, p_line.venue_id, v_new,
+      case p_scope when 'my_spot' then 'player_cancelled' when 'whole_team' then 'booking_cancelled' else 'venue_cancelled' end,
+      p_line.booking_id, p_line.share_id);
+  end if;
+  if v_back > 0 then
+    perform public.return_share_credit_part(p_line.share_id, v_back, 'cancelled_credit_back');
+  end if;
+  perform public.record_money_transfer(p_line.booking_id, p_line.share_id, p_line.kept_cents - p_line.fee_cents,
+    'cancel-kept-' || p_line.id, p_line.reason);
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.bookings_needing_share_cancellation()
+ RETURNS TABLE(booking_id uuid)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select b.id
+  from public.venue_bookings b
+  where b.status = 'confirmed'
+    -- An app booking from before P4a: never a walk-in or an owner block.
+    and b.booking_type = 'user_booking'
+    and b.payment_mode is null
+    and b.amount_cents > 0
+    and (b.booking_day + b.start_time) at time zone 'Asia/Nicosia' <= now() + interval '3 hours'
+    and (
+      select count(*) from public.booking_payment_shares s
+      where s.booking_id = b.id and s.status in ('authorized', 'paid')
+    ) < public.booking_total_shares_needed(b.id);
 $function$;
