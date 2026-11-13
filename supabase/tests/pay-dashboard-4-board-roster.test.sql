@@ -28,6 +28,9 @@ begin
   perform tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 0, v_day + 1, '12:00', '13:00', 'board-t');
   perform tests.pay_ago((tests.player(v_app.id, 0)).id, 'pi_board_0', interval '2 hours');
   perform tests.pay_ago((tests.player(v_app.id, 1)).id, 'pi_board_1', interval '2 hours', 'cash');
+  -- A cash player who hasn't paid the fee yet: staff can still tick their
+  -- cash (mark_cash_received accepts pending), so it counts.
+  update public.booking_payment_shares set payment_method = 'cash' where id = (tests.player(v_app.id, 2)).id;
 
   perform tests.act_as(v_owner);
   v_counter := public.add_counter_booking(v_venue, v_day, '18:00', '19:00', '5-a-side', 'phone', 'Maria',
@@ -52,7 +55,7 @@ begin
   assert v_entry ->> 'kind' = 'app' and v_entry ->> 'start_time' = '12:00:00' and v_entry ->> 'end_time' = '13:00:00'
          and v_entry ->> 'payment_mode' = 'each_pays_own_spot' and (v_entry ->> 'capacity')::integer = 10
          and (v_entry ->> 'joined')::integer = 4 and (v_entry ->> 'unpaid')::integer = 2
-         and (v_entry ->> 'cash_to_tick')::integer = 1
+         and (v_entry ->> 'cash_to_tick')::integer = 2
          and v_entry ->> 'booker_name' = public.profile_display_name(v_booker)
          and jsonb_array_length(v_entry -> 'pitch_ids') = 1,
     format('the app game, got %s', v_entry);

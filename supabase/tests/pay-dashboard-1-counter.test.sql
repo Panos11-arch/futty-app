@@ -59,8 +59,9 @@ begin
   perform public.mark_counter_paid(v_phone, 'card');
   assert tests.error_of(format($q$ select public.mark_counter_paid(%L, 'cash') $q$, v_phone)) = 'already_paid', 'once';
   perform public.mark_counter_paid(v_free, 'cash');
-  -- Same phone number again: the same contact.
-  perform public.add_counter_booking(v_venue, v_day, '21:00', '22:00', '5-a-side', 'phone', 'Maria P.', '+35799000001');
+  -- Same phone number again, written the local way: the same contact, and
+  -- the name given this time.
+  perform public.add_counter_booking(v_venue, v_day, '21:00', '22:00', '5-a-side', 'phone', 'Maria P.', '99 000 001');
   perform tests.act_as_postgres();
 
   assert (select amount_cents = 4000 and venue_cents = 4000 and reason = 'counter_paid_card'
@@ -70,6 +71,8 @@ begin
   assert (select paid_method from public.venue_counter_bookings where booking_id = v_free) = 'cash', 'but it is paid';
   assert (select count(*) from public.venue_contacts where venue_id = v_venue and phone = '+35799000001') = 1,
     'a repeat caller reuses the contact';
+  assert (select name from public.venue_contacts where venue_id = v_venue and phone = '+35799000001') = 'Maria P.',
+    'with the latest name';
 
   -- No match, and not in anyone's bookings or the money balance check.
   assert tests.match_of(v_walk_in) is null, 'no match';
@@ -203,6 +206,38 @@ begin
     'not through the app''s cancellation';
   perform tests.act_as_postgres();
   assert not exists (select 1 from public.booking_payment_shares where booking_id = v_counter), 'no shares';
+end $$;
+
+-- Phone numbers are kept in one Cyprus +357 form, so a caller is one
+-- contact however the number was typed.
+do $$
+declare
+  v_input text;
+begin
+  foreach v_input in array array['99123456', '99 123 456', '99-123-456', '+357 99 123 456', '0035799123456',
+                                  '35799123456', '(+357) 99.123.456'] loop
+    assert public.normalize_cy_phone(v_input) = '+35799123456',
+      format('%s, got %s', v_input, public.normalize_cy_phone(v_input));
+  end loop;
+  assert public.normalize_cy_phone('+44 7700 900123') = '+447700900123', 'another country keeps its code';
+  assert public.normalize_cy_phone('0044 7700 900123') = '+447700900123', '00 is +';
+  assert public.normalize_cy_phone(null) is null and public.normalize_cy_phone('  ') is null, 'no number';
+  foreach v_input in array array['12345', 'call me', '+357 99 123', '9912345678'] loop
+    assert tests.error_of(format('select public.normalize_cy_phone(%L)', v_input)) = 'invalid_phone', v_input;
+  end loop;
+end $$;
+
+-- An unrecognisable number is refused when booking.
+do $$
+declare
+  v_owner uuid := tests.create_user('counter-phone-owner@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+begin
+  perform tests.set_price(v_venue, '5-a-side', 5000);
+  assert tests.error_as(v_owner, format($q$ select public.add_counter_booking(%L, %L, '10:00', '11:00', '5-a-side',
+                                              'phone', 'A', 'call me') $q$, v_venue, tests.cyprus_today() + 2))
+         = 'invalid_phone', 'a number staff can call back';
+  assert not exists (select 1 from public.venue_bookings where venue_id = v_venue), 'nothing booked';
 end $$;
 
 rollback;

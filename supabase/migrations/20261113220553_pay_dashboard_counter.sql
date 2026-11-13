@@ -6,7 +6,8 @@
 -- real pitches through booking_pitches, like any game. It's a venue_bookings
 -- row with booking_type 'counter' (no payment mode, no shares, no match, no
 -- collection, no players to notify: every one of those paths requires
--- 'user_booking'), plus its counter details in venue_counter_bookings:
+-- 'user_booking', and every path that trusts "the booker" refuses it, see
+-- pay_dashboard_guards), plus its counter details in venue_counter_bookings:
 -- walk-in or phone, the customer (venue_contacts), the venue's price for the
 -- slot and the amount actually charged (staff may change it, e.g. a regular's
 -- discount; this money never goes through Futty or Stripe), and how it was
@@ -27,8 +28,44 @@ create unique index venue_bookings_active_slot_per_user on public.venue_bookings
   (venue_id, booking_day, start_time, created_by)
   where status <> 'cancelled' and booking_type <> 'counter';
 
--- The venue's own customers who booked at the counter. A phone number is
--- one customer per venue; walk-ins without a number get their own row.
+-- Internal: a phone number in one form, so a caller is one contact however
+-- it was typed. Spaces, dots, dashes and brackets go; 00 becomes +; an
+-- 8-digit Cyprus number (or 357 and 8 digits) becomes +357XXXXXXXX. Other
+-- countries keep their + code. Anything else is refused (invalid_phone).
+create or replace function public.normalize_cy_phone(p_phone text)
+returns text
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v text;
+begin
+  if p_phone is null or btrim(p_phone) = '' then
+    return null;
+  end if;
+  v := regexp_replace(btrim(p_phone), '[[:space:]().-]', '', 'g');
+  if v like '00%' then
+    v := '+' || substr(v, 3);
+  end if;
+  if v ~ '^[0-9]{8}$' then
+    v := '+357' || v;
+  elsif v ~ '^357[0-9]{8}$' then
+    v := '+' || v;
+  end if;
+  if (v like '+357%' and v !~ '^\+357[0-9]{8}$') or v !~ '^\+[1-9][0-9]{7,14}$' then
+    raise exception 'invalid_phone';
+  end if;
+  return v;
+end;
+$$;
+
+revoke all on function public.normalize_cy_phone(text) from public, anon, authenticated;
+grant execute on function public.normalize_cy_phone(text) to service_role;
+
+-- The venue's own customers who booked at the counter. A phone number (in
+-- normalize_cy_phone's form) is one customer per venue; walk-ins without a
+-- number get their own row.
 create table public.venue_contacts (
   id uuid primary key default gen_random_uuid(),
   venue_id uuid not null references public.venues (id) on delete cascade,
@@ -94,7 +131,9 @@ begin
   if p_method is null or p_method not in ('cash', 'card') then
     raise exception 'invalid_paid_method';
   end if;
-  if v_counter.cancelled_at is not null then
+  -- Cancelled here, or (should another path ever reach it) on the booking.
+  if v_counter.cancelled_at is not null
+     or exists (select 1 from public.venue_bookings b where b.id = p_booking_id and b.status = 'cancelled') then
     raise exception 'booking_cancelled';
   end if;
   if v_counter.paid_at is not null then
@@ -139,7 +178,7 @@ declare
   v_now timestamp := now() at time zone 'Asia/Nicosia';
   v_hours record;
   v_name text := btrim(p_contact_name);
-  v_phone text := nullif(btrim(p_contact_phone), '');
+  v_phone text;
   v_pitch_ids uuid[];
   v_price integer;
   v_charged integer;
@@ -158,6 +197,7 @@ begin
   if v_name is null or v_name = '' then
     raise exception 'name_required';
   end if;
+  v_phone := public.normalize_cy_phone(p_contact_phone);
   if p_charged_cents < 0 then
     raise exception 'invalid_amount';
   end if;
@@ -213,13 +253,11 @@ begin
   end if;
 
   if v_phone is not null then
+    -- A known number is the same customer; the name given now is kept.
     insert into public.venue_contacts (venue_id, name, phone, created_by)
     values (p_venue_id, v_name, v_phone, auth.uid())
-    on conflict (venue_id, phone) where phone is not null do nothing
+    on conflict (venue_id, phone) where phone is not null do update set name = excluded.name
     returning id into v_contact_id;
-    if v_contact_id is null then
-      select id into v_contact_id from public.venue_contacts where venue_id = p_venue_id and phone = v_phone;
-    end if;
   else
     insert into public.venue_contacts (venue_id, name, created_by)
     values (p_venue_id, v_name, auth.uid())
@@ -273,10 +311,10 @@ begin
   if not public.is_venue_staff(v_counter.venue_id) then
     raise exception 'not_venue_staff';
   end if;
-  if v_counter.cancelled_at is not null then
+  select * into v_booking from public.venue_bookings where id = p_booking_id for update;
+  if v_counter.cancelled_at is not null or v_booking.status = 'cancelled' then
     raise exception 'booking_cancelled';
   end if;
-  select * into v_booking from public.venue_bookings where id = p_booking_id for update;
   if v_booking.booking_day + v_booking.start_time <= (now() at time zone 'Asia/Nicosia') then
     raise exception 'game_started';
   end if;

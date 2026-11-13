@@ -33,6 +33,9 @@ const ERROR_STATUS: Record<string, number> = {
   not_in_booking: 403,
   quote_changed: 409,
   already_cancelled: 409,
+  // A walk-in or phone booking: only the venue dashboard cancels it
+  // (cancel_counter_booking), never this function.
+  counter_booking: 409,
 };
 
 type Plan = {

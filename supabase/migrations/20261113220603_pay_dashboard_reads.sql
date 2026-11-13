@@ -72,7 +72,8 @@ begin
                                'unpaid', count(*) filter (where s.status = 'pending'),
                                'cash_to_tick', count(*) filter (where s.payment_method = 'cash'
                                                                 and s.cash_received_at is null
-                                                                and s.status in ('authorized', 'paid')))
+                                                                -- the statuses mark_cash_received accepts
+                                                                and s.status in ('pending', 'authorized', 'paid')))
                       from public.booking_payment_shares s where s.booking_id = b.id)
                     when b.booking_type = 'counter' then (
                       select jsonb_build_object(

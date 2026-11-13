@@ -4,7 +4,10 @@
 -- Revenue by source (P6b) is read from money_ledger.venue_cents, so money the
 -- venue takes in person is recorded too:
 --   cash_received  staff tick an app player's cash as paid: the share's
---                  pitch part at that moment (cash_cents), once per share.
+--                  pitch part at that moment (cash_cents), once per share
+--                  (+amount); the venue hands it back when the share is
+--                  later cancelled, refunded or forfeited, or the booking
+--                  is cancelled (-amount, the reversal, once).
 --   counter_paid   a walk-in or phone booking marked paid at the counter
 --                  (+amount), or a paid one cancelled (-amount, the reversal).
 -- Neither went through Futty or Stripe: the venue already holds the money.
@@ -36,7 +39,7 @@ alter table public.money_ledger add constraint money_ledger_split_check check (
      and amount_cents > 0 and venue_cents = 0 and futty_cents = 0 and credit_cents = 0 and stripe_fee_cents = 0)
   or (kind = 'cash_received' and ref is not null and stripe_id is null and stripe_intent_id is null
      and share_id is not null and amount_cents > 0
-     and venue_cents = amount_cents and futty_cents = 0 and credit_cents = 0 and stripe_fee_cents = 0)
+     and abs(venue_cents) = amount_cents and futty_cents = 0 and credit_cents = 0 and stripe_fee_cents = 0)
   or (kind = 'counter_paid' and ref is not null and stripe_id is null and stripe_intent_id is null
      and share_id is null and amount_cents > 0
      and abs(venue_cents) = amount_cents and futty_cents = 0 and credit_cents = 0 and stripe_fee_cents = 0)
@@ -91,6 +94,78 @@ $$;
 
 revoke all on function public.mark_cash_received(uuid) from public, anon;
 grant execute on function public.mark_cash_received(uuid) to authenticated, service_role;
+
+-- Ticked cash handed back (decided 13 November, Dimitris; for Panos to
+-- confirm): the reversing cash_received row for one share, once (ref
+-- cash_reversal:<share>). Nothing if its cash was never ticked.
+create or replace function public.reverse_cash_received(p_share_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_row public.money_ledger;
+begin
+  select * into v_row from public.money_ledger where kind = 'cash_received' and ref = 'cash:' || p_share_id;
+  if v_row.id is null then
+    return false;
+  end if;
+  return public.record_ledger_entry(v_row.booking_id, p_share_id, null, 'cash_received', v_row.amount_cents,
+                                    'cash_reversal:' || p_share_id, 'cash_returned', -v_row.amount_cents, 0, 0);
+end;
+$$;
+
+-- A share stops holding its spot (cancelled, refunded, credited, forfeited
+-- or refund due): its ticked cash goes back.
+create or replace function public.cash_back_on_share()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.cash_received_at is not null
+     and old.status in ('pending', 'authorized', 'paid', 'covered')
+     and new.status not in ('pending', 'authorized', 'paid', 'covered') then
+    perform public.reverse_cash_received(new.id);
+  end if;
+  return null;
+end;
+$$;
+create trigger cash_back_on_share
+  after update of status on public.booking_payment_shares
+  for each row execute function public.cash_back_on_share();
+
+-- A game is cancelled (by the venue, or the whole team): every ticked
+-- cash share in it goes back, whatever happened to the share.
+create or replace function public.cash_back_on_booking()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_share_id uuid;
+begin
+  if new.status = 'cancelled' and old.status is distinct from 'cancelled' and new.booking_type = 'user_booking' then
+    for v_share_id in
+      select s.id from public.booking_payment_shares s where s.booking_id = new.id and s.cash_received_at is not null
+    loop
+      perform public.reverse_cash_received(v_share_id);
+    end loop;
+  end if;
+  return null;
+end;
+$$;
+create trigger cash_back_on_booking
+  after update of status on public.venue_bookings
+  for each row execute function public.cash_back_on_booking();
+
+revoke all on function public.reverse_cash_received(uuid) from public, anon, authenticated;
+grant execute on function public.reverse_cash_received(uuid) to service_role;
+revoke all on function public.cash_back_on_share() from public, anon, authenticated;
+revoke all on function public.cash_back_on_booking() from public, anon, authenticated;
 
 -- The books for one booking: venue + Futty + Stripe + refunds + credit =
 -- taken (spec 13, "The books always balance"). Money the venue took in

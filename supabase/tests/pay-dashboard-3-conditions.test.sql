@@ -104,28 +104,62 @@ begin
   select pitch_id into v_side_pitch from public.booking_pitches where booking_id = v_side_b.id;
   assert v_side_pitch <> (select pitch_id from public.booking_pitches where booking_id = v_early_b.id), 'two pitches';
 
+  delete from public.notifications where type = 'venue_condition_warning';  -- the block above's
   perform tests.act_as(v_owner);
-  perform public.flag_conditions(v_venue, v_day, '12:30', '13:00', null, null);
-  perform tests.act_as_postgres();
-  assert exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_early)
-     and exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_side),
-    'both 12:00 games overlap 12:30-13:00';
-  assert not exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_late),
-    'a game starting at 13:00 doesn''t';
-
-  delete from public.notifications where type = 'venue_condition_warning';
-  perform tests.act_as(v_owner);
-  perform public.flag_conditions(v_venue, v_day, null, null, v_side_pitch, null);
+  perform public.flag_conditions(v_venue, v_day, '12:00', '13:00', v_side_pitch, null);
   perform tests.act_as_postgres();
   assert (select array_agg(profile_id) from public.notifications where type = 'venue_condition_warning') = array[v_side],
     'only the game on that pitch';
 
-  -- A second flag is a new warning; told again.
+  perform tests.act_as(v_owner);
+  perform public.flag_conditions(v_venue, v_day, '12:30', '13:00', null, null);
+  perform tests.act_as_postgres();
+  assert exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_early),
+    'the other 12:00 game overlaps 12:30-13:00';
+  assert not exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_late),
+    'a game starting at 13:00 doesn''t';
+
+  -- More flags over games already warned: each player is told once per game.
   perform tests.act_as(v_owner);
   perform public.flag_conditions(v_venue, v_day, '12:00', '14:00', v_side_pitch, 'Storm');
+  perform public.flag_conditions(v_venue, v_day, null, null, null, 'Still stormy');
+  perform public.flag_conditions(v_venue, v_day, null, null, null, 'Really');
   perform tests.act_as_postgres();
-  assert (select count(*) from public.notifications where type = 'venue_condition_warning' and profile_id = v_side) = 2,
-    'once per flag';
+  assert (select count(*) from public.notifications where type = 'venue_condition_warning' and profile_id = v_side) = 1
+     and (select count(*) from public.notifications where type = 'venue_condition_warning' and profile_id = v_early) = 1,
+    'once per game, however many flags overlap it';
+  assert (select count(*) from public.notifications where type = 'venue_condition_warning' and profile_id = v_late) = 1,
+    'the 13:00 game, told once';
+end $$;
+
+-- A game that has already ended isn't warned; one under way still is.
+do $$
+declare
+  v_owner uuid := tests.create_user('cond-ended-owner@futty.test');
+  v_done uuid := tests.create_user('cond-ended-done@futty.test');
+  v_playing uuid := tests.create_user('cond-ended-playing@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 2, p_open => '00:00', p_close => '24:00');
+  v_done_b public.venue_bookings;
+  v_playing_b public.venue_bookings;
+  v_day date;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_done_b := tests.booking_with_players(v_done, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 2, '10:00', '11:00', 'ce-d');
+  v_playing_b := tests.booking_with_players(v_playing, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 2, '12:00', '13:00', 'ce-p');
+  -- Ended 10 minutes ago (30-minute games), and started 10 minutes ago.
+  perform tests.set_kickoff(v_done_b.id, now() - interval '40 minutes');
+  perform tests.set_kickoff(v_playing_b.id, now() - interval '10 minutes');
+  select booking_day into v_day from public.venue_bookings where id = v_done_b.id;
+  -- Just after midnight the ended game is yesterday's, which can't be flagged anyway.
+  if v_day = tests.cyprus_today() and (select booking_day from public.venue_bookings where id = v_playing_b.id) = v_day then
+    perform tests.act_as(v_owner);
+    perform public.flag_conditions(v_venue, v_day, null, null, null, null);
+    perform tests.act_as_postgres();
+    assert not exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_done),
+      'an ended game isn''t warned';
+    assert exists (select 1 from public.notifications where type = 'venue_condition_warning' and profile_id = v_playing),
+      'a game under way is';
+  end if;
 end $$;
 
 -- Checks, and clearing a flag.

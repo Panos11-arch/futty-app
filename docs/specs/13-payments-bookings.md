@@ -332,11 +332,13 @@ The dashboard (P6) records the money a venue takes in person, so revenue by sour
   - This money never goes through Futty or Stripe, so working rule 2 (the server computes every amount) doesn't apply to the amount charged.
   - Staff mark it paid by **cash or card at the counter**: one `counter_paid` ledger row for the amount charged (nothing for a free booking).
   - **A paid walk-in can be cancelled** up to kickoff: a reversing `counter_paid` row takes the amount back off the venue's revenue.
-  - Walk-ins and phone bookings have no match, no players, no payment mode and no collection.
+  - Walk-ins and phone bookings have no match, no players, no payment mode and no collection. Their booker is the staff member who added them, so every path that trusts the booker (cancelling, quotes, invites, squad posts, booking detail, adding players) refuses them; only the dashboard's own cancel cancels them.
+  - **Customers:** a phone number is stored in one form (`+357XXXXXXXX` for Cyprus; other countries keep their `+` code), so a caller is one customer however the number was typed. When a known number books again, the name given that time is kept.
 - **Ticking cash:** when staff tick an app player's cash as paid, the share's pitch part at that moment (e.g. €6.00) is recorded once as a `cash_received` ledger row.
+  - **Ticked cash handed back (decided 13 November, Dimitris; for Panos to confirm):** if that share is later cancelled, refunded, credited or forfeited, or the game is cancelled (by the venue or the whole team), the venue hands the cash back: one reversing `cash_received` row takes it back off the venue's revenue.
 - **`cash_received` and `counter_paid` are excluded by name** from P4d's payouts and from the daily balance check.
-- **Condition warning words:** "[Venue] says conditions may be unsuitable on [day, time]. Normal cancellation rules apply: cancel at least 6 hours before kickoff to keep your money as credit at [venue]." Sent as `venue_condition_warning` to the booker and every player still in each game the flag covers.
-- **Revenue (P6b):** dated by when the money moved, as a Cyprus date; weeks run Monday to Sunday.
+- **Condition warning words:** "[Venue] says conditions may be unsuitable on [day, time]. Normal cancellation rules apply: cancel at least 6 hours before kickoff to keep your money as credit at [venue]." Sent as `venue_condition_warning` to the booker and every player still in each game the flag covers that hasn't ended. Each player is warned once per game, however many flags overlap it.
+- **Revenue (P6b):** dated by when the money moved, as a Cyprus date; weeks run Monday to Sunday. Revenue sums the ledger's `venue_cents`, never `amount_cents`: a reversal (a cancelled paid walk-in, cash handed back) has a positive `amount_cents` and a negative `venue_cents`.
 
 ## Server-side checks that make it airtight
 
@@ -350,7 +352,7 @@ The app can be tampered with, so every rule that involves money or availability 
 - **Blocked pitches** are refused for new bookings; a game booked before the block can still be joined. **Unsigned venues (the live/not-live switch) and players in debt** are refused when booking, joining and choosing cash.
 - **Only a venue's own staff** can tick cash, settle debt, block pitches, flag conditions or cancel that venue's bookings. Only the booker can cancel the whole team or switch 5 v 5 / 6 v 6; switching closes 6 hours before kickoff.
 - **Every money movement happens once.** Each Stripe call carries an idempotency key, and each movement is written to a ledger with its reason.
-- **The books always balance:** for every booking, venue + Futty + Stripe + refunds + credit = what was taken. A daily check flags any booking where they don't. The check leaves out `cash_received` and `counter_paid` by name (decided 13 November): that money never went through Stripe.
+- **The books always balance:** for every booking, venue + Futty + Stripe + refunds = what was taken. Credit isn't added in (decided 10 November): credit money is already in the venue's share when it's issued, and the credit rows only record what the venue holds for players. A daily check flags any booking where they don't. The check leaves out `cash_received` and `counter_paid` by name (decided 13 November): that money never went through Stripe.
 - Stripe webhooks are signature-checked and scheduled jobs need the cron secret (already live).
 
 **Tests (decisions doc: no PR without them):**

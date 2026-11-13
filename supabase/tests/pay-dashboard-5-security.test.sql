@@ -63,6 +63,10 @@ begin
     end loop;
     assert tests.error_of(format($q$ select public.cancellation_quote(%L, 'venue') $q$, v_booking_b.id)) = 'not_your_venue',
       'venue cancel of another venue''s booking';
+    assert tests.error_of(format('select public.move_booking_pitches(%L, array[%L]::uuid[])', v_booking_b.id, v_pitch_b))
+           = 'not_your_venue', 'moving another venue''s booking';
+    assert tests.error_of(format('select public.move_booking_pitches(%L, array[%L]::uuid[])', v_counter_b, v_pitch_b))
+           = 'not_your_venue', 'moving another venue''s walk-in';
     assert tests.error_of(format($q$ insert into public.venue_blocks (venue_id, pitch_id, block_day, created_by)
                                      values (%L, %L, %L, %L) $q$, v_venue_b, v_pitch_b, v_day, v_caller))
            = 'not_your_venue', 'blocking another venue''s pitch';
@@ -119,7 +123,14 @@ begin
     assert (select prosecdef and proconfig @> array['search_path=""'] from pg_proc where oid = v_fn::regprocedure),
       format('%s: security definer with an empty search_path', v_fn);
   end loop;
-  foreach v_table in array array['public.venue_contacts', 'public.venue_counter_bookings', 'public.venue_condition_flags'] loop
+  -- Internal helpers: service role only.
+  foreach v_fn in array array['public.normalize_cy_phone(text)', 'public.reverse_cash_received(uuid)'] loop
+    assert not has_function_privilege('authenticated', v_fn, 'execute')
+       and not has_function_privilege('anon', v_fn, 'execute'), format('%s: internal', v_fn);
+    assert has_function_privilege('service_role', v_fn, 'execute'), format('%s: service_role', v_fn);
+  end loop;
+  foreach v_table in array array['public.venue_contacts', 'public.venue_counter_bookings', 'public.venue_condition_flags',
+                                 'public.venue_condition_warnings'] loop
     assert (select relrowsecurity from pg_class where oid = v_table::regclass), format('%s: RLS on', v_table);
     assert has_table_privilege('authenticated', v_table, 'select'), format('%s: staff read through RLS', v_table);
     assert not has_table_privilege('authenticated', v_table, 'insert')
