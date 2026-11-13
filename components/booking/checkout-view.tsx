@@ -4,7 +4,14 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { CancellationRules, cashSentence, DEBT_LINE, NonRefundableNotice, payLabel } from '@/components/booking/checkout-parts';
+import {
+  CancellationRules,
+  cashSentence,
+  DEBT_LINE,
+  NonRefundableNotice,
+  payLabel,
+  payOwedAction,
+} from '@/components/booking/checkout-parts';
 import {
   Banner,
   Chip,
@@ -38,6 +45,8 @@ export type CheckoutViewProps = {
   onPay: (choice: { mode: PaymentMode; pay: PayOptions }) => void;
   paying: boolean;
   error: string | null;
+  /** Opens "Pay what I owe" from the debt line. */
+  onPayOwed?: () => void;
   /** A booking is already held for this checkout, so who pays is fixed. */
   bookingHeld: boolean;
   /** For tests; the screen uses the clock. */
@@ -91,6 +100,7 @@ function CheckoutReady({
   onPay,
   paying,
   error,
+  onPayOwed,
   bookingHeld,
   now: nowOverride,
 }: Omit<CheckoutViewProps, 'quote' | 'onRetry'> & { quote: BookingQuote }) {
@@ -134,7 +144,7 @@ function CheckoutReady({
           </Text>
         </View>
 
-        {quote.in_debt ? <Banner tone="danger" message={DEBT_LINE} /> : null}
+        {quote.in_debt ? <Banner tone="danger" message={DEBT_LINE} action={payOwedAction(onPayOwed)} /> : null}
 
         <View style={styles.section}>
           <SectionHeader title="Who pays" />

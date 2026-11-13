@@ -7,7 +7,7 @@
 import type { Status } from '@/components/ui/status-pill';
 import type { CancellationLine, CancellationQuote, CancelResult, CancelScope } from '@/lib/booking-actions';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
-import { slotLabel, type BookingDetail, type RosterEntry, type RosterState } from '@/lib/booking-search';
+import { rosterName, slotLabel, type BookingDetail, type RosterEntry, type RosterState } from '@/lib/booking-search';
 import {
   addBookingToCalendar,
   syncBookingInCalendar,
@@ -55,7 +55,7 @@ export function rosterRow(entry: RosterEntry, callerIsBooker: boolean): RosterRo
     if (entry.cash_cents) amount += ` + ${formatEuros(entry.cash_cents)} cash`;
   }
   return {
-    title: entry.is_me ? 'You' : (entry.name ?? entry.username ?? 'Player'),
+    title: rosterName(entry),
     subtitle: entry.is_booker ? `Booker · ${state.words}` : state.words,
     pill: state.pill,
     amount,

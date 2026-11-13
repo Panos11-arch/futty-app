@@ -183,6 +183,18 @@ describe('CheckoutView', () => {
     expect(isDisabled()).toBe(true);
   });
 
+  it('the debt line links to "Pay what I owe"', async () => {
+    const onPayOwed = jest.fn();
+    await render(<CheckoutView {...props(quoteFixture({ in_debt: true, cash_allowed: false }), { onPayOwed })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
+    expect(onPayOwed).toHaveBeenCalledTimes(1);
+  });
+
+  it('no "Pay what I owe" link without a debt', async () => {
+    await render(<CheckoutView {...props(quoteFixture(), { onPayOwed: jest.fn() })} />);
+    expect(screen.queryByRole('button', { name: 'Pay what I owe' })).toBeNull();
+  });
+
   it('shows a failed quote with a retry', async () => {
     const p = props(undefined, { quote: { status: 'error', message: 'That slot just filled up — pick another one.' } });
     await render(<CheckoutView {...p} />);
