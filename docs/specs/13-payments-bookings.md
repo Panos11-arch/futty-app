@@ -148,6 +148,7 @@ A player who cancels in the first hour gets everything back. After that €1 is 
   - **A 3-D Secure the booker doesn't finish when cancelling isn't notified at once.** The first off-session retry is 6 hours later, and the booker is told if that fails.
   - **The venue's Stripe fee is the fee recorded when the payment was taken** (from its balance transaction).
 - **Payouts (decided 7 November):** Stripe Connect with separate charges and transfers. Futty's Stripe account takes every payment; after collection each venue is sent its pitch money minus anything it owes (for example Stripe's fee on its own cancellations), so no money ever has to be pulled back from a venue.
+  - **Money the venue took in person is never paid out (decided 13 November):** the ledger kinds `cash_received` and `counter_paid` (see "Venue dashboard") are left out of payouts by name, because the venue already holds that money.
 - **Credit sits with the venue.** Futty sends the venue its credit money at the next payout and keeps a record of each player's credit there. The decisions doc (#16) still asks for legal advice on this before real money flows.
   - **In the ledger (decided 10 November):** credit money is the venue's from the moment the credit is issued, so it is paid out at the next payout as usual. When a player chooses credit, Futty's service fee goes to the venue with it. Spending, returning or expiring credit later moves no new money to the venue; the ledger only records the change in credit the venue holds. Every booking still balances: venue + Futty + Stripe + refunds = what was taken.
 
@@ -322,6 +323,21 @@ The booking screens (P5) show only amounts the server computes: `booking_quote` 
 - **"Need players" / "Need opposition" posts:** a new post made from a booking offers no payment choice and no Gipedo Pano; the players who join pay by the booking's own mode. Gipedo Pano comes back as a checkout mode in P8. Posts made before this keep working as they are.
 - **Testing a booking end to end:** the SQL tests run `book_slot` in each of the three modes through to a confirmed booking against the local database. The app's Jest tests check that the chosen mode reaches `book_slot`; they don't need a database.
 
+## Venue dashboard (decided 13 November, Dimitris; for Panos to confirm)
+
+The dashboard (P6) records the money a venue takes in person, so revenue by source can be read from the ledger's `venue_cents`.
+
+- **Walk-in and phone bookings:** staff add them at the counter. They hold real pitches, so the app can never double-book them, and they're refused on blocked pitches, outside opening hours and once the game has ended.
+  - **Price:** the server fills in the venue's price for that slot; staff may change it (for example a discount for regulars). Both the venue price and the amount charged are kept, and revenue shows when they differ.
+  - This money never goes through Futty or Stripe, so working rule 2 (the server computes every amount) doesn't apply to the amount charged.
+  - Staff mark it paid by **cash or card at the counter**: one `counter_paid` ledger row for the amount charged (nothing for a free booking).
+  - **A paid walk-in can be cancelled** up to kickoff: a reversing `counter_paid` row takes the amount back off the venue's revenue.
+  - Walk-ins and phone bookings have no match, no players, no payment mode and no collection.
+- **Ticking cash:** when staff tick an app player's cash as paid, the share's pitch part at that moment (e.g. €6.00) is recorded once as a `cash_received` ledger row.
+- **`cash_received` and `counter_paid` are excluded by name** from P4d's payouts and from the daily balance check.
+- **Condition warning words:** "[Venue] says conditions may be unsuitable on [day, time]. Normal cancellation rules apply: cancel at least 6 hours before kickoff to keep your money as credit at [venue]." Sent as `venue_condition_warning` to the booker and every player still in each game the flag covers.
+- **Revenue (P6b):** dated by when the money moved, as a Cyprus date; weeks run Monday to Sunday.
+
 ## Server-side checks that make it airtight
 
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.
@@ -334,7 +350,7 @@ The app can be tampered with, so every rule that involves money or availability 
 - **Blocked pitches** are refused for new bookings; a game booked before the block can still be joined. **Unsigned venues (the live/not-live switch) and players in debt** are refused when booking, joining and choosing cash.
 - **Only a venue's own staff** can tick cash, settle debt, block pitches, flag conditions or cancel that venue's bookings. Only the booker can cancel the whole team or switch 5 v 5 / 6 v 6; switching closes 6 hours before kickoff.
 - **Every money movement happens once.** Each Stripe call carries an idempotency key, and each movement is written to a ledger with its reason.
-- **The books always balance:** for every booking, venue + Futty + Stripe + refunds + credit = what was taken. A daily check flags any booking where they don't.
+- **The books always balance:** for every booking, venue + Futty + Stripe + refunds + credit = what was taken. A daily check flags any booking where they don't. The check leaves out `cash_received` and `counter_paid` by name (decided 13 November): that money never went through Stripe.
 - Stripe webhooks are signature-checked and scheduled jobs need the cron secret (already live).
 
 **Tests (decisions doc: no PR without them):**
