@@ -3,10 +3,16 @@
 // Sign in with Apple and Google (P13) go through the real lib/auth-providers,
 // so these screens get a Supabase client with the calls it makes.
 export const mockSupabase = {
-  auth: { signInWithIdToken: jest.fn(), signInWithOAuth: jest.fn(), setSession: jest.fn() },
+  auth: { signInWithIdToken: jest.fn(), setSession: jest.fn() },
   profileUpdate: jest.fn(),
   profileUpsert: jest.fn(),
 };
+// Google sign-in's own short-lived PKCE client (lib/auth-providers.ts).
+export const mockGoogleFlow = { signInWithOAuth: jest.fn(), exchangeCodeForSession: jest.fn() };
+jest.mock('@supabase/supabase-js', () => ({
+  ...jest.requireActual<typeof import('@supabase/supabase-js')>('@supabase/supabase-js'),
+  createClient: () => ({ auth: mockGoogleFlow }),
+}));
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: mockSupabase.auth,

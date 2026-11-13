@@ -1,6 +1,7 @@
 // Sign in with Apple and Google (P13), and the profile setup a new user of
 // either goes through. Supabase Auth only: no native Google SDK, and no Apple
 // or Google secret ever lives in the app.
+import { createClient } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
@@ -127,50 +128,82 @@ export async function getAppleDeletionCode(): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Google (Supabase OAuth in an auth session, no native SDK)
+// Google (Supabase OAuth with PKCE in an auth session, no native SDK)
 // ---------------------------------------------------------------------------
 
-export type OAuthRedirect =
-  | { tokens: { access_token: string; refresh_token: string } }
-  | { error: string };
+/**
+ * A short-lived client for one Google sign-in, so the app's own client
+ * (lib/supabase.ts) keeps its flow for the email confirm and reset links.
+ * PKCE: the redirect carries only a one-time code, useless without the code
+ * verifier, which never leaves this client's in-memory storage. It never
+ * refreshes: the tokens it gets are handed straight to the app's client, and
+ * a refresh here would rotate the refresh token out from under it.
+ */
+function makeGoogleFlowClient() {
+  const memory = new Map<string, string>();
+  return createClient(
+    process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
+    {
+      auth: {
+        flowType: 'pkce',
+        storage: {
+          getItem: (key: string) => memory.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            memory.set(key, value);
+          },
+          removeItem: (key: string) => {
+            memory.delete(key);
+          },
+        },
+        storageKey: 'futty-google-sign-in',
+        persistSession: true,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    }
+  );
+}
+
+export type OAuthRedirect = { code: string } | { error: string };
+
+function readParams(part: string, into: Record<string, string>) {
+  for (const pair of part.split('&')) {
+    if (!pair) continue;
+    const separator = pair.indexOf('=');
+    const key = separator === -1 ? pair : pair.slice(0, separator);
+    const value = separator === -1 ? '' : pair.slice(separator + 1);
+    into[decodeURIComponent(key)] = decodeURIComponent(value.replace(/\+/g, ' '));
+  }
+}
 
 /**
- * Reads the redirect Supabase sends back after Google: tokens (or an error)
- * in the URL fragment, as with the app's other auth links. Errors can also
- * come back in the query string.
+ * Reads the redirect Supabase sends back after Google: ?code=… to exchange,
+ * or an error. The code is read from the query only; the fragment is read for
+ * an error message and nothing else, so no token is ever taken from a URL.
  */
 export function parseOAuthRedirect(url: string): OAuthRedirect {
-  const params: Record<string, string> = {};
   const hashIndex = url.indexOf('#');
-  const queryIndex = url.indexOf('?');
-  const parts = [
-    queryIndex === -1 ? '' : url.slice(queryIndex + 1, hashIndex === -1 ? undefined : hashIndex),
-    hashIndex === -1 ? '' : url.slice(hashIndex + 1),
-  ];
+  const beforeHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
+  const queryIndex = beforeHash.indexOf('?');
 
-  for (const part of parts) {
-    for (const pair of part.split('&')) {
-      if (!pair) continue;
-      const separator = pair.indexOf('=');
-      const key = separator === -1 ? pair : pair.slice(0, separator);
-      const value = separator === -1 ? '' : pair.slice(separator + 1);
-      params[decodeURIComponent(key)] = decodeURIComponent(value.replace(/\+/g, ' '));
-    }
-  }
+  const query: Record<string, string> = {};
+  const fragment: Record<string, string> = {};
+  if (queryIndex !== -1) readParams(beforeHash.slice(queryIndex + 1), query);
+  if (hashIndex !== -1) readParams(url.slice(hashIndex + 1), fragment);
 
-  if (params.error_description || params.error) {
-    return { error: params.error_description || params.error };
-  }
-  if (params.access_token && params.refresh_token) {
-    return { tokens: { access_token: params.access_token, refresh_token: params.refresh_token } };
-  }
+  const error =
+    query.error_description || query.error || fragment.error_description || fragment.error;
+  if (error) return { error };
+  if (query.code) return { code: query.code };
   return { error: 'Google sign-in did not finish. Try again.' };
 }
 
 export async function signInWithGoogle(): Promise<ProviderSignInResult> {
   const redirectTo = Linking.createURL(OAUTH_CALLBACK_PATH, { scheme: 'futtyapp' });
+  const flow = makeGoogleFlowClient();
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await flow.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, skipBrowserRedirect: true },
   });
@@ -182,7 +215,14 @@ export async function signInWithGoogle(): Promise<ProviderSignInResult> {
   const redirect = parseOAuthRedirect(result.url);
   if ('error' in redirect) throw new Error(redirect.error);
 
-  const { error: sessionError } = await supabase.auth.setSession(redirect.tokens);
+  const { data: exchanged, error: exchangeError } = await flow.auth.exchangeCodeForSession(redirect.code);
+  if (exchangeError) throw exchangeError;
+  if (!exchanged.session) throw new Error('Google sign-in did not finish. Try again.');
+
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: exchanged.session.access_token,
+    refresh_token: exchanged.session.refresh_token,
+  });
   if (sessionError) throw sessionError;
   return { status: 'signed-in' };
 }

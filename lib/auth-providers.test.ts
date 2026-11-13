@@ -30,6 +30,14 @@ jest.mock('expo-linking', () => ({
   useURL: () => null,
 }));
 
+// The short-lived PKCE client signInWithGoogle makes for itself.
+const mockFlow = { signInWithOAuth: jest.fn(), exchangeCodeForSession: jest.fn() };
+const mockCreateClient = jest.fn((..._args: unknown[]) => ({ auth: mockFlow }));
+jest.mock('@supabase/supabase-js', () => ({
+  ...jest.requireActual<typeof import('@supabase/supabase-js')>('@supabase/supabase-js'),
+  createClient: (...args: unknown[]) => mockCreateClient(...args),
+}));
+
 const mockProfileRead = jest.fn();
 const mockProfileUpdate = jest.fn();
 const mockAuth = {
@@ -71,6 +79,11 @@ beforeEach(async () => {
   mockAuth.signInWithIdToken.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
   mockAuth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://auth/authorize' }, error: null });
   mockAuth.setSession.mockResolvedValue({ error: null });
+  mockFlow.signInWithOAuth.mockResolvedValue({ data: { url: 'https://auth/authorize' }, error: null });
+  mockFlow.exchangeCodeForSession.mockResolvedValue({
+    data: { session: { access_token: 'at', refresh_token: 'rt' } },
+    error: null,
+  });
 });
 
 describe('signInWithApple', () => {
@@ -152,53 +165,99 @@ describe('getAppleDeletionCode', () => {
   });
 });
 
-describe('signInWithGoogle', () => {
-  it('opens Supabase OAuth in an auth session and sets the session from the fragment', async () => {
-    openAuthSessionAsync.mockResolvedValue({
-      type: 'success',
-      url: 'futtyapp://auth/callback#access_token=at&refresh_token=rt&token_type=bearer',
-    });
+describe('signInWithGoogle (PKCE on its own short-lived client)', () => {
+  const callback = (query: string) => ({ type: 'success', url: `futtyapp://auth/callback${query}` });
+
+  it('exchanges the code on a PKCE client with in-memory storage, then sets the session on the app client', async () => {
+    openAuthSessionAsync.mockResolvedValue(callback('?code=the-code'));
     await expect(signInWithGoogle()).resolves.toEqual({ status: 'signed-in' });
-    expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
+
+    // Its own client: PKCE, nothing persisted, never refreshing the tokens it hands over.
+    expect(mockCreateClient).toHaveBeenCalledTimes(1);
+    const options = mockCreateClient.mock.calls[0][2] as {
+      auth: { storage: { getItem(k: string): unknown; setItem(k: string, v: string): unknown; removeItem(k: string): unknown } };
+    };
+    expect(options.auth).toMatchObject({
+      flowType: 'pkce',
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    });
+    const storage = options.auth.storage;
+    await storage.setItem('k', 'v');
+    expect(await storage.getItem('k')).toBe('v');
+    await storage.removeItem('k');
+    expect(await storage.getItem('k')).toBeNull();
+
+    expect(mockFlow.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
       options: { redirectTo: 'futtyapp://auth/callback', skipBrowserRedirect: true },
     });
+    expect(mockAuth.signInWithOAuth).not.toHaveBeenCalled();
     expect(openAuthSessionAsync).toHaveBeenCalledWith('https://auth/authorize', 'futtyapp://auth/callback');
+    expect(mockFlow.exchangeCodeForSession).toHaveBeenCalledWith('the-code');
     expect(mockAuth.setSession).toHaveBeenCalledWith({ access_token: 'at', refresh_token: 'rt' });
   });
 
-  it.each(['cancel', 'dismiss'])('a %s from the browser is not an error', async (type) => {
+  it('each sign-in gets a fresh client, so no code verifier is left over', async () => {
+    openAuthSessionAsync.mockResolvedValue(callback('?code=c'));
+    await signInWithGoogle();
+    await signInWithGoogle();
+    expect(mockCreateClient).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(['cancel', 'dismiss'])('a %s from the browser is cancelled, not an error', async (type) => {
     openAuthSessionAsync.mockResolvedValue({ type });
     await expect(signInWithGoogle()).resolves.toEqual({ status: 'cancelled' });
+    expect(mockFlow.exchangeCodeForSession).not.toHaveBeenCalled();
     expect(mockAuth.setSession).not.toHaveBeenCalled();
   });
 
   it("Supabase's error_description is thrown for the screen to show", async () => {
-    openAuthSessionAsync.mockResolvedValue({
-      type: 'success',
-      url: 'futtyapp://auth/callback#error=access_denied&error_description=Email+not+verified',
-    });
+    openAuthSessionAsync.mockResolvedValue(callback('?error=access_denied&error_description=Email+not+verified'));
     await expect(signInWithGoogle()).rejects.toThrow('Email not verified');
+    expect(mockFlow.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it('a failed code exchange is thrown, and no session is set', async () => {
+    openAuthSessionAsync.mockResolvedValue(callback('?code=used-code'));
+    mockFlow.exchangeCodeForSession.mockResolvedValue({ data: { session: null }, error: new Error('Code expired') });
+    await expect(signInWithGoogle()).rejects.toThrow('Code expired');
+    expect(mockAuth.setSession).not.toHaveBeenCalled();
+  });
+
+  it('never reads tokens from a URL fragment', async () => {
+    openAuthSessionAsync.mockResolvedValue(callback('#access_token=at&refresh_token=rt'));
+    await expect(signInWithGoogle()).rejects.toThrow('Google sign-in did not finish. Try again.');
+    expect(mockFlow.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(mockAuth.setSession).not.toHaveBeenCalled();
   });
 });
 
 describe('parseOAuthRedirect', () => {
-  it('reads the tokens from the fragment', () => {
-    expect(parseOAuthRedirect('futtyapp://auth/callback#access_token=a%2Bb&refresh_token=r')).toEqual({
-      tokens: { access_token: 'a+b', refresh_token: 'r' },
-    });
+  it('reads the code from the query', () => {
+    expect(parseOAuthRedirect('futtyapp://auth/callback?code=a%2Bb')).toEqual({ code: 'a+b' });
   });
 
-  it('reads error_description from the fragment or the query', () => {
+  it('reads error_description (or error) from the query or the fragment', () => {
     expect(parseOAuthRedirect('futtyapp://auth/callback#error_description=Denied+by+user')).toEqual({
       error: 'Denied by user',
     });
     expect(parseOAuthRedirect('futtyapp://auth/callback?error=server_error&error_description=Oops')).toEqual({
       error: 'Oops',
     });
+    expect(parseOAuthRedirect('futtyapp://auth/callback?error=server_error')).toEqual({ error: 'server_error' });
   });
 
-  it('no tokens and no error is still an error', () => {
+  it('ignores tokens in a fragment, and a code in a fragment', () => {
+    for (const url of [
+      'futtyapp://auth/callback#access_token=a&refresh_token=r',
+      'futtyapp://auth/callback#code=c',
+    ]) {
+      expect(parseOAuthRedirect(url)).toEqual({ error: 'Google sign-in did not finish. Try again.' });
+    }
+  });
+
+  it('no code and no error is still an error', () => {
     expect(parseOAuthRedirect('futtyapp://auth/callback')).toEqual({
       error: 'Google sign-in did not finish. Try again.',
     });

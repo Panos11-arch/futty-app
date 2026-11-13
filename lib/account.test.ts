@@ -21,7 +21,7 @@ jest.mock('@/lib/edge-functions', () => ({
 }));
 
 function userWith(...providers: string[]) {
-  return { data: { user: { id: 'u1', identities: providers.map((provider) => ({ provider })) } } };
+  return { data: { user: { id: 'u1', identities: providers.map((provider) => ({ provider })) } }, error: null };
 }
 
 beforeEach(() => {
@@ -36,7 +36,7 @@ describe('deleteMyAccount', () => {
     mockGetAppleDeletionCode.mockResolvedValue('fresh-code');
     await expect(deleteMyAccount()).resolves.toBeNull();
     expect(mockInvoke).toHaveBeenCalledWith('delete-account', {
-      body: { appleAuthorizationCode: 'fresh-code' },
+      body: { appleAuthorizationCode: 'fresh-code', platform: 'ios' },
     });
   });
 
@@ -45,7 +45,7 @@ describe('deleteMyAccount', () => {
     mockGetAppleDeletionCode.mockResolvedValue('fresh-code');
     await deleteMyAccount();
     expect(mockInvoke).toHaveBeenCalledWith('delete-account', {
-      body: { appleAuthorizationCode: 'fresh-code' },
+      body: { appleAuthorizationCode: 'fresh-code', platform: 'ios' },
     });
   });
 
@@ -63,11 +63,29 @@ describe('deleteMyAccount', () => {
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
-  it('an Apple account off iOS is pointed at the iPhone app', async () => {
-    Platform.OS = 'android';
-    mockGetUser.mockResolvedValue(userWith('apple'));
-    await expect(deleteMyAccount()).resolves.toMatch(/on your iPhone/);
+  it.each([['android'], ['web']])(
+    'an Apple account on %s is deleted without the Apple sheet (the server skips the revoke and logs it)',
+    async (os) => {
+      Platform.OS = os as typeof Platform.OS;
+      mockGetUser.mockResolvedValue(userWith('apple'));
+      await expect(deleteMyAccount()).resolves.toBeNull();
+      expect(mockGetAppleDeletionCode).not.toHaveBeenCalled();
+      expect(mockInvoke).toHaveBeenCalledWith('delete-account', { body: { platform: os } });
+    }
+  );
+
+  it('the account cannot be read (offline): a network error, and nothing is sent', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('Network request failed') });
+    await expect(deleteMyAccount()).resolves.toBe(
+      'Could not reach Futty. Check your internet connection and try again.'
+    );
     expect(mockGetAppleDeletionCode).not.toHaveBeenCalled();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it('getUser throwing is the same network error', async () => {
+    mockGetUser.mockRejectedValue(new TypeError('Network request failed'));
+    await expect(deleteMyAccount()).resolves.toMatch(/Could not reach Futty/);
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
@@ -75,7 +93,7 @@ describe('deleteMyAccount', () => {
     mockGetUser.mockResolvedValue(userWith(provider));
     await expect(deleteMyAccount()).resolves.toBeNull();
     expect(mockGetAppleDeletionCode).not.toHaveBeenCalled();
-    expect(mockInvoke).toHaveBeenCalledWith('delete-account', undefined);
+    expect(mockInvoke).toHaveBeenCalledWith('delete-account', { body: { platform: 'ios' } });
   });
 
   it("the server's error is shown", async () => {

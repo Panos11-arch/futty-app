@@ -1,4 +1,4 @@
-import { mockApple, mockAuth, mockSupabase, mockWebBrowser, pending } from './mocks';
+import { mockApple, mockAuth, mockGoogleFlow, mockSupabase, mockWebBrowser, pending } from './mocks';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
@@ -118,12 +118,16 @@ describe('Continue with Apple and Google (P13)', () => {
       fullName: { givenName: 'Dimitris', familyName: 'Malas' },
     });
     mockSupabase.auth.signInWithIdToken.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-    mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://auth/google' }, error: null });
+    mockGoogleFlow.signInWithOAuth.mockResolvedValue({ data: { url: 'https://auth/google' }, error: null });
+    mockGoogleFlow.exchangeCodeForSession.mockResolvedValue({
+      data: { session: { access_token: 'at', refresh_token: 'rt' } },
+      error: null,
+    });
     mockSupabase.auth.setSession.mockResolvedValue({ error: null });
     mockSupabase.profileUpdate.mockResolvedValue({ error: null });
     mockWebBrowser.openAuthSessionAsync.mockResolvedValue({
       type: 'success',
-      url: 'futtyapp://auth/callback#access_token=at&refresh_token=rt',
+      url: 'futtyapp://auth/callback?code=the-code',
     });
   });
 
@@ -156,10 +160,11 @@ describe('Continue with Apple and Google (P13)', () => {
     expect(mockSupabase.profileUpdate).toHaveBeenCalledWith({ full_name: 'Dimitris Malas' });
   });
 
-  it('Google: creates the session from the redirect', async () => {
+  it('Google: exchanges the code and creates the session', async () => {
     await renderReady();
     await fireEvent.press(button('Continue with Google'));
     await act(async () => {});
+    expect(mockGoogleFlow.exchangeCodeForSession).toHaveBeenCalledWith('the-code');
     expect(mockSupabase.auth.setSession).toHaveBeenCalledWith({ access_token: 'at', refresh_token: 'rt' });
   });
 
@@ -191,7 +196,7 @@ describe('Continue with Apple and Google (P13)', () => {
   it('a Google error shows inline', async () => {
     mockWebBrowser.openAuthSessionAsync.mockResolvedValue({
       type: 'success',
-      url: 'futtyapp://auth/callback#error_description=Access+denied',
+      url: 'futtyapp://auth/callback?error_description=Access+denied',
     });
     await renderReady();
     await fireEvent.press(button('Continue with Google'));

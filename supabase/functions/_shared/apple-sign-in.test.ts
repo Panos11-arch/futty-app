@@ -1,7 +1,13 @@
 import { deepStrictEqual, rejects, strictEqual } from 'node:assert/strict';
 import { decodeProtectedHeader, importSPKI, jwtVerify } from 'npm:jose@5';
 
-import { APPLE_ID_HOST, type AppleSignInConfig, makeClientSecret, revokeAppleToken } from './apple-sign-in.ts';
+import {
+  APPLE_ID_HOST,
+  AppleAccountMismatchError,
+  type AppleSignInConfig,
+  makeClientSecret,
+  revokeAppleToken,
+} from './apple-sign-in.ts';
 
 // A throwaway P-256 key made per run: no real Apple key in the repo.
 async function testKeys() {
@@ -50,13 +56,22 @@ Deno.test('the client secret is an ES256 JWT Apple accepts: team, bundle ID, aud
   strictEqual((payload.exp ?? 0) - (payload.iat ?? 0), 300);
 });
 
-Deno.test('swaps the code for a refresh token, then revokes it', async () => {
+// The id_token Apple's /auth/token returns. Only its sub is read: it comes
+// straight from Apple over TLS, in answer to our signed client secret.
+function idToken(sub: string) {
+  const b64 = (value: unknown) => btoa(JSON.stringify(value)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  return `${b64({ alg: 'RS256', kid: 'apple' })}.${b64({ iss: APPLE_ID_HOST, sub })}.signature`;
+}
+
+const USER_SUB = '001234.abcdef.0001';
+
+Deno.test('swaps the code for a refresh token, checks it is the account\'s Apple ID, then revokes it', async () => {
   const { config } = await setup();
   const apple = fakeApple({
-    '/auth/token': ok({ access_token: 'at', refresh_token: 'rt' }),
+    '/auth/token': ok({ access_token: 'at', refresh_token: 'rt', id_token: idToken(USER_SUB) }),
     '/auth/revoke': new Response(null, { status: 200 }),
   });
-  await revokeAppleToken('fresh-code', config, apple.fetchFn);
+  await revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn);
 
   deepStrictEqual(apple.calls.map((c) => c.url), [`${APPLE_ID_HOST}/auth/token`, `${APPLE_ID_HOST}/auth/revoke`]);
   const [exchange, revoke] = apple.calls;
@@ -72,32 +87,63 @@ Deno.test('swaps the code for a refresh token, then revokes it', async () => {
 Deno.test('no refresh token: revokes the access token instead', async () => {
   const { config } = await setup();
   const apple = fakeApple({
-    '/auth/token': ok({ access_token: 'at' }),
+    '/auth/token': ok({ access_token: 'at', id_token: idToken(USER_SUB) }),
     '/auth/revoke': new Response(null, { status: 200 }),
   });
-  await revokeAppleToken('fresh-code', config, apple.fetchFn);
+  await revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn);
   strictEqual(apple.calls[1].form.token, 'at');
   strictEqual(apple.calls[1].form.token_type_hint, 'access_token');
+});
+
+Deno.test('a different Apple ID from the one on the account: refused, never revoked', async () => {
+  const { config } = await setup();
+  const apple = fakeApple({
+    '/auth/token': ok({ refresh_token: 'rt', id_token: idToken('009999.other.0001') }),
+    '/auth/revoke': new Response(null, { status: 200 }),
+  });
+  await rejects(revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn), AppleAccountMismatchError);
+  strictEqual(apple.calls.length, 1);
+});
+
+Deno.test('no id_token from Apple: the Apple ID cannot be checked, so never revoked', async () => {
+  const { config } = await setup();
+  const apple = fakeApple({
+    '/auth/token': ok({ refresh_token: 'rt' }),
+    '/auth/revoke': new Response(null, { status: 200 }),
+  });
+  await rejects(revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn), /no usable id_token/);
+  strictEqual(apple.calls.length, 1);
+});
+
+Deno.test('an unreadable id_token: never revoked', async () => {
+  const { config } = await setup();
+  const apple = fakeApple({
+    '/auth/token': ok({ refresh_token: 'rt', id_token: 'not-a-jwt' }),
+    '/auth/revoke': new Response(null, { status: 200 }),
+  });
+  await rejects(revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn), /no usable id_token/);
+  strictEqual(apple.calls.length, 1);
 });
 
 Deno.test('an expired or used code: throws and never calls revoke', async () => {
   const { config } = await setup();
   const apple = fakeApple({ '/auth/token': new Response('{"error":"invalid_grant"}', { status: 400 }) });
-  await rejects(revokeAppleToken('old-code', config, apple.fetchFn), /token exchange failed \(400\)/);
+  await rejects(revokeAppleToken('old-code', USER_SUB, config, apple.fetchFn), /token exchange failed \(400\)/);
   strictEqual(apple.calls.length, 1);
 });
 
 Deno.test('no token at all from Apple: throws', async () => {
   const { config } = await setup();
-  const apple = fakeApple({ '/auth/token': ok({}) });
-  await rejects(revokeAppleToken('fresh-code', config, apple.fetchFn), /returned no token/);
+  const apple = fakeApple({ '/auth/token': ok({ id_token: idToken(USER_SUB) }) });
+  await rejects(revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn), /returned no token/);
+  strictEqual(apple.calls.length, 1);
 });
 
 Deno.test('Apple refuses the revoke: throws', async () => {
   const { config } = await setup();
   const apple = fakeApple({
-    '/auth/token': ok({ refresh_token: 'rt' }),
+    '/auth/token': ok({ refresh_token: 'rt', id_token: idToken(USER_SUB) }),
     '/auth/revoke': new Response('{"error":"invalid_client"}', { status: 400 }),
   });
-  await rejects(revokeAppleToken('fresh-code', config, apple.fetchFn), /revoke failed \(400\)/);
+  await rejects(revokeAppleToken('fresh-code', USER_SUB, config, apple.fetchFn), /revoke failed \(400\)/);
 });
