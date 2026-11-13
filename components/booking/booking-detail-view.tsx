@@ -237,7 +237,6 @@ function BookingDetailReady({
         {gipedo && (gipedo.my_side || gipedo.choice_due || gipedo.settlement) ? (
           <GipedoPanel
             gipedo={gipedo}
-            feePerPlayerCents={detail.cancellation.fee_cents}
             live={live}
             onPullOut={onGipedoPullOut ?? (async () => null)}
             onChoose={onGipedoChoose ?? (async () => null)}

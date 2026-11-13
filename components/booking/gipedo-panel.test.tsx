@@ -22,7 +22,7 @@ function gipedo(overrides: Partial<GipedoDetail> = {}): GipedoDetail {
     team: { id: 't1', name: 'Lions' },
     opponent: { state: 'held', team: { id: 't2', name: 'Tigers' } },
     my_side: 'a',
-    pull_out: { kind: 'fee', cents: 1000 },
+    pull_out: { kind: 'fee', cents: 1000, fee_per_player_cents: 100 },
     choice_due: false,
     choice: null,
     play_normal_cents: 6550,
@@ -34,7 +34,6 @@ function gipedo(overrides: Partial<GipedoDetail> = {}): GipedoDetail {
 function props(overrides: Partial<GipedoPanelProps> = {}): GipedoPanelProps {
   return {
     gipedo: gipedo(),
-    feePerPlayerCents: 100,
     live: true,
     onPullOut: jest.fn(async () => null),
     onChoose: jest.fn(async () => null),
@@ -72,7 +71,7 @@ describe('GipedoPanel', () => {
   });
 
   it('with no opponent, the booking captain chooses: play as normal for the server’s amount, or cancel free', async () => {
-    const p = props({ gipedo: gipedo({ opponent: { state: 'none', team: null }, choice_due: true, pull_out: { kind: 'free', cents: 0 } }) });
+    const p = props({ gipedo: gipedo({ opponent: { state: 'none', team: null }, choice_due: true, pull_out: { kind: 'free', cents: 0, fee_per_player_cents: null } }) });
     await render(<GipedoPanel {...p} />);
     await fireEvent.press(screen.getByRole('button', { name: 'Play as normal: €65.50' }));
     expect(p.onChoose).toHaveBeenCalledWith('play_normal');

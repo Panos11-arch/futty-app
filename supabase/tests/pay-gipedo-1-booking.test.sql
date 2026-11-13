@@ -4,7 +4,7 @@
 --   each captain's hold on a EUR 60 5 v 5: 6000 + 10 x 55 = 6550
 --   a Premium captain's own spot is fee-free: 6495
 --   6 v 6 on a 5-a-side pitch: 6000 + 12 x 55 = 6660
--- Plus: captains only, for their team; kickoff 24 to 144 hours away; card
+-- Plus: captains only, for their team; kickoff 24 to 120 hours away; card
 -- only; the hold is never taken at +60 minutes; the booking is left out of
 -- collection; checkout shows it; the old Gipedo Pano never touches it.
 begin;
@@ -38,14 +38,14 @@ begin
 end;
 $$;
 
--- 1. The window: 24 to 144 hours ahead, both ends included.
+-- 1. The window: 24 to 120 hours (5 days) ahead, both ends included.
 do $$
 declare
   v_now timestamptz := now();
 begin
-  assert public.gipedo_window_error(v_now + interval '144 hours', v_now) is null, '144 hours ahead is allowed';
-  assert public.gipedo_window_error(v_now + interval '144 hours 1 minute', v_now) = 'gipedo_too_far_ahead',
-    'more than 144 hours is too far';
+  assert public.gipedo_window_error(v_now + interval '120 hours', v_now) is null, '120 hours ahead is allowed';
+  assert public.gipedo_window_error(v_now + interval '120 hours 1 minute', v_now) = 'gipedo_too_far_ahead',
+    'more than 120 hours is too far';
   assert public.gipedo_window_error(v_now + interval '24 hours', v_now) is null, '24 hours ahead is allowed';
   assert public.gipedo_window_error(v_now + interval '23 hours 59 minutes', v_now) = 'gipedo_too_soon',
     'less than 24 hours is too soon';

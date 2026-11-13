@@ -87,8 +87,8 @@ describe('Gipedo Pano (P8)', () => {
     expect(describeBookingErrorMessage(code)).not.toBe(code);
   });
 
-  it('more than 6 days ahead says exactly what spec 13 says', () => {
-    expect(describeBookingErrorMessage('gipedo_too_far_ahead')).toBe('Gipedo Pano can only be booked up to 6 days ahead.');
+  it('more than 5 days ahead says exactly what spec 13 says', () => {
+    expect(describeBookingErrorMessage('gipedo_too_far_ahead')).toBe('Gipedo Pano can only be booked up to 5 days ahead.');
   });
 
   it('who pays now names all four ways', () => {

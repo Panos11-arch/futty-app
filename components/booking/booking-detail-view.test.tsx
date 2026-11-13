@@ -288,15 +288,21 @@ describe('BookingDetailView: Gipedo Pano (P8)', () => {
     expect(p.onPayShare).toHaveBeenCalled();
   });
 
-  it('a captain pulls out through the panel', async () => {
+  it('a captain pulls out through the panel, with the fee per player from the pull-out quote', async () => {
     const detail = bookerDetail({
-      gipedo: { ...gipedo, my_side: 'a', opponent: { state: 'held', team: { id: 't2', name: 'Tigers' } }, pull_out: { kind: 'fee', cents: 1000 } },
+      gipedo: {
+        ...gipedo,
+        my_side: 'a',
+        opponent: { state: 'held', team: { id: 't2', name: 'Tigers' } },
+        pull_out: { kind: 'fee', cents: 1200, fee_per_player_cents: 120 },
+      },
       can_cancel: { my_spot: false, whole_team: false },
     });
     const onGipedoPullOut = jest.fn(async () => null);
     await render(<BookingDetailView {...props(detail, { onGipedoPullOut })} />);
     expect(screen.queryByRole('button', { name: 'Cancel whole team' })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Pull out' }));
+    expect(screen.getByText('€12.00 is taken from your hold (€1.20 per player) and the rest is released.')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Confirm: pull out' }));
     expect(onGipedoPullOut).toHaveBeenCalledTimes(1);
   });

@@ -12,8 +12,6 @@ import type { GipedoDetail } from '@/lib/booking-search';
 
 export type GipedoPanelProps = {
   gipedo: GipedoDetail;
-  /** cancellation_terms' fee per player (what a pull-out takes per player). */
-  feePerPlayerCents: number;
   /** Not cancelled and not started. */
   live: boolean;
   /** Resolve to an error message, or null when it went through. */
@@ -21,7 +19,7 @@ export type GipedoPanelProps = {
   onChoose: (choice: 'play_normal' | 'cancel') => Promise<string | null>;
 };
 
-export function GipedoPanel({ gipedo, feePerPlayerCents, live, onPullOut, onChoose }: GipedoPanelProps) {
+export function GipedoPanel({ gipedo, live, onPullOut, onChoose }: GipedoPanelProps) {
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +73,7 @@ export function GipedoPanel({ gipedo, feePerPlayerCents, live, onPullOut, onChoo
         title="Pull out?"
         primaryAction={{ label: 'Confirm: pull out', onPress: () => run(onPullOut), loading: busy }}
         secondaryAction={{ label: 'Stay in', disabled: busy }}>
-        {pullOutWords(gipedo, feePerPlayerCents).map((line) => (
+        {pullOutWords(gipedo).map((line) => (
           <Text key={line} variant="body">
             {line}
           </Text>

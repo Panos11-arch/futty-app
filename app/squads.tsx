@@ -177,10 +177,12 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
       return;
     }
 
-    // offer_opposition (supabase/opposition-match-payments.sql) creates a
-    // pending share for every member of both rosters, including this
-    // captain — fetched fresh here rather than trusted from client state,
-    // same reasoning as join-squad-post.tsx.
+    // On a Gipedo Pano booking, offer_opposition (migration
+    // 20261113130016_pay_gipedo_review_fixes) creates one pending share:
+    // this captain's hold, to place within 15 minutes. It's fetched fresh
+    // here rather than trusted from client state, same reasoning as
+    // join-squad-post.tsx. Other bookings give the offering captain no
+    // share, so there is nothing to pay below.
     const { data: share, error: shareError } = await supabase
       .from('booking_payment_shares')
       .select('id')
@@ -195,19 +197,18 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
     }
 
     if (!share) {
-      // Free venue — add_booking_share_internal deliberately skips creating
-      // a share when amount_cents = 0. Nothing to authorize; the match is
-      // already on.
+      // Not a Gipedo Pano booking (or a free one): no hold to place; the
+      // match is already on.
       setBusy(false);
       setOffering(false);
       onChanged();
       return;
     }
 
-    // From here on, a failed/cancelled payment must not leave this match
-    // "on" with its very first payment never having gone through —
-    // cancel_opposition_offer both reopens the post and cleans up every
-    // pending share the match just created (see that function's comment).
+    // From here on, a failed or cancelled hold must not leave this match
+    // "on": cancel_opposition_offer withdraws the offer, cancels this
+    // captain's hold share, releases any payment it started and reopens the
+    // post (gipedo_withdraw_offer).
     async function rollbackOffer() {
       await cancelOppositionOffer(post.id);
     }
@@ -338,7 +339,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           ) : null}
           <ThemedText style={styles.note}>
             {post.payment_mode === 'gipedo_pano'
-              ? "Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. Place the hold within 15 minutes or the offer lapses. After the match the loser's hold is taken, a draw or a dispute is split 50/50, and the winner's hold is released."
+              ? "Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. Place the hold within 15 minutes or the offer lapses. After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released."
               : 'Split payment: both full rosters share the pitch cost evenly, regardless of the result.'}
           </ThemedText>
           {error ? <AuthError>{error}</AuthError> : null}

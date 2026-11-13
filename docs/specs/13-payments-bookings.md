@@ -223,7 +223,7 @@ In Gipedo Pano, the losing team pays for the pitch. **Agreed.**
 - **Each team's card is held for the full pitch price.** Today the code holds only half, which is a bug to fix.
 - After the match, players confirm the result. **The loser's hold is taken in full; the winner's is released.**
 - **A draw or a dispute splits it 50/50:** half of each team's hold is taken (Stripe partial capture), and the rest released free.
-- **Only for games within 6 days**, because holds expire after about 7. Choosing a date further ahead shows: "Gipedo Pano can only be booked up to 6 days ahead."
+- **Only for games within 5 days** (6 days when agreed; changed to 5 by decision 5 below, to be confirmed), because holds expire after about 7. Choosing a date further ahead shows: "Gipedo Pano can only be booked up to 5 days ahead."
 - The scheduled job that settles results gets switched on.
 - A cost for disputing is left to the venue's and player's discretion. The risk: a losing team pays less by disputing. We accept that at launch and watch the dispute rate.
 
@@ -248,7 +248,7 @@ In Gipedo Pano, the losing team pays for the pitch. **Agreed.**
 4. **All formats:** the fee is €0.55 × the players in the booking. An odd cent in a 50/50 split goes on the booking team: the pitch price is split exactly, and the two holds' fees together are halved, rounded up, with the opponent paying half its own fee rounded down (a Premium opponent's €64.95 hold: the booking team pays €32.76, the opponent €32.47). A Premium captain's own spot is fee-free, as when the booker pays for everyone.
 
 13 November:
-5. **"Within 6 days"** means kickoff is at most 144 hours away when it is booked.
+5. **5 days, not 6:** kickoff is at most 120 hours away when it is booked (changed from 144 hours on 13 November). A hold is placed at booking and Stripe keeps it for about 7 days (168 hours). With 144 hours, a game of up to 2 hours and the 24-hour result window, settlement could come 170 hours after the hold, so the loser's hold had often expired and the venue got a debt instead of the money. With 120 hours it comes at most 146 hours after, so every hold is still there. A hold that expires anyway still becomes a debt (decision 3), as the fallback.
 6. **Gipedo Pano is refused less than 24 hours before kickoff**, so there is time to find an opponent.
 7. **After "play as normal"** the booking cancels under the pay-for-everyone rules.
 8. **A pull-out fee that can't be taken** (the hold expired) is a debt owed to Futty.
@@ -357,7 +357,7 @@ The app can be tampered with, so every rule that involves money or availability 
 - **Prices come from the venue's data on the server,** never from the app.
 - **Player numbers are checked:** 10 / 14 / 18 / 22 per format, and 12 only where the venue allows 6 v 6. *Today the server accepts any number, so a booking for "100 players" would cost €0.60 each.*
 - **Booking windows:** 7 days for standard accounts and 14 for Premium. Premium status comes only from Apple's verified purchase.
-- **Gipedo Pano** is refused more than 6 days ahead.
+- **Gipedo Pano** is refused more than 5 days (120 hours) ahead.
 - **Cyprus time:** "in the past" and every cutoff are measured in Cyprus time. *Found 7 Nov: the code compared against UTC, so in winter a slot that started up to 2 hours ago could still be booked (3 hours in summer). Fixed in pull request \#20.*
 - **A sensible slot:** the end is after the start, within opening hours; pitches between 1 and what the venue has; a format the venue offers.
 - **Blocked pitches** are refused for new bookings; a game booked before the block can still be joined. **Unsigned venues (the live/not-live switch) and players in debt** are refused when booking, joining and choosing cash.

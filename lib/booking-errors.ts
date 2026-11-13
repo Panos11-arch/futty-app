@@ -48,7 +48,7 @@ export function describeBookingErrorMessage(message: string) {
     case 'not_captain':
       return 'Only a team captain can do this.';
     case 'gipedo_too_far_ahead':
-      return 'Gipedo Pano can only be booked up to 6 days ahead.';
+      return 'Gipedo Pano can only be booked up to 5 days ahead.';
     case 'gipedo_too_soon':
       return 'Gipedo Pano needs at least 24 hours before kickoff, so there is time to find an opponent.';
     case 'credit_not_allowed':

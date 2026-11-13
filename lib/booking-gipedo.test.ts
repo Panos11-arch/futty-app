@@ -18,7 +18,7 @@ function gipedo(overrides: Partial<GipedoDetail> = {}): GipedoDetail {
     team: { id: 't1', name: 'Lions' },
     opponent: { state: 'none', team: null },
     my_side: 'a',
-    pull_out: { kind: 'free', cents: 0 },
+    pull_out: { kind: 'free', cents: 0, fee_per_player_cents: null },
     choice_due: false,
     choice: null,
     play_normal_cents: 6550,
@@ -34,7 +34,7 @@ describe('gipedoModeSentence', () => {
     const sentence = gipedoModeSentence(6550);
     expect(sentence).toContain('€65.50');
     expect(sentence).toContain('losing team pays');
-    expect(sentence).toContain('50/50');
+    expect(sentence).toContain('a draw, a dispute or no result is split 50/50');
     expect(sentence).not.toMatch(/authori[sz]e|capture|void/i);
   });
 });
@@ -57,28 +57,33 @@ describe('gipedoStatusLine', () => {
 
 describe('pullOutWords', () => {
   it('free with no opponent', () => {
-    expect(pullOutWords(gipedo(), 100)).toEqual(['The booking is cancelled and your hold is released. Nothing is taken.']);
+    expect(pullOutWords(gipedo())).toEqual(['The booking is cancelled and your hold is released. Nothing is taken.']);
   });
 
   it('at least 6 hours before kickoff: €1 per player, the rest released', () => {
-    const words = pullOutWords(gipedo({ pull_out: { kind: 'fee', cents: 1000 } }), 100);
+    const words = pullOutWords(gipedo({ pull_out: { kind: 'fee', cents: 1000, fee_per_player_cents: 100 } }));
     expect(words[0]).toBe('€10.00 is taken from your hold (€1.00 per player) and the rest is released.');
     expect(words[1]).toBe("The booking is cancelled and the other team's hold is released.");
   });
 
+  it('the fee per player is the server’s, not worked out in the app', () => {
+    const words = pullOutWords(gipedo({ pull_out: { kind: 'fee', cents: 1200, fee_per_player_cents: 120 } }));
+    expect(words[0]).toBe('€12.00 is taken from your hold (€1.20 per player) and the rest is released.');
+  });
+
   it('the opponent pulling out leaves the booking with the other team', () => {
-    const words = pullOutWords(gipedo({ my_side: 'b', pull_out: { kind: 'fee', cents: 1000 } }), 100);
+    const words = pullOutWords(gipedo({ my_side: 'b', pull_out: { kind: 'fee', cents: 1000, fee_per_player_cents: 100 } }));
     expect(words[1]).toBe('The other team keeps the booking and can look for a new opponent.');
   });
 
-  it('less than 6 hours before kickoff: your team counts as the loser', () => {
-    expect(pullOutWords(gipedo({ pull_out: { kind: 'forfeit', cents: 6550 } }), 100)).toEqual([
-      'Kickoff is less than 6 hours away, so your team counts as the losing team and €65.50 is taken from your hold after the match.',
+  it('less than 6 hours before kickoff: your team counts as the loser and pays straight away', () => {
+    expect(pullOutWords(gipedo({ pull_out: { kind: 'forfeit', cents: 6550, fee_per_player_cents: null } }))).toEqual([
+      "Kickoff is less than 6 hours away, so your team counts as the losing team: €65.50 is taken from your hold straight away and the other team's hold is released.",
     ]);
   });
 
   it('nothing when the caller can’t pull out', () => {
-    expect(pullOutWords(gipedo({ pull_out: null }), 100)).toEqual([]);
+    expect(pullOutWords(gipedo({ pull_out: null }))).toEqual([]);
   });
 });
 

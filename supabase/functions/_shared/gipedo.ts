@@ -13,8 +13,10 @@
 //      from the hold (a partial capture, amount_to_capture) and the rest
 //      released, or the whole hold released when it pays nothing. A hold
 //      that is already gone (expired) is reported 'gone': the database turns
-//      what it should have paid into a debt. A failure is tried again after
-//      a back-off (gipedo_settlement_failed).
+//      what it should have paid into a debt. A failure that moved nothing
+//      is tried again after a back-off, with the claim let go; one after
+//      Stripe took (or may have taken) the money keeps its claim, so a
+//      cancel waits, and the next run records it (gipedo_settlement_failed).
 // The database decides what is due and what each hold pays; every Stripe
 // call is keyed on our settlement id, so a retry never moves money
 // twice. One item failing never stops the others.
@@ -61,8 +63,15 @@ export async function runGipedoJobs(deps: Deps) {
     } catch (err) {
       console.error(`gipedo: settlement ${due.settlement_id} failed:`, err);
       summary.failed += 1;
+      // Money Stripe moved (or may have moved) keeps its claim, so a cancel
+      // waits until the next run has recorded it.
+      const moved = err instanceof MoneyMayHaveMoved;
       try {
-        await rpc(deps.db, 'gipedo_settlement_failed', { p_settlement_id: due.settlement_id, p_error: errorText(err) });
+        await rpc(deps.db, 'gipedo_settlement_failed', {
+          p_settlement_id: due.settlement_id,
+          p_error: errorText(moved ? err.cause : err),
+          p_keep_claim: moved,
+        });
       } catch (recordErr) {
         console.error(`gipedo: couldn't record the failure of settlement ${due.settlement_id}:`, recordErr);
       }
@@ -71,9 +80,20 @@ export async function runGipedoJobs(deps: Deps) {
   return summary;
 }
 
+/** A failure after Stripe took, or may have taken, the money: only
+ *  recording it is left, so the settlement keeps its claim and the next
+ *  run captures again under the same idempotency key (Stripe replays it)
+ *  and records it once. */
+class MoneyMayHaveMoved extends Error {
+  constructor(override readonly cause: unknown) {
+    super(errorText(cause));
+  }
+}
+
 /** One settlement at Stripe, then recorded. When a call fails, the intent
  *  is looked up: one already taken (a run that died) or already gone
- *  (expired) is recorded as it is; anything else is retried later. */
+ *  (expired) is recorded as it is; one still held is retried later, with
+ *  the claim let go (nothing moved). */
 async function carryOut(deps: Deps, due: DueSettlement): Promise<Outcome> {
   const intentId = due.stripe_payment_intent_id;
   if (!due.hold_live || !intentId) return await done(deps, due, 'gone');
@@ -87,14 +107,25 @@ async function carryOut(deps: Deps, due: DueSettlement): Promise<Outcome> {
         { idempotencyKey: idempotencyKeys.gipedoCapture(due.settlement_id, due.capture_cents) },
       );
     } catch (err) {
-      intent = await deps.stripe.paymentIntents.retrieve(intentId, { expand: EXPAND });
+      try {
+        intent = await deps.stripe.paymentIntents.retrieve(intentId, { expand: EXPAND });
+      } catch (lookupErr) {
+        // The capture may have gone through: keep the claim.
+        throw new MoneyMayHaveMoved(lookupErr);
+      }
       if (intent.status === 'canceled') return await done(deps, due, 'gone');
       if (intent.status !== 'succeeded') throw err;
     }
     if (intent.amount_received !== due.capture_cents) {
-      throw new Error(`gipedo_amount_mismatch: ${intent.id} took ${intent.amount_received}, expected ${due.capture_cents}`);
+      throw new MoneyMayHaveMoved(
+        new Error(`gipedo_amount_mismatch: ${intent.id} took ${intent.amount_received}, expected ${due.capture_cents}`),
+      );
     }
-    return await done(deps, due, 'captured', intent.amount_received, stripeFeeCents(intent));
+    try {
+      return await done(deps, due, 'captured', intent.amount_received, stripeFeeCents(intent));
+    } catch (err) {
+      throw new MoneyMayHaveMoved(err);
+    }
   }
 
   try {

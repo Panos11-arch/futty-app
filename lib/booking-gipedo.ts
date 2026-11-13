@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 export function gipedoModeSentence(holdCents: number): string {
   return (
     `Gipedo Pano: the losing team pays for the pitch. Your card is held for ${formatEuros(holdCents)} and nothing is taken now. ` +
-    "After the match the loser's hold is taken, a draw or a dispute is split 50/50, and the winner's hold is released. " +
+    "After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released. " +
     'Another team can take it on until 24 hours before kickoff.'
   );
 }
@@ -26,19 +26,20 @@ export function gipedoStatusLine(g: GipedoDetail): string {
   return 'Waiting for an opponent. Teams can take it on until 24 hours before kickoff.';
 }
 
-/** What pulling out does, from the server's quote. feePerPlayerCents is
- *  cancellation_terms' fee (the same €1 per player). */
-export function pullOutWords(g: GipedoDetail, feePerPlayerCents: number): string[] {
+/** What pulling out does, from the server's pull-out quote (its amount and
+ *  its fee per player). A forfeit settles at once (spec 13, decision 17). */
+export function pullOutWords(g: GipedoDetail): string[] {
   const pull = g.pull_out;
   if (!pull) return [];
   if (pull.kind === 'free') return ['The booking is cancelled and your hold is released. Nothing is taken.'];
   if (pull.kind === 'forfeit') {
     return [
-      `Kickoff is less than 6 hours away, so your team counts as the losing team and ${formatEuros(pull.cents)} is taken from your hold after the match.`,
+      `Kickoff is less than 6 hours away, so your team counts as the losing team: ${formatEuros(pull.cents)} is taken from your hold straight away and the other team's hold is released.`,
     ];
   }
+  const perPlayer = pull.fee_per_player_cents === null ? '' : ` (${formatEuros(pull.fee_per_player_cents)} per player)`;
   return [
-    `${formatEuros(pull.cents)} is taken from your hold (${formatEuros(feePerPlayerCents)} per player) and the rest is released.`,
+    `${formatEuros(pull.cents)} is taken from your hold${perPlayer} and the rest is released.`,
     g.my_side === 'a'
       ? "The booking is cancelled and the other team's hold is released."
       : 'The other team keeps the booking and can look for a new opponent.',

@@ -243,14 +243,14 @@ describe('CheckoutView: Gipedo Pano (P8)', () => {
     expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'gipedo_pano', teamId: 't2' }));
   });
 
-  it('more than 6 days ahead: spec 13’s sentence, and no paying', async () => {
+  it('more than 5 days ahead: spec 13’s sentence, and no paying', async () => {
     const quote = quoteFixture({
       captain_teams: [lions],
       gipedo_pano: { pitch_cents: 6000, fee_cents: 550, hold_cents: 6550, available: false, unavailable_reason: 'gipedo_too_far_ahead' },
     });
     await render(<CheckoutView {...props(quote)} />);
     await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
-    expect(screen.getByText('Gipedo Pano can only be booked up to 6 days ahead.')).toBeTruthy();
+    expect(screen.getByText('Gipedo Pano can only be booked up to 5 days ahead.')).toBeTruthy();
     expect(isDisabled()).toBe(true);
   });
 

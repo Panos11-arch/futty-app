@@ -434,7 +434,7 @@ begin
 
   foreach v_fn in array array['public.gipedo_add_settlement(uuid, text)', 'public.gipedo_settle_from_results()',
                               'public.gipedo_settlements_due()', 'public.gipedo_settlement_done(uuid, text, integer, integer)',
-                              'public.gipedo_settlement_failed(uuid, text)', 'public.gipedo_no_opponent_due()',
+                              'public.gipedo_settlement_failed(uuid, text, boolean)','public.gipedo_no_opponent_due()',
                               'public.gipedo_auto_cancel_due()', 'public.gipedo_cancel_booking(uuid, text)',
                               'public.gipedo_pull_out_quote(uuid, uuid)', 'public.booking_detail_modes(uuid)'] loop
     assert not has_function_privilege('authenticated', v_fn, 'execute'), format('%s is internal', v_fn);

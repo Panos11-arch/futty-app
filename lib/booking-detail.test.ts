@@ -444,7 +444,7 @@ describe('Gipedo Pano (P8)', () => {
     team: { id: 't1', name: 'Lions' },
     opponent: { state: 'held' as const, team: { id: 't2', name: 'Tigers' } },
     my_side: 'a' as const,
-    pull_out: { kind: 'fee' as const, cents: 1000 },
+    pull_out: { kind: 'fee' as const, cents: 1000, fee_per_player_cents: 100 },
     choice_due: false,
     choice: null,
     play_normal_cents: 6550,

@@ -90,8 +90,9 @@ export type GipedoDetail = {
   /** The caller's hold: the booking team (a), the opponent (b), or none. */
   my_side: 'a' | 'b' | null;
   /** What pulling out costs the caller now (free, fee or forfeit), or null
-   *  when they can't. */
-  pull_out: { kind: 'free' | 'fee' | 'forfeit'; cents: number } | null;
+   *  when they can't. fee_per_player_cents is the server's fee per player
+   *  for kind 'fee' (null otherwise). */
+  pull_out: { kind: 'free' | 'fee' | 'forfeit'; cents: number; fee_per_player_cents: number | null } | null;
   /** No opponent 24 hours before kickoff: the booking captain chooses. */
   choice_due: boolean;
   choice: 'play_normal' | 'cancel' | 'auto_cancel' | null;

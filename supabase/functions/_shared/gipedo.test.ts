@@ -116,6 +116,47 @@ Deno.test('a Stripe error is retried later; the other settlements still run', as
   deepStrictEqual([summary.failed, summary.released], [1, 1]);
 });
 
+Deno.test('a Stripe error that moved nothing lets the claim go', async () => {
+  const { db, stripe, deps } = setup([due(1, 6550)]);
+  stripe.fail('paymentIntents.capture', stripeError({ type: 'StripeAPIError', code: 'api_error', statusCode: 500 }));
+  stripe.respond('paymentIntents.retrieve', intent('pi_1', 'requires_capture', { amount: 6550 }));
+  await runGipedoJobs(deps);
+  strictEqual(db.callsTo('gipedo_settlement_failed')[0].args.p_keep_claim, false);
+});
+
+Deno.test('Stripe took the money but recording it failed: the claim is kept, and the next run records it once', async () => {
+  // Run 1: the capture goes through, gipedo_settlement_done fails.
+  const first = setup([due(1, 6550)]);
+  first.db.fail('gipedo_settlement_done', 'db_unavailable');
+  const summary = await runGipedoJobs(first.deps);
+  strictEqual(first.stripe.callsTo('paymentIntents.capture').length, 1);
+  deepStrictEqual(first.db.callsTo('gipedo_settlement_failed')[0].args, {
+    p_settlement_id: 'g1', p_error: 'db_unavailable', p_keep_claim: true,
+  });
+  strictEqual(summary.failed, 1);
+
+  // Run 2 (the database kept the claim, so a cancel waited): the same
+  // idempotency key, so Stripe replays the capture, and it is recorded.
+  const second = setup([due(1, 6550)]);
+  await runGipedoJobs(second.deps);
+  strictEqual(
+    second.stripe.callsTo('paymentIntents.capture')[0].idempotencyKey,
+    first.stripe.callsTo('paymentIntents.capture')[0].idempotencyKey,
+  );
+  deepStrictEqual(second.db.callsTo('gipedo_settlement_done')[0].args, {
+    p_settlement_id: 'g1', p_outcome: 'captured', p_amount_cents: 6550, p_stripe_fee_cents: 74,
+  });
+  strictEqual(second.db.callsTo('gipedo_settlement_failed').length, 0);
+});
+
+Deno.test('a capture whose outcome can\'t be looked up keeps the claim', async () => {
+  const { db, stripe, deps } = setup([due(1, 6550)]);
+  stripe.fail('paymentIntents.capture', stripeError({ type: 'StripeConnectionError', code: 'connection_error' }));
+  stripe.fail('paymentIntents.retrieve', stripeError({ type: 'StripeConnectionError', code: 'connection_error' }));
+  await runGipedoJobs(deps);
+  strictEqual(db.callsTo('gipedo_settlement_failed')[0].args.p_keep_claim, true);
+});
+
 Deno.test('a release whose intent is already cancelled is still recorded', async () => {
   const { db, stripe, deps } = setup([due(2, 0)]);
   stripe.fail('paymentIntents.cancel', stripeError({ code: 'payment_intent_unexpected_state' }));
@@ -130,6 +171,7 @@ Deno.test('a capture Stripe reports for another amount is never recorded as sett
   await runGipedoJobs(deps);
   strictEqual(db.callsTo('gipedo_settlement_done').length, 0);
   strictEqual(db.callsTo('gipedo_settlement_failed').length, 1);
+  strictEqual(db.callsTo('gipedo_settlement_failed')[0].args.p_keep_claim, true, 'money moved: the claim stays');
 });
 
 Deno.test('lapsed offers, no-opponent notices and automatic cancels run first; one failing never stops the rest', async () => {
