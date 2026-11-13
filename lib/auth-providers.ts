@@ -17,39 +17,60 @@ export function markProfileSetupDone() {
   setupDoneListeners.forEach((listener) => listener());
 }
 
+/** Retry delays for a failed profile read: doubling from the first, up to the cap. */
+const PROFILE_READ_RETRY_FIRST_MS = 1_000;
+const PROFILE_READ_RETRY_MAX_MS = 30_000;
+
 /**
- * True once we know the signed-in user's profile has no username: a new Apple
- * or Google user (an email user picks one on the sign-up form). The root
- * layout then shows only app/choose-username.tsx.
+ * Whether the signed-in user's profile has no username yet: a new Apple or
+ * Google user (an email user picks one on the sign-up form). The root layout
+ * then shows only app/choose-username.tsx.
  *
- * False while loading and on a failed read: a slow or broken network must not
- * lock an existing user out of the app or flash a blank screen at them.
+ * 'loading' until the profile has been read, and while a failed read is being
+ * retried: the root layout holds a loading screen until it knows, so a user
+ * with no username never reaches (tabs). False when signed out.
  */
-export function useNeedsProfileSetup(userId: string | null): boolean {
-  const [needsFor, setNeedsFor] = useState<string | null>(null);
+export function useNeedsProfileSetup(userId: string | null): boolean | 'loading' {
+  const [known, setKnown] = useState<{ userId: string; needs: boolean } | null>(null);
 
   useEffect(() => {
     if (!userId) return;
     let active = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let retryDelay = PROFILE_READ_RETRY_FIRST_MS;
 
-    supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', userId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active || error) return;
-        setNeedsFor(data?.username ? null : userId);
-      });
+    const retry = () => {
+      if (!active) return;
+      retryTimer = setTimeout(read, retryDelay);
+      retryDelay = Math.min(retryDelay * 2, PROFILE_READ_RETRY_MAX_MS);
+    };
 
-    const onDone = () => setNeedsFor(null);
+    function read() {
+      supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', userId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!active) return;
+          if (error) return retry();
+          setKnown({ userId: userId as string, needs: !data?.username });
+        }, retry);
+    }
+
+    read();
+
+    const onDone = () => setKnown({ userId, needs: false });
     setupDoneListeners.add(onDone);
 
     return () => {
       active = false;
+      clearTimeout(retryTimer);
       setupDoneListeners.delete(onDone);
     };
   }, [userId]);
 
-  return userId !== null && needsFor === userId;
+  if (!userId) return false;
+  if (known?.userId !== userId) return 'loading';
+  return known.needs;
 }

@@ -32,9 +32,14 @@ describe('useNeedsProfileSetup', () => {
     expect((await hook('u1')).current).toBe(false);
   });
 
-  it('a failed read lets the user in rather than locking them out', async () => {
-    mockProfileRead.mockResolvedValue({ data: null, error: { message: 'offline' } });
-    expect((await hook('u1')).current).toBe(false);
+  it('a missing profile row needs profile setup', async () => {
+    mockProfileRead.mockResolvedValue({ data: null, error: null });
+    expect((await hook('u1')).current).toBe(true);
+  });
+
+  it('is loading until the profile has been read', async () => {
+    mockProfileRead.mockReturnValue(new Promise(() => {}));
+    expect((await hook('u1')).current).toBe('loading');
   });
 
   it('signed out: false, and no read', async () => {
@@ -48,5 +53,38 @@ describe('useNeedsProfileSetup', () => {
     expect(result.current).toBe(true);
     await act(async () => markProfileSetupDone());
     expect(result.current).toBe(false);
+  });
+
+  describe('a failed read', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('stays loading and retries until a read succeeds', async () => {
+      mockProfileRead
+        .mockResolvedValueOnce({ data: null, error: { message: 'offline' } })
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce({ data: { username: null }, error: null });
+
+      const result = await hook('u1');
+      expect(result.current).toBe('loading');
+      expect(mockProfileRead).toHaveBeenCalledTimes(1);
+
+      await act(async () => jest.runOnlyPendingTimers());
+      expect(result.current).toBe('loading');
+      expect(mockProfileRead).toHaveBeenCalledTimes(2);
+
+      await act(async () => jest.runOnlyPendingTimers());
+      expect(mockProfileRead).toHaveBeenCalledTimes(3);
+      expect(result.current).toBe(true);
+    });
+
+    it('stops retrying once unmounted', async () => {
+      mockProfileRead.mockResolvedValue({ data: null, error: { message: 'offline' } });
+      const { unmount } = await renderHook(() => useNeedsProfileSetup('u1'));
+      await act(async () => {});
+      await unmount();
+      await act(async () => jest.runAllTimers());
+      expect(mockProfileRead).toHaveBeenCalledTimes(1);
+    });
   });
 });

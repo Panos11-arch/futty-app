@@ -10,13 +10,14 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { FuttyAiChat } from '@/components/futty-ai-chat';
+import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
-import { FuttyColors, FuttyFonts, FuttyNavigationTheme } from '@/constants/futty-theme';
+import { colors, FuttyColors, FuttyFonts, FuttyNavigationTheme } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useNeedsProfileSetup } from '@/lib/auth-providers';
@@ -47,13 +48,25 @@ const brandedHeaderOptions = {
   headerBackButtonDisplayMode: 'minimal',
 } as const;
 
-function RootNavigator() {
+/** Held in place of the navigator while a signed-in user's profile is read
+ *  (P13), so one with no username never reaches (tabs). Sign out is the way
+ *  out if the read keeps failing. */
+function ProfileCheckScreen() {
+  const { signOut } = useAuth();
+  return (
+    <AuthScreen>
+      <AuthWordmark />
+      <ActivityIndicator color={colors.brand} accessibilityLabel="Loading your profile" />
+      <AuthLink label="Sign out" onPress={() => signOut().catch(() => {})} />
+    </AuthScreen>
+  );
+}
+
+export function RootNavigator() {
   const { session, initializing, isRecovering } = useAuth();
   const { locked } = useAppLock();
   // A new Apple or Google user has no username yet (P13).
-  const needsProfileSetup = useNeedsProfileSetup(
-    session && !isRecovering ? session.user.id : null
-  );
+  const profileSetup = useNeedsProfileSetup(session && !isRecovering ? session.user.id : null);
 
   // Rendering the guards before the stored session is read would flash the
   // sign-in screen for users who are already signed in.
@@ -66,6 +79,12 @@ function RootNavigator() {
   // A recovery link signs the user in before they have chosen a new password,
   // so the session alone is not enough to let them into the app.
   const signedIn = !!session && !isRecovering;
+
+  // Until we know whether a signed-in user has a username, show neither the
+  // app nor choose-username.
+  if (signedIn && profileSetup === 'loading') return <ProfileCheckScreen />;
+
+  const needsProfileSetup = profileSetup === true;
   const inApp = signedIn && !needsProfileSetup;
 
   return (
