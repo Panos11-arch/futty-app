@@ -1,4 +1,4 @@
-import { mockAuth, pending } from './mocks';
+import { mockApple, mockAuth, mockSupabase, mockWebBrowser, pending } from './mocks';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
@@ -105,5 +105,97 @@ describe('Sign up', () => {
       fullName: '',
     });
     expect(router.push).toHaveBeenCalledWith({ pathname: '/confirm-email', params: { email: 'new@futty.cy' } });
+  });
+});
+
+describe('Continue with Apple and Google (P13)', () => {
+  const cancelled = Object.assign(new Error('canceled'), { code: 'ERR_REQUEST_CANCELED' });
+
+  beforeEach(() => {
+    mockApple.isAvailableAsync.mockResolvedValue(true);
+    mockApple.signInAsync.mockResolvedValue({
+      identityToken: 'id-token',
+      fullName: { givenName: 'Dimitris', familyName: 'Malas' },
+    });
+    mockSupabase.auth.signInWithIdToken.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
+    mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://auth/google' }, error: null });
+    mockSupabase.auth.setSession.mockResolvedValue({ error: null });
+    mockSupabase.profileUpdate.mockResolvedValue({ error: null });
+    mockWebBrowser.openAuthSessionAsync.mockResolvedValue({
+      type: 'success',
+      url: 'futtyapp://auth/callback#access_token=at&refresh_token=rt',
+    });
+  });
+
+  async function renderReady() {
+    await render(<SignInScreen />);
+    await act(async () => {});
+  }
+
+  it('shows the Apple button when Apple sign-in is available', async () => {
+    await renderReady();
+    expect(button('Continue with Apple')).toBeTruthy();
+    expect(button('Continue with Google')).toBeTruthy();
+  });
+
+  it('hides the Apple button when it is not available', async () => {
+    mockApple.isAvailableAsync.mockResolvedValue(false);
+    await renderReady();
+    expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+    expect(button('Continue with Google')).toBeTruthy();
+  });
+
+  it("Apple: creates the session and saves the name from Apple's first sign-in", async () => {
+    await renderReady();
+    await fireEvent.press(button('Continue with Apple'));
+    expect(mockSupabase.auth.signInWithIdToken).toHaveBeenCalledWith({
+      provider: 'apple',
+      token: 'id-token',
+      nonce: 'raw-nonce',
+    });
+    expect(mockSupabase.profileUpdate).toHaveBeenCalledWith({ full_name: 'Dimitris Malas' });
+  });
+
+  it('Google: creates the session from the redirect', async () => {
+    await renderReady();
+    await fireEvent.press(button('Continue with Google'));
+    await act(async () => {});
+    expect(mockSupabase.auth.setSession).toHaveBeenCalledWith({ access_token: 'at', refresh_token: 'rt' });
+  });
+
+  it('cancelling Apple shows no error', async () => {
+    mockApple.signInAsync.mockRejectedValue(cancelled);
+    await renderReady();
+    await fireEvent.press(button('Continue with Apple'));
+    expect(mockSupabase.auth.signInWithIdToken).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/canceled/)).toBeNull();
+  });
+
+  it('cancelling Google shows no error', async () => {
+    mockWebBrowser.openAuthSessionAsync.mockResolvedValue({ type: 'cancel' });
+    await renderReady();
+    await fireEvent.press(button('Continue with Google'));
+    await act(async () => {});
+    expect(mockSupabase.auth.setSession).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('an Apple error shows inline', async () => {
+    mockSupabase.auth.signInWithIdToken.mockResolvedValue({ data: {}, error: new Error('Invalid nonce') });
+    await renderReady();
+    await fireEvent.press(button('Continue with Apple'));
+    expect(screen.getByText('Invalid nonce')).toBeTruthy();
+  });
+
+  it('a Google error shows inline', async () => {
+    mockWebBrowser.openAuthSessionAsync.mockResolvedValue({
+      type: 'success',
+      url: 'futtyapp://auth/callback#error_description=Access+denied',
+    });
+    await renderReady();
+    await fireEvent.press(button('Continue with Google'));
+    await act(async () => {});
+    expect(screen.getByText('Access denied')).toBeTruthy();
   });
 });

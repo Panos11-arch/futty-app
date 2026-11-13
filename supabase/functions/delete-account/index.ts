@@ -6,6 +6,9 @@
 //   1. Refuses while the caller still has money in play — a card hold or
 //      charge on an upcoming game, or an upcoming booking they made. They
 //      need to cancel those first, so nobody else's game is left unpaid.
+//      Then, for a Sign in with Apple account, revokes the user's Apple
+//      token with the fresh code the app sends (App Review 5.1.1(v), P13).
+//      If that fails nothing is deleted, so the user can retry.
 //   2. Deletes their saved cards (the Stripe customer), push tokens and
 //      follows/blocks.
 //   3. Clears every personal field on their profile. Match stats stay, under
@@ -21,6 +24,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 
+import { APPLE_BUNDLE_ID } from '../_shared/apple-app-store.ts';
+import { revokeAppleToken } from '../_shared/apple-sign-in.ts';
 import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 
@@ -65,6 +70,31 @@ Deno.serve(async (req) => {
       },
       409
     );
+  }
+
+  // 1b. Sign in with Apple: revoke the user's Apple token before anything is
+  // deleted. Checked on the server's own record of the user, not the request.
+  const { data: authUser, error: authUserError } = await admin.auth.admin.getUserById(userId);
+  if (authUserError || !authUser.user) {
+    return json({ error: 'Could not load your account. Try again.' }, 500);
+  }
+  if (authUser.user.identities?.some((identity) => identity.provider === 'apple')) {
+    const body = await req.json().catch(() => null);
+    const code = typeof body?.appleAuthorizationCode === 'string' ? body.appleAuthorizationCode : null;
+    if (!code) {
+      return json({ error: 'Confirm with Apple to delete your account.' }, 400);
+    }
+    try {
+      await revokeAppleToken(code, {
+        teamId: Deno.env.get('APPLE_TEAM_ID')!,
+        keyId: Deno.env.get('APPLE_SIGN_IN_KEY_ID')!,
+        privateKeyPem: Deno.env.get('APPLE_SIGN_IN_PRIVATE_KEY')!,
+        clientId: APPLE_BUNDLE_ID,
+      });
+    } catch (err) {
+      console.error(`delete-account: Apple token revoke failed for ${userId}:`, err);
+      return json({ error: 'Apple could not confirm the deletion. Try again.' }, 502);
+    }
   }
 
   // 2. Saved cards and device links.
