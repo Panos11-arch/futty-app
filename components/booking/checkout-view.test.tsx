@@ -208,3 +208,60 @@ describe('CheckoutView', () => {
     expect(screen.getByText('Card declined')).toBeTruthy();
   });
 });
+
+describe('CheckoutView: Gipedo Pano (P8)', () => {
+  const lions = { id: 't1', name: 'Lions' };
+  const tigers = { id: 't2', name: 'Tigers' };
+
+  it('isn’t offered to a player who captains no team', async () => {
+    await render(<CheckoutView {...props(quoteFixture({ captain_teams: [] }))} />);
+    expect(screen.queryByRole('tab', { name: /Gipedo Pano/ })).toBeNull();
+  });
+
+  it('a captain books it for their team: the server’s 6550 hold, card only', async () => {
+    const p = props(quoteFixture({ captain_teams: [lions] }));
+    await render(<CheckoutView {...p} />);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
+    expect(screen.getByText(/the losing team pays for the pitch/)).toBeTruthy();
+    expect(screen.getByText('For Lions')).toBeTruthy();
+    expect(screen.queryByText('Pay the pitch in cash at the venue')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Hold €65.50' }));
+    expect(p.onPay).toHaveBeenCalledWith({
+      mode: 'gipedo_pano',
+      teamId: 't1',
+      pay: { method: 'card', acceptNonRefundable: false, useCredit: false },
+    });
+  });
+
+  it('with two teams, the captain picks one before paying', async () => {
+    const p = props(quoteFixture({ captain_teams: [lions, tigers] }));
+    await render(<CheckoutView {...p} />);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
+    expect(isDisabled()).toBe(true);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Tigers' }));
+    await fireEvent.press(payButton());
+    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'gipedo_pano', teamId: 't2' }));
+  });
+
+  it('more than 6 days ahead: spec 13’s sentence, and no paying', async () => {
+    const quote = quoteFixture({
+      captain_teams: [lions],
+      gipedo_pano: { pitch_cents: 6000, fee_cents: 550, hold_cents: 6550, available: false, unavailable_reason: 'gipedo_too_far_ahead' },
+    });
+    await render(<CheckoutView {...props(quote)} />);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
+    expect(screen.getByText('Gipedo Pano can only be booked up to 6 days ahead.')).toBeTruthy();
+    expect(isDisabled()).toBe(true);
+  });
+
+  it('no credit with Gipedo Pano, even with credit at the venue', async () => {
+    const quote = quoteFixture({
+      captain_teams: [lions],
+      pay_all: { pitch_cents: 6000, fee_cents: 550, card_cents: 6550, with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 } },
+      credit: { available_cents: 5000, expires_at: '2027-11-01T00:00:00Z' },
+    });
+    await render(<CheckoutView {...props(quote)} />);
+    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
+    expect(screen.queryByText(/Use my €50.00 credit/)).toBeNull();
+  });
+});

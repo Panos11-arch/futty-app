@@ -40,6 +40,11 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   db.respond('credit_reservations_to_release', []);
   db.respond('credit_release_started', true);
   db.respond('booking_match_syncs_due', []);
+  for (const fn of ['gipedo_lapse_offers', 'gipedo_no_opponent_due', 'gipedo_auto_cancel_due', 'gipedo_settle_from_results']) {
+    db.respond(fn, 0);
+  }
+  db.respond('gipedo_settlements_due', []);
+  db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
   }
@@ -487,4 +492,33 @@ Deno.test('nothing due: no match sync is tried', async () => {
   const summary = await runPaymentJobs(deps);
   strictEqual(summary.matchSynced + summary.matchSyncFailed, 0);
   strictEqual(db.callsTo('sync_booking_match').length, 0);
+});
+
+Deno.test('Gipedo Pano (P8): the loser\'s hold is taken in full, before cancelled bookings are released', async () => {
+  const { db, stripe, deps } = setup();
+  stripe.respond('paymentIntents.capture', (call: { id?: string; params?: Record<string, unknown> }) =>
+    intent(call.id!, 'succeeded', { amount: call.params?.amount_to_capture as number, stripeFee: 123 }));
+  db.respond('gipedo_settle_from_results', 2);
+  db.respond('gipedo_settlements_due', [
+    { settlement_id: 'g1', booking_id: 'b1', share_id: 's1', stripe_payment_intent_id: 'pi_loser', capture_cents: 6550, hold_live: true },
+    { settlement_id: 'g2', booking_id: 'b1', share_id: 's2', stripe_payment_intent_id: 'pi_winner', capture_cents: 0, hold_live: true },
+  ]);
+  const summary = await runPaymentJobs(deps);
+
+  const capture = stripe.callsTo('paymentIntents.capture').find((c) => c.id === 'pi_loser');
+  strictEqual(capture?.params?.amount_to_capture, 6550);
+  strictEqual(capture?.idempotencyKey, 'gipedo-capture-g1-6550');
+  strictEqual(stripe.callsTo('paymentIntents.cancel').find((c) => c.id === 'pi_winner')?.idempotencyKey, 'gipedo-release-g2');
+  strictEqual(summary.gipedoSettled, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('gipedo_settlements_due') < order.indexOf('bookings_with_money_to_release'), true,
+    'settled before the release step');
+});
+
+Deno.test('Gipedo Pano jobs failing never stop the rest of the run', async () => {
+  const { db, deps } = setup();
+  db.fail('gipedo_settlements_due', 'boom');
+  const summary = await runPaymentJobs(deps);
+  strictEqual(summary.gipedoSettled, 0);
+  strictEqual(db.callsTo('booking_match_syncs_due').length, 1);
 });

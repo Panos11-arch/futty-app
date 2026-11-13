@@ -239,6 +239,35 @@ In Gipedo Pano, the losing team pays for the pitch. **Agreed.**
   - more than 6 hours before kickoff: €1 per player is taken from its hold, and the rest released;
   - less than 6 hours before kickoff: it counts as the losing team and pays in full.
 
+**Decided by Dimitris 12–13 November, to be confirmed by Panos and Anghelo (P8).** These are not yet agreed by the founders or in the Google Doc. P8 is built to them; any that changes on review changes the code with it.
+
+12 November:
+1. **No opponent, "play as normal"** means the booker pays for everyone, taken from the hold already placed (a Premium captain €64.95, the rest released). If the captain hasn't chosen by 6 hours before kickoff, the booking is cancelled free and the hold released. The opposition post closes 24 hours before kickoff.
+2. **Pull-out more than 6 hours before kickoff:** the €1 per player goes to Futty, and the matched game is called off. If the opponent pulls out, the post reopens (it stays closed from 24 hours before kickoff), the booking team keeps its hold and gets the same choice at 24 hours. If the booking team pulls out, the booking is cancelled, the slot freed and the opponent's hold released free.
+3. **An expired hold:** whatever should have been taken from it becomes that captain's debt to the venue, as with the guarantee hold. A winner's expired hold owes nothing.
+4. **All formats:** the fee is €0.55 × the players in the booking. An odd cent in a 50/50 split goes on the booking team: the pitch price is split exactly, and the two holds' fees together are halved, rounded up, with the opponent paying half its own fee rounded down (a Premium opponent's €64.95 hold: the booking team pays €32.76, the opponent €32.47). A Premium captain's own spot is fee-free, as when the booker pays for everyone.
+
+13 November:
+5. **"Within 6 days"** means kickoff is at most 144 hours away when it is booked.
+6. **Gipedo Pano is refused less than 24 hours before kickoff**, so there is time to find an opponent.
+7. **After "play as normal"** the booking cancels under the pay-for-everyone rules.
+8. **A pull-out fee that can't be taken** (the hold expired) is a debt owed to Futty.
+9. **An opponent captain's offer lapses** if their hold isn't placed within 15 minutes; the post reopens.
+10. **Card only:** no cash and no venue credit, for either team's hold.
+11. **The booking team leaving before any opponent's hold is placed** is a free cancel: the booking is cancelled and the hold released.
+
+Also built into P8, from the review of 13 November:
+
+12. **Exactly 6 hours before kickoff** a pull-out pays the €1 per player, not the forfeit, as for cancellations ("exactly 6 hours is not less than 6 hours").
+13. **A captain who pulled out can't offer again** for the same game (`cannot_rejoin`), as a player who cancels can't rejoin.
+14. **A player already in the booking can't be its opponent captain** (`already_in_booking`).
+15. **The pull-out fee is capped at the hold.** At €1 per player it never reaches it, but no hold is ever asked for more than it holds.
+16. **No pull-out after kickoff.** From kickoff the result decides who pays.
+17. **A forfeit settles at once:** a pull-out less than 6 hours before kickoff confirms the match as that team's loss straight away, so its hold is taken and the other team's released before the game.
+18. **Cancelling while a settlement waits:** when the booker cancels the whole team (after "play as normal") or the venue cancels, a "play as normal" or pull-out settlement not yet carried out is stood down and the normal cancellation rules decide what the hold pays. While one is being carried out at Stripe, cancelling waits ("Try again in a minute"). Once one is carried out, its money is treated as any payment already taken: "play as normal" cancels under the pay-for-everyone rules, and a pull-out fee stays with Futty, as the €1 from an earlier middle-window cancellation does.
+
+**How it's built (P8):** Gipedo Pano is the fourth booking mode, chosen at checkout by a team's captain for that team. Each captain's hold is never taken at +60 minutes, and the booking is left out of the 2-hour collection. The settlement runs every minute in `run-payment-jobs`: the loser's hold is taken in full, the winner's released, and a 50/50 split takes half of each hold with a partial capture. A pull-out less than 6 hours before kickoff is recorded as that team's forfeit, so it settles as the loser. A hold Stripe lets expire is marked expired (the captain isn't asked to pay again) and settles as gone: what it should have paid becomes the debt of decision 3 or 8. Bookings whose Gipedo Pano was chosen on the squad post before this keep the old logic and its own job (`settle-gipedo-pano`).
+
 ## Weather, condition warnings and blocking pitches
 
 Players see the forecast for their match. Venues can warn about bad conditions or close pitches to new bookings. **Agreed.**

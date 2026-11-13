@@ -438,3 +438,38 @@ describe('shareText', () => {
     );
   });
 });
+
+describe('Gipedo Pano (P8)', () => {
+  const gipedo = {
+    team: { id: 't1', name: 'Lions' },
+    opponent: { state: 'held' as const, team: { id: 't2', name: 'Tigers' } },
+    my_side: 'a' as const,
+    pull_out: { kind: 'fee' as const, cents: 1000 },
+    choice_due: false,
+    choice: null,
+    play_normal_cents: 6550,
+    settlement: null,
+  };
+
+  it('a held card shows the Held pill, never "paid"', () => {
+    const player = playerDetail();
+    const row = rosterRow({ ...player.roster[0], state: 'held' }, false, true);
+    expect(row.pill).toBe('held');
+    expect(row.subtitle).toContain('Card held for Gipedo Pano');
+  });
+
+  it('a covered spot is covered by the captains’ holds, not "the booker paid"', () => {
+    const player = playerDetail();
+    expect(rosterRow({ ...player.roster[2], state: 'covered' }, false, true).subtitle).toContain("Covered by the captains' holds");
+  });
+
+  it('no refund countdown for a captain’s hold: they pull out instead', () => {
+    const detail = bookerDetail({
+      gipedo,
+      booking: { ...bookerDetail().booking, payment_mode: 'gipedo_pano' },
+      me: { ...bookerDetail().me!, status: 'authorized', free_until: null },
+      next_cutoff: { kind: 'refunds_stop', at: at(600) },
+    });
+    expect(countdownLabel(detail, now)).toBeNull();
+  });
+});

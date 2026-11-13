@@ -317,3 +317,14 @@ Deno.test('credit refused (another venue, expired): no Stripe call', async () =>
     { status: 409, body: { error: 'no_credit_at_venue' } });
   strictEqual(stripe.calls.length, 0);
 });
+
+Deno.test('P8 review: a Gipedo Pano opponent offering again gets a new key from its attempt, never the old intent', async () => {
+  const { stripe, deps } = setup(plan({
+    payment_mode: 'gipedo_pano', amount_cents: 6550, pitch_cents: 6000, fee_cents: 550, offer_attempt: 2,
+  }));
+
+  const res = await createSharePayment(deps, caller, { shareId: 's1' });
+
+  strictEqual(res.status, 200);
+  strictEqual(stripe.callsTo('paymentIntents.create')[0].idempotencyKey, 'share-s1-offer-2-6550-card-manual-after-none');
+});

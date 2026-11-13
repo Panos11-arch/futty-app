@@ -12,9 +12,12 @@ export type BookSlotParams = {
   /** Who pays (spec 13, "Booking modes"). Always chosen by the booker: the
    *  server refuses a booking without one (mode_required). */
   mode: PaymentMode;
+  /** Gipedo Pano only: the team the captain books for (spec 13, "Gipedo
+   *  Pano"). The server checks they captain it; other modes send no team. */
+  teamId?: string;
 };
 
-export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot';
+export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot' | 'gipedo_pano';
 
 /** Wraps book_slot (supabase/legacy/booking-payments.sql), the only writable path
  *  into venue_bookings — RLS blocks a direct insert/update so the capacity
@@ -35,6 +38,7 @@ export async function bookSlot(params: BookSlotParams) {
     p_format: params.format,
     p_players_per_side: params.playersPerSide ?? 5,
     p_mode: params.mode,
+    ...(params.mode === 'gipedo_pano' && params.teamId ? { p_team_id: params.teamId } : {}),
   });
 }
 

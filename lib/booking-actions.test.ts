@@ -70,3 +70,27 @@ describe('chooseCancellationRefund', () => {
     expect(mockInvoke).toHaveBeenCalledWith('choose-cancellation-refund', { body: { lineId: 'l1', choice: 'credit' } });
   });
 });
+
+describe('bookSlot: Gipedo Pano (P8)', () => {
+  it('sends the mode and the team the captain books for; never an amount', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '5-a-side', mode: 'gipedo_pano', teamId: 't1' });
+    expect(mockRpc).toHaveBeenCalledWith('book_slot', {
+      p_venue_id: 'v1',
+      p_day: '2026-11-16',
+      p_start: '18:00',
+      p_end: '19:00',
+      p_pitches: 1,
+      p_format: '5-a-side',
+      p_players_per_side: 5,
+      p_mode: 'gipedo_pano',
+      p_team_id: 't1',
+    });
+  });
+
+  it('the other modes send no team', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '5-a-side', mode: 'pay_all', teamId: 't1' });
+    expect(mockRpc.mock.calls[0][1]).not.toHaveProperty('p_team_id');
+  });
+});

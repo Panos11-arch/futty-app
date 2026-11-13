@@ -55,15 +55,16 @@ export async function payShare(shareId: string, pay: PayOptions, sheet: PaymentS
 }
 
 /** Books the slot with the chosen mode (once: a retry passes the booking it
- *  already made) and pays the booker's own share. The booking is returned
- *  for the next retry, or null when there is none to retry. */
+ *  already made) and pays the booker's own share: in Gipedo Pano, the
+ *  captain's hold, for the team they chose. The booking is returned for the
+ *  next retry, or null when there is none to retry. */
 export async function payForSlot(
-  { slot, mode, pay, bookingId }: { slot: Slot; mode: PaymentMode; pay: PayOptions; bookingId: string | null },
+  { slot, mode, teamId, pay, bookingId }: { slot: Slot; mode: PaymentMode; teamId?: string; pay: PayOptions; bookingId: string | null },
   sheet: PaymentSheet,
 ): Promise<PayOutcome & { bookingId: string | null }> {
   let id = bookingId;
   if (!id) {
-    const { data, error } = await bookSlot({ ...slot, mode });
+    const { data, error } = await bookSlot(teamId ? { ...slot, mode, teamId } : { ...slot, mode });
     if (error || !data) {
       return { status: 'error', message: describeBookingErrorMessage(error?.message ?? 'Could not create the booking.'), bookingId: null };
     }

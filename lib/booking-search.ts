@@ -65,12 +65,45 @@ export type BookingQuote = {
   in_debt: boolean;
   cash_allowed: boolean;
   cancellation: CancellationTerms;
+  /** Gipedo Pano (P8): the caller's hold, and whether they can book it for
+   *  this slot. unavailable_reason is the server's error code. */
+  gipedo_pano: {
+    pitch_cents: number;
+    fee_cents: number;
+    hold_cents: number;
+    available: boolean;
+    unavailable_reason: 'not_captain' | 'gipedo_too_far_ahead' | 'gipedo_too_soon' | null;
+  };
+  /** The teams the caller captains (Gipedo Pano is booked for one). */
+  captain_teams: { id: string; name: string }[];
 };
 
 /** A player's paid state on the roster (spec 13 "Booking screens"):
  *  in_app paid by card, cash to pay at the venue, cash_paid ticked by the
  *  venue, unpaid, covered by the booker paying for everyone. */
-export type RosterState = 'in_app' | 'cash' | 'cash_paid' | 'unpaid' | 'covered';
+export type RosterState = 'in_app' | 'cash' | 'cash_paid' | 'unpaid' | 'covered' | 'held';
+
+/** A Gipedo Pano booking as booking_detail returns it (P8). */
+export type GipedoDetail = {
+  team: { id: string; name: string } | null;
+  opponent: { state: 'none' | 'offered' | 'held'; team: { id: string; name: string } | null };
+  /** The caller's hold: the booking team (a), the opponent (b), or none. */
+  my_side: 'a' | 'b' | null;
+  /** What pulling out costs the caller now (free, fee or forfeit), or null
+   *  when they can't. */
+  pull_out: { kind: 'free' | 'fee' | 'forfeit'; cents: number } | null;
+  /** No opponent 24 hours before kickoff: the booking captain chooses. */
+  choice_due: boolean;
+  choice: 'play_normal' | 'cancel' | 'auto_cancel' | null;
+  /** What "play as normal" takes from the booking captain's hold. */
+  play_normal_cents: number | null;
+  /** What the caller's hold pays, once decided. */
+  settlement: {
+    reason: 'lost' | 'won' | 'split' | 'pull_out_fee' | 'play_normal';
+    capture_cents: number;
+    status: 'due' | 'done' | 'debt';
+  } | null;
+};
 
 /** One player on booking_detail's roster. The amounts are null unless the
  *  caller is the booker or this is the caller's own spot. */
@@ -129,6 +162,8 @@ export type BookingDetail = {
   roster: RosterEntry[];
   next_cutoff: NextCutoff;
   can_cancel: { my_spot: boolean; whole_team: boolean };
+  /** Set on a Gipedo Pano booking (P8), null otherwise. */
+  gipedo?: GipedoDetail | null;
 };
 
 // ---- The search choices ------------------------------------------------
@@ -222,6 +257,18 @@ export type CheckoutAmounts = {
  *  minus line; nothing is summed here. */
 export function checkoutAmounts(quote: BookingQuote, choice: CheckoutChoice): CheckoutAmounts | null {
   if (!choice.mode) return null;
+  if (choice.mode === 'gipedo_pano') {
+    // Card only: never cash, never credit (decided 13 November).
+    const hold = quote.gipedo_pano;
+    return {
+      lines: [
+        { label: 'Pitch', cents: hold.pitch_cents },
+        { label: 'Service fee', cents: hold.fee_cents },
+      ],
+      totalCents: hold.hold_cents,
+      cashCents: null,
+    };
+  }
   if (choice.mode === 'pay_all') {
     const all = quote.pay_all;
     if (choice.credit && all.with_credit) {

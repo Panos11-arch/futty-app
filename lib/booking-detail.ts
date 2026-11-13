@@ -7,6 +7,7 @@
 import type { Status } from '@/components/ui/status-pill';
 import type { CancellationLine, CancellationQuote, CancelResult, CancelScope } from '@/lib/booking-actions';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
+import { rosterWordsForGipedo } from '@/lib/booking-gipedo';
 import { rosterName, slotLabel, type BookingDetail, type RosterEntry, type RosterState } from '@/lib/booking-search';
 import {
   addBookingToCalendar,
@@ -39,6 +40,7 @@ const STATES: Record<RosterState, { pill: Status; words: string }> = {
   cash_paid: { pill: 'paid', words: 'Paid in cash at the venue' },
   unpaid: { pill: 'unpaid', words: 'Not paid yet' },
   covered: { pill: 'paid', words: 'The booker paid for this spot' },
+  held: { pill: 'held', words: 'Card held for Gipedo Pano' },
 };
 
 export type RosterRow = { title: string; subtitle: string; pill: Status; amount: string | null };
@@ -46,8 +48,9 @@ export type RosterRow = { title: string; subtitle: string; pill: Status; amount:
 /** A roster row. Amounts only for the booker, or on the caller's own row
  *  (spec 13): the server already leaves the others out, and this checks
  *  again so a mistake there can't show them. */
-export function rosterRow(entry: RosterEntry, callerIsBooker: boolean): RosterRow {
+export function rosterRow(entry: RosterEntry, callerIsBooker: boolean, gipedo = false): RosterRow {
   const state = STATES[entry.state];
+  const words = (gipedo ? rosterWordsForGipedo(entry.state) : null) ?? state.words;
   const mayShow = callerIsBooker || entry.is_me;
   let amount: string | null = null;
   if (mayShow && entry.state !== 'covered' && entry.amount_cents !== null) {
@@ -56,7 +59,7 @@ export function rosterRow(entry: RosterEntry, callerIsBooker: boolean): RosterRo
   }
   return {
     title: rosterName(entry),
-    subtitle: entry.is_booker ? `Booker · ${state.words}` : state.words,
+    subtitle: entry.is_booker ? `Booker · ${words}` : words,
     pill: state.pill,
     amount,
   };
@@ -100,6 +103,8 @@ const PAID_STATUSES = new Set(['authorized', 'paid']);
 export function countdownLabel(detail: BookingDetailData, now: Date): string | null {
   const { me, next_cutoff: next, venue } = detail;
   if (!me || !PAID_STATUSES.has(me.status)) return null;
+  // A Gipedo Pano captain's hold isn't refunded by cancelling: they pull out.
+  if (detail.gipedo?.my_side) return null;
   if (next === null) return 'Cancelling now gives no money back.';
   const left = Date.parse(next.at) - now.getTime();
   if (left <= 0) return null;

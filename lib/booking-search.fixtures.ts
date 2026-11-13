@@ -28,6 +28,8 @@ export function quoteFixture(overrides: Partial<BookingQuote> = {}): BookingQuot
     in_debt: false,
     cash_allowed: true,
     cancellation: { fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 },
+    gipedo_pano: { pitch_cents: 6000, fee_cents: 550, hold_cents: 6550, available: true, unavailable_reason: null },
+    captain_teams: [],
     ...overrides,
   };
 }
