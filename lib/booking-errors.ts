@@ -119,6 +119,8 @@ export function describeBookingErrorMessage(message: string) {
       return 'This booking could not be found.';
     case 'quote_changed':
       return 'What happens to the money has changed. Check it again before you confirm.';
+    case 'payment_in_progress':
+      return 'A payment on this booking is going through right now. Try again in a minute.';
     case 'quote_required':
     case 'invalid_request':
       return 'Check what happens to the money first, then confirm.';

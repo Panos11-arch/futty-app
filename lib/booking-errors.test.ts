@@ -94,4 +94,10 @@ describe('Gipedo Pano (P8)', () => {
   it('who pays now names all four ways', () => {
     expect(describeBookingErrorMessage('mode_required')).toContain('Gipedo Pano');
   });
+
+  it('cancelling while a hold is being taken asks to try again in a minute', () => {
+    expect(describeBookingErrorMessage('payment_in_progress')).toBe(
+      'A payment on this booking is going through right now. Try again in a minute.',
+    );
+  });
 });

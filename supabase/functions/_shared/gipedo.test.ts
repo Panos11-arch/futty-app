@@ -59,7 +59,7 @@ Deno.test('a win: the loser pays 6550, the winner\'s hold is released', async ()
   const cancels = stripe.callsTo('paymentIntents.cancel');
   strictEqual(cancels.length, 1);
   strictEqual(cancels[0].id, 'pi_2');
-  strictEqual(cancels[0].idempotencyKey, 'cancel-pi_2');
+  strictEqual(cancels[0].idempotencyKey, 'gipedo-release-g2');
   deepStrictEqual(db.callsTo('gipedo_settlement_done').map((c) => c.args.p_outcome), ['captured', 'released']);
   deepStrictEqual([summary.captured, summary.released], [1, 1]);
 });

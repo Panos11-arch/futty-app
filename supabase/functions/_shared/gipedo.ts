@@ -16,7 +16,7 @@
 //      what it should have paid into a debt. A failure is tried again after
 //      a back-off (gipedo_settlement_failed).
 // The database decides what is due and what each hold pays; every Stripe
-// call is keyed on our settlement or intent id, so a retry never moves money
+// call is keyed on our settlement id, so a retry never moves money
 // twice. One item failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
 import { type Db, rpc } from './db.ts';
@@ -98,7 +98,7 @@ async function carryOut(deps: Deps, due: DueSettlement): Promise<Outcome> {
   }
 
   try {
-    await deps.stripe.paymentIntents.cancel(intentId, {}, { idempotencyKey: idempotencyKeys.cancelIntent(intentId) });
+    await deps.stripe.paymentIntents.cancel(intentId, {}, { idempotencyKey: idempotencyKeys.gipedoRelease(due.settlement_id) });
   } catch (err) {
     const intent = await deps.stripe.paymentIntents.retrieve(intentId);
     if (intent.status !== 'canceled') throw err;

@@ -508,7 +508,7 @@ Deno.test('Gipedo Pano (P8): the loser\'s hold is taken in full, before cancelle
   const capture = stripe.callsTo('paymentIntents.capture').find((c) => c.id === 'pi_loser');
   strictEqual(capture?.params?.amount_to_capture, 6550);
   strictEqual(capture?.idempotencyKey, 'gipedo-capture-g1-6550');
-  strictEqual(stripe.callsTo('paymentIntents.cancel').find((c) => c.id === 'pi_winner')?.idempotencyKey, 'cancel-pi_winner');
+  strictEqual(stripe.callsTo('paymentIntents.cancel').find((c) => c.id === 'pi_winner')?.idempotencyKey, 'gipedo-release-g2');
   strictEqual(summary.gipedoSettled, 2);
   const order = db.calls.map((c) => c.fn);
   strictEqual(order.indexOf('gipedo_settlements_due') < order.indexOf('bookings_with_money_to_release'), true,

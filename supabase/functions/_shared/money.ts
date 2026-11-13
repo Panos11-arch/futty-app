@@ -109,14 +109,18 @@ export function wholeTeamCancelFeeCents(takenOtherPlayers: number): number {
  *  different parameters is a new request, never a clash with the old one. */
 export const idempotencyKeys = {
   /** A share's PaymentIntent, for one amount, method and capture method,
-   *  replacing previousIntentId (cancelled first). */
-  shareIntent: ({ shareId, amountCents, method, captureMethod, previousIntentId }: {
+   *  replacing previousIntentId (cancelled first). A Gipedo Pano opponent
+   *  who offers again after a lapsed or withdrawn offer reuses their share
+   *  row, so each offer after the first is its own attempt (offerAttempt,
+   *  from the share): a new request, never Stripe replaying the old one. */
+  shareIntent: ({ shareId, amountCents, method, captureMethod, previousIntentId, offerAttempt }: {
     shareId: string;
     amountCents: number;
     method: PaymentMethod;
     captureMethod: 'manual' | 'automatic';
     previousIntentId: string | null;
-  }) => `share-${shareId}-${amountCents}-${method}-${captureMethod}-after-${previousIntentId ?? 'none'}`,
+    offerAttempt?: number | null;
+  }) => `share-${shareId}${offerAttempt && offerAttempt > 1 ? `-offer-${offerAttempt}` : ''}-${amountCents}-${method}-${captureMethod}-after-${previousIntentId ?? 'none'}`,
   /** A share of a booking from before P4a (one amount, one method). */
   legacyShareIntent: (shareId: string, previousIntentId: string | null) => `share-${shareId}-after-${previousIntentId ?? 'none'}`,
   /** Taking a held share. */
@@ -158,6 +162,8 @@ export const idempotencyKeys = {
   /** Taking what a Gipedo Pano settlement says from a captain's hold (one
    *  settlement per hold, one amount each). */
   gipedoCapture: (settlementId: string, amountCents: number) => `gipedo-capture-${settlementId}-${amountCents}`,
+  /** Releasing a captain's hold whose Gipedo Pano settlement takes nothing. */
+  gipedoRelease: (settlementId: string) => `gipedo-release-${settlementId}`,
   /** Paying a debt, or a cash part after the match, by card: one amount,
    *  replacing previousIntentId (cancelled first). */
   owed: (kind: 'debt' | 'cash', id: string, amountCents: number, previousIntentId: string | null) =>

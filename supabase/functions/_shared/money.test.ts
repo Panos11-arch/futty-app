@@ -166,3 +166,12 @@ Deno.test('P8 key: a Gipedo Pano settlement takes one amount once, retries inclu
   strictEqual(idempotencyKeys.gipedoCapture('g1', 3275), 'gipedo-capture-g1-3275');
   strictEqual(idempotencyKeys.gipedoCapture('g1', 3275), idempotencyKeys.gipedoCapture('g1', 3275));
 });
+
+Deno.test('P8 review: a Gipedo Pano offer made again is a new attempt with its own key', () => {
+  const hold = { shareId: 's1', amountCents: 6550, method: 'card' as const, captureMethod: 'manual' as const, previousIntentId: null };
+  strictEqual(idempotencyKeys.shareIntent({ ...hold, offerAttempt: 1 }), 'share-s1-6550-card-manual-after-none',
+    'the first offer keeps the usual key');
+  strictEqual(idempotencyKeys.shareIntent({ ...hold, offerAttempt: null }), 'share-s1-6550-card-manual-after-none');
+  strictEqual(idempotencyKeys.shareIntent({ ...hold, offerAttempt: 2 }), 'share-s1-offer-2-6550-card-manual-after-none');
+  strictEqual(idempotencyKeys.gipedoRelease('g1'), 'gipedo-release-g1', 'a settlement releasing a hold: keyed on our row');
+});
