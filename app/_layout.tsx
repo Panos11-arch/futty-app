@@ -19,6 +19,7 @@ import { LockScreen } from '@/components/lock-screen';
 import { FuttyColors, FuttyFonts, FuttyNavigationTheme } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useNeedsProfileSetup } from '@/lib/auth-providers';
 import { PushTapHandler } from '@/lib/push-tap';
 
 export const unstable_settings = {
@@ -49,6 +50,10 @@ const brandedHeaderOptions = {
 function RootNavigator() {
   const { session, initializing, isRecovering } = useAuth();
   const { locked } = useAppLock();
+  // A new Apple or Google user has no username yet (P13).
+  const needsProfileSetup = useNeedsProfileSetup(
+    session && !isRecovering ? session.user.id : null
+  );
 
   // Rendering the guards before the stored session is read would flash the
   // sign-in screen for users who are already signed in.
@@ -61,6 +66,7 @@ function RootNavigator() {
   // A recovery link signs the user in before they have chosen a new password,
   // so the session alone is not enough to let them into the app.
   const signedIn = !!session && !isRecovering;
+  const inApp = signedIn && !needsProfileSetup;
 
   return (
     // Explicit flex:1, not a bare Fragment — FuttyAiChat's launcher is
@@ -70,7 +76,7 @@ function RootNavigator() {
     // box to measure "bottom" against; a real flex:1 View guarantees it.
     <View style={{ flex: 1 }}>
       <Stack>
-        <Stack.Protected guard={signedIn}>
+        <Stack.Protected guard={inApp}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen
             name="modal"
@@ -198,6 +204,9 @@ function RootNavigator() {
           />
         </Stack.Protected>
 
+        <Stack.Protected guard={signedIn && needsProfileSetup}>
+          <Stack.Screen name="choose-username" options={{ headerShown: false }} />
+        </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
           <Stack.Screen name="confirm-email" options={{ headerShown: false }} />
@@ -208,8 +217,8 @@ function RootNavigator() {
       {/* Global overlay, not a screen — available from every tab/pushed
           screen rather than needing its own route. Signed-in only, since it
           calls an authenticated Edge Function. */}
-      {signedIn ? <FuttyAiChat /> : null}
-      {signedIn ? <PushTapHandler /> : null}
+      {inApp ? <FuttyAiChat /> : null}
+      {inApp ? <PushTapHandler /> : null}
     </View>
   );
 }
