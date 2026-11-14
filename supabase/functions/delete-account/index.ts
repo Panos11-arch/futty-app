@@ -4,7 +4,8 @@
 //
 // What it does:
 //   1. Refuses while the caller still has money in play — a card hold or
-//      charge on an upcoming game, or an upcoming booking they made. They
+//      charge on an upcoming game, or an upcoming app booking they made (not
+//      a walk-in they added as staff, nor their training blocks). They
 //      need to cancel those first, so nobody else's game is left unpaid.
 //   2. Deletes their saved cards (the Stripe customer), push tokens and
 //      follows/blocks.
@@ -23,6 +24,7 @@ import Stripe from 'npm:stripe@^22';
 
 import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
+import { type Db, hasUpcomingGames } from './upcoming.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -41,23 +43,9 @@ Deno.serve(async (req) => {
   // between midnight and 02:00 in Cyprus.
   const today = cyprusToday();
 
-  // 1. Money still in play?
-  const { data: activeShares } = await admin
-    .from('booking_payment_shares')
-    .select('id, venue_bookings!inner(booking_day, status)')
-    .eq('profile_id', userId)
-    .in('status', ['authorized', 'paid'])
-    .gte('venue_bookings.booking_day', today)
-    .neq('venue_bookings.status', 'cancelled')
-    .limit(1);
-  const { data: upcomingBookings } = await admin
-    .from('venue_bookings')
-    .select('id')
-    .eq('created_by', userId)
-    .gte('booking_day', today)
-    .neq('status', 'cancelled')
-    .limit(1);
-  if ((activeShares?.length ?? 0) > 0 || (upcomingBookings?.length ?? 0) > 0) {
+  // 1. Money still in play? (Walk-ins a staff member added and an owner's
+  // training blocks don't count: see upcoming.ts.)
+  if (await hasUpcomingGames(admin as unknown as Db, userId, today)) {
     return json(
       {
         error:

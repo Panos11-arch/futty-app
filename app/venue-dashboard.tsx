@@ -18,6 +18,12 @@ import { describeSquadError } from '@/lib/squad-errors';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
 import type { Venue } from '@/lib/use-venues';
+import {
+  bookingRowKind,
+  bookingRowWho,
+  counterDetailsByBookingId,
+  type CounterDetails,
+} from '@/lib/venue-dashboard-rows';
 
 // The dashboard still shows the legacy pooled pitch count; null for venues
 // on the new model only (e.g. imported ones). The dashboard moves to the
@@ -34,6 +40,8 @@ type DashboardBooking = {
   note: string | null;
   playerLabel: string | null;
   teamLabel: string | null;
+  /** A walk-in or phone booking's source and customer (null otherwise). */
+  counter: CounterDetails | null;
   /** Set only for a booking with an open "Need players" post linked to it
    *  (supabase/house-players.sql) — lets the owner add a house player right
    *  from this row. */
@@ -103,10 +111,20 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
     }
 
     const rows = bookings ?? [];
-    const profileIds = [...new Set(rows.map((b) => b.created_by).filter((id): id is string => !!id))];
+    // A walk-in or phone booking's created_by is the staff member who added
+    // it: it's named by its source and customer instead.
+    const profileIds = [
+      ...new Set(
+        rows
+          .filter((b) => bookingRowKind(b.booking_type) !== 'counter')
+          .map((b) => b.created_by)
+          .filter((id): id is string => !!id)
+      ),
+    ];
     const bookingIds = rows.map((b) => b.id);
+    const counterIds = rows.filter((b) => bookingRowKind(b.booking_type) === 'counter').map((b) => b.id);
 
-    const [{ data: profiles }, { data: squadPosts }] = await Promise.all([
+    const [{ data: profiles }, { data: squadPosts }, { data: counterRows }] = await Promise.all([
       // profiles' RLS only allows reading your own row — a plain
       // .from('profiles') select here would silently come back empty for
       // every booker except the venue owner. get_public_profiles is the
@@ -131,6 +149,13 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
               status: string;
             }[],
           }),
+      // Staff read their own venue's counter bookings and contacts (RLS).
+      counterIds.length > 0
+        ? supabase
+            .from('venue_counter_bookings')
+            .select('booking_id, source, venue_contacts(name)')
+            .in('booking_id', counterIds)
+        : Promise.resolve({ data: [] }),
     ]);
 
     if (requestIdRef.current !== requestId) return;
@@ -154,6 +179,9 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
     if (requestIdRef.current !== requestId) return;
 
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const counterById = counterDetailsByBookingId(
+      (counterRows ?? []) as Parameters<typeof counterDetailsByBookingId>[0]
+    );
     const teamById = new Map((teams ?? []).map((t) => [t.id, t.name]));
     const teamIdByBookingId = new Map(
       (squadPosts ?? [])
@@ -188,6 +216,7 @@ function useVenueDayBookings(venueId: string | null, dateKey: string) {
           note: b.note,
           playerLabel: profile?.full_name || profile?.username || null,
           teamLabel: teamId ? teamById.get(teamId) ?? null : null,
+          counter: counterById.get(b.id) ?? null,
           playersPost: playersPostByBookingId.get(b.id) ?? null,
         };
       }),
@@ -559,10 +588,9 @@ export default function VenueDashboardScreen() {
                     </View>
 
                     {group.bookings.map((booking) => {
-                      const isOwnerBlock = booking.booking_type === 'owner_block';
-                      const who = isOwnerBlock
-                        ? 'Your training block'
-                        : booking.teamLabel ?? booking.playerLabel ?? 'A player';
+                      const kind = bookingRowKind(booking.booking_type);
+                      const isOwnerBlock = kind === 'owner_block';
+                      const who = bookingRowWho(booking);
                       return (
                         <ThemedView key={booking.id} style={[styles.bookingRow, { borderColor: border }]}>
                           <View style={styles.bookingRowMain}>
@@ -570,7 +598,7 @@ export default function VenueDashboardScreen() {
                             <View
                               style={[
                                 styles.formatTag,
-                                { backgroundColor: isOwnerBlock ? FuttyColors.stone200 : FuttyColors.emerald200 },
+                                { backgroundColor: kind === 'app' ? FuttyColors.emerald200 : FuttyColors.stone200 },
                               ]}>
                               <ThemedText style={styles.formatTagText}>{booking.format ?? 'Booking'}</ThemedText>
                             </View>
