@@ -270,6 +270,7 @@ The forecast only reaches about 10 days ahead. Further out, the app shows "Forec
 - **Blocking stops new bookings only.** Games already booked stay on, and their players are told the venue has closed new bookings.
 - **Joining (decided 9 November):** players can still join a game that was booked before the block. The join screen shows the venue's notice that it has closed new bookings.
 - If the venue then cancels one of those games, the venue-cancels rule applies: full refund or credit, and the venue pays Stripe's €0.35 per player.
+- **Removing a block (decided 14 November, Dimitris; for Panos to confirm):** staff can remove a block their venue added. It only reopens the slot to new bookings and never touches existing bookings, their players or their money.
 
 ## Bookings and their match (decided 11 November)
 
