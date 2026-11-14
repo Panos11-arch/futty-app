@@ -92,6 +92,36 @@ $$;
 revoke all on function public.settle_debt(uuid) from public, anon;
 grant execute on function public.settle_debt(uuid) to authenticated, service_role;
 
+-- Internal, one-off: debts the venue settled before debt_cash_received
+-- existed already have their venue_payable (Futty's part), so without this
+-- their period would show app cash of -€0.80 and no +€6.80. Each gets its
+-- cash row, dated when it was settled, once (the ref is unique per debt).
+-- Returns how many rows it wrote. Run below; kept so tests can run it again.
+create or replace function public.backfill_debt_cash_received()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer;
+begin
+  insert into public.money_ledger (booking_id, debt_id, kind, amount_cents, ref, reason, venue_cents, created_at)
+  select d.booking_id, d.id, 'debt_cash_received', d.amount_cents, 'debt-cash-' || d.id, 'debt_settled_at_venue',
+         d.amount_cents, d.settled_at
+  from public.venue_debts d
+  where d.owed_to = 'venue' and d.settled_by = 'venue' and d.settled_at is not null
+  on conflict (kind, ref) where ref is not null do nothing;
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+revoke all on function public.backfill_debt_cash_received() from public, anon, authenticated;
+grant execute on function public.backfill_debt_cash_received() to service_role;
+
+select public.backfill_debt_cash_received();
+
 -- As in 20261113220547_pay_dashboard_ledger: money the venue took in person
 -- (cash_received, counter_paid, and now debt_cash_received) never went
 -- through Stripe, so it's left out by name.

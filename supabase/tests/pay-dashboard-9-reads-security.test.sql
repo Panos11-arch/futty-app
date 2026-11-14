@@ -37,7 +37,7 @@ begin
 
   v_reads := array[
     format($q$ select public.venue_revenue(%L, 'day', %L) $q$, v_venue_b, v_today),
-    format($q$ select * from public.venue_revenue_rows(%L, 'month', %L) $q$, v_venue_b, v_today),
+    format($q$ select public.venue_revenue_export(%L, 'month', %L) $q$, v_venue_b, v_today),
     format('select public.venue_bookings_list(%L, %L, %L)', v_venue_b, v_today, v_day),
     format('select public.venue_customers(%L)', v_venue_b),
     format($q$ select public.venue_customer(%L, 'player', %L) $q$, v_venue_b, v_booker),
@@ -59,6 +59,10 @@ begin
            like 'permission denied%', 'revenue_period is internal';
     assert tests.error_of(format('select public.venue_has_customer(%L, %L)', v_venue_b, v_booker))
            like 'permission denied%', 'venue_has_customer is internal';
+    assert tests.error_of(format('select * from public.revenue_rows(%L, now() - interval ''1 day'', now())', v_venue_b))
+           like 'permission denied%', 'revenue_rows is internal';
+    assert tests.error_of('select public.backfill_debt_cash_received()') like 'permission denied%',
+      'the backfill is internal';
     perform tests.act_as_postgres();
   end loop;
 

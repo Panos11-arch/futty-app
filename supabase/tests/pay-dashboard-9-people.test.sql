@@ -3,12 +3,15 @@
 -- credit", "Venue dashboard"). Only the venue's own staff.
 --   bookings   app, walk-in and phone bookings in a date range, filtered by
 --              source and status; never an owner's training block
---   customers  (decided 13 November, Dimitris; for Panos to confirm) app
---              players with a share, debt or credit at this venue, shown by
+--   customers  (decided 13 and 14 November, Dimitris; for Panos to confirm)
+--              app players with a share, debt or credit at this venue, or
+--              who booked a game here (a free game has no shares), shown by
 --              name only (never email or phone), with their bookings, debt
 --              and credit at this venue; walk-in and phone contacts with the
 --              name and phone staff entered. A customer at venue A is never
---              listed at venue B.
+--              listed at venue B. Booking counts are the bookings still
+--              on: a player still in (or a free game's booker, while it
+--              isn't cancelled), a walk-in or phone booking not cancelled.
 --   debt       debts owed to the venue, open (and settled when asked)
 --   credit     each player's credit still available at the venue
 begin;
@@ -22,6 +25,8 @@ declare
   v_debt_only uuid := tests.create_user('people-debt@futty.test', '{"full_name": "Dee Debt"}');
   v_b_only uuid := tests.create_user('people-b-only@futty.test', '{"full_name": "Ben B-only"}');
   v_stranger uuid := tests.create_user('people-stranger@futty.test');
+  v_free_booker uuid := tests.create_user('people-free@futty.test', '{"full_name": "Fay Free"}');
+  v_left uuid := tests.create_user('people-left@futty.test', '{"full_name": "Leo Left"}');
   v_venue_a uuid := tests.create_venue(p_owner => v_owner_a, p_pitches => 3);
   v_venue_b uuid := tests.create_venue(p_owner => v_owner_b, p_pitches => 1);
   v_day date := tests.cyprus_today() + 2;
@@ -32,6 +37,7 @@ declare
   v_phone uuid;
   v_phone_again uuid;
   v_block uuid;
+  v_free_game uuid;
   v_contact_a uuid;
   v_contact_b uuid;
   v_open_debt uuid;
@@ -46,6 +52,9 @@ begin
   perform tests.set_price(v_venue_b, '5-a-side', 6000);
   v_booking := tests.booking_with_players(v_booker, v_venue_a, 'each_pays_own_spot', 1, v_day, '12:00', '13:00', 'people');
   v_joiner := (tests.player(v_booking.id, 1)).profile_id;
+  -- A player who left the game for a refund: still a customer, no booking on.
+  perform tests.join_booking(v_booking.id, v_left);
+  update public.booking_payment_shares set status = 'refunded' where booking_id = v_booking.id and profile_id = v_left;
   v_booking_b := tests.booking_with_players(v_b_only, v_venue_b, 'each_pays_own_spot', 0, v_day, '12:00', '13:00', 'people-b');
 
   perform tests.act_as(v_owner_a);
@@ -59,6 +68,13 @@ begin
                                      booking_type, created_by, amount_cents, note)
   values (v_venue_a, v_day, '08:00', '09:00', 1, 0, '5-a-side', 'owner_block', v_owner_a, 0, 'Academy')
   returning id into v_block;
+  -- A free game (no price, so no shares): its booker is still a customer.
+  perform tests.act_as_postgres();
+  insert into public.venue_bookings (venue_id, booking_day, start_time, end_time, pitches, capacity, format,
+                                     booking_type, created_by, amount_cents, status)
+  values (v_venue_a, v_day + 1, '18:00', '19:00', 1, 10, '5-a-side', 'user_booking', v_free_booker, 0, 'confirmed')
+  returning id into v_free_game;
+  perform tests.act_as(v_owner_a);
   perform tests.act_as(v_owner_b);
   -- The same number at venue B is B's own customer.
   perform public.add_counter_booking(v_venue_b, v_day, '15:00', '16:00', '5-a-side', 'phone', 'Phoebe at B', '99111222');
@@ -89,7 +105,8 @@ begin
   -- Bookings list.
   v_list := public.venue_bookings_list(v_venue_a, v_day, v_day + 1);
   select array_agg(e ->> 'id' order by e ->> 'id') into v_ids from jsonb_array_elements(v_list) e;
-  assert v_ids = (select array_agg(x::text order by x::text) from unnest(array[v_booking.id, v_walk_in, v_phone, v_phone_again]) x),
+  assert v_ids = (select array_agg(x::text order by x::text)
+                  from unnest(array[v_booking.id, v_walk_in, v_phone, v_phone_again, v_free_game]) x),
     format('app, walk-in and phone, no owner block, nothing of B, got %s', v_list);
   v_entry := (select e from jsonb_array_elements(v_list) e where e ->> 'id' = v_booking.id::text);
   assert v_entry @> jsonb_build_object('source', 'app', 'status', 'pending_payment', 'name', 'Bea Booker',
@@ -102,8 +119,9 @@ begin
   assert v_entry @> '{"source": "phone", "status": "cancelled", "name": "Phoebe P", "phone": "+35799111222"}',
     format('the cancelled phone booking, its contact''s latest name, got %s', v_entry);
   -- Filters.
-  assert (select array_agg(e ->> 'id') from jsonb_array_elements(public.venue_bookings_list(v_venue_a, v_day, v_day + 1, 'app')) e)
-         = array[v_booking.id::text], 'app only';
+  assert (select array_agg(e ->> 'id' order by e ->> 'booking_day')
+          from jsonb_array_elements(public.venue_bookings_list(v_venue_a, v_day, v_day + 1, 'app')) e)
+         = array[v_booking.id::text, v_free_game::text], 'app only';
   assert (select array_agg(e ->> 'id') from jsonb_array_elements(public.venue_bookings_list(v_venue_a, v_day, v_day + 1, 'walk_in')) e)
          = array[v_walk_in::text], 'walk-ins only';
   assert (select array_agg(e ->> 'id' order by e ->> 'booking_day')
@@ -113,7 +131,7 @@ begin
             public.venue_bookings_list(v_venue_a, v_day, v_day + 1, 'phone', 'cancelled')) e)
          = array[v_phone_again::text], 'cancelled phone bookings';
   assert (select count(*) from jsonb_array_elements(public.venue_bookings_list(v_venue_a, v_day, v_day + 1, null, 'confirmed')) e)
-         = 2, 'confirmed, any source';
+         = 3, 'confirmed, any source';
   assert (select array_agg(e ->> 'id') from jsonb_array_elements(
             public.venue_bookings_list(v_venue_a, v_day, v_day, null, 'pending_payment')) e)
          = array[v_booking.id::text], 'the app booking still waiting for the booker''s payment';
@@ -133,8 +151,9 @@ begin
   v_list := public.venue_customers(v_venue_a);
   assert (select array_agg(e ->> 'profile_id' order by e ->> 'profile_id') from jsonb_array_elements(v_list) e
           where e ->> 'kind' = 'player')
-         = (select array_agg(x::text order by x::text) from unnest(array[v_booker, v_joiner, v_credit_only, v_debt_only]) x),
-    format('players with a share, debt or credit at A, got %s', v_list);
+         = (select array_agg(x::text order by x::text)
+            from unnest(array[v_booker, v_joiner, v_credit_only, v_debt_only, v_free_booker, v_left]) x),
+    format('players with a share, debt or credit at A, or who booked there, got %s', v_list);
   assert (select array_agg(e ->> 'contact_id' order by e ->> 'contact_id') from jsonb_array_elements(v_list) e
           where e ->> 'kind' = 'contact')
          = (select array_agg(id::text order by id::text) from public.venue_contacts where venue_id = v_venue_a),
@@ -158,8 +177,16 @@ begin
   assert v_entry @> '{"name": "Dee Debt", "bookings": 0, "debt_cents": 680, "credit_cents": 0}',
     format('debt only, got %s', v_entry);
   v_entry := (select e from jsonb_array_elements(v_list) e where e ->> 'contact_id' = v_contact_a::text);
-  assert v_entry @> '{"kind": "contact", "name": "Phoebe P", "phone": "+35799111222", "bookings": 2}',
-    format('one caller however the number was typed, got %s', v_entry);
+  assert v_entry @> jsonb_build_object('kind', 'contact', 'name', 'Phoebe P', 'phone', '+35799111222', 'bookings', 1,
+                                       'last_booking_day', v_day),
+    format('one caller however the number was typed; the cancelled booking isn''t counted, got %s', v_entry);
+  v_entry := (select e from jsonb_array_elements(v_list) e where e ->> 'profile_id' = v_free_booker::text);
+  assert v_entry @> jsonb_build_object('kind', 'player', 'name', 'Fay Free', 'bookings', 1, 'last_booking_day', v_day + 1,
+                                       'debt_cents', 0, 'credit_cents', 0),
+    format('a free game''s booker, got %s', v_entry);
+  v_entry := (select e from jsonb_array_elements(v_list) e where e ->> 'profile_id' = v_left::text);
+  assert v_entry @> '{"kind": "player", "name": "Leo Left", "bookings": 0, "last_booking_day": null}',
+    format('left for a refund: listed, nothing on, got %s', v_entry);
 
   -- One customer's details.
   v_entry := public.venue_customer(v_venue_a, 'player', v_booker);
@@ -178,6 +205,11 @@ begin
          and jsonb_array_length(v_entry -> 'credits') = 2
          and (select count(*) from jsonb_array_elements(v_entry -> 'credits') c where (c ->> 'available')::boolean) = 1,
     format('credit only: both credits, one available, got %s', v_entry);
+  v_entry := public.venue_customer(v_venue_a, 'player', v_free_booker);
+  assert jsonb_array_length(v_entry -> 'bookings') = 1
+         and v_entry -> 'bookings' -> 0 @> jsonb_build_object('booking_id', v_free_game, 'is_booker', true,
+                                                               'booking_status', 'confirmed', 'share_status', null),
+    format('free game''s booker: the booking, no share, got %s', v_entry);
   v_entry := public.venue_customer(v_venue_a, 'contact', v_contact_a);
   assert v_entry @> jsonb_build_object('kind', 'contact', 'contact_id', v_contact_a, 'name', 'Phoebe P', 'phone', '+35799111222')
          and (select array_agg(b ->> 'booking_id' order by b ->> 'booking_day') from jsonb_array_elements(v_entry -> 'bookings') b)

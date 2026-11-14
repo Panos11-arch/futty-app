@@ -72,4 +72,76 @@ begin
                                v_booking.id, v_paid)) like '%money_ledger_split_check%', 'venue_cents = amount';
 end $$;
 
+-- Staff of venue A can't settle venue B's debt, and nothing is recorded.
+do $$
+declare
+  v_owner_a uuid := tests.create_user('debt-cash-a@futty.test');
+  v_owner_b uuid := tests.create_user('debt-cash-b@futty.test');
+  v_player uuid := tests.create_user('debt-cash-b-player@futty.test');
+  v_venue_a uuid := tests.create_venue(p_owner => v_owner_a, p_pitches => 1);
+  v_venue_b uuid := tests.create_venue(p_owner => v_owner_b, p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_debt uuid;
+begin
+  perform tests.set_price(v_venue_b, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_player, v_venue_b, 'each_pays_own_spot', 0, tests.cyprus_today() + 2,
+                                          p_label => 'debt-cash-b');
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (v_player, 'venue', v_venue_b, v_booking.id, 680, 600, 80, 'unpaid_share') returning id into v_debt;
+
+  perform tests.act_as(v_owner_a);
+  assert tests.error_of(format('select public.settle_debt(%L)', v_debt)) = 'not_venue_staff', 'A''s staff refused';
+  perform tests.act_as_postgres();
+  assert (select settled_at is null from public.venue_debts where id = v_debt), 'still open';
+  assert not exists (select 1 from public.money_ledger where debt_id = v_debt and kind in ('debt_cash_received', 'venue_payable')),
+    'no cash row, no payable';
+  assert not exists (select 1 from public.money_ledger where ref in ('debt-cash-' || v_debt, 'venue-payable-debt-' || v_debt)),
+    'nothing under its refs';
+end $$;
+
+-- The one-off backfill: debts the venue settled before debt_cash_received
+-- existed get their cash row, dated when they were settled, once.
+do $$
+declare
+  v_owner uuid := tests.create_user('debt-backfill-owner@futty.test');
+  v_player uuid := tests.create_user('debt-backfill-player@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_old uuid;
+  v_by_card uuid;
+  v_open uuid;
+  v_settled_at timestamptz := now() - interval '20 days';
+  v_row public.money_ledger;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_player, v_venue, 'each_pays_own_spot', 0, tests.cyprus_today() + 2,
+                                          p_label => 'debt-backfill');
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (v_player, 'venue', v_venue, v_booking.id, 680, 600, 80, 'unpaid_share') returning id into v_old;
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (v_player, 'venue', v_venue, v_booking.id, 680, 600, 80, 'unpaid_share') returning id into v_by_card;
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (v_player, 'venue', v_venue, v_booking.id, 600, 600, 0, 'cash_unpaid') returning id into v_open;
+
+  -- Settled by the venue the old way: no cash row.
+  perform tests.act_as(v_owner);
+  perform public.settle_debt(v_old);
+  perform tests.act_as_postgres();
+  delete from public.money_ledger where kind = 'debt_cash_received' and debt_id = v_old;
+  update public.venue_debts set settled_at = v_settled_at where id = v_old;
+  perform public.debt_paid(v_by_card, 'pi_debt_backfill_card', 680, tests.stripe_fee(680));
+
+  assert public.backfill_debt_cash_received() >= 1, 'the old debt is backfilled';
+  select * into v_row from public.money_ledger where kind = 'debt_cash_received' and debt_id = v_old;
+  assert v_row.amount_cents = 680 and v_row.venue_cents = 680 and v_row.created_at = v_settled_at
+         and v_row.ref = 'debt-cash-' || v_old and v_row.reason = 'debt_settled_at_venue' and v_row.booking_id = v_booking.id,
+    format('dated when settled, got %s', to_jsonb(v_row));
+  assert not exists (select 1 from public.money_ledger where kind = 'debt_cash_received' and debt_id in (v_by_card, v_open)),
+    'paid by card or still open: no cash row';
+
+  -- Once.
+  assert public.backfill_debt_cash_received() = 0, 'nothing left to backfill';
+  assert (select count(*) from public.money_ledger where kind = 'debt_cash_received' and debt_id = v_old) = 1, 'one row';
+end $$;
+
 rollback;

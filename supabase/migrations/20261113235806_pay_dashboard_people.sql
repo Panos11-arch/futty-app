@@ -2,12 +2,18 @@
 -- added 11 November; docs/specs/13-payments-bookings.md "Cash, debt and
 -- venue credit", "Venue dashboard"). Only the venue's own staff.
 --
--- Customers (decided 13 November, Dimitris; for Panos to confirm):
---   players   anyone with a share, debt or credit at this venue, shown by
---             name only (profile_display_name), never email or phone, with
---             their bookings, debt and credit at this venue
+-- Customers (decided 13 and 14 November, Dimitris; for Panos to confirm):
+--   players   anyone with a share, debt or credit at this venue, or who
+--             booked a game here (a free game has no shares), shown by name
+--             only (profile_display_name), never email or phone, with their
+--             bookings, debt and credit at this venue
 --   contacts  the venue's walk-in and phone customers (venue_contacts), with
 --             the name and phone staff entered
+-- A customer's booking count and last booking day are the bookings still
+-- on: for a player, a game they're still in (a pending, authorized, paid or
+-- covered share, as the cancellation rules count it) or, with no share,
+-- a game they booked that isn't cancelled; for a contact, a walk-in or
+-- phone booking that isn't cancelled.
 -- Debt at a venue is what's owed to that venue (owed_to 'venue'); a debt
 -- owed to Futty isn't the venue's. Credit available is what my_credit
 -- counts: not expired, something left.
@@ -26,11 +32,35 @@ as $$
       or exists (select 1 from public.venue_debts d
                  where d.profile_id = p_profile_id and d.owed_to = 'venue' and d.venue_id = p_venue_id)
       or exists (select 1 from public.venue_credits c
-                 where c.profile_id = p_profile_id and c.venue_id = p_venue_id);
+                 where c.profile_id = p_profile_id and c.venue_id = p_venue_id)
+      or exists (select 1 from public.venue_bookings b
+                 where b.created_by = p_profile_id and b.venue_id = p_venue_id and b.booking_type = 'user_booking');
 $$;
 
 revoke all on function public.venue_has_customer(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.venue_has_customer(uuid, uuid) to service_role;
+
+-- Internal: the player's bookings still on at this venue (see above).
+create or replace function public.venue_player_bookings_on(p_venue_id uuid, p_profile_id uuid)
+returns table (booking_id uuid, booking_day date)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select b.id, b.booking_day
+  from public.venue_bookings b
+  where b.venue_id = p_venue_id and b.booking_type = 'user_booking' and b.status <> 'cancelled'
+    and (exists (select 1 from public.booking_payment_shares s
+                 where s.booking_id = b.id and s.profile_id = p_profile_id
+                   and s.status in ('pending', 'authorized', 'paid', 'covered'))
+         or (b.created_by = p_profile_id
+             and not exists (select 1 from public.booking_payment_shares s
+                             where s.booking_id = b.id and s.profile_id = p_profile_id)));
+$$;
+
+revoke all on function public.venue_player_bookings_on(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.venue_player_bookings_on(uuid, uuid) to service_role;
 
 -- The venue's app, walk-in and phone bookings from p_from to p_to (booking
 -- days, inclusive), never an owner's training block. p_source: app,
@@ -134,12 +164,8 @@ begin
                'kind', 'player',
                'profile_id', p.profile_id,
                'name', public.profile_display_name(p.profile_id),
-               'bookings', (select count(distinct s.booking_id) from public.booking_payment_shares s
-                            join public.venue_bookings b on b.id = s.booking_id
-                            where s.profile_id = p.profile_id and b.venue_id = p_venue_id),
-               'last_booking_day', (select max(b.booking_day) from public.booking_payment_shares s
-                                    join public.venue_bookings b on b.id = s.booking_id
-                                    where s.profile_id = p.profile_id and b.venue_id = p_venue_id),
+               'bookings', on_.n,
+               'last_booking_day', on_.last_day,
                'debt_cents', (select coalesce(sum(d.amount_cents), 0) from public.venue_debts d
                               where d.profile_id = p.profile_id and d.owed_to = 'venue' and d.venue_id = p_venue_id
                                 and d.settled_at is null),
@@ -154,7 +180,12 @@ begin
         select d.profile_id from public.venue_debts d where d.owed_to = 'venue' and d.venue_id = p_venue_id
         union
         select c.profile_id from public.venue_credits c where c.venue_id = p_venue_id
+        union
+        select b.created_by from public.venue_bookings b
+        where b.venue_id = p_venue_id and b.booking_type = 'user_booking' and b.created_by is not null
       ) p
+      cross join lateral (select count(*)::integer as n, max(o.booking_day) as last_day
+                          from public.venue_player_bookings_on(p_venue_id, p.profile_id) o) on_
       union all
       select ct.id,
              jsonb_build_object(
@@ -162,10 +193,12 @@ begin
                'contact_id', ct.id,
                'name', ct.name,
                'phone', ct.phone,
-               'bookings', (select count(*) from public.venue_counter_bookings c where c.contact_id = ct.id),
+               'bookings', (select count(*) from public.venue_counter_bookings c
+                            join public.venue_bookings b on b.id = c.booking_id
+                            where c.contact_id = ct.id and b.status <> 'cancelled'),
                'last_booking_day', (select max(b.booking_day) from public.venue_counter_bookings c
                                     join public.venue_bookings b on b.id = c.booking_id
-                                    where c.contact_id = ct.id))
+                                    where c.contact_id = ct.id and b.status <> 'cancelled'))
       from public.venue_contacts ct
       where ct.venue_id = p_venue_id
     ) t), '[]'::jsonb);
@@ -243,15 +276,17 @@ begin
                'start_time', b.start_time,
                'end_time', b.end_time,
                'format', b.format,
-               'is_booker', s.is_booker,
+               'is_booker', coalesce(s.is_booker, b.created_by = p_id),
                'share_status', s.status,
                'payment_method', s.payment_method,
                'amount_cents', s.amount_cents,
                'cash_cents', s.cash_cents)
              order by b.booking_day desc, b.start_time desc, b.id)
-      from public.booking_payment_shares s
-      join public.venue_bookings b on b.id = s.booking_id
-      where s.profile_id = p_id and b.venue_id = p_venue_id), '[]'::jsonb),
+      from public.venue_bookings b
+      -- Their share in it, or none: a game they booked with no share (free).
+      left join public.booking_payment_shares s on s.booking_id = b.id and s.profile_id = p_id
+      where b.venue_id = p_venue_id and b.booking_type = 'user_booking'
+        and (s.id is not null or b.created_by = p_id)), '[]'::jsonb),
     'debts', coalesce((
       select jsonb_agg(jsonb_build_object(
                'debt_id', d.id,

@@ -1,17 +1,19 @@
 // The venue dashboard's revenue CSV (docs/specs/14 P6, added 11 November:
 // "a CSV export of the same rows (amounts in euros with two decimals, Cyprus
-// dates)"). Every row and amount comes from the server: the rows from
-// venue_revenue_rows and the totals from venue_revenue, both read from
-// money_ledger (supabase/migrations/*_pay_dashboard_revenue.sql). This only
-// writes them out; it refuses totals that aren't those rows, so the file
-// always matches the screen.
+// dates)"). Everything comes from one call, venue_revenue_export
+// (supabase/migrations/*_pay_dashboard_revenue.sql): the rows, the per-source
+// totals and the totals, read from money_ledger in one snapshot. This only
+// writes them out; it refuses rows whose columns aren't the server's
+// (revenue-row-columns.json, which the SQL tests check against the server)
+// and totals that aren't those rows, so the file always matches the screen.
 
+import columns from './revenue-row-columns.json';
 import { formatEurosPlain } from './format';
 
 export type RevenueSource = 'app_card' | 'app_cash' | 'walk_in' | 'phone';
 
-/** One row of venue_revenue_rows. Dates are Cyprus dates (YYYY-MM-DD), times
- *  Cyprus HH:MM; amounts are integer cents. */
+/** One row of venue_revenue_export. Dates are Cyprus dates (YYYY-MM-DD),
+ *  times Cyprus HH:MM; amounts are integer cents. */
 export type RevenueRow = {
   ledger_id: string;
   moved_on: string;
@@ -22,6 +24,7 @@ export type RevenueRow = {
   booking_id: string;
   booking_day: string;
   start_time: string;
+  /** The player, or the walk-in's contact; null for venue-level money. */
   who: string | null;
   venue_cents: number;
   futty_cents: number;
@@ -30,13 +33,26 @@ export type RevenueRow = {
   charged_cents: number | null;
 };
 
-/** venue_revenue's totals. */
 export type RevenueTotals = {
   venue_cents: number;
   futty_cents: number;
   stripe_fee_cents: number;
   rows: number;
 };
+
+export type RevenueSourceTotals = RevenueTotals & { source: RevenueSource };
+
+/** venue_revenue_export's response. */
+export type RevenueExport = {
+  period: 'day' | 'week' | 'month';
+  from: string;
+  to: string;
+  rows: RevenueRow[];
+  sources: RevenueSourceTotals[];
+  totals: RevenueTotals;
+};
+
+const SOURCES: RevenueSource[] = ['app_card', 'app_cash', 'walk_in', 'phone'];
 
 const SOURCE_LABELS: Record<RevenueSource, string> = {
   app_card: 'App card',
@@ -56,18 +72,23 @@ const HEADER = [
   'Kickoff',
   'Who',
   'Venue (EUR)',
-  'Futty fee (EUR)',
+  'Futty (EUR)',
   'Stripe fee (EUR)',
   'Venue price (EUR)',
   'Charged (EUR)',
 ];
 
+// Excel opens a UTF-8 file without it as ANSI, garbling Greek names.
+const BOM = '﻿';
+
+const COLUMNS = [...columns].sort().join(',');
+
 // A text cell: a spreadsheet must never run it as a formula (a name like
-// "=HYPERLINK(...)" typed at the counter), and commas, quotes and line
-// breaks are quoted (RFC 4180).
+// "=HYPERLINK(...)" typed at the counter or set on a profile), and commas,
+// quotes and line breaks are quoted (RFC 4180).
 function text(value: string | null): string {
   let cell = value ?? '';
-  if (/^[=+\-@\t\r]/.test(cell)) cell = `'${cell}`;
+  if (/^[=+\-@\t\r\n]/.test(cell)) cell = `'${cell}`;
   return /[",\r\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
 }
 
@@ -75,15 +96,43 @@ function amount(cents: number | null): string {
   return cents === null ? '' : formatEurosPlain(cents);
 }
 
-/** The CSV for one period: a header, one line per row in the server's order,
- *  and the server's totals. Lines end in CRLF. */
-export function buildRevenueCsv(rows: RevenueRow[], totals: RevenueTotals): string {
-  const sum = (pick: (r: RevenueRow) => number) => rows.reduce((total, r) => total + pick(r), 0);
+function totalOf(rows: RevenueRow[]): RevenueTotals {
+  return {
+    venue_cents: rows.reduce((t, r) => t + r.venue_cents, 0),
+    futty_cents: rows.reduce((t, r) => t + r.futty_cents, 0),
+    stripe_fee_cents: rows.reduce((t, r) => t + r.stripe_fee_cents, 0),
+    rows: rows.length,
+  };
+}
+
+function same(a: RevenueTotals, b: RevenueTotals) {
+  return (
+    a.venue_cents === b.venue_cents &&
+    a.futty_cents === b.futty_cents &&
+    a.stripe_fee_cents === b.stripe_fee_cents &&
+    a.rows === b.rows
+  );
+}
+
+function totalLine(label: string, t: RevenueTotals) {
+  return [label, '', '', '', '', '', '', '', '', amount(t.venue_cents), amount(t.futty_cents),
+    amount(t.stripe_fee_cents), '', ''].join(',');
+}
+
+/** The CSV for one period, from one venue_revenue_export response: a UTF-8
+ *  BOM, a header, one line per row in the server's order, each source's
+ *  total and the total. Lines end in CRLF. */
+export function buildRevenueCsv(data: RevenueExport): string {
+  const { rows, sources, totals } = data;
+  for (const r of rows) {
+    if (Object.keys(r).sort().join(',') !== COLUMNS) throw new Error('revenue row columns changed');
+    if (!SOURCES.includes(r.source)) throw new Error('revenue row without a source');
+  }
+  const bySource = SOURCES.map((source) => sources.find((s) => s.source === source));
   if (
-    rows.length !== totals.rows ||
-    sum((r) => r.venue_cents) !== totals.venue_cents ||
-    sum((r) => r.futty_cents) !== totals.futty_cents ||
-    sum((r) => r.stripe_fee_cents) !== totals.stripe_fee_cents
+    sources.length !== SOURCES.length ||
+    !same(totalOf(rows), totals) ||
+    bySource.some((s, i) => !s || !same(totalOf(rows.filter((r) => r.source === SOURCES[i])), s))
   ) {
     throw new Error('revenue rows and totals disagree');
   }
@@ -108,8 +157,8 @@ export function buildRevenueCsv(rows: RevenueRow[], totals: RevenueTotals): stri
         amount(r.charged_cents),
       ].join(','),
     ),
-    ['Total', '', '', '', '', '', '', '', '', amount(totals.venue_cents), amount(totals.futty_cents),
-      amount(totals.stripe_fee_cents), '', ''].join(','),
+    ...SOURCES.map((source, i) => totalLine(`Total ${SOURCE_LABELS[source]}`, bySource[i] as RevenueTotals)),
+    totalLine('Total', totals),
   ];
-  return lines.map((line) => `${line}\r\n`).join('');
+  return BOM + lines.map((line) => `${line}\r\n`).join('');
 }
