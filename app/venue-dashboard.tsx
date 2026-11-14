@@ -1,441 +1,139 @@
+// The venue dashboard's Today screen (P6c; docs/specs/13-payments-bookings.md
+// "Venue dashboard", "Cash at the venue", "Weather, condition warnings and
+// blocking pitches"; spec 05 section 12; spec 15 "Venue dashboard"). Phone
+// first, every common action in two taps or fewer:
+// - a day calendar per pitch (venue_day_board): bookings, walk-ins, blocks
+//   and condition flags; tap a booking for its roster (cash tick, run
+//   collection, check-in code, cancel), tap a free slot to add a walk-in;
+// - Block and Flag conditions for the day or a time range;
+// - the 6 v 6 on 5-a-side pitches setting;
+// - below, unchanged from before P6c: adding a house player and recurring
+//   training slots (restyled in P6e).
+// The app never computes an amount: it sends ids and choices, and shows the
+// amounts the server returns.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
-import { Chip } from '@/components/chip';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { DURATIONS, durationLabel, minToTime, timeToMin, type DurationHours } from '@/lib/booking';
-import { dateKeyToDate, dayLabel, toDateKey } from '@/lib/days';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  Banner,
+  Button,
+  Chip,
+  EmptyState,
+  IconButton,
+  ListRow,
+  SectionHeader,
+  SegmentedControl,
+  SkeletonBlock,
+  Text,
+} from '@/components/ui';
+import { BookingSheet, type BookingSheetActions, type RosterLoad } from '@/components/venue/booking-sheet';
+import { DayCalendar } from '@/components/venue/day-calendar';
+import { DayMarks } from '@/components/venue/day-marks';
+import { MarkSheet, type MarkMode } from '@/components/venue/mark-sheet';
+import { NeedPlayersSection } from '@/components/venue/need-players-section';
+import { TrainingSlotsSection } from '@/components/venue/training-slots-section';
+import { WalkInSheet } from '@/components/venue/walk-in-sheet';
+import { colors, space } from '@/constants/futty-theme';
+import type { CancellationQuote } from '@/lib/booking-actions';
 import { useAuth } from '@/lib/auth';
-import { addHousePlayer } from '@/lib/squads';
-import { describeSquadError } from '@/lib/squad-errors';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
-import type { Venue } from '@/lib/use-venues';
 import {
-  bookingRowKind,
-  bookingRowWho,
-  counterDetailsByBookingId,
-  type CounterDetails,
-} from '@/lib/venue-dashboard-rows';
+  addBlock,
+  addCounterBooking,
+  addDays,
+  bookingSummary,
+  bookingTitle,
+  cancelCounterBooking,
+  clearConditions,
+  confirmVenueCancel,
+  cyprusToday,
+  dayTitle,
+  describeVenueError,
+  fetchCheckInCode,
+  fetchDayBoard,
+  fetchRoster,
+  fetchSlotPrice,
+  fetchVenueQuote,
+  flagConditions,
+  halfHourAfter,
+  hhmm,
+  kindLabel,
+  markCashReceived,
+  markCounterPaid,
+  removeBlock,
+  requestCollection,
+  setAllows6v6,
+  unassignedBookings,
+  type BoardBlock,
+  type BoardBooking,
+  type BoardFlag,
+  type BoardPitch,
+  type DayBoard,
+  type Roster,
+  type Slot,
+} from '@/lib/venue-today';
 
-// The dashboard still shows the legacy pooled pitch count; null for venues
-// on the new model only (e.g. imported ones). The dashboard moves to the
-// venue model in its own prompt.
-type DashboardVenue = Venue & { base_pitches: number | null };
+type DashboardVenue = { id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
 
-type DashboardBooking = {
-  id: string;
-  start_time: string;
-  end_time: string;
-  pitches: number;
-  format: string | null;
-  booking_type: string;
-  note: string | null;
-  playerLabel: string | null;
-  teamLabel: string | null;
-  /** A walk-in or phone booking's source and customer (null otherwise). */
-  counter: CounterDetails | null;
-  /** Set only for a booking with an open "Need players" post linked to it
-   *  (supabase/house-players.sql) — lets the owner add a house player right
-   *  from this row. */
-  playersPost: { id: string; playersNeeded: number; joinedCount: number } | null;
-};
+type BoardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; board: DayBoard };
 
-type BookingsState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; bookings: DashboardBooking[] };
+type Result = PromiseLike<{ error: { message: string } | null }>;
 
-/** Groups same-time-window bookings together (item 7) — a venue with
- *  several pitches can have more than one booking starting at the same
- *  time, and the list should read as "who's on at 18:00" rather than a flat
- *  chronological list that happens to repeat a time. */
-function groupBookingsByTimeSlot(bookings: DashboardBooking[]) {
-  const groups = new Map<string, { start_time: string; end_time: string; bookings: DashboardBooking[] }>();
-  for (const booking of bookings) {
-    const key = `${booking.start_time}-${booking.end_time}`;
-    const group = groups.get(key);
-    if (group) {
-      group.bookings.push(booking);
-    } else {
-      groups.set(key, { start_time: booking.start_time, end_time: booking.end_time, bookings: [booking] });
-    }
-  }
-  return [...groups.values()];
+/** Null when the server accepted it, or its refusal in words. */
+async function refusalOf(result: Result): Promise<string | null> {
+  const { error } = await result;
+  return error ? describeVenueError(error.message) : null;
 }
 
-/** All bookings for one venue on one day — both real customer bookings (with
- *  who booked it, resolved via profiles/squad_posts/teams) and the owner's
- *  own recurring training blocks — so the dashboard reflects everything
- *  occupying the venue that day, not just the owner's own blocks. */
-function useVenueDayBookings(venueId: string | null, dateKey: string) {
-  const [state, setState] = useState<BookingsState>({ status: 'loading' });
-  const requestIdRef = useRef(0);
+function useDayBoard(venueId: string | null, day: string) {
+  const [state, setState] = useState<BoardState>({ status: 'loading' });
+  const requestId = useRef(0);
 
   const reload = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-
-    if (!venueId) {
-      setState({ status: 'loading' });
-      return;
-    }
-
-    setState({ status: 'loading' });
-
-    const { data: bookings, error } = await supabase
-      .from('venue_bookings')
-      .select('id, start_time, end_time, pitches, format, booking_type, note, created_by')
-      .eq('venue_id', venueId)
-      .eq('booking_day', dateKey)
-      // Only 'confirmed' — a real booking that's still 'pending_payment'
-      // (checkout not finished; auto-cancelled after 15 min if it never is,
-      // see supabase/booking-payments.sql) hasn't actually reserved the
-      // pitch from the owner's point of view and shouldn't show up as if it
-      // had. Owner blocks are inserted as 'confirmed' directly (no payment
-      // to wait on), so this still covers both booking_types.
-      .eq('status', 'confirmed')
-      .order('start_time', { ascending: true });
-
-    if (requestIdRef.current !== requestId) return;
-
-    if (error) {
-      setState({ status: 'error', message: error.message });
-      return;
-    }
-
-    const rows = bookings ?? [];
-    // A walk-in or phone booking's created_by is the staff member who added
-    // it: it's named by its source and customer instead.
-    const profileIds = [
-      ...new Set(
-        rows
-          .filter((b) => bookingRowKind(b.booking_type) !== 'counter')
-          .map((b) => b.created_by)
-          .filter((id): id is string => !!id)
-      ),
-    ];
-    const bookingIds = rows.map((b) => b.id);
-    const counterIds = rows.filter((b) => bookingRowKind(b.booking_type) === 'counter').map((b) => b.id);
-
-    const [{ data: profiles }, { data: squadPosts }, { data: counterRows }] = await Promise.all([
-      // profiles' RLS only allows reading your own row — a plain
-      // .from('profiles') select here would silently come back empty for
-      // every booker except the venue owner. get_public_profiles is the
-      // security-definer RPC (supabase/public-profiles.sql) built for this.
-      profileIds.length > 0
-        ? (supabase.rpc('get_public_profiles', { p_profile_ids: profileIds }) as unknown as Promise<{
-            data: { id: string; username: string | null; full_name: string | null }[] | null;
-          }>)
-        : Promise.resolve({ data: [] as { id: string; username: string | null; full_name: string | null }[] }),
-      bookingIds.length > 0
-        ? supabase
-            .from('squad_posts')
-            .select('id, type, team_id, players_needed, venue_booking_id, status')
-            .in('venue_booking_id', bookingIds)
-        : Promise.resolve({
-            data: [] as {
-              id: string;
-              type: string;
-              team_id: string | null;
-              players_needed: number | null;
-              venue_booking_id: string | null;
-              status: string;
-            }[],
-          }),
-      // Staff read their own venue's counter bookings and contacts (RLS).
-      counterIds.length > 0
-        ? supabase
-            .from('venue_counter_bookings')
-            .select('booking_id, source, venue_contacts(name)')
-            .in('booking_id', counterIds)
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    if (requestIdRef.current !== requestId) return;
-
-    const teamIds = [
-      ...new Set((squadPosts ?? []).map((p) => p.team_id).filter((id): id is string => !!id)),
-    ];
-    const playersPostIds = (squadPosts ?? [])
-      .filter((p) => p.type === 'players' && p.status === 'open')
-      .map((p) => p.id);
-
-    const [{ data: teams }, { data: joiners }] = await Promise.all([
-      teamIds.length > 0
-        ? supabase.from('teams').select('id, name').in('id', teamIds)
-        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
-      playersPostIds.length > 0
-        ? supabase.from('squad_post_joiners').select('post_id').in('post_id', playersPostIds)
-        : Promise.resolve({ data: [] as { post_id: string }[] }),
-    ]);
-
-    if (requestIdRef.current !== requestId) return;
-
-    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const counterById = counterDetailsByBookingId(
-      (counterRows ?? []) as Parameters<typeof counterDetailsByBookingId>[0]
-    );
-    const teamById = new Map((teams ?? []).map((t) => [t.id, t.name]));
-    const teamIdByBookingId = new Map(
-      (squadPosts ?? [])
-        .filter((p) => p.venue_booking_id && p.team_id)
-        .map((p) => [p.venue_booking_id as string, p.team_id as string])
-    );
-    const joinedCountByPostId = new Map<string, number>();
-    for (const j of joiners ?? []) {
-      joinedCountByPostId.set(j.post_id, (joinedCountByPostId.get(j.post_id) ?? 0) + 1);
-    }
-    const playersPostByBookingId = new Map(
-      (squadPosts ?? [])
-        .filter((p) => p.type === 'players' && p.status === 'open' && p.venue_booking_id)
-        .map((p) => [
-          p.venue_booking_id as string,
-          { id: p.id, playersNeeded: p.players_needed ?? 0, joinedCount: joinedCountByPostId.get(p.id) ?? 0 },
-        ])
-    );
-
-    setState({
-      status: 'ready',
-      bookings: rows.map((b) => {
-        const profile = b.created_by ? profileById.get(b.created_by) : null;
-        const teamId = teamIdByBookingId.get(b.id);
-        return {
-          id: b.id,
-          start_time: b.start_time,
-          end_time: b.end_time,
-          pitches: b.pitches,
-          format: b.format,
-          booking_type: b.booking_type,
-          note: b.note,
-          playerLabel: profile?.full_name || profile?.username || null,
-          teamLabel: teamId ? teamById.get(teamId) ?? null : null,
-          counter: counterById.get(b.id) ?? null,
-          playersPost: playersPostByBookingId.get(b.id) ?? null,
-        };
-      }),
-    });
-  }, [venueId, dateKey]);
+    if (!venueId) return;
+    const id = ++requestId.current;
+    const { data, error } = await fetchDayBoard(venueId, day);
+    if (id !== requestId.current) return;
+    setState(error || !data ? { status: 'error', message: describeVenueError(error?.message ?? '') } : { status: 'ready', board: data as DayBoard });
+  }, [venueId, day]);
 
   useEffect(() => {
-    reload();
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [reload]);
-
-  return { ...state, reload };
-}
-
-type RecurringSlotSeries = {
-  key: string;
-  weekdayLabel: string;
-  start_time: string;
-  end_time: string;
-  note: string | null;
-  bookingIds: string[];
-};
-
-type RecurringSlotsState =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; series: RecurringSlotSeries[] };
-
-/** Every still-upcoming owner_block occurrence for this venue, grouped back
- *  into the recurring series that created them (item 8 — this "recurring
- *  training slots" management view didn't exist before; only the creation
- *  form and the day-by-day feed did, so a series could only be reviewed one
- *  day at a time, and cancelling one meant cancelling every future
- *  occurrence by hand). */
-function useRecurringSlots(venueId: string | null, userId: string | null) {
-  const [state, setState] = useState<RecurringSlotsState>({ status: 'loading' });
-  const requestIdRef = useRef(0);
-
-  const reload = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-
-    if (!venueId || !userId) {
-      setState({ status: 'loading' });
-      return;
-    }
-
     setState({ status: 'loading' });
-
-    const { data, error } = await supabase
-      .from('venue_bookings')
-      .select('id, booking_day, start_time, end_time, note')
-      .eq('venue_id', venueId)
-      .eq('booking_type', 'owner_block')
-      .eq('created_by', userId)
-      .eq('status', 'confirmed')
-      .gte('booking_day', toDateKey(new Date()))
-      .order('booking_day', { ascending: true });
-
-    if (requestIdRef.current !== requestId) return;
-
-    if (error) {
-      setState({ status: 'error', message: error.message });
-      return;
-    }
-
-    const groups = new Map<string, RecurringSlotSeries>();
-    for (const row of data ?? []) {
-      const weekdayIndex = (dateKeyToDate(row.booking_day).getDay() + 6) % 7;
-      const key = `${weekdayIndex}-${row.start_time}-${row.end_time}-${row.note ?? ''}`;
-      const group = groups.get(key);
-      if (group) {
-        group.bookingIds.push(row.id);
-      } else {
-        groups.set(key, {
-          key,
-          weekdayLabel: WEEKDAYS[weekdayIndex],
-          start_time: row.start_time,
-          end_time: row.end_time,
-          note: row.note,
-          bookingIds: [row.id],
-        });
-      }
-    }
-
-    setState({ status: 'ready', series: [...groups.values()] });
-  }, [venueId, userId]);
-
-  useEffect(() => {
     reload();
-    return () => {
-      requestIdRef.current += 1;
-    };
   }, [reload]);
 
-  return { ...state, reload };
+  return { state, reload };
 }
 
-const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-/** "Add house player" (item 5 of supabase/house-players.sql) — a free-text
- *  name field alongside the booking's own details, only shown on a booking
- *  with an open "Need players" post still short a spot. Fills that spot for
- *  free, no account, no payment hold — see add_house_player's RLS-style
- *  owner check for why this is safe to expose with no extra gating here. */
-function AddHousePlayerRow({
-  postId,
-  spotsLeft,
-  onAdded,
-}: {
-  postId: string;
-  spotsLeft: number;
-  onAdded: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (spotsLeft <= 0) {
-    return <ThemedText style={styles.note}>Need players: full.</ThemedText>;
-  }
-
-  if (!open) {
-    return (
-      <Pressable accessibilityRole="button" onPress={() => setOpen(true)}>
-        <ThemedText type="link" style={styles.note}>
-          Need players: {spotsLeft} spot{spotsLeft === 1 ? '' : 's'} left — add house player
-        </ThemedText>
-      </Pressable>
-    );
-  }
-
-  async function submit() {
-    if (!name.trim() || busy) return;
-    setBusy(true);
-    setError(null);
-    const { error: addError } = await addHousePlayer(postId, name.trim());
-    setBusy(false);
-    if (addError) {
-      setError(describeSquadError(addError));
-    } else {
-      setName('');
-      setOpen(false);
-      onAdded();
-    }
-  }
-
-  return (
-    <View style={styles.addHouseRow}>
-      <AuthField value={name} onChangeText={setName} placeholder="Staff member's name" editable={!busy} />
-      {error ? <AuthError>{error}</AuthError> : null}
-      <View style={styles.addPlayerRow}>
-        <View style={styles.addPlayerField}>
-          <AuthButton label="Add" onPress={submit} disabled={!name.trim()} busy={busy} compact />
-        </View>
-        <AuthButton label="Cancel" variant="secondary" onPress={() => setOpen(false)} disabled={busy} compact />
-      </View>
-    </View>
-  );
-}
-
-// One row of hourly start times covering a typical training-slot day —
-// same reasoning as matchmaking.tsx's KICKOFF_TIMES: simpler than tying into
-// the specific venue's open/close hours for a first version of this screen.
-const START_TIMES = Array.from({ length: 15 }, (_, i) => `${String(8 + i).padStart(2, '0')}:00`);
-
-const WEEKS_AHEAD_OPTIONS = [4, 8, 12, 26];
-
-/** Every Monday..Sunday index (0=Mon) that falls on/after today, then every
- *  7 days after that, for `weeksAhead` total occurrences. */
-function upcomingWeekdayDates(weekdayIndex: number, weeksAhead: number): string[] {
-  const today = new Date();
-  const todayIndex = (today.getDay() + 6) % 7; // getDay() is 0=Sun; shift to 0=Mon
-  let offset = weekdayIndex - todayIndex;
-  if (offset < 0) offset += 7;
-
-  const first = new Date(today);
-  first.setDate(today.getDate() + offset);
-
-  return Array.from({ length: weeksAhead }, (_, i) => {
-    const date = new Date(first);
-    date.setDate(first.getDate() + i * 7);
-    return toDateKey(date);
-  });
-}
-
-/** Recurring training-slot creation screen for venue owners (item 10) —
- *  generates real venue_bookings rows (booking_type = 'owner_block'), one
- *  per week, via the direct RLS insert path in supabase/venue-owners.sql
- *  rather than the paid book_slot() RPC (there's no payment or capacity race
- *  to protect against when an owner blocks their own pitch). */
 export default function VenueDashboardScreen() {
   const { user } = useAuth();
   const profile = useProfile();
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
+  const today = cyprusToday();
 
   const [venues, setVenues] = useState<DashboardVenue[] | null>(null);
   const [venueId, setVenueId] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState(() => toDateKey(new Date()));
-  const dayBookings = useVenueDayBookings(venueId, selectedDay);
-  const recurringSlots = useRecurringSlots(venueId, user?.id ?? null);
-  const [cancellingSeries, setCancellingSeries] = useState<string | null>(null);
-  const [weekdayIndex, setWeekdayIndex] = useState(0);
-  const [startTime, setStartTime] = useState('18:00');
-  const [duration, setDuration] = useState<DurationHours>(1);
-  const [weeksAhead, setWeeksAhead] = useState(8);
-  const [pitches, setPitches] = useState('1');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<number | null>(null);
+  const [day, setDay] = useState(today);
+  const { state: board, reload: reloadBoard } = useDayBoard(venueId, day);
+
+  const [opened, setOpened] = useState<BoardBooking | null>(null);
+  const [roster, setRoster] = useState<RosterLoad>({ status: 'loading' });
+  const [walkIn, setWalkIn] = useState<{ pitch: BoardPitch; start: string } | null>(null);
+  const [mark, setMark] = useState<{
+    mode: MarkMode;
+    key: number;
+    /** Opened from a slot: that pitch and half hour. */
+    slot?: { pitch: BoardPitch; start: string };
+  } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     supabase
       .from('venues')
-      .select('id, name, city, surface, base_pitches, open_time, close_time, price_per_pitch_hour, is_live')
+      .select('id, name, base_pitches, allows_6v6_on_5s')
       .eq('owner_profile_id', user.id)
       .then(({ data }) => {
         setVenues(data ?? []);
@@ -445,72 +143,84 @@ export default function VenueDashboardScreen() {
 
   const venue = venues?.find((v) => v.id === venueId) ?? null;
 
-  async function submit() {
-    if (!user || !venue || busy) return;
+  const loadRoster = useCallback(async (bookingId: string) => {
+    setRoster({ status: 'loading' });
+    const { data, error } = await fetchRoster(bookingId);
+    setRoster(
+      error || !data ? { status: 'error', message: describeVenueError(error?.message ?? '') } : { status: 'ready', roster: data as Roster },
+    );
+  }, []);
 
-    const pitchesNum = Number(pitches);
-    if (!pitchesNum || pitchesNum < 1) {
-      setError('Enter how many pitches this training occupies.');
-      return;
-    }
-
-    setBusy(true);
-    setError(null);
-    setCreated(null);
-
-    const startMin = timeToMin(`${startTime}:00`);
-    const endTime = minToTime(startMin + duration * 60);
-    const dates = upcomingWeekdayDates(weekdayIndex, weeksAhead);
-
-    const rows = dates.map((day) => ({
-      venue_id: venue.id,
-      booking_day: day,
-      start_time: `${startTime}:00`,
-      end_time: `${endTime}:00`,
-      pitches: pitchesNum,
-      capacity: 0,
-      format: 'Training',
-      status: 'confirmed',
-      created_by: user.id,
-      amount_cents: 0,
-      booking_type: 'owner_block',
-      note: note.trim() || null,
-    }));
-
-    const { error: insertError } = await supabase.from('venue_bookings').insert(rows);
-
-    setBusy(false);
-
-    if (insertError) {
-      setError(insertError.message);
-    } else {
-      setCreated(rows.length);
-      dayBookings.reload();
-      recurringSlots.reload();
-    }
+  function openBooking(booking: BoardBooking) {
+    setOpened(booking);
+    loadRoster(booking.id);
   }
 
-  async function cancelSeries(series: RecurringSlotSeries) {
-    setCancellingSeries(series.key);
-    // Direct update, not the cancel_booking() RPC — the RPC only takes one
-    // booking id at a time, and the RLS policy "Owners can cancel their own
-    // blocks" (supabase/venue-owners.sql) already permits an owner to update
-    // their own owner_block rows directly, so a single batched update
-    // cancels the whole series in one round trip instead of N.
-    await supabase
-      .from('venue_bookings')
-      .update({ status: 'cancelled' })
-      .in('id', series.bookingIds);
-    setCancellingSeries(null);
-    recurringSlots.reload();
-    dayBookings.reload();
+  /** A write from the booking sheet: on success, reload the roster and the day. */
+  async function bookingWrite(result: Result): Promise<string | null> {
+    const refusal = await refusalOf(result);
+    if (!refusal && opened) {
+      loadRoster(opened.id);
+      reloadBoard();
+    }
+    return refusal;
+  }
+
+  const actions: BookingSheetActions = {
+    tickCash: (shareId) => bookingWrite(markCashReceived(shareId)),
+    runCollection: (bookingId) => bookingWrite(requestCollection(bookingId)),
+    markCounterPaid: (bookingId, method) => bookingWrite(markCounterPaid(bookingId, method)),
+    cancelCounter: (bookingId) => bookingWrite(cancelCounterBooking(bookingId)),
+    checkInCode: async (matchId) => {
+      const { data, error } = await fetchCheckInCode(matchId);
+      return error || typeof data !== 'string' ? { error: describeVenueError(error?.message ?? '') } : { code: data };
+    },
+    venueQuote: async (bookingId) => {
+      const { data, error } = await fetchVenueQuote(bookingId);
+      return error || !data ? { error: describeVenueError(error?.message ?? '') } : { quote: data as CancellationQuote };
+    },
+    venueCancel: async (bookingId, quote) => {
+      const result = await confirmVenueCancel(bookingId, quote);
+      if (result.status === 'cancelled') reloadBoard();
+      return result;
+    },
+  };
+
+  async function loadPrice(slot: Slot): Promise<{ cents: number | null } | { error: string }> {
+    const { data, error } = await fetchSlotPrice(slot);
+    return error ? { error: describeVenueError(error.message) } : { cents: typeof data === 'number' ? data : null };
+  }
+
+  async function markWrite(key: string, result: Result) {
+    setBusy(key);
+    setNotice(null);
+    const refusal = await refusalOf(result);
+    setBusy(null);
+    if (refusal) setNotice(refusal);
+    else reloadBoard();
+  }
+
+  async function sheetWrite(result: Result): Promise<string | null> {
+    const refusal = await refusalOf(result);
+    if (!refusal) reloadBoard();
+    return refusal;
+  }
+
+  async function change6v6(allowed: boolean) {
+    if (!venue || venue.allows_6v6_on_5s === allowed) return;
+    setBusy('6v6');
+    setNotice(null);
+    const refusal = await refusalOf(setAllows6v6(venue.id, allowed));
+    setBusy(null);
+    if (refusal) setNotice(refusal);
+    else setVenues((list) => list?.map((v) => (v.id === venue.id ? { ...v, allows_6v6_on_5s: allowed } : v)) ?? null);
   }
 
   if (profile.status === 'loading') {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.loading}>
-          <ActivityIndicator />
+      <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <View style={styles.content}>
+          <SkeletonBlock width="100%" height={space.xxl * 8} />
         </View>
       </SafeAreaView>
     );
@@ -518,353 +228,179 @@ export default function VenueDashboardScreen() {
 
   if (profile.status !== 'ready' || profile.profile.role !== 'venue_owner') {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.loading}>
-          <IconLabel icon="lock.fill" iconColor={FuttyColors.stone400} style={styles.note}>
-            This screen is only available to venue owner accounts.
-          </IconLabel>
-        </View>
+      <SafeAreaView style={styles.screen} edges={['bottom']}>
+        <EmptyState icon="lock.fill" message="This screen is only available to venue owner accounts." />
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {!venues ? <ActivityIndicator /> : null}
+  const ready = board.status === 'ready' ? board.board : null;
 
+  return (
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        {!venues ? <SkeletonBlock width="100%" height={space.xxl * 2} /> : null}
         {venues && venues.length === 0 ? (
-          <IconLabel icon="building.columns.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            No venues are linked to your account yet — ask an admin to set venues.owner_profile_id.
-          </IconLabel>
+          <EmptyState
+            icon="building.columns.fill"
+            message="No venues are linked to your account yet. Ask Futty to link your venue."
+          />
         ) : null}
 
-        {venues && venues.length > 0 ? (
+        {venues && venues.length > 1 ? (
+          <View style={styles.wrapRow}>
+            {venues.map((v) => (
+              <Chip key={v.id} label={v.name} selected={v.id === venueId} onPress={() => setVenueId(v.id)} />
+            ))}
+          </View>
+        ) : null}
+
+        {venue ? (
           <>
-            <ThemedText style={styles.label}>Venue</ThemedText>
-            <View style={styles.wrapRow}>
-              {venues.map((v) => (
-                <Chip key={v.id} label={v.name} selected={v.id === venueId} onPress={() => setVenueId(v.id)} />
-              ))}
-            </View>
-
-            <ThemedText style={styles.sectionHeading}>Bookings</ThemedText>
-            <View style={styles.dayNavRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Previous day"
-                hitSlop={8}
-                onPress={() => setSelectedDay((d) => toDateKey(new Date(dateKeyToDate(d).getTime() - 86400000)))}
-                style={styles.dayNavButton}>
-                <IconSymbol name="chevron.left" size={16} color={FuttyColors.stone700} />
-              </Pressable>
-              <ThemedText style={styles.dayNavLabel}>{dayLabel(dateKeyToDate(selectedDay))}</ThemedText>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Next day"
-                hitSlop={8}
-                onPress={() => setSelectedDay((d) => toDateKey(new Date(dateKeyToDate(d).getTime() + 86400000)))}
-                style={styles.dayNavButton}>
-                <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone700} />
-              </Pressable>
-            </View>
-
-            {dayBookings.status === 'loading' ? <ActivityIndicator /> : null}
-            {dayBookings.status === 'error' ? <AuthError>{dayBookings.message}</AuthError> : null}
-            {dayBookings.status === 'ready' && dayBookings.bookings.length === 0 ? (
-              <ThemedText style={styles.note}>No bookings for this day.</ThemedText>
-            ) : null}
-            {dayBookings.status === 'ready'
-              ? groupBookingsByTimeSlot(dayBookings.bookings).map((group) => (
-                  <View key={`${group.start_time}-${group.end_time}`} style={styles.timeSlotGroup}>
-                    <View style={styles.timeSlotHeaderRow}>
-                      <ThemedText style={styles.timeSlotHeading}>
-                        {group.start_time.slice(0, 5)}–{group.end_time.slice(0, 5)}
-                      </ThemedText>
-                      <ThemedText style={styles.timeSlotPitchCount}>
-                        {group.bookings.reduce((sum, b) => sum + b.pitches, 0)} pitch
-                        {group.bookings.reduce((sum, b) => sum + b.pitches, 0) === 1 ? '' : 'es'} in use
-                      </ThemedText>
-                    </View>
-
-                    {group.bookings.map((booking) => {
-                      const kind = bookingRowKind(booking.booking_type);
-                      const isOwnerBlock = kind === 'owner_block';
-                      const who = bookingRowWho(booking);
-                      return (
-                        <ThemedView key={booking.id} style={[styles.bookingRow, { borderColor: border }]}>
-                          <View style={styles.bookingRowMain}>
-                            <ThemedText style={styles.bookingWho}>{who}</ThemedText>
-                            <View
-                              style={[
-                                styles.formatTag,
-                                { backgroundColor: kind === 'app' ? FuttyColors.emerald200 : FuttyColors.stone200 },
-                              ]}>
-                              <ThemedText style={styles.formatTagText}>{booking.format ?? 'Booking'}</ThemedText>
-                            </View>
-                          </View>
-                          <ThemedText style={styles.bookingMeta}>
-                            {booking.pitches} pitch{booking.pitches === 1 ? '' : 'es'}
-                            {isOwnerBlock && booking.note ? ` · ${booking.note}` : ''}
-                          </ThemedText>
-                          {booking.playersPost ? (
-                            <AddHousePlayerRow
-                              postId={booking.playersPost.id}
-                              spotsLeft={booking.playersPost.playersNeeded - booking.playersPost.joinedCount}
-                              onAdded={dayBookings.reload}
-                            />
-                          ) : null}
-                        </ThemedView>
-                      );
-                    })}
-                  </View>
-                ))
-              : null}
-
-            <ThemedText style={styles.sectionHeading}>Recurring training slots</ThemedText>
-            {recurringSlots.status === 'loading' ? <ActivityIndicator /> : null}
-            {recurringSlots.status === 'error' ? <AuthError>{recurringSlots.message}</AuthError> : null}
-            {recurringSlots.status === 'ready' && recurringSlots.series.length === 0 ? (
-              <ThemedText style={styles.note}>No recurring slots set up yet.</ThemedText>
-            ) : null}
-            {recurringSlots.status === 'ready'
-              ? recurringSlots.series.map((series) => (
-                  <ThemedView key={series.key} style={[styles.recurringRow, { borderColor: border }]}>
-                    <View style={styles.recurringRowMain}>
-                      <ThemedText style={styles.recurringLabel}>
-                        {series.weekdayLabel}s, {series.start_time.slice(0, 5)}–{series.end_time.slice(0, 5)}
-                      </ThemedText>
-                      <ThemedText style={styles.note}>
-                        {series.bookingIds.length} upcoming{series.note ? ` · ${series.note}` : ''}
-                      </ThemedText>
-                    </View>
-                    <AuthButton
-                      label="Cancel series"
-                      variant="secondary"
-                      onPress={() => cancelSeries(series)}
-                      busy={cancellingSeries === series.key}
-                      disabled={cancellingSeries !== null}
-                    />
-                  </ThemedView>
-                ))
-              : null}
-
-            <ThemedText style={styles.sectionHeading}>Create recurring training slot</ThemedText>
-
-            <ThemedText style={styles.label}>Day of week</ThemedText>
-            <View style={styles.wrapRow}>
-              {WEEKDAYS.map((label, index) => (
-                <Chip key={label} label={label.slice(0, 3)} selected={index === weekdayIndex} onPress={() => setWeekdayIndex(index)} />
-              ))}
-            </View>
-
-            <ThemedText style={styles.label}>Start time</ThemedText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.row}>
-                {START_TIMES.map((time) => (
-                  <Chip key={time} label={time} selected={time === startTime} onPress={() => setStartTime(time)} />
-                ))}
+            <View style={styles.dayRow}>
+              <IconButton icon="chevron.left" accessibilityLabel="Previous day" onPress={() => setDay((d) => addDays(d, -1))} />
+              <View style={styles.dayTitle}>
+                <Text variant="title">{dayTitle(day, today)}</Text>
+                <Text variant="callout" tone="inkMuted" tabular>
+                  {day}
+                </Text>
               </View>
-            </ScrollView>
-
-            <ThemedText style={styles.label}>Duration</ThemedText>
-            <View style={styles.wrapRow}>
-              {DURATIONS.map((hours) => (
-                <Chip key={hours} label={durationLabel(hours)} selected={hours === duration} onPress={() => setDuration(hours)} />
-              ))}
+              <IconButton icon="chevron.right" accessibilityLabel="Next day" onPress={() => setDay((d) => addDays(d, 1))} />
             </View>
-
-            <ThemedText style={styles.label}>Weeks ahead</ThemedText>
-            <View style={styles.wrapRow}>
-              {WEEKS_AHEAD_OPTIONS.map((weeks) => (
-                <Chip key={weeks} label={`${weeks} weeks`} selected={weeks === weeksAhead} onPress={() => setWeeksAhead(weeks)} />
-              ))}
-            </View>
-
-            <ThemedText style={styles.label}>Pitches occupied{venue?.base_pitches != null ? ` (of ${venue.base_pitches})` : ''}</ThemedText>
-            <AuthField
-              value={pitches}
-              onChangeText={(v) => setPitches(v.replace(/\D/g, ''))}
-              keyboardType="number-pad"
-              style={styles.narrowField}
-            />
-
-            <ThemedText style={styles.label}>Note (optional)</ThemedText>
-            <AuthField value={note} onChangeText={setNote} placeholder="e.g. U14 academy training" />
-
-            {venue ? (
-              <ThemedView style={[styles.summary, { borderColor: border }]}>
-                <ThemedText style={styles.summaryText}>
-                  {WEEKDAYS[weekdayIndex]}s, {startTime} for {durationLabel(duration)}, at {venue.name} —{' '}
-                  {weeksAhead} weeks ({pitches || '0'} pitch{Number(pitches) === 1 ? '' : 'es'} each time).
-                </ThemedText>
-              </ThemedView>
+            {day !== today ? (
+              <View style={styles.wrapRow}>
+                <Chip label="Back to today" onPress={() => setDay(today)} />
+              </View>
             ) : null}
 
-            {error ? <AuthError>{error}</AuthError> : null}
-            {created !== null ? (
-              <IconLabel icon="checkmark.circle.fill" iconColor={FuttyColors.emerald700} style={styles.note}>
-                Created {created} training slot{created === 1 ? '' : 's'}.
-              </IconLabel>
+            <View style={styles.actions}>
+              <Button label="Block" variant="secondary" onPress={() => setMark({ mode: 'block', key: Date.now() })} />
+              <Button
+                label="Flag conditions"
+                variant="secondary"
+                onPress={() => setMark({ mode: 'flag', key: Date.now() })}
+              />
+            </View>
+
+            {notice ? <Banner tone="danger" message={notice} /> : null}
+
+            {board.status === 'loading' ? <SkeletonBlock width="100%" height={space.xxl * 10} /> : null}
+            {board.status === 'error' ? (
+              <Banner tone="danger" message={board.message} action={{ label: 'Try again', onPress: reloadBoard }} />
+            ) : null}
+            {ready ? (
+              <>
+                <DayMarks
+                  board={ready}
+                  busy={busy}
+                  onRemoveBlock={(b: BoardBlock) => markWrite(b.id, removeBlock(b.id))}
+                  onClearFlag={(f: BoardFlag) => markWrite(f.id, clearConditions(f.id))}
+                />
+                <DayCalendar
+                  board={ready}
+                  onOpenBooking={openBooking}
+                  onAddAt={(pitch, start) => setWalkIn({ pitch, start })}
+                  onMarkAt={(pitch, start, mode) => setMark({ mode, key: Date.now(), slot: { pitch, start } })}
+                />
+                {unassignedBookings(ready).length > 0 ? (
+                  <View style={styles.section}>
+                    <SectionHeader title="No pitch assigned" />
+                    {unassignedBookings(ready).map((b) => (
+                      <ListRow
+                        key={b.id}
+                        title={`${hhmm(b.start_time)}–${hhmm(b.end_time)} · ${bookingTitle(b)}`}
+                        subtitle={[kindLabel(b), bookingSummary(b)].filter(Boolean).join(' · ')}
+                        chevron
+                        onPress={() => openBooking(b)}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </>
             ) : null}
 
-            <AuthButton label="Create recurring slots" onPress={submit} busy={busy} disabled={!venue} />
+            <View style={styles.section}>
+              <SectionHeader title="6 v 6 on 5-a-side pitches" />
+              <SegmentedControl
+                accessibilityLabel="6 v 6 on 5-a-side pitches"
+                options={[
+                  { value: 'off', label: 'Not allowed' },
+                  { value: 'on', label: 'Allowed' },
+                ]}
+                value={venue.allows_6v6_on_5s ? 'on' : 'off'}
+                onChange={(value) => change6v6(value === 'on')}
+              />
+            </View>
+
+            {ready ? <NeedPlayersSection bookings={ready.bookings} /> : null}
+
+            {user ? (
+              <View style={styles.divider}>
+                <TrainingSlotsSection venue={venue} userId={user.id} onChanged={reloadBoard} />
+              </View>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
+
+      <BookingSheet
+        key={opened?.id ?? 'none'}
+        visible={opened !== null}
+        onClose={() => setOpened(null)}
+        booking={opened}
+        state={roster}
+        onRetry={() => opened && loadRoster(opened.id)}
+        actions={actions}
+      />
+      {venue && walkIn ? (
+        <WalkInSheet
+          key={`${walkIn.pitch.id}-${walkIn.start}`}
+          visible
+          onClose={() => setWalkIn(null)}
+          venueId={venue.id}
+          day={day}
+          pitch={walkIn.pitch}
+          start={walkIn.start}
+          loadPrice={loadPrice}
+          onAdd={(input) => sheetWrite(addCounterBooking(input))}
+        />
+      ) : null}
+      {venue && user && mark ? (
+        <MarkSheet
+          key={mark.key}
+          visible
+          mode={mark.mode}
+          pitches={ready?.pitches ?? []}
+          initial={
+            mark.slot
+              ? { pitchId: mark.slot.pitch.id, start: mark.slot.start, end: halfHourAfter(mark.slot.start) }
+              : undefined
+          }
+          onAddWalkIn={
+            mark.mode === 'flag' && mark.slot
+              ? () => {
+                  const slot = mark.slot!;
+                  setMark(null);
+                  setWalkIn(slot);
+                }
+              : undefined
+          }
+          onClose={() => setMark(null)}
+          onBlock={(input) => sheetWrite(addBlock({ venueId: venue.id, day, ...input }, user.id))}
+          onFlag={(input) => sheetWrite(flagConditions({ venueId: venue.id, day, ...input }))}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: FuttyColors.stone900,
-    marginTop: 8,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 2,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  narrowField: {
-    width: 80,
-  },
-  summary: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-  },
-  summaryText: {
-    fontSize: 13,
-    color: FuttyColors.stone700,
-  },
-  sectionHeading: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginTop: 12,
-  },
-  dayNavRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  dayNavButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.stone50,
-  },
-  dayNavLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  timeSlotGroup: {
-    gap: 6,
-    marginTop: 4,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
-  },
-  timeSlotHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  timeSlotHeading: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  timeSlotPitchCount: {
-    fontSize: 11,
-    color: FuttyColors.stone500,
-  },
-  bookingRow: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 4,
-  },
-  bookingRowMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  bookingWho: {
-    fontSize: 15,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  formatTag: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  formatTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: FuttyColors.stone900,
-  },
-  bookingMeta: {
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  recurringRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-  },
-  recurringRowMain: {
-    flex: 1,
-    gap: 2,
-  },
-  recurringLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  addHouseRow: {
-    gap: 6,
-    marginTop: 4,
-  },
-  addPlayerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addPlayerField: {
-    flex: 1,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  dayRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  dayTitle: { flex: 1, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: space.sm },
+  section: { gap: space.sm, marginTop: space.xl },
+  divider: { marginTop: space.xl },
 });

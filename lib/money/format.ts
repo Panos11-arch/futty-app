@@ -26,6 +26,19 @@ export function formatEurosPlain(cents: number): string {
   return `${sign}${digits}`;
 }
 
+// Up to 5 euro digits, then optionally a point or comma and 1-2 cent digits.
+const EURO_INPUT = /^€?\s*(\d{1,5})(?:[.,](\d{1,2}))?$/;
+
+/** '6,50' -> 650: what staff type as a walk-in or phone booking's price
+ *  (spec 13, "Venue dashboard": staff may change the venue's price; that
+ *  money never goes through Futty). Read from the digits as whole cents,
+ *  never through a floating-point number. Null when it isn't an amount. */
+export function parseEurosInput(text: string): number | null {
+  const match = EURO_INPUT.exec(text.trim());
+  if (!match) return null;
+  return Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+}
+
 /** How a share is paid, from create-share-payment's response: what goes on
  *  the card now and what's paid in cash at the venue (null when nothing). */
 export function describeSharePayment({ amountCents, cashCents }: { amountCents: number; cashCents: number }) {
