@@ -4,7 +4,7 @@ import { Modal } from 'react-native';
 import VenueDashboardScreen from '@/app/venue-dashboard';
 import { loadWithFile } from '@/components/ui/test-utils';
 import { cyprusToday } from '@/lib/venue-today';
-import { appRoster, dayBoard, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
+import { appRoster, counterRoster, dayBoard, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
 
 // The venue dashboard's Today screen (app/venue-dashboard.tsx, P6c): the day
 // calendar per pitch from venue_day_board, the blocks and flags on it, and
@@ -17,6 +17,8 @@ type Row = Record<string, unknown>;
 const mockTables: Record<string, Row[]> = {};
 const mockCalls: { table: string; method: string; args: unknown[] }[] = [];
 const mockRpcData: Record<string, unknown> = {};
+/** A test's own answer for one function (a slow or failing one). */
+const mockRpcHandlers: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
 const mockRpc = jest.fn();
 let mockRole = 'venue_owner';
 
@@ -38,12 +40,19 @@ jest.mock('@/lib/supabase', () => {
       from: (table: string) => builder(table),
       rpc: (name: string, args: unknown) => {
         mockRpc(name, args);
+        const handler = mockRpcHandlers[name];
+        if (handler) return handler(args as Record<string, unknown>);
         return Promise.resolve({ data: mockRpcData[name] ?? null, error: null });
       },
       functions: { invoke: jest.fn(async () => ({ data: { cancelled: true }, error: null })) },
     },
   };
 });
+// Early morning in Cyprus, so no slot of today's calendar has passed yet.
+jest.mock('@/lib/venue-today', () => ({
+  ...jest.requireActual<typeof import('@/lib/venue-today')>('@/lib/venue-today'),
+  cyprusNow: () => '06:00',
+}));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'staff1' } }) }));
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ status: 'ready', profile: { id: 'staff1', role: mockRole }, reload: jest.fn() }),
@@ -66,6 +75,8 @@ const flag = { id: 'f1', pitch_id: null, starts_at: '18:00:00', ends_at: '20:00:
 beforeEach(() => {
   mockCalls.length = 0;
   mockRpc.mockReset();
+  for (const key of Object.keys(mockRpcHandlers)) delete mockRpcHandlers[key];
+  invoke().mockClear();
   mockRole = 'venue_owner';
   for (const key of Object.keys(mockTables)) delete mockTables[key];
   mockTables.venues = [{ id: 'v1', name: 'Nuevo Campo', base_pitches: 2, allows_6v6_on_5s: false }];
@@ -74,6 +85,8 @@ beforeEach(() => {
   mockRpcData.slot_price_cents = 5000;
   mockRpcData.cancellation_quote = venueQuote();
 });
+
+const invoke = () => jest.requireMock<typeof import('@/lib/supabase')>('@/lib/supabase').supabase.functions.invoke as jest.Mock;
 
 const rpcCalls = (name: string) => mockRpc.mock.calls.filter((c) => c[0] === name).map((c) => c[1]);
 
@@ -130,6 +143,63 @@ describe('Venue dashboard: Today', () => {
     expect(rpcCalls('mark_cash_received')).toEqual([]);
     await act(() => fireEvent.press(screen.getByText('Confirm €6.00 cash received')));
     expect(rpcCalls('mark_cash_received')).toEqual([{ p_share_id: 's2' }]);
+  });
+
+  it('a slow roster for one booking never shows under another', async () => {
+    let answerFirst: (value: unknown) => void = () => {};
+    mockRpcHandlers.venue_booking_roster = (args) =>
+      args.p_booking_id === 'b-app'
+        ? new Promise((resolve) => {
+            answerFirst = resolve;
+          })
+        : Promise.resolve({ data: counterRoster(), error: null });
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('booking-b-app')));
+    await act(() => fireEvent.press(screen.getByTestId('booking-b-walk')));
+    expect(await screen.findByText('Cancel walk-in')).toBeTruthy();
+    await act(async () => answerFirst({ data: appRoster(), error: null }));
+    expect(screen.getByText('Cancel walk-in')).toBeTruthy();
+    expect(screen.queryByText(/Booked by/)).toBeNull();
+  });
+
+  it("venue cancel asks the server for its quote first, then cancels exactly that quote", async () => {
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('booking-b-app')));
+    const cancel = await screen.findByText('Cancel booking');
+    await act(() => fireEvent.press(cancel));
+    expect(rpcCalls('cancellation_quote')).toEqual([{ p_booking_id: 'b-app', p_scope: 'venue' }]);
+    expect(invoke()).not.toHaveBeenCalled();
+    expect(screen.getByText('Petros: nothing was taken.')).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByText('Cancel booking and refund players')));
+    expect(invoke()).toHaveBeenCalledWith('cancel-booking', { body: { bookingId: 'b-app', scope: 'venue', quote: 'q-1' } });
+  });
+
+  it("venue cancel shows the server's refusal when the quote can't be read, and cancels nothing", async () => {
+    mockRpcHandlers.cancellation_quote = async () => ({ data: null, error: { message: 'not_venue_staff' } });
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('booking-b-app')));
+    const cancel = await screen.findByText('Cancel booking');
+    await act(() => fireEvent.press(cancel));
+    expect(screen.getByText("You're not staff at this venue.")).toBeTruthy();
+    expect(screen.queryByText('Cancel booking and refund players')).toBeNull();
+    expect(invoke()).not.toHaveBeenCalled();
+  });
+
+  it('tapping a blocked slot offers to remove that block', async () => {
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('cell-p2-09:00')));
+    expect(screen.queryByText('Close to new bookings')).toBeNull();
+    await act(() => fireEvent.press(screen.getByText('Remove block')));
+    expect(mockCalls.filter((c) => c.table === 'venue_blocks').map((c) => [c.method, c.args])).toEqual([
+      ['delete', []],
+      ['eq', ['id', 'blk1']],
+    ]);
+  });
+
+  it('lists training slots from the Cyprus today', async () => {
+    await open();
+    const gte = mockCalls.filter((c) => c.table === 'venue_bookings' && c.method === 'gte');
+    expect(gte.map((c) => c.args)).toEqual([['booking_day', cyprusToday()]]);
   });
 
   it('adds a walk-in at a free slot with no price unless staff change it', async () => {

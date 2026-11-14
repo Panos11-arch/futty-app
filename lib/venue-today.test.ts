@@ -11,7 +11,9 @@ import {
   bookingTitle,
   cancelCounterBooking,
   clearConditions,
+  canStartGame,
   confirmVenueCancel,
+  cyprusNow,
   cyprusToday,
   dayTitle,
   describeVenueError,
@@ -25,15 +27,20 @@ import {
   kindLabel,
   markCashReceived,
   markCounterPaid,
+  gameEnd,
   markLabel,
   pitchColumn,
+  quoteMovesMoney,
   removeBlock,
   requestCollection,
   rosterStateLabel,
   setAllows6v6,
+  slotIsPast,
   SLOT_STARTS,
   unassignedBookings,
   venueQuoteWords,
+  weekdayDates,
+  weekdayIndex,
 } from './venue-today';
 import { appBooking, appRoster, dayBoard, phoneBooking, PITCH_1, venueQuote, walkIn } from './venue-today.fixtures';
 
@@ -248,6 +255,35 @@ describe('days in Cyprus time', () => {
     expect(addDays('2027-01-01', -1)).toBe('2026-12-31');
   });
 
+  it('the time now is the Cyprus time, as HH:MM', () => {
+    expect(cyprusNow(new Date('2026-11-15T22:30:00Z'))).toBe('00:30');
+    expect(cyprusNow(new Date('2026-07-15T15:05:00Z'))).toBe('18:05');
+  });
+
+  it('a half hour is past once it has ended, in Cyprus time', () => {
+    // Today at 18:10: the 17:30 half hour has ended, 18:00 hasn't.
+    expect(slotIsPast('17:30', '2026-11-16', '2026-11-16', '18:10')).toBe(true);
+    expect(slotIsPast('18:00', '2026-11-16', '2026-11-16', '18:10')).toBe(false);
+    expect(slotIsPast('17:30', '2026-11-16', '2026-11-16', '18:00')).toBe(true);
+    // Every slot of an earlier day, none of a later one.
+    expect(slotIsPast('23:30', '2026-11-15', '2026-11-16', '00:10')).toBe(true);
+    expect(slotIsPast('07:00', '2026-11-17', '2026-11-16', '23:50')).toBe(false);
+  });
+
+  it('weekdays are counted from Monday, on the Cyprus date', () => {
+    expect(weekdayIndex('2026-11-16')).toBe(0); // Monday
+    expect(weekdayIndex('2026-11-22')).toBe(6); // Sunday
+  });
+
+  it('a weekly series starts on the next such weekday from the Cyprus today', () => {
+    // Today is Monday 16 November in Cyprus.
+    expect(weekdayDates(0, 3, '2026-11-16')).toEqual(['2026-11-16', '2026-11-23', '2026-11-30']);
+    expect(weekdayDates(6, 2, '2026-11-16')).toEqual(['2026-11-22', '2026-11-29']);
+    // Sunday 15th: the next Monday is the 16th, across a month end too.
+    expect(weekdayDates(0, 1, '2026-11-15')).toEqual(['2026-11-16']);
+    expect(weekdayDates(1, 2, '2026-12-30')).toEqual(['2027-01-05', '2027-01-12']);
+  });
+
   it('names the day', () => {
     expect(dayTitle('2026-11-16', '2026-11-16')).toBe('Today');
     expect(dayTitle('2026-11-17', '2026-11-16')).toBe('Tomorrow');
@@ -311,9 +347,18 @@ describe('the calendar', () => {
     expect(SLOT_STARTS[33]).toBe('23:30');
   });
 
+  it('a game must end by midnight: 23:30 takes no game, 23:00 only 60 minutes', () => {
+    expect(gameEnd('22:30', 90)).toBe('24:00');
+    expect(gameEnd('23:00', 60)).toBe('24:00');
+    expect(gameEnd('23:00', 90)).toBeNull();
+    expect(gameEnd('23:30', 60)).toBeNull();
+    expect(canStartGame('23:00')).toBe(true);
+    expect(canStartGame('23:30')).toBe(false);
+  });
+
   it('places a booking on its pitch at its time', () => {
     const column = pitchColumn(dayBoard(), 'p1');
-    expect(column.bookings).toEqual([{ booking: appBooking(), row: 22, span: 2, flagged: false }]);
+    expect(column.bookings).toEqual([{ booking: appBooking(), row: 22, span: 2, flagged: false, earlier: false }]);
     expect(column.cells.find((c) => c.start === '18:00')).toMatchObject({ free: false });
     expect(column.cells.find((c) => c.start === '19:00')).toMatchObject({ free: true, blocked: null, flagged: null });
   });
@@ -348,6 +393,14 @@ describe('the calendar', () => {
     const late = appBooking({ start_time: '23:00:00', end_time: '24:00:00' });
     expect(pitchColumn(dayBoard({ bookings: [late] }), PITCH_1.id).bookings[0]).toMatchObject({ row: 32, span: 2 });
   });
+
+  it('a booking that starts before 07:00 is drawn from 07:00 and marked as starting earlier, never hidden', () => {
+    const early = appBooking({ id: 'b-early', start_time: '06:00:00', end_time: '07:30:00' });
+    const before = appBooking({ id: 'b-before', start_time: '05:30:00', end_time: '06:30:00', pitch_ids: ['p2'] });
+    const board = dayBoard({ bookings: [early, before] });
+    expect(pitchColumn(board, 'p1').bookings[0]).toMatchObject({ row: 0, span: 1, earlier: true });
+    expect(pitchColumn(board, 'p2').bookings[0]).toMatchObject({ row: 0, span: 1, earlier: true });
+  });
 });
 
 describe('venueQuoteWords', () => {
@@ -358,7 +411,7 @@ describe('venueQuoteWords', () => {
       'Eleni: €0.80 back, by card refund or as credit at your venue, their choice.',
       'Marios: €0.80 back, by card refund or as credit at your venue, their choice. Hand back €6.00 cash.',
       'Petros: nothing was taken.',
-      "Your venue pays Stripe's fee on each card payment that goes back. It comes off your next payout.",
+      "Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.",
     ]);
   });
 
@@ -383,7 +436,7 @@ describe('venueQuoteWords', () => {
       'The booking is cancelled and its pitches are released. Every player is told.',
       'A player: €6.80 back, by card refund or as credit at your venue, their choice.',
       "The booker's guarantee hold is released.",
-      "Your venue pays Stripe's fee on each card payment that goes back. It comes off your next payout.",
+      "Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.",
     ]);
   });
 
@@ -391,6 +444,21 @@ describe('venueQuoteWords', () => {
     expect(venueQuoteWords(venueQuote({ lines: [] }), appRoster())).toEqual([
       'The booking is cancelled and its pitches are released. Every player is told.',
     ]);
+  });
+});
+
+describe('quoteMovesMoney', () => {
+  it('is true when anyone gets money back, credit back or cash handed back', () => {
+    expect(quoteMovesMoney(venueQuote())).toBe(true);
+    const credit = { ...venueQuote().lines[3], credit_used_cents: 600 };
+    expect(quoteMovesMoney(venueQuote({ lines: [credit] }))).toBe(true);
+    const cash = { ...venueQuote().lines[3], cash_back_cents: 600 };
+    expect(quoteMovesMoney(venueQuote({ lines: [cash] }))).toBe(true);
+  });
+
+  it('is false when nobody has paid', () => {
+    expect(quoteMovesMoney(venueQuote({ lines: [venueQuote().lines[3]] }))).toBe(false);
+    expect(quoteMovesMoney(venueQuote({ lines: [] }))).toBe(false);
   });
 });
 

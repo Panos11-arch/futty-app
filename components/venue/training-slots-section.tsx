@@ -4,15 +4,17 @@
 // 'owner_block'), one per week, through the direct RLS insert path in
 // supabase/venue-owners.sql rather than the paid book_slot() RPC (there's no
 // payment or capacity race to protect against when an owner blocks their
-// own pitch), and cancels a whole series in one update.
+// own pitch), and cancels a whole series in one update. Which slots are still
+// upcoming, and the dates a new series falls on, use the Cyprus date
+// (`today`, from cyprusToday) and Cyprus weekdays, never the phone's date.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button, Card, Chip, SectionHeader, Text, TextField } from '@/components/ui';
 import { space } from '@/constants/futty-theme';
 import { DURATIONS, durationLabel, minToTime, timeToMin, type DurationHours } from '@/lib/booking';
-import { dateKeyToDate, toDateKey } from '@/lib/days';
 import { supabase } from '@/lib/supabase';
+import { weekdayDates, weekdayIndex as weekdayOf } from '@/lib/venue-today';
 
 type RecurringSlotSeries = {
   key: string;
@@ -32,7 +34,7 @@ const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 /** Every still-upcoming owner_block occurrence for this venue, grouped back
  *  into the recurring series that created them. */
-function useRecurringSlots(venueId: string | null, userId: string | null) {
+function useRecurringSlots(venueId: string | null, userId: string | null, today: string) {
   const [state, setState] = useState<RecurringSlotsState>({ status: 'loading' });
   const requestIdRef = useRef(0);
 
@@ -53,7 +55,7 @@ function useRecurringSlots(venueId: string | null, userId: string | null) {
       .eq('booking_type', 'owner_block')
       .eq('created_by', userId)
       .eq('status', 'confirmed')
-      .gte('booking_day', toDateKey(new Date()))
+      .gte('booking_day', today)
       .order('booking_day', { ascending: true });
 
     if (requestIdRef.current !== requestId) return;
@@ -65,7 +67,7 @@ function useRecurringSlots(venueId: string | null, userId: string | null) {
 
     const groups = new Map<string, RecurringSlotSeries>();
     for (const row of data ?? []) {
-      const weekdayIndex = (dateKeyToDate(row.booking_day).getDay() + 6) % 7;
+      const weekdayIndex = weekdayOf(row.booking_day);
       const key = `${weekdayIndex}-${row.start_time}-${row.end_time}-${row.note ?? ''}`;
       const group = groups.get(key);
       if (group) {
@@ -83,7 +85,7 @@ function useRecurringSlots(venueId: string | null, userId: string | null) {
     }
 
     setState({ status: 'ready', series: [...groups.values()] });
-  }, [venueId, userId]);
+  }, [venueId, userId, today]);
 
   useEffect(() => {
     reload();
@@ -100,33 +102,17 @@ const START_TIMES = Array.from({ length: 15 }, (_, i) => `${String(8 + i).padSta
 
 const WEEKS_AHEAD_OPTIONS = [4, 8, 12, 26];
 
-/** Every Monday..Sunday index (0=Mon) that falls on/after today, then every
- *  7 days after that, for `weeksAhead` total occurrences. */
-function upcomingWeekdayDates(weekdayIndex: number, weeksAhead: number): string[] {
-  const today = new Date();
-  const todayIndex = (today.getDay() + 6) % 7; // getDay() is 0=Sun; shift to 0=Mon
-  let offset = weekdayIndex - todayIndex;
-  if (offset < 0) offset += 7;
-
-  const first = new Date(today);
-  first.setDate(today.getDate() + offset);
-
-  return Array.from({ length: weeksAhead }, (_, i) => {
-    const date = new Date(first);
-    date.setDate(first.getDate() + i * 7);
-    return toDateKey(date);
-  });
-}
-
 export type TrainingSlotsSectionProps = {
   venue: { id: string; name: string; base_pitches: number | null };
   userId: string;
+  /** Today's date in Cyprus (YYYY-MM-DD). */
+  today: string;
   /** The day calendar shows training slots too: reload it after a change. */
   onChanged: () => void;
 };
 
-export function TrainingSlotsSection({ venue, userId, onChanged }: TrainingSlotsSectionProps) {
-  const recurringSlots = useRecurringSlots(venue.id, userId);
+export function TrainingSlotsSection({ venue, userId, today, onChanged }: TrainingSlotsSectionProps) {
+  const recurringSlots = useRecurringSlots(venue.id, userId, today);
   const [cancellingSeries, setCancellingSeries] = useState<string | null>(null);
   const [weekdayIndex, setWeekdayIndex] = useState(0);
   const [startTime, setStartTime] = useState('18:00');
@@ -153,7 +139,7 @@ export function TrainingSlotsSection({ venue, userId, onChanged }: TrainingSlots
 
     const startMin = timeToMin(`${startTime}:00`);
     const endTime = minToTime(startMin + duration * 60);
-    const dates = upcomingWeekdayDates(weekdayIndex, weeksAhead);
+    const dates = weekdayDates(weekdayIndex, weeksAhead, today);
 
     const rows = dates.map((day) => ({
       venue_id: venue.id,

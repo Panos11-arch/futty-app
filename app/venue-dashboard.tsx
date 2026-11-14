@@ -4,7 +4,9 @@
 // first, every common action in two taps or fewer:
 // - a day calendar per pitch (venue_day_board): bookings, walk-ins, blocks
 //   and condition flags; tap a booking for its roster (cash tick, run
-//   collection, check-in code, cancel), tap a free slot to add a walk-in;
+//   collection, check-in code, cancel), tap a free slot to add a walk-in,
+//   tap a blocked slot to remove its block; past slots (Cyprus time) take
+//   no tap;
 // - Block and Flag conditions for the day or a time range;
 // - the 6 v 6 on 5-a-side pitches setting;
 // - below, unchanged from before P6c: adding a house player and recurring
@@ -27,6 +29,7 @@ import {
   SkeletonBlock,
   Text,
 } from '@/components/ui';
+import { BlockSheet } from '@/components/venue/block-sheet';
 import { BookingSheet, type BookingSheetActions, type RosterLoad } from '@/components/venue/booking-sheet';
 import { DayCalendar } from '@/components/venue/day-calendar';
 import { DayMarks } from '@/components/venue/day-marks';
@@ -46,8 +49,10 @@ import {
   bookingSummary,
   bookingTitle,
   cancelCounterBooking,
+  canStartGame,
   clearConditions,
   confirmVenueCancel,
+  cyprusNow,
   cyprusToday,
   dayTitle,
   describeVenueError,
@@ -62,9 +67,11 @@ import {
   kindLabel,
   markCashReceived,
   markCounterPaid,
+  markLabel,
   removeBlock,
   requestCollection,
   setAllows6v6,
+  slotIsPast,
   unassignedBookings,
   type BoardBlock,
   type BoardBooking,
@@ -107,10 +114,22 @@ function useDayBoard(venueId: string | null, day: string) {
   return { state, reload };
 }
 
+/** Today's date and the time now in Cyprus, refreshed every minute so past
+ *  slots stop taking taps while the dashboard stays open. */
+function useCyprusClock() {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return { today: cyprusToday(), now: cyprusNow() };
+}
+
 export default function VenueDashboardScreen() {
   const { user } = useAuth();
   const profile = useProfile();
-  const today = cyprusToday();
+  const clock = useCyprusClock();
+  const today = clock.today;
 
   const [venues, setVenues] = useState<DashboardVenue[] | null>(null);
   const [venueId, setVenueId] = useState<string | null>(null);
@@ -120,6 +139,7 @@ export default function VenueDashboardScreen() {
   const [opened, setOpened] = useState<BoardBooking | null>(null);
   const [roster, setRoster] = useState<RosterLoad>({ status: 'loading' });
   const [walkIn, setWalkIn] = useState<{ pitch: BoardPitch; start: string } | null>(null);
+  const [blockOpened, setBlockOpened] = useState<BoardBlock | null>(null);
   const [mark, setMark] = useState<{
     mode: MarkMode;
     key: number;
@@ -143,9 +163,14 @@ export default function VenueDashboardScreen() {
 
   const venue = venues?.find((v) => v.id === venueId) ?? null;
 
+  // Only the latest booking opened may fill the sheet: a slow answer for an
+  // earlier one is dropped.
+  const rosterRequest = useRef(0);
   const loadRoster = useCallback(async (bookingId: string) => {
+    const id = ++rosterRequest.current;
     setRoster({ status: 'loading' });
     const { data, error } = await fetchRoster(bookingId);
+    if (id !== rosterRequest.current) return;
     setRoster(
       error || !data ? { status: 'error', message: describeVenueError(error?.message ?? '') } : { status: 'ready', roster: data as Roster },
     );
@@ -298,9 +323,11 @@ export default function VenueDashboardScreen() {
                 />
                 <DayCalendar
                   board={ready}
+                  clock={clock}
                   onOpenBooking={openBooking}
                   onAddAt={(pitch, start) => setWalkIn({ pitch, start })}
-                  onMarkAt={(pitch, start, mode) => setMark({ mode, key: Date.now(), slot: { pitch, start } })}
+                  onFlagAt={(pitch, start) => setMark({ mode: 'flag', key: Date.now(), slot: { pitch, start } })}
+                  onBlockAt={setBlockOpened}
                 />
                 {unassignedBookings(ready).length > 0 ? (
                   <View style={styles.section}>
@@ -336,7 +363,7 @@ export default function VenueDashboardScreen() {
 
             {user ? (
               <View style={styles.divider}>
-                <TrainingSlotsSection venue={venue} userId={user.id} onChanged={reloadBoard} />
+                <TrainingSlotsSection venue={venue} userId={user.id} today={today} onChanged={reloadBoard} />
               </View>
             ) : null}
           </>
@@ -346,7 +373,10 @@ export default function VenueDashboardScreen() {
       <BookingSheet
         key={opened?.id ?? 'none'}
         visible={opened !== null}
-        onClose={() => setOpened(null)}
+        onClose={() => {
+          rosterRequest.current += 1;
+          setOpened(null);
+        }}
         booking={opened}
         state={roster}
         onRetry={() => opened && loadRoster(opened.id)}
@@ -365,6 +395,16 @@ export default function VenueDashboardScreen() {
           onAdd={(input) => sheetWrite(addCounterBooking(input))}
         />
       ) : null}
+      {ready && blockOpened ? (
+        <BlockSheet
+          key={blockOpened.id}
+          visible
+          block={blockOpened}
+          label={markLabel(ready, blockOpened)}
+          onClose={() => setBlockOpened(null)}
+          onRemove={(b) => sheetWrite(removeBlock(b.id))}
+        />
+      ) : null}
       {venue && user && mark ? (
         <MarkSheet
           key={mark.key}
@@ -377,7 +417,11 @@ export default function VenueDashboardScreen() {
               : undefined
           }
           onAddWalkIn={
-            mark.mode === 'flag' && mark.slot
+            mark.mode === 'flag' &&
+            mark.slot &&
+            mark.slot.pitch.is_open &&
+            canStartGame(mark.slot.start) &&
+            !slotIsPast(mark.slot.start, day, clock.today, clock.now)
               ? () => {
                   const slot = mark.slot!;
                   setMark(null);

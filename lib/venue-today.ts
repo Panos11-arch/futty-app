@@ -297,6 +297,28 @@ export function cyprusToday(now: Date = new Date()): string {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
+const cyprusClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Nicosia',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
+/** The time now in Cyprus (HH:MM), whatever the phone's time zone. */
+export function cyprusNow(now: Date = new Date()): string {
+  const parts: Record<string, string> = {};
+  for (const part of cyprusClock.formatToParts(now)) parts[part.type] = part.value;
+  return `${parts.hour}:${parts.minute}`;
+}
+
+/** A half hour on the calendar is past once it has ended (Cyprus time):
+ *  every slot of an earlier day, none of a later one. The server takes a
+ *  walk-in until its game has ended, so a half hour still running isn't. */
+export function slotIsPast(start: string, day: string, today: string, now: string): boolean {
+  if (day !== today) return day < today;
+  return halfHourAfter(start) <= now;
+}
+
 function dayToUtc(day: string): Date {
   const [y, m, d] = day.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
@@ -306,6 +328,18 @@ export function addDays(day: string, n: number): string {
   const date = dayToUtc(day);
   date.setUTCDate(date.getUTCDate() + n);
   return date.toISOString().slice(0, 10);
+}
+
+/** 0 for Monday to 6 for Sunday, for a Cyprus date (YYYY-MM-DD). */
+export function weekdayIndex(day: string): number {
+  return (dayToUtc(day).getUTCDay() + 6) % 7;
+}
+
+/** A weekly series: the first date on that weekday (0 = Monday) from today
+ *  (a Cyprus date, today included), then every 7 days, `weeks` dates in all. */
+export function weekdayDates(index: number, weeks: number, today: string): string[] {
+  const first = addDays(today, (index - weekdayIndex(today) + 7) % 7);
+  return Array.from({ length: weeks }, (_, i) => addDays(first, i * 7));
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -391,15 +425,33 @@ const GRID_END = 24 * 60;
 const SLOT_MINUTES = 30;
 
 /** Every half hour the calendar shows, 07:00 to 23:30, as the Book flow offers. */
-export const SLOT_STARTS: string[] = Array.from({ length: (GRID_END - GRID_START) / SLOT_MINUTES }, (_, i) => {
-  const minutes = GRID_START + i * SLOT_MINUTES;
+export const SLOT_STARTS: string[] = Array.from({ length: (GRID_END - GRID_START) / SLOT_MINUTES }, (_, i) =>
+  toHhmm(GRID_START + i * SLOT_MINUTES),
+);
+
+function toHhmm(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-});
+}
 
 /** '18:30' -> '19:00': the end of the half-hour slot that starts then. */
 export function halfHourAfter(start: string): string {
-  const end = toMinutes(start) + SLOT_MINUTES;
-  return `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
+  return toHhmm(toMinutes(start) + SLOT_MINUTES);
+}
+
+/** Game lengths, as the Book flow offers them (spec 13 "Booking screens"). */
+export const GAME_LENGTHS = [60, 90, 120];
+
+/** When a game of that length starting then ends, or null when it wouldn't
+ *  end by midnight (spec 13 "Booking screens": a start time is offered only
+ *  if the game ends by midnight). */
+export function gameEnd(start: string, minutes: number): string | null {
+  const end = toMinutes(start) + minutes;
+  return end > GRID_END ? null : toHhmm(end);
+}
+
+/** Whether any game can start then and still end by midnight. */
+export function canStartGame(start: string): boolean {
+  return gameEnd(start, GAME_LENGTHS[0]) !== null;
 }
 
 function toMinutes(time: string): number {
@@ -420,20 +472,25 @@ export type CalendarCell = {
   flagged: BoardFlag | null;
 };
 
-export type PlacedBooking = { booking: BoardBooking; row: number; span: number; flagged: boolean };
+/** `earlier`: it starts before the calendar's first row (07:00), so it's
+ *  drawn from 07:00 and says so, never hidden. */
+export type PlacedBooking = { booking: BoardBooking; row: number; span: number; flagged: boolean; earlier: boolean };
 
 /** One pitch's day: its bookings placed by half-hour row, and each half hour
  *  with whether it's free, blocked or flagged. */
 export function pitchColumn(board: DayBoard, pitchId: string): { bookings: PlacedBooking[]; cells: CalendarCell[] } {
   const onPitch = board.bookings.filter((b) => b.pitch_ids.includes(pitchId));
   const bookings = onPitch.map((booking) => {
-    const start = Math.max(toMinutes(booking.start_time), GRID_START);
-    const end = Math.min(toMinutes(booking.end_time), GRID_END);
+    const from = toMinutes(booking.start_time);
+    const to = toMinutes(booking.end_time);
+    const start = Math.max(from, GRID_START);
+    const end = Math.min(to, GRID_END);
     return {
       booking,
       row: (start - GRID_START) / SLOT_MINUTES,
       span: Math.max(1, Math.ceil((end - start) / SLOT_MINUTES)),
-      flagged: board.flags.some((f) => covers(f, pitchId, start, end)),
+      flagged: board.flags.some((f) => covers(f, pitchId, from, to)),
+      earlier: from < GRID_START,
     };
   });
   const cells = SLOT_STARTS.map((start) => {
@@ -457,6 +514,15 @@ export function unassignedBookings(board: DayBoard): BoardBooking[] {
 // ---- The venue's cancel quote, in words ----------------------------------
 
 type QuoteLine = CancellationQuote['lines'][number] & { cash_back_cents?: number };
+
+/** Whether cancelling gives anyone something back: a card refund, credit
+ *  that paid for a share, or cash to hand back. When nobody has paid, the
+ *  confirm button just says "Cancel booking". */
+export function quoteMovesMoney(quote: CancellationQuote): boolean {
+  return (quote.lines as QuoteLine[]).some(
+    (l) => l.refund_cents > 0 || l.credit_used_cents > 0 || (l.cash_back_cents ?? 0) > 0,
+  );
+}
 
 /** What cancelling does to each player's money, with the server's amounts. */
 export function venueQuoteWords(quote: CancellationQuote, roster: AppRoster): string[] {
@@ -482,7 +548,7 @@ export function venueQuoteWords(quote: CancellationQuote, roster: AppRoster): st
     words.push(`${names.get(line.profile_id) ?? 'A player'}: ${parts.length ? parts.join(' ') : 'nothing was taken.'}`);
   }
   if (quote.lines.some((l) => l.refund_cents > 0)) {
-    words.push("Your venue pays Stripe's fee on each card payment that goes back. It comes off your next payout.");
+    words.push("Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.");
   }
   return words;
 }

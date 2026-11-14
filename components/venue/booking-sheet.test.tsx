@@ -133,6 +133,16 @@ describe('BookingSheet: app booking roster', () => {
     expect(a.venueCancel).toHaveBeenLastCalledWith('b-app', 'q-2');
   });
 
+  it('says only "Cancel booking" when nobody has paid, so nobody is refunded', async () => {
+    const unpaidOnly = venueQuote({ lines: [venueQuote().lines[3]] });
+    const a = await open(appRoster(), actions({ venueQuote: jest.fn(async () => ({ quote: unpaidOnly })) }));
+    await act(() => fireEvent.press(screen.getByText('Cancel booking')));
+    expect(screen.queryByText('Cancel booking and refund players')).toBeNull();
+    expect(screen.queryByText(/Stripe/)).toBeNull();
+    await act(() => fireEvent.press(screen.getByText('Cancel booking')));
+    expect(a.venueCancel).toHaveBeenCalledWith('b-app', 'q-1');
+  });
+
   it('can keep the booking after reading the quote', async () => {
     const a = await open(appRoster());
     await act(() => fireEvent.press(screen.getByText('Cancel booking')));
@@ -147,22 +157,59 @@ describe('BookingSheet: walk-in or phone booking', () => {
     await open(counterRoster(), actions(), walkIn());
     expect(screen.getByText('Walk-in')).toBeTruthy();
     expect(screen.getByText('Andreas')).toBeTruthy();
-    expect(screen.getByText('Your price €50.00 · charged €45.50')).toBeTruthy();
+    expect(screen.getByText('Charged €45.50 · your price €50.00')).toBeTruthy();
     expect(screen.getByText('Not paid')).toBeTruthy();
   });
 
   it('is labelled phone', async () => {
     await open(counterRoster({ source: 'phone', charged_cents: 5000, paid_method: 'card', paid_at: 'x' }), actions(), walkIn());
     expect(screen.getByText('Phone')).toBeTruthy();
-    expect(screen.getByText('Your price €50.00')).toBeTruthy();
+    expect(screen.getByText('Charged €50.00')).toBeTruthy();
     expect(screen.getByText('Paid card')).toBeTruthy();
     expect(screen.queryByText('Paid cash')).toBeNull();
   });
 
-  it('marks it paid by cash or card with its id only', async () => {
+  it('labels what was charged when the venue has no price for that slot', async () => {
+    await open(counterRoster({ venue_price_cents: null }), actions(), walkIn());
+    expect(screen.getByText('Charged €45.50')).toBeTruthy();
+    expect(screen.queryByText(/your price/i)).toBeNull();
+  });
+
+  it('marks it paid by cash or card on the second tap, with its id only', async () => {
     const a = await open(counterRoster(), actions(), walkIn());
     await act(() => fireEvent.press(screen.getByText('Paid card')));
+    expect(a.markCounterPaid).not.toHaveBeenCalled();
+    await act(() => fireEvent.press(screen.getByText('Confirm €45.50 paid by card')));
     expect(a.markCounterPaid).toHaveBeenCalledWith('b-walk', 'card');
+  });
+
+  it('can step back from marking it paid', async () => {
+    const a = await open(counterRoster(), actions(), walkIn());
+    await act(() => fireEvent.press(screen.getByText('Paid cash')));
+    expect(screen.getByText('Confirm €45.50 paid in cash')).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByText('Not yet')));
+    expect(screen.getByText('Paid cash')).toBeTruthy();
+    expect(screen.getByText('Paid card')).toBeTruthy();
+    expect(a.markCounterPaid).not.toHaveBeenCalled();
+  });
+
+  it('cancels an unpaid one on the second tap, saying the pitch is released', async () => {
+    const a = await open(counterRoster(), actions(), walkIn());
+    await act(() => fireEvent.press(screen.getByText('Cancel walk-in')));
+    expect(a.cancelCounter).not.toHaveBeenCalled();
+    expect(screen.getByText('The pitch is released for new bookings.')).toBeTruthy();
+    expect(screen.queryByText(/comes off your revenue/)).toBeNull();
+    await act(() => fireEvent.press(screen.getByText('Yes, cancel it')));
+    expect(a.cancelCounter).toHaveBeenCalledWith('b-walk');
+  });
+
+  it('keeps it on "Keep it"', async () => {
+    const a = await open(counterRoster({ source: 'phone' }), actions(), walkIn());
+    await act(() => fireEvent.press(screen.getByText('Cancel phone booking')));
+    await act(() => fireEvent.press(screen.getByText('Keep it')));
+    expect(a.cancelCounter).not.toHaveBeenCalled();
+    expect(screen.queryByText('Yes, cancel it')).toBeNull();
+    expect(screen.getByText('Cancel phone booking')).toBeTruthy();
   });
 
   it('cancels it on the second tap, saying the money comes off revenue', async () => {

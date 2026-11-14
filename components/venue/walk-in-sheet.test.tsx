@@ -3,7 +3,8 @@ import { Modal } from 'react-native';
 
 import { loadWithFile } from '@/components/ui/test-utils';
 import { WalkInSheet } from '@/components/venue/walk-in-sheet';
-import { PITCH_2 } from '@/lib/venue-today.fixtures';
+import { PITCH_1, PITCH_2 } from '@/lib/venue-today.fixtures';
+import type { BoardPitch, Slot } from '@/lib/venue-today';
 
 // Adding a walk-in or phone booking at the counter (spec 13 "Venue
 // dashboard"): the server fills in the venue's price, staff may change it,
@@ -21,8 +22,19 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-async function open(price: number | null = 5000, onAdd = jest.fn(async (): Promise<string | null> => null)) {
-  const loadPrice = jest.fn(async () => ({ cents: price }));
+type PriceResult = { cents: number | null } | { error: string };
+
+async function draw({
+  loadPrice = jest.fn(async (_slot: Slot): Promise<PriceResult> => ({ cents: 5000 })),
+  onAdd = jest.fn(async (): Promise<string | null> => null),
+  pitch = PITCH_2,
+  start = '20:00',
+}: {
+  loadPrice?: jest.Mock<Promise<PriceResult>, [Slot]>;
+  onAdd?: jest.Mock<Promise<string | null>, []>;
+  pitch?: BoardPitch;
+  start?: string;
+} = {}) {
   const onClose = jest.fn();
   await render(
     <WalkInSheet
@@ -30,14 +42,19 @@ async function open(price: number | null = 5000, onAdd = jest.fn(async (): Promi
       onClose={onClose}
       venueId="v1"
       day="2026-11-16"
-      pitch={PITCH_2}
-      start="20:00"
+      pitch={pitch}
+      start={start}
       loadPrice={loadPrice}
       onAdd={onAdd}
     />,
   );
-  await screen.findByText(/Your price is|No price is set/);
   return { loadPrice, onAdd, onClose };
+}
+
+async function open(price: number | null = 5000, onAdd = jest.fn(async (): Promise<string | null> => null)) {
+  const result = await draw({ loadPrice: jest.fn(async (_slot: Slot): Promise<PriceResult> => ({ cents: price })), onAdd });
+  await screen.findByText(/Your price is|No price is set/);
+  return result;
 }
 
 describe('WalkInSheet', () => {
@@ -98,6 +115,57 @@ describe('WalkInSheet', () => {
     await act(() => fireEvent.press(screen.getByText('Add, paid card')));
     expect(onAdd).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a price, like 45.00.')).toBeTruthy();
+  });
+
+  it('typing the venue price another way is still no change: no price is sent', async () => {
+    const { onAdd } = await open();
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Andreas');
+    await fireEvent.changeText(screen.getByLabelText('Price'), '50');
+    await act(() => fireEvent.press(screen.getByText('Add, paid cash')));
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ chargedCents: null }));
+  });
+
+  it('at 23:00 only a 60-minute game is offered, as it must end by midnight', async () => {
+    const { loadPrice } = await draw({ start: '23:00' });
+    await screen.findByText(/Your price is/);
+    expect(loadPrice).toHaveBeenCalledWith(expect.objectContaining({ start: '23:00', end: '24:00' }));
+    await act(() => fireEvent.press(screen.getByText('90 min')));
+    await act(() => fireEvent.press(screen.getByText('120 min')));
+    expect(loadPrice).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Pitch 2 · 23:00–24:00')).toBeTruthy();
+  });
+
+  it('at 23:30 no game can end by midnight: it says so and adds nothing', async () => {
+    const { loadPrice, onAdd } = await draw({ start: '23:30' });
+    expect(screen.getByText('A game starting at 23:30 can’t end by midnight. Pick an earlier time.')).toBeTruthy();
+    expect(screen.queryByText('Getting your price…')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Andreas');
+    await act(() => fireEvent.press(screen.getByText('Add, paid cash')));
+    expect(loadPrice).not.toHaveBeenCalled();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('a price that cannot be read says why, and a later price clears it', async () => {
+    const loadPrice = jest
+      .fn<Promise<PriceResult>, [Slot]>()
+      .mockResolvedValueOnce({ error: "You're closed that day." })
+      .mockResolvedValue({ cents: 7000 });
+    await draw({ loadPrice });
+    expect(await screen.findByText("Couldn't get your price for this slot. You're closed that day.")).toBeTruthy();
+    expect(screen.queryByText(/No price is set/)).toBeNull();
+    await act(() => fireEvent.press(screen.getByText('90 min')));
+    expect(await screen.findByText('Your price is €70.00. Change it for a discount.')).toBeTruthy();
+    expect(screen.queryByText(/Couldn't get your price/)).toBeNull();
+  });
+
+  it('a pitch with no formats says so instead of loading forever', async () => {
+    const { loadPrice, onAdd } = await draw({ pitch: { ...PITCH_1, formats: [] } });
+    expect(screen.getByText('This pitch has no formats set up, so it can’t take a booking yet.')).toBeTruthy();
+    expect(screen.queryByText('Getting your price…')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText('Name'), 'Andreas');
+    await act(() => fireEvent.press(screen.getByText('Add, paid cash')));
+    expect(loadPrice).not.toHaveBeenCalled();
+    expect(onAdd).not.toHaveBeenCalled();
   });
 
   it('refuses a price that is not an amount', async () => {

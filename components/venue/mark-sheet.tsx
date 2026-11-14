@@ -6,8 +6,8 @@
 // - Flag: "conditions may be unsuitable". Every player booked then is told,
 //   and normal cancellation rules apply.
 // The default, every pitch for the whole day, is one tap once open. Opened
-// from a blocked or flagged slot on the calendar, it starts on that pitch and
-// half hour.
+// from a flagged slot on the calendar, it starts on that pitch and half hour
+// (a blocked slot opens BlockSheet instead, to remove that block).
 import { useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 

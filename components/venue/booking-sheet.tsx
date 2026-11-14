@@ -5,7 +5,8 @@
 //   check-in code, and the venue's cancel (the server's quote first, then a
 //   second tap);
 // - a walk-in or phone booking: its customer, the venue's price and what was
-//   charged, paid by cash or card, and its cancel (second tap).
+//   charged, marking it paid by cash or card (second tap: it writes the
+//   ledger), and its cancel (second tap).
 // Every amount is the server's, only formatted. Every action sends ids.
 import { useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -18,6 +19,7 @@ import { formatEuros } from '@/lib/money/format';
 import {
   hhmm,
   kindLabel,
+  quoteMovesMoney,
   rosterStateLabel,
   venueQuoteWords,
   type AppRoster,
@@ -196,7 +198,7 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
             </Text>
           ))}
           <Button
-            label="Cancel booking and refund players"
+            label={quoteMovesMoney(quote.quote) ? 'Cancel booking and refund players' : 'Cancel booking'}
             variant="destructive"
             loading={busy === 'cancel'}
             onPress={() => confirmCancel(quote.quote)}
@@ -260,12 +262,15 @@ function CounterBooking({ roster, actions }: { roster: CounterRoster; actions: B
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  /** Marking it paid writes the ledger, so it takes a second tap. */
+  const [paying, setPaying] = useState<'cash' | 'card' | null>(null);
   const label = roster.source === 'phone' ? 'Phone' : 'Walk-in';
   const paid = roster.paid_method !== null;
+  const charged = formatEuros(roster.charged_cents);
   const price =
     roster.venue_price_cents !== null && roster.venue_price_cents !== roster.charged_cents
-      ? `Your price ${formatEuros(roster.venue_price_cents)} · charged ${formatEuros(roster.charged_cents)}`
-      : `Your price ${formatEuros(roster.charged_cents)}`;
+      ? `Charged ${charged} · your price ${formatEuros(roster.venue_price_cents)}`
+      : `Charged ${charged}`;
 
   async function run(key: string, work: () => Promise<string | null>) {
     setBusy(key);
@@ -273,6 +278,12 @@ function CounterBooking({ roster, actions }: { roster: CounterRoster; actions: B
     const refusal = await work();
     setBusy(null);
     if (refusal) setError(refusal);
+    return refusal;
+  }
+
+  async function markPaid(method: 'cash' | 'card') {
+    const refusal = await run(method, () => actions.markCounterPaid(roster.booking_id, method));
+    if (!refusal) setPaying(null);
   }
 
   return (
@@ -288,19 +299,20 @@ function CounterBooking({ roster, actions }: { roster: CounterRoster; actions: B
       ) : (
         <Text tone={paid ? 'success' : 'warning'}>{paid ? `Paid ${roster.paid_method}` : 'Not paid'}</Text>
       )}
-      {!paid && roster.charged_cents > 0 && roster.status === 'confirmed' ? (
+      {!paid && roster.charged_cents > 0 && roster.status === 'confirmed' && !paying ? (
+        <View style={styles.row}>
+          <Button label="Paid cash" onPress={() => setPaying('cash')} />
+          <Button label="Paid card" variant="secondary" onPress={() => setPaying('card')} />
+        </View>
+      ) : null}
+      {!paid && roster.charged_cents > 0 && roster.status === 'confirmed' && paying ? (
         <View style={styles.row}>
           <Button
-            label="Paid cash"
-            loading={busy === 'cash'}
-            onPress={() => run('cash', () => actions.markCounterPaid(roster.booking_id, 'cash'))}
+            label={`Confirm ${charged} paid ${paying === 'cash' ? 'in cash' : 'by card'}`}
+            loading={busy === paying}
+            onPress={() => markPaid(paying)}
           />
-          <Button
-            label="Paid card"
-            variant="secondary"
-            loading={busy === 'card'}
-            onPress={() => run('card', () => actions.markCounterPaid(roster.booking_id, 'card'))}
-          />
+          <Button label="Not yet" variant="plain" disabled={busy !== null} onPress={() => setPaying(null)} />
         </View>
       ) : null}
       {error ? (
