@@ -262,8 +262,9 @@ begin
                                    values (%L, 'counter_paid', 0, 'x4', 'r', 0) $q$, v_booking))
          like '%money_ledger_split_check%', 'never zero';
   assert tests.error_of(format($q$ insert into public.money_ledger (booking_id, kind, amount_cents, ref, reason, venue_cents)
-                                   values (%L, 'counter_paid', 500, 'x5', 'r', -500) $q$, v_booking)) is null,
-    'a reversal';
+                                   values (%L, 'counter_paid', 500, 'x5', 'r', -500) $q$, v_booking))
+         = 'counter_paid_needs_counter_booking',
+    'a reversal passes the split check; only the missing walk-in stops it (P6b)';
 end $$;
 
 rollback;

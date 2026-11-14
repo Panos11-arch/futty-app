@@ -1,4 +1,22 @@
-import { describeSharePayment, formatEuros } from './format';
+import { describeSharePayment, formatEuros, formatEurosPlain } from './format';
+
+describe('formatEurosPlain', () => {
+  it.each([
+    [680, '6.80'],
+    [6550, '65.50'],
+    [5, '0.05'],
+    [0, '0.00'],
+    [-600, '-6.00'],
+    [-5, '-0.05'],
+    [123456, '1234.56'],
+  ])('%i cents is %s', (cents, text) => {
+    expect(formatEurosPlain(cents)).toBe(text);
+  });
+
+  it('only takes whole cents', () => {
+    expect(() => formatEurosPlain(0.5)).toThrow('formatEurosPlain takes integer cents');
+  });
+});
 
 describe('formatEuros', () => {
   it.each([
