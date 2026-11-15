@@ -14,6 +14,7 @@ export const SPEC_RULES: AppRules = {
   free_cancel_minutes: 60,
   cancel_fee_cents: 100,
   refund_cutoff_hours: 6,
+  refund_choice_hours: 48,
   capture_delay_minutes: 60,
   payment_window_minutes: 15,
   guarantee_hold_lead_hours: 72,

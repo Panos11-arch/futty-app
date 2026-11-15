@@ -14,7 +14,8 @@ begin
   assert (select count(*) from public.app_rules) = 1, 'one row';
   assert (r.fee_each_pays_cents, r.fee_pay_all_cents, r.fee_premium_cents, r.gipedo_fee_cents) = (80, 55, 0, 55), 'fees';
   assert (r.window_standard_days, r.window_premium_days) = (7, 14), 'booking windows';
-  assert (r.free_cancel_minutes, r.cancel_fee_cents, r.refund_cutoff_hours) = (60, 100, 6), 'cancellations';
+  assert (r.free_cancel_minutes, r.cancel_fee_cents, r.refund_cutoff_hours, r.refund_choice_hours) = (60, 100, 6, 48),
+    'cancellations';
   assert (r.capture_delay_minutes, r.payment_window_minutes, r.guarantee_hold_lead_hours, r.guarantee_retry_hours,
           r.collection_delay_hours) = (60, 15, 72, 6, 2), 'when money is held and taken';
   assert r.credit_expiry_months = 12, 'credit expiry';
@@ -27,6 +28,52 @@ begin
   assert (public.rule_duration_words(interval '6 hours'), public.rule_duration_words(interval '1 hour'),
           public.rule_duration_words(interval '15 minutes'), public.rule_duration_words(interval '90 minutes'))
          = ('6 hours', '1 hour', '15 minutes', '90 minutes'), 'durations in words';
+end $$;
+
+-- The booker cancels the whole team, and one other player's payment was
+-- taken: that player gets a card refund or credit, their choice. Returns how
+-- long they have to choose (choose_by), when the card refund goes out with no
+-- choice (next_attempt_at), and the words they're sent. Test-only.
+create function tests.refund_choice_after_team_cancel(p_label text,
+  out choose_in interval, out refund_in interval, out body text)
+language plpgsql
+as $$
+declare
+  v_booker uuid := tests.create_user(p_label || '-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_player public.booking_payment_shares;
+  v_line public.booking_cancellation_lines;
+  v_done jsonb;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 1, tests.cyprus_today() + 2,
+                                          p_label => p_label);
+  perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_' || p_label || '_booker', interval '2 hours');
+  v_player := tests.pay_ago((tests.player(v_booking.id, 1)).id, 'pi_' || p_label || '_p1', interval '2 hours');
+  assert v_player.status = 'paid', format('%s: the player''s payment was taken', p_label);
+  -- Two statements: tests.line is stable, so it must run after the cancel
+  -- has written its lines, not in the same statement.
+  v_done := tests.cancel(v_booking.id, 'whole_team', v_booker);
+  v_line := tests.line(v_done, v_player.id);
+  assert v_line.action = 'refund_choice', format('%s: the player chooses card or credit, got %s', p_label, v_line.action);
+  choose_in := v_line.choose_by - now();
+  refund_in := v_line.next_attempt_at - now();
+  select n.body into body from public.notifications n
+  where n.profile_id = v_player.profile_id and n.body like '%Choose venue credit%';
+end;
+$$;
+
+-- With the defaults: 48 hours, in the timing and in the words.
+do $$
+declare
+  r record;
+begin
+  select * into r from tests.refund_choice_after_team_cancel('rules-choice-48');
+  assert r.choose_in = interval '48 hours', format('48 hours to choose, got %s', r.choose_in);
+  assert r.refund_in = interval '48 hours', format('the card refund goes out at 48 hours, got %s', r.refund_in);
+  assert r.body like '%Choose venue credit within 48 hours, or it goes back to your card.',
+    format('the notification says 48 hours, got %s', r.body);
 end $$;
 
 -- Everyone reads them; only service_role writes; every change is kept.
@@ -70,6 +117,7 @@ update public.app_rules set
   fee_each_pays_cents = 90, fee_pay_all_cents = 60, fee_premium_cents = 10, gipedo_fee_cents = 70,
   window_standard_days = 3, window_premium_days = 5,
   free_cancel_minutes = 30, capture_delay_minutes = 30, cancel_fee_cents = 150, refund_cutoff_hours = 4,
+  refund_choice_hours = 24,
   payment_window_minutes = 30, guarantee_hold_lead_hours = 48, guarantee_retry_hours = 3,
   collection_delay_hours = 3, credit_expiry_months = 6, gipedo_max_days = 3, gipedo_opponent_hours = 12;
 
@@ -186,6 +234,18 @@ begin
   select * into v_credit from public.venue_credits where profile_id = v_share.profile_id;
   assert v_credit.amount_cents = 540 and v_credit.expires_at = v_credit.issued_at + interval '6 months',
     format('credit expires after the new 6 months, got %s', row(v_credit.*));
+end $$;
+
+-- The card-or-credit choice: the new 24 hours, in the timing and in the words.
+do $$
+declare
+  r record;
+begin
+  select * into r from tests.refund_choice_after_team_cancel('rules-choice-24');
+  assert r.choose_in = interval '24 hours', format('24 hours to choose, got %s', r.choose_in);
+  assert r.refund_in = interval '24 hours', format('the card refund goes out at 24 hours, got %s', r.refund_in);
+  assert r.body like '%Choose venue credit within 24 hours, or it goes back to your card.',
+    format('the notification says 24 hours, got %s', r.body);
 end $$;
 
 -- The words players are sent follow too.

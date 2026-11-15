@@ -17,6 +17,7 @@ export type AppRules = {
   free_cancel_minutes: number;
   cancel_fee_cents: number;
   refund_cutoff_hours: number;
+  refund_choice_hours: number;
   capture_delay_minutes: number;
   payment_window_minutes: number;
   guarantee_hold_lead_hours: number;
@@ -36,7 +37,7 @@ export type AppRules = {
 const INTEGER_RULES = [
   'fee_each_pays_cents', 'fee_pay_all_cents', 'fee_premium_cents', 'gipedo_fee_cents',
   'window_standard_days', 'window_premium_days',
-  'free_cancel_minutes', 'cancel_fee_cents', 'refund_cutoff_hours',
+  'free_cancel_minutes', 'cancel_fee_cents', 'refund_cutoff_hours', 'refund_choice_hours',
   'capture_delay_minutes', 'payment_window_minutes', 'guarantee_hold_lead_hours', 'guarantee_retry_hours',
   'collection_delay_hours', 'credit_expiry_months', 'gipedo_max_days', 'gipedo_opponent_hours',
   'weather_rain_chance_pct', 'weather_wind_kmh', 'weather_heat_c',

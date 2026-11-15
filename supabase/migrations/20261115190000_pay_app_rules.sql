@@ -36,6 +36,10 @@ create table public.app_rules (
   free_cancel_minutes integer not null default 60 check (free_cancel_minutes between 0 and 1440),
   cancel_fee_cents integer not null default 100 check (cancel_fee_cents between 0 and 10000),
   refund_cutoff_hours integer not null default 6 check (refund_cutoff_hours between 0 and 72),
+  -- When the booker or the venue cancels: a player whose payment was taken
+  -- has this long to choose venue credit; with no choice it goes back to
+  -- their card.
+  refund_choice_hours integer not null default 48 check (refund_choice_hours between 1 and 168),
 
   -- When money is held and taken.
   capture_delay_minutes integer not null default 60 check (capture_delay_minutes between 0 and 1440),
@@ -175,6 +179,10 @@ create or replace function public.rule_gipedo_opponent_lead()
 returns interval language sql stable security definer set search_path = ''
 as $$ select make_interval(hours => gipedo_opponent_hours) from public.app_rules where id $$;
 
+create or replace function public.rule_refund_choice()
+returns interval language sql stable security definer set search_path = ''
+as $$ select make_interval(hours => refund_choice_hours) from public.app_rules where id $$;
+
 create or replace function public.rule_cancel_fee_cents()
 returns integer language sql stable security definer set search_path = ''
 as $$ select cancel_fee_cents from public.app_rules where id $$;
@@ -212,6 +220,7 @@ revoke all on function public.rule_collection_delay() from public, anon, authent
 revoke all on function public.rule_credit_expiry() from public, anon, authenticated;
 revoke all on function public.rule_gipedo_max_ahead() from public, anon, authenticated;
 revoke all on function public.rule_gipedo_opponent_lead() from public, anon, authenticated;
+revoke all on function public.rule_refund_choice() from public, anon, authenticated;
 revoke all on function public.rule_cancel_fee_cents() from public, anon, authenticated;
 revoke all on function public.rule_window_days(boolean) from public, anon, authenticated;
 revoke all on function public.rule_duration_words(interval) from public, anon, authenticated;
@@ -225,6 +234,7 @@ grant execute on function public.rule_collection_delay() to service_role;
 grant execute on function public.rule_credit_expiry() to service_role;
 grant execute on function public.rule_gipedo_max_ahead() to service_role;
 grant execute on function public.rule_gipedo_opponent_lead() to service_role;
+grant execute on function public.rule_refund_choice() to service_role;
 grant execute on function public.rule_cancel_fee_cents() to service_role;
 grant execute on function public.rule_window_days(boolean) to service_role;
 grant execute on function public.rule_duration_words(interval) to service_role;
@@ -1612,9 +1622,9 @@ begin
       (v_line ->> 'credit_cents')::integer, (v_line ->> 'refund_cents')::integer, (v_line ->> 'needs_capture')::boolean,
       v_line ->> 'stripe_intent_id', p_scope || '_' || (v_line ->> 'action'),
       case when v_work then 'pending' else 'none' end,
-      case when v_line ->> 'action' = 'refund_choice' then now() + interval '48 hours'
+      case when v_line ->> 'action' = 'refund_choice' then now() + public.rule_refund_choice()
            when v_work then now() + interval '2 minutes' end,
-      case when v_line ->> 'action' = 'refund_choice' then now() + interval '48 hours' end,
+      case when v_line ->> 'action' = 'refund_choice' then now() + public.rule_refund_choice() end,
       coalesce((v_line ->> 'cash_cents')::integer, 0), coalesce((v_line ->> 'cash_back_cents')::integer, 0),
       coalesce((v_line ->> 'cash_credit_cents')::integer, 0))
     returning * into v_row;
@@ -1679,7 +1689,7 @@ begin
       v_body := format('%s cancelled your game at %s on %s at %s. ', v_who, v_venue_name,
                        to_char(v_booking.booking_day, 'FMDay DD Mon'), to_char(v_booking.start_time, 'HH24:MI'))
         || case v_row.action
-             when 'refund_choice' then format('You get %s back. Choose venue credit within 48 hours, or it goes back to your card.',
+             when 'refund_choice' then format('You get %s back. Choose venue credit within ' || public.rule_duration_words(public.rule_refund_choice()) || ', or it goes back to your card.',
                                               public.money_format_euros(v_row.refund_cents))
              when 'release' then case when v_row.refund_cents > 0 then 'Your payment hold was released, so you won''t be charged.'
                                       else 'You weren''t charged.' end
