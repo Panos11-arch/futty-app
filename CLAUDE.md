@@ -15,7 +15,7 @@
 
 ## Ownership
 
-From 12 November Dimitris runs Panos's remaining P prompts (P8, P10, P6, P12, P11, P4d, P7 and finishing panos/match-sync) on `dimitris/...` branches. For those prompts he works in the Panos column below. Panos keeps P5 and P9, reviews money PRs, and alone changes production.
+From 15 November the remaining prompts are split three ways (docs/specs/14-claude-code-prompts.md, "Split from 15 November"): Panos runs P10, P12, P4d and P7; Dimitris runs P11, the P6 check-in QR, A8, U4, U5 and U7; Anghelo runs A4b, A5, A6, A7, U8 and the Home owed banner. Whoever runs a prompt works in the files that prompt names, even when the Ownership table below gives them to someone else, and asks that owner for a quick OK on the PR. Stacked PRs: never merge a PR into another branch; retarget it to master first. Only Panos changes production.
 
 | Area | Panos (and Dimitris) | Anghelo |
 | :---- | :---- | :---- |
