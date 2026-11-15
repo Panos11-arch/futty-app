@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 
+import { clearHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
 /** Hand-rolled rather than URLSearchParams, whose React Native polyfill has
@@ -67,6 +68,15 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** The path Google sign-in redirects back to (lib/auth-providers.ts). That
+ *  flow reads its own redirect, so the recovery-link handler below skips it. */
+export const OAUTH_CALLBACK_PATH = 'auth/callback';
+
+/** True for futtyapp://auth/callback and the exp://…/--/auth/callback dev form. */
+export function isOAuthCallbackUrl(url: string) {
+  return new RegExp(`(^|/)${OAUTH_CALLBACK_PATH}$`).test(url.split(/[?#]/)[0]);
+}
+
 /** Where Supabase should send the user after they click an emailed link. */
 export function authRedirectTo(path: string) {
   // A stable callback is required by Supabase's redirect allowlist. Without
@@ -113,6 +123,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (Platform.OS === 'web' || !recoveryUrl) return;
+    // A Google sign-in's tokens are not a recovery link.
+    if (isOAuthCallbackUrl(recoveryUrl)) return;
 
     const hashIndex = recoveryUrl.indexOf('#');
     if (hashIndex === -1) return;
@@ -216,6 +228,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
 
       async signOut() {
+        // The next person on this device must not inherit "has a username" (P13).
+        if (session) await clearHasUsername(session.user.id);
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
       },

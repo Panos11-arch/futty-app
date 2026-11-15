@@ -5,6 +5,7 @@ import path from 'node:path';
 const ROOT = path.join(__dirname, '..', '..');
 const FILES = [
   'app/sign-in.tsx',
+  'app/choose-username.tsx',
   'app/forgot-password.tsx',
   'app/reset-password.tsx',
   'app/confirm-email.tsx',

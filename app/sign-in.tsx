@@ -1,3 +1,4 @@
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
@@ -15,9 +16,10 @@ import { Button } from '@/components/ui/button';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, space } from '@/constants/futty-theme';
+import { colors, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
+import { signInWithApple, signInWithGoogle, useAppleSignInAvailable } from '@/lib/auth-providers';
 import { emailError, passwordError, usernameError, useTouched } from '@/lib/auth-fields';
 import { getPasswordLengthError } from '@/lib/password';
 import { preferences } from '@/lib/preferences';
@@ -39,6 +41,7 @@ export default function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { touch, shown, reset } = useTouched<'email' | 'username' | 'password'>();
+  const appleAvailable = useAppleSignInAvailable();
 
   const isSignUp = mode === 'sign-up';
   const passwordLengthError = isSignUp ? getPasswordLengthError(password) : null;
@@ -105,6 +108,21 @@ export default function SignInScreen() {
       }
       // On success the auth listener updates the session and the root layout
       // swaps this screen out, so there is nothing to navigate here.
+    } catch (cause) {
+      setError(describeAuthError(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Apple or Google (P13). A cancel shows nothing; a new user is sent to
+  // choose-username by the root layout's guard.
+  async function continueWith(signInWithProvider: typeof signInWithApple) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signInWithProvider();
     } catch (cause) {
       setError(describeAuthError(cause));
     } finally {
@@ -203,6 +221,26 @@ export default function SignInScreen() {
         fullWidth
       />
 
+      <Text variant="callout" tone="inkMuted" style={styles.or}>
+        or
+      </Text>
+      {appleAvailable ? (
+        <AppleAuthentication.AppleAuthenticationButton
+          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+          cornerRadius={radius.control}
+          style={styles.appleButton}
+          onPress={() => continueWith(signInWithApple)}
+        />
+      ) : null}
+      <Button
+        label="Continue with Google"
+        variant="secondary"
+        onPress={() => continueWith(signInWithGoogle)}
+        disabled={busy}
+        fullWidth
+      />
+
       <AuthLink
         label={isSignUp ? 'Already have an account? Sign in' : 'No account yet? Sign up'}
         onPress={switchMode}
@@ -228,4 +266,6 @@ const styles = StyleSheet.create({
     gap: space.md,
     minHeight: MIN_TOUCH,
   },
+  or: { textAlign: 'center' },
+  appleButton: { width: '100%', height: MIN_TOUCH },
 });
