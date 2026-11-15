@@ -57,6 +57,18 @@ Not prompts, but his alone: the production deploy (backup, `supabase db push`, E
 
 Open questions to settle first: who counts as a no-show (match-record.md question 9), and what "accessibility settings" (doc 11) means.
 
+### Backlog (added 15 November)
+
+Not prompts yet. Each needs a decision or a prompt before anyone builds it.
+
+| Item | Owner | Status |
+| --- | --- | --- |
+| Accessibility settings | Panos | Open: decide what it covers (for example text size, contrast, reduced motion) before a prompt is written. |
+| P9 incomplete: venue data (prices, pitches, photos and photo permission, food and drink items) | Panos | Open: the import works, but the sheet has almost none of this yet, so no imported venue can go live or be booked. |
+| Automatic opponent matching, like Futsalaki: a team picks a time window and a level (casual, intermediate or competitive), and the app pairs it with another team and books the pitch | to decide | Open: not in spec 13. Needs rules (levels, who pays, holds, what happens with no match) before a prompt. Builds on Gipedo Pano (P8) and A5 levels. |
+| Leaderboard and win rate per team | Anghelo | Planned: in A7 (team of the week, season stats, leaderboards), with each team's win rate added. |
+| Venue dashboard: revenue by source with a CSV export | Dimitris | Done: built in P6b (#68, on master since 15 November). |
+
 ## Who runs what (from 9 November, superseded by the split above)
 
 **Panos runs the payments prompts (P), Anghelo runs the match and design prompts (A and U).** Each works in his own files (the Ownership table in CLAUDE.md), on his own branches (`panos/...`, `anghelo/...`), and merges his own pull requests once CI is green and a fresh Claude Code session has reviewed the diff. Dimitris uses `dimitris/...` branches and takes over Panos's column from 12 November (below). A pull request that changes a shared file (`package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`) needs a quick OK from the other person before merging.
