@@ -16,7 +16,48 @@
 5. Open the pull request. For any money or security PR, first ask Claude Code in a fresh session to review the diff against spec 13 and the working rules in CLAUDE.md. **Merge only when CI is green.**
 6. If Claude Code says the spec is unclear, **stop and decide it together.** Write the decision into 13 (or 15) in the same PR.
 
-## Who runs what (from 9 November)
+## Split from 15 November
+
+Everything up to P9, P5, P8, P13 and P6 (except its QR code) is merged. The rest is split three ways, about 25 hours each. Each person runs their own prompts on their own branches (`panos/...`, `dimitris/...`, `anghelo/...`). The prompts are the ones in this file, 17 (U prompts) and 06 section 7 (A6, A7).
+
+**Never merge a stacked PR into its base branch.** Six PRs were lost that way (#41, #62, #63, #65, #66, #68, #69). Retarget a stacked PR to master once the PR below it is merged, then merge it.
+
+### Panos (about 21 hours of prompts, plus production)
+
+| Order | Prompt | Waits for | Hours |
+| --- | --- | --- | --- |
+| 1 | P10 Shared rules and Futty AI (due Friday 20 November) | — | 6 |
+| 2 | P12 6 v 6 switching | — | 4 |
+| 3 | P4d Venue payouts (Stripe Connect) | — | 8 |
+| 4 | P7 Release build | everything else merged | 3 |
+
+Not prompts, but his alone: the production deploy (backup, `supabase db push`, Edge Functions, schedules, Stripe webhook events), the Apple and Google sign-in setup (`docs/p13-provider-setup.md`), registering phones and the development build, and the App Store submission. He also confirms P8's Gipedo Pano rules with Anghelo.
+
+### Dimitris (about 24 hours)
+
+| Order | Prompt | Waits for | Hours |
+| --- | --- | --- | --- |
+| 1 | P11 Weather (includes the dashboard forecast nudge left out of P6) | — | 6 |
+| 2 | P6 check-in QR (`react-native-qrcode-svg`, Anghelo agrees what it encodes) | — | 1 |
+| 3 | A8 Post-match food and drink offers | — | 4 |
+| 4 | U4 Play section (17) | — | 6 |
+| 5 | U7 Squads, posts and pop-ups (17) | — | 3 |
+| 6 | U5 Profile, account and Premium (17) | P10 | 4 |
+
+### Anghelo (about 30 hours; A6 and A7 are first to cut if time runs short)
+
+| Order | Prompt | Waits for | Hours |
+| --- | --- | --- | --- |
+| 1 | Home owed banner: connect `useOwed()` (contract 6) | — | 1 |
+| 2 | A4b Match page screens (A4's app part; A4a's server is merged) | — | 5 |
+| 3 | A5 Ratings and skill level | — | 10 |
+| 4 | A7 Team of the week, season stats, leaderboards, plus each team's win rate | A5 | 6 |
+| 5 | A6 Shareable cards | — | 5 |
+| 6 | U8 Final sweep and guards (17) | everything else | 3 |
+
+Open questions to settle first: who counts as a no-show (match-record.md question 9), and what "accessibility settings" (doc 11) means.
+
+## Who runs what (from 9 November, superseded by the split above)
 
 **Panos runs the payments prompts (P), Anghelo runs the match and design prompts (A and U).** Each works in his own files (the Ownership table in CLAUDE.md), on his own branches (`panos/...`, `anghelo/...`), and merges his own pull requests once CI is green and a fresh Claude Code session has reviewed the diff. Dimitris uses `dimitris/...` branches and takes over Panos's column from 12 November (below). A pull request that changes a shared file (`package.json`, `app.json`, `app/_layout.tsx`, `app/(tabs)/_layout.tsx`, `lib/supabase.ts`, `constants/`, `components/ui/`) needs a quick OK from the other person before merging.
 
