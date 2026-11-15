@@ -10,6 +10,11 @@ import type { CancellationTerms } from '@/lib/venue-page';
 /** A player in debt can't book or pay into a booking (spec 13, "Debt"). */
 export const DEBT_LINE = 'You owe money to a venue. Pay it before booking.';
 
+/** The debt line's link to "Pay what I owe", when the screen gives one. */
+export function payOwedAction(onPayOwed: (() => void) | undefined) {
+  return onPayOwed ? { label: 'Pay what I owe', onPress: onPayOwed } : undefined;
+}
+
 function hoursWords(hours: number): string {
   return hours === 1 ? '1 hour' : `${hours} hours`;
 }

@@ -53,6 +53,13 @@ export function describeSquadError(error: PostgrestError) {
       return "That post doesn't match your booking's venue or format.";
     case 'booking_cancelled':
       return 'That booking has been cancelled.';
+    // Gipedo Pano (P8).
+    case 'already_in_booking':
+      return "You're already playing in this game, so your team can't be its opponent.";
+    case 'cannot_rejoin':
+      return "Your team pulled out of this game, so it can't take it on again.";
+    case 'use_gipedo_pull_out':
+      return 'Your card is already held. To leave a Gipedo Pano game, pull out from the booking.';
     default:
       return error.message;
   }

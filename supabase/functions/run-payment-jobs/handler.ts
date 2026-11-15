@@ -24,7 +24,13 @@
 //   8. retries every booking's match sync that failed (spec 13, "Bookings
 //      and their match"): after 1, 5, 15, then every 60 minutes, until it
 //      succeeds or the match is void. The database records each failure
-//      and raises the one admin alert at the third.
+//      and raises the one admin alert at the third;
+//   9. Gipedo Pano (P8, _shared/gipedo.ts): lapses opponents' offers not
+//      held within 15 minutes, asks the booking captain to choose when
+//      there's no opponent 24 hours before kickoff (and cancels free with no
+//      choice by 6 hours before), settles every match with a final result
+//      and carries out each settlement at Stripe. It runs before step 3, so
+//      a booking it cancels has its hold released in the same run.
 // Which ones are due is decided in the database, in Cyprus time. One item
 // failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
@@ -32,6 +38,7 @@ import { type Db, rpc } from '../_shared/db.ts';
 import { type DueGuarantee, placeGuaranteeHold } from '../_shared/guarantee.ts';
 import { runCancellationFees, runCancellationWork } from '../_shared/cancellation.ts';
 import { releaseUnfinishedCreditReservations } from '../_shared/credit.ts';
+import { runGipedoJobs } from '../_shared/gipedo.ts';
 import { idempotencyKeys } from '../_shared/money.ts';
 import { errorText, releaseBookingMoney, releaseOrQueue, runReleaseQueue, stripeFeeCents } from '../_shared/release.ts';
 
@@ -62,6 +69,7 @@ export async function runPaymentJobs(deps: Deps) {
     creditExpired: 0,
     creditReleased: 0,
     matchSynced: 0, matchSyncFailed: 0,
+    gipedoSettled: 0, gipedoFailed: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -106,6 +114,14 @@ export async function runPaymentJobs(deps: Deps) {
       // Left as it is: the next run looks again.
       console.error(`run-payment-jobs: payment window check failed for booking ${booking.booking_id}:`, err);
     }
+  }
+
+  try {
+    const gipedo = await runGipedoJobs(deps);
+    summary.gipedoSettled = gipedo.captured + gipedo.released + gipedo.gone;
+    summary.gipedoFailed = gipedo.failed;
+  } catch (err) {
+    console.error('run-payment-jobs: Gipedo Pano jobs failed:', err);
   }
 
   for (const { booking_id } of await rpc<{ booking_id: string }[]>(deps.db, 'bookings_with_money_to_release')) {

@@ -24,6 +24,7 @@ import {
   type QuoteResult,
 } from '@/lib/booking-detail';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
+import { chooseNoOpponent, pullOutOfGipedo } from '@/lib/booking-gipedo';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
 import { isBookingInCalendar, removeBookingFromCalendar } from '@/lib/calendar';
@@ -73,6 +74,18 @@ export default function BookingDetailScreen() {
     return result;
   }
 
+  // Gipedo Pano (P8): the server does it all; the screen reloads after.
+  async function gipedoAction(action: () => Promise<string | null>): Promise<string | null> {
+    const error = await action();
+    if (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } else {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      reload();
+    }
+    return error;
+  }
+
   async function invite(username: string): Promise<string | null> {
     const { error } = await addBookingPlayer(id, username);
     return error ? describeBookingErrorMessage(error.message) : null;
@@ -116,8 +129,11 @@ export default function BookingDetailScreen() {
         onDirections={directions}
         onPayShare={() => router.push({ pathname: '/booking-payment', params: { bookingId: id } })}
         notice={notice}
+        onGipedoPullOut={() => gipedoAction(() => pullOutOfGipedo(id))}
+        onGipedoChoose={(choice) => gipedoAction(() => chooseNoOpponent(id, choice))}
         squadNeed={
-          detail ? (
+          // A Gipedo Pano booking's opposition post is made by the server.
+          detail && !detail.gipedo ? (
             <SquadNeed
               booking={{
                 id: detail.booking.id,

@@ -10,6 +10,7 @@ import {
   type FreeAtQuery,
   type FreeVenueWithPhoto,
 } from '@/lib/booking-search';
+import { useDebtBlock } from '@/lib/use-owed';
 import { useVenuePage } from '@/lib/use-venue-page';
 
 /** Book a pitch (P5): the server's window, free venues and prices; checkout
@@ -18,6 +19,8 @@ export default function BookScreen() {
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const options = useLoad('options', fetchSearchOptions);
   const venuePage = useVenuePage(venueId);
+  // Only debt blocks booking (spec 13, "Debt"); checked again on return.
+  const debt = useDebtBlock();
 
   const [query, setQuery] = useState<FreeAtQuery | null>(null);
   const loadFree = useCallback(() => fetchVenuesFreeAt(query!), [query]);
@@ -70,6 +73,8 @@ export default function BookScreen() {
         venuePage.reload();
       }}
       onRetryResults={results.reload}
+      debtMessage={debt.message}
+      onPayOwed={() => router.push('/account/payments/owed')}
     />
   );
 }
