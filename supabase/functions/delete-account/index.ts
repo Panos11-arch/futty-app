@@ -4,7 +4,8 @@
 //
 // What it does:
 //   1. Refuses while the caller still has money in play — a card hold or
-//      charge on an upcoming game, or an upcoming booking they made. They
+//      charge on an upcoming game, or an upcoming app booking they made (not
+//      a walk-in they added as staff, nor their training blocks). They
 //      need to cancel those first, so nobody else's game is left unpaid.
 //      Then, for a Sign in with Apple account, revokes the user's Apple
 //      token with the fresh code the app sends (App Review 5.1.1(v), P13),
@@ -34,6 +35,7 @@ import { revokeAppleToken } from '../_shared/apple-sign-in.ts';
 import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { type Body, deleteAccount } from './handler.ts';
+import { type Db, hasUpcomingGames } from './upcoming.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -57,24 +59,9 @@ Deno.serve(async (req) => {
       // between midnight and 02:00 in Cyprus.
       today: cyprusToday(),
 
-      async hasMoneyInPlay(id, today) {
-        const { data: activeShares } = await admin
-          .from('booking_payment_shares')
-          .select('id, venue_bookings!inner(booking_day, status)')
-          .eq('profile_id', id)
-          .in('status', ['authorized', 'paid'])
-          .gte('venue_bookings.booking_day', today)
-          .neq('venue_bookings.status', 'cancelled')
-          .limit(1);
-        const { data: upcomingBookings } = await admin
-          .from('venue_bookings')
-          .select('id')
-          .eq('created_by', id)
-          .gte('booking_day', today)
-          .neq('status', 'cancelled')
-          .limit(1);
-        return (activeShares?.length ?? 0) > 0 || (upcomingBookings?.length ?? 0) > 0;
-      },
+      // Walk-ins a staff member added and an owner's training blocks don't
+      // count: see upcoming.ts (P6).
+      hasMoneyInPlay: (id, today) => hasUpcomingGames(admin as unknown as Db, id, today),
 
       async loadIdentities(id) {
         const { data, error } = await admin.auth.admin.getUserById(id);

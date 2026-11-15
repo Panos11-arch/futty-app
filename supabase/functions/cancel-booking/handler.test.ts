@@ -262,3 +262,23 @@ Deno.test('legacy booking: only the whole booking can be cancelled, and a refusa
   strictEqual(stripe.calls.length, 0);
   strictEqual(db.callsTo('booking_money_to_release').length, 0);
 });
+
+Deno.test('a walk-in or phone booking is refused on every path and moves nothing', async () => {
+  // The database refuses it (counter_booking) before deciding anything...
+  const { db, stripe, deps } = setupLegacy([], {});
+  db.fail('cancel_booking_internal', 'counter_booking');
+  for (const scope of ['whole_team', 'my_spot', 'venue'] as const) {
+    deepStrictEqual(await cancelBooking(deps, 'staff1', { bookingId: 'counter1', scope, quote: 'q1' }),
+      { status: 409, body: { error: 'counter_booking' } });
+  }
+  strictEqual(db.callsTo('cancel_booking_for').length, 0);
+
+  // ...and so does the path for bookings from before P4a, should it get there.
+  const legacy = setupLegacy([], {});
+  legacy.db.fail('cancel_booking_for', 'counter_booking');
+  deepStrictEqual(await cancelBooking(legacy.deps, 'staff1', { bookingId: 'counter1' }),
+    { status: 409, body: { error: 'counter_booking' } });
+
+  strictEqual(stripe.calls.length + legacy.stripe.calls.length, 0);
+  strictEqual(db.callsTo('booking_money_to_release').length + legacy.db.callsTo('booking_money_to_release').length, 0);
+});
