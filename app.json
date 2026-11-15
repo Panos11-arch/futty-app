@@ -18,6 +18,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.panosalepis.futtyapp",
       "deploymentTarget": "15.0",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -63,6 +64,7 @@
       "expo-sqlite",
       "expo-notifications",
       "expo-iap",
+      "expo-apple-authentication",
       [
         "expo-contacts",
         {
