@@ -384,6 +384,14 @@ The dashboard (P6) records the money a venue takes in person, so revenue by sour
   - **Booking counts (decided 14 November, Dimitris; for Panos to confirm)** count the bookings still on, as everywhere on the dashboard: for a player, a game they're still in (or, in a game they booked without a share, while it isn't cancelled); for a contact, a walk-in or phone booking that isn't cancelled. A customer's own page still lists all their bookings with each one's status.
 - **Debt and credit lists:** debt at a venue is what's owed to that venue (a debt owed to Futty isn't listed); credit is what the player can still spend there.
 
+## Rules in one place (decided 15 November)
+
+Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
+
+- **Only Futty changes a rule** (service role), and every change is kept with what it was before.
+- **A change applies at once.** Rules are read when they're used, so a new cutoff also applies to bookings already made. What a booking already stored (its pitch price and its service fee per player) doesn't change, and neither does a deadline already set: when a held share is taken, when the guarantee hold is placed, the deadline to choose venue credit, and when credit expires keep the value in force when they were set. A quote the player saw is checked again when they confirm, so nobody is charged on an old rule.
+- **The app keeps the last rules it fetched** for when it's offline; a phone that has never fetched them shows a placeholder, never a guessed number.
+
 ## Server-side checks that make it airtight
 
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.
