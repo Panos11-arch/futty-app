@@ -109,3 +109,13 @@ describe('payShare', () => {
     });
   });
 });
+
+describe('payForSlot: Gipedo Pano (P8)', () => {
+  it('books for the chosen team, then holds the captain’s card', async () => {
+    const s = sheet();
+    const outcome = await payForSlot({ slot, mode: 'gipedo_pano', teamId: 't1', pay: card, bookingId: null }, s);
+    expect(mockBookSlot).toHaveBeenCalledWith({ ...slot, mode: 'gipedo_pano', teamId: 't1' });
+    expect(mockCreateSharePayment).toHaveBeenCalledWith('s1', card);
+    expect(outcome).toEqual({ status: 'paid', bookingId: 'b1' });
+  });
+});

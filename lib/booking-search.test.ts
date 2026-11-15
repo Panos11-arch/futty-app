@@ -6,6 +6,7 @@ import {
   showNonRefundable,
   showPlayersPerSide,
   timeGrid,
+  whoHasntPaid,
 } from './booking-search';
 import { quoteFixture } from './booking-search.fixtures';
 
@@ -170,5 +171,49 @@ describe('checkoutAmounts', () => {
 
   it('nothing to show before a mode is chosen', () => {
     expect(checkoutAmounts(quote, { mode: null, cash: false, credit: false })).toBeNull();
+  });
+});
+
+describe('whoHasntPaid', () => {
+  const base = { profile_id: 'p', name: null, username: null, is_booker: false, is_me: false, amount_cents: null, cash_cents: null };
+
+  it('lists only unpaid players, "You" for the caller', () => {
+    expect(
+      whoHasntPaid([
+        { ...base, share_id: 's1', name: 'Dimitris', state: 'in_app' },
+        { ...base, share_id: 's2', name: 'Andreas', state: 'cash' },
+        { ...base, share_id: 's3', name: 'Maria', state: 'cash_paid' },
+        { ...base, share_id: 's4', name: 'Nikos', state: 'covered' },
+        { ...base, share_id: 's5', is_me: true, name: 'Me', state: 'unpaid' },
+        { ...base, share_id: 's6', username: 'eleni7', state: 'unpaid' },
+      ]),
+    ).toEqual(['You', 'eleni7']);
+  });
+});
+
+describe('checkoutAmounts: Gipedo Pano (P8)', () => {
+  it('the server’s hold: the pitch and 10 x 55, held on the card (6550)', () => {
+    expect(checkoutAmounts(quoteFixture(), { mode: 'gipedo_pano', cash: false, credit: false })).toEqual({
+      lines: [
+        { label: 'Pitch', cents: 6000 },
+        { label: 'Service fee', cents: 550 },
+      ],
+      totalCents: 6550,
+      cashCents: null,
+    });
+  });
+
+  it('never with cash or credit', () => {
+    const withCredit = quoteFixture({
+      pay_all: { pitch_cents: 6000, fee_cents: 550, card_cents: 6550, with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 } },
+    });
+    expect(checkoutAmounts(withCredit, { mode: 'gipedo_pano', cash: true, credit: true })?.totalCents).toBe(6550);
+  });
+
+  it('a Premium captain’s hold is the server’s 6495', () => {
+    const premium = quoteFixture({
+      gipedo_pano: { pitch_cents: 6000, fee_cents: 495, hold_cents: 6495, available: true, unavailable_reason: null },
+    });
+    expect(checkoutAmounts(premium, { mode: 'gipedo_pano', cash: false, credit: false })?.totalCents).toBe(6495);
   });
 });

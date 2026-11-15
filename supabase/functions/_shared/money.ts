@@ -5,7 +5,7 @@
 // module to check an amount before it goes to Stripe and to build every
 // idempotency key from our own ids.
 
-export type BookingMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot';
+export type BookingMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot' | 'gipedo_pano';
 export type PaymentMethod = 'card' | 'cash';
 
 /** Service fee per player when each player pays their own share. */
@@ -13,7 +13,7 @@ export const FEE_EACH_PAYS_CENTS = 80;
 /** Service fee per player when the booker pays for everyone in one payment. */
 export const FEE_PAY_ALL_CENTS = 55;
 
-const MODES: readonly BookingMode[] = ['pay_all', 'each_pays_responsible', 'each_pays_own_spot'];
+const MODES: readonly BookingMode[] = ['pay_all', 'each_pays_responsible', 'each_pays_own_spot', 'gipedo_pano'];
 const METHODS: readonly PaymentMethod[] = ['card', 'cash'];
 
 export type ShareInput = {
@@ -45,13 +45,14 @@ export function shareAmounts({ pitchCents, players, mode, isBooker, isPremium, m
   }
   if (!MODES.includes(mode)) throw new Error('invalid_payment_mode');
   if (!METHODS.includes(method)) throw new Error('invalid_payment_method');
-  if (mode === 'pay_all' && method === 'cash') throw new Error('cash_not_allowed');
+  if ((mode === 'pay_all' || mode === 'gipedo_pano') && method === 'cash') throw new Error('cash_not_allowed');
 
   let pitch: number;
   let fee: number;
-  if (mode === 'pay_all') {
+  if (mode === 'pay_all' || mode === 'gipedo_pano') {
     // The booker's one payment covers the pitch and a fee per player; a
-    // Premium booker's own spot is the only fee-free one.
+    // Premium booker's own spot is the only fee-free one. In Gipedo Pano
+    // each captain's hold is that payment (isBooker: a captain's hold).
     pitch = isBooker ? pitchCents : 0;
     fee = isBooker ? FEE_PAY_ALL_CENTS * (players - (isPremium ? 1 : 0)) : 0;
   } else {
@@ -108,14 +109,18 @@ export function wholeTeamCancelFeeCents(takenOtherPlayers: number): number {
  *  different parameters is a new request, never a clash with the old one. */
 export const idempotencyKeys = {
   /** A share's PaymentIntent, for one amount, method and capture method,
-   *  replacing previousIntentId (cancelled first). */
-  shareIntent: ({ shareId, amountCents, method, captureMethod, previousIntentId }: {
+   *  replacing previousIntentId (cancelled first). A Gipedo Pano opponent
+   *  who offers again after a lapsed or withdrawn offer reuses their share
+   *  row, so each offer after the first is its own attempt (offerAttempt,
+   *  from the share): a new request, never Stripe replaying the old one. */
+  shareIntent: ({ shareId, amountCents, method, captureMethod, previousIntentId, offerAttempt }: {
     shareId: string;
     amountCents: number;
     method: PaymentMethod;
     captureMethod: 'manual' | 'automatic';
     previousIntentId: string | null;
-  }) => `share-${shareId}-${amountCents}-${method}-${captureMethod}-after-${previousIntentId ?? 'none'}`,
+    offerAttempt?: number | null;
+  }) => `share-${shareId}${offerAttempt && offerAttempt > 1 ? `-offer-${offerAttempt}` : ''}-${amountCents}-${method}-${captureMethod}-after-${previousIntentId ?? 'none'}`,
   /** A share of a booking from before P4a (one amount, one method). */
   legacyShareIntent: (shareId: string, previousIntentId: string | null) => `share-${shareId}-after-${previousIntentId ?? 'none'}`,
   /** Taking a held share. */
@@ -154,6 +159,11 @@ export const idempotencyKeys = {
   topUp: (itemId: string) => `top-up-${itemId}`,
   /** Taking what's unpaid from the booker's guarantee hold at collection. */
   collectGuarantee: (collectionId: string) => `collect-guarantee-${collectionId}`,
+  /** Taking what a Gipedo Pano settlement says from a captain's hold (one
+   *  settlement per hold, one amount each). */
+  gipedoCapture: (settlementId: string, amountCents: number) => `gipedo-capture-${settlementId}-${amountCents}`,
+  /** Releasing a captain's hold whose Gipedo Pano settlement takes nothing. */
+  gipedoRelease: (settlementId: string) => `gipedo-release-${settlementId}`,
   /** Paying a debt, or a cash part after the match, by card: one amount,
    *  replacing previousIntentId (cancelled first). */
   owed: (kind: 'debt' | 'cash', id: string, amountCents: number, previousIntentId: string | null) =>

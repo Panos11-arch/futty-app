@@ -67,8 +67,16 @@ describe('PayShareView', () => {
     expect(p.onPay).not.toHaveBeenCalled();
   });
 
+  it('the debt line links to "Pay what I owe"', async () => {
+    const onPayOwed = jest.fn();
+    await render(<PayShareView {...props({ blocked: true }, { onPayOwed })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
+    expect(onPayOwed).toHaveBeenCalledTimes(1);
+  });
+
   it('no debt line when the player owes nothing', async () => {
-    await render(<PayShareView {...props()} />);
+    await render(<PayShareView {...props({}, { onPayOwed: jest.fn() })} />);
+    expect(screen.queryByRole('button', { name: 'Pay what I owe' })).toBeNull();
     expect(screen.queryByText('You owe money to a venue. Pay it before booking.')).toBeNull();
     expect(isDisabled('Pay €6.80')).toBe(false);
   });

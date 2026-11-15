@@ -61,6 +61,9 @@ type Plan = {
   stripe_setup_intent_id?: string | null;
   stripe_customer_id: string | null;
   needs_saved_card: boolean;
+  /** A Gipedo Pano opponent's offer number (P8): each offer after the
+   *  first is a new Stripe request. Null for every other share. */
+  offer_attempt?: number | null;
 };
 
 const ERROR_STATUS: Record<string, number> = { share_not_found: 404, not_your_share: 403 };
@@ -198,6 +201,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
       method: plan.payment_method,
       captureMethod,
       previousIntentId: previous,
+      offerAttempt: plan.offer_attempt ?? null,
     }),
   });
 
