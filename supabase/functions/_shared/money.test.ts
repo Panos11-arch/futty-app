@@ -1,54 +1,8 @@
-// The server's money maths (docs/specs/13-payments-bookings.md, "Prices and
-// fees"). The same worked examples as supabase/tests/pay-modes-1-amounts.test.sql,
-// so the SQL and TypeScript can't drift apart.
-import { deepStrictEqual, strictEqual, throws } from 'node:assert/strict';
-import {
-  CANCEL_KEEP_PER_PLAYER_CENTS,
-  cardChargeCents,
-  creditPayment,
-  FEE_EACH_PAYS_CENTS,
-  FEE_PAY_ALL_CENTS,
-  idempotencyKeys,
-  shareAmounts,
-  wholeTeamCancelFeeCents,
-} from './money.ts';
-
-const each = { pitchCents: 6000, players: 10, mode: 'each_pays_own_spot', isBooker: false, isPremium: false, method: 'card' } as const;
-
-Deno.test('fees: 80 when each pays, 55 when the booker pays for everyone', () => {
-  strictEqual(FEE_EACH_PAYS_CENTS, 80);
-  strictEqual(FEE_PAY_ALL_CENTS, 55);
-});
-
-Deno.test('every worked example from the spec, exact amounts', () => {
-  const cases = [
-    { label: 'EUR 60 5 v 5, each pays', input: each, want: [600, 80, 680, 0] },
-    { label: 'responsible booker', input: { ...each, mode: 'each_pays_responsible', isBooker: true }, want: [600, 80, 680, 0] },
-    { label: 'EUR 61.11, booker', input: { ...each, pitchCents: 6111, isBooker: true }, want: [612, 80, 692, 0] },
-    { label: 'EUR 61.11, others', input: { ...each, pitchCents: 6111 }, want: [611, 80, 691, 0] },
-    { label: '6 v 6', input: { ...each, players: 12 }, want: [500, 80, 580, 0] },
-    { label: 'pay for everyone 5 v 5', input: { ...each, mode: 'pay_all', isBooker: true }, want: [6000, 550, 6550, 0] },
-    { label: 'pay for everyone 6 v 6', input: { ...each, mode: 'pay_all', isBooker: true, players: 12 }, want: [6000, 660, 6660, 0] },
-    { label: 'Premium booker pays for everyone', input: { ...each, mode: 'pay_all', isBooker: true, isPremium: true }, want: [6000, 495, 6495, 0] },
-    { label: 'player in a paid-for booking', input: { ...each, mode: 'pay_all' }, want: [0, 0, 0, 0] },
-    { label: 'Premium own share', input: { ...each, isPremium: true }, want: [600, 0, 600, 0] },
-    { label: 'cash player', input: { ...each, method: 'cash' }, want: [600, 80, 80, 600] },
-    { label: 'Premium cash player', input: { ...each, mode: 'each_pays_responsible', isPremium: true, method: 'cash' }, want: [600, 0, 0, 600] },
-  ] as const;
-  for (const { label, input, want } of cases) {
-    const got = shareAmounts(input);
-    deepStrictEqual([got.pitchCents, got.feeCents, got.cardCents, got.cashCents], [...want], label);
-  }
-});
-
-Deno.test('refuses what the server refuses', () => {
-  throws(() => shareAmounts({ ...each, mode: 'pay_all', isBooker: true, method: 'cash' }), /cash_not_allowed/);
-  throws(() => shareAmounts({ ...each, mode: 'pay_later' as never }), /invalid_payment_mode/);
-  throws(() => shareAmounts({ ...each, method: 'cheque' as never }), /invalid_payment_method/);
-  throws(() => shareAmounts({ ...each, players: 0 }), /invalid_money_input/);
-  throws(() => shareAmounts({ ...each, pitchCents: -1 }), /invalid_money_input/);
-  throws(() => shareAmounts({ ...each, pitchCents: 60.5 }), /invalid_money_input/);
-});
+// Money helpers for Edge Functions. The money maths and spec 13's worked
+// examples are tested in the database (supabase/tests/pay-modes-1-amounts.test.sql,
+// pay-booking-screens-1-quote.test.sql), where every fee comes from app_rules.
+import { strictEqual } from 'node:assert/strict';
+import { cardChargeCents, idempotencyKeys } from './money.ts';
 
 Deno.test('the card charge follows from a share\'s breakdown', () => {
   strictEqual(cardChargeCents({ pitch_cents: 600, fee_cents: 80, payment_method: 'card' }), 680);
@@ -60,31 +14,6 @@ Deno.test('the card charge follows from a share\'s breakdown', () => {
 });
 
 // The same examples as supabase/tests/pay-cancellations-7-credit.test.sql.
-Deno.test('venue credit pays the pitch part with no fee; a shortfall is paid by card plus the normal fee', () => {
-  deepStrictEqual(creditPayment(600, 80, 500), { creditCents: 500, feeCents: 80, cardCents: 180 }, '500 credit: 100 + 80');
-  deepStrictEqual(creditPayment(600, 80, 800), { creditCents: 600, feeCents: 0, cardCents: 0 }, 'covered: no fee');
-  deepStrictEqual(creditPayment(600, 80, 600), { creditCents: 600, feeCents: 0, cardCents: 0 }, 'exactly covered');
-  deepStrictEqual(creditPayment(600, 0, 500), { creditCents: 500, feeCents: 0, cardCents: 100 }, 'Premium: no fee');
-  deepStrictEqual(creditPayment(600, 80, 0), { creditCents: 0, feeCents: 80, cardCents: 680 }, 'no credit');
-  // The booker paying for everyone (decided 10 November).
-  deepStrictEqual(creditPayment(6000, 550, 7000), { creditCents: 6000, feeCents: 0, cardCents: 0 }, 'pay for everyone, covered');
-  deepStrictEqual(creditPayment(6000, 550, 5000), { creditCents: 5000, feeCents: 550, cardCents: 1550 },
-    'pay for everyone, shortfall: 1000 + 55 x 10');
-  deepStrictEqual(creditPayment(6000, 495, 5000), { creditCents: 5000, feeCents: 495, cardCents: 1495 },
-    'Premium booker: their own spot stays fee-free');
-  throws(() => creditPayment(600, 80, -1), /invalid_money_input/);
-  throws(() => creditPayment(600.5, 80, 0), /invalid_money_input/);
-});
-
-Deno.test('cancelling the whole team: 100 per other player whose payment was taken', () => {
-  strictEqual(CANCEL_KEEP_PER_PLAYER_CENTS, 100);
-  strictEqual(wholeTeamCancelFeeCents(9), 900, '9 paid players: 900');
-  strictEqual(wholeTeamCancelFeeCents(6), 600, '6 taken, 3 held: 600');
-  strictEqual(wholeTeamCancelFeeCents(0), 0);
-  throws(() => wholeTeamCancelFeeCents(-1), /invalid_money_input/);
-  throws(() => wholeTeamCancelFeeCents(1.5), /invalid_money_input/);
-});
-
 Deno.test('idempotency keys are built from our ids and stable on retry', () => {
   const card = { shareId: 's1', amountCents: 680, method: 'card', captureMethod: 'manual', previousIntentId: null } as const;
   strictEqual(idempotencyKeys.shareIntent(card), 'share-s1-680-card-manual-after-none');
@@ -145,21 +74,6 @@ Deno.test('a guarantee hold on a new card, or a new attempt, gets a new key', ()
 Deno.test('a refund is keyed on the intent and what is left, whatever the reason, so two runs make one refund', () => {
   strictEqual(idempotencyKeys.refund('pi_1', 680), idempotencyKeys.refund('pi_1', 680));
   strictEqual(idempotencyKeys.refund('pi_1', 380), 'refund-pi_1-380', 'a later partial refund is a new request');
-});
-
-Deno.test('Gipedo Pano: each captain is held for the pitch plus 55 per player, card only (P8)', () => {
-  const hold = { ...each, mode: 'gipedo_pano', isBooker: true } as const;
-  const cases = [
-    { label: 'EUR 60 5 v 5 hold', input: hold, want: [6000, 550, 6550, 0] },
-    { label: 'Premium captain', input: { ...hold, isPremium: true }, want: [6000, 495, 6495, 0] },
-    { label: '6 v 6 hold', input: { ...hold, players: 12 }, want: [6000, 660, 6660, 0] },
-    { label: 'a covered player', input: { ...hold, isBooker: false }, want: [0, 0, 0, 0] },
-  ] as const;
-  for (const { label, input, want } of cases) {
-    const got = shareAmounts(input);
-    deepStrictEqual([got.pitchCents, got.feeCents, got.cardCents, got.cashCents], [...want], label);
-  }
-  throws(() => shareAmounts({ ...hold, method: 'cash' }), /cash_not_allowed/);
 });
 
 Deno.test('P8 key: a Gipedo Pano settlement takes one amount once, retries included', () => {
