@@ -119,12 +119,19 @@ create trigger app_rules_refuse_delete
   before delete on public.app_rules
   for each statement execute function public.app_rules_refuse_delete();
 
+-- TRUNCATE skips delete triggers, so it's refused too. With no row every rule
+-- would read as NULL and checks such as the booking window would fail open.
+create trigger app_rules_refuse_truncate
+  before truncate on public.app_rules
+  for each statement execute function public.app_rules_refuse_delete();
+
 alter table public.app_rules enable row level security;
 alter table public.app_rules_history enable row level security;
 create policy "Everyone reads the rules" on public.app_rules for select to anon, authenticated using (true);
 revoke all on public.app_rules, public.app_rules_history from public, anon, authenticated;
 grant select on public.app_rules to anon, authenticated;
 grant all on public.app_rules, public.app_rules_history to service_role;
+revoke truncate on public.app_rules from service_role;
 
 revoke all on function public.app_rules_record_change() from public, anon, authenticated;
 revoke all on function public.app_rules_refuse_delete() from public, anon, authenticated;
@@ -173,7 +180,7 @@ as $$ select make_interval(months => credit_expiry_months) from public.app_rules
 
 create or replace function public.rule_gipedo_max_ahead()
 returns interval language sql stable security definer set search_path = ''
-as $$ select make_interval(days => gipedo_max_days) from public.app_rules where id $$;
+as $$ select make_interval(hours => gipedo_max_days * 24) from public.app_rules where id $$;
 
 create or replace function public.rule_gipedo_opponent_lead()
 returns interval language sql stable security definer set search_path = ''
@@ -238,6 +245,10 @@ grant execute on function public.rule_refund_choice() to service_role;
 grant execute on function public.rule_cancel_fee_cents() to service_role;
 grant execute on function public.rule_window_days(boolean) to service_role;
 grant execute on function public.rule_duration_words(interval) to service_role;
+
+-- The legacy flat service fee (baseline), unused since P4a priced shares with
+-- money_share: a second copy of the 80 that players could still call.
+drop function public.service_fee_cents();
 
 -- ---- The functions that used spec 13's numbers ------------------------------
 -- Each is its latest definition (named in its comment) with only the numbers
@@ -1133,7 +1144,7 @@ begin
   perform public.booking_match_drop_friendly(v_booking.id);
 
   v_next := case when v_reopened then 'so your post is open again.'
-                 else 'It''s less than 24 hours to kickoff, so the post stays closed and you''ll be asked how to play it.' end;
+                 else 'It''s less than ' || public.rule_duration_words(public.rule_gipedo_opponent_lead()) || ' to kickoff, so the post stays closed and you''ll be asked how to play it.' end;
   perform public.send_notification(v_booking.created_by, 'gipedo_opponent_left', jsonb_build_object(
     'title', case when p_reason = 'withdrawn' then 'Your opponent withdrew' else 'Your opponent didn''t confirm' end,
     'body', case when p_reason = 'withdrawn'
@@ -1216,6 +1227,304 @@ begin
   values (p_post_id, v_post.team_id, p_team_id, 'pending_score', 0);
 end;
 $$;
+
+-- booking_quote_modes, from the live database (renamed by P8)
+CREATE OR REPLACE FUNCTION public.booking_quote_modes(p_venue_id uuid, p_day date, p_start time without time zone, p_end time without time zone, p_format text, p_players_per_side integer DEFAULT 5)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_uid uuid := auth.uid();
+  v_premium boolean;
+  v_players integer;
+  v_price integer;
+  v_kickoff timestamptz;
+  v_credit integer;
+  v_in_debt boolean;
+  v_all record;
+  v_mine record;
+  v_each record;
+  v_cash record;
+  v_all_credit jsonb;
+  v_mine_credit jsonb;
+begin
+  if v_uid is null then
+    raise exception 'not_authenticated';
+  end if;
+  if not public.venue_visible(p_venue_id) then
+    raise exception 'venue_not_found';
+  end if;
+  v_premium := coalesce((select is_premium from public.profiles where id = v_uid), false);
+  v_players := public.booking_slot_checked(p_venue_id, p_day, p_start, p_end, p_format, p_players_per_side, v_premium);
+
+  v_price := public.slot_price_cents(p_venue_id, p_day, p_start, p_end, p_format);
+  if v_price is null then
+    raise exception 'price_not_set';
+  end if;
+  if public.pick_pitches(p_venue_id, p_day, p_start, p_end, p_format,
+                         p_players_per_side = 6 and p_format = '5-a-side') is null then
+    raise exception 'slot_full';
+  end if;
+
+  select * into v_all from public.money_share(v_price, v_players, 'pay_all', true, v_premium, 'card');
+  select * into v_mine from public.money_share(v_price, v_players, 'each_pays_own_spot', true, v_premium, 'card');
+  select * into v_each from public.money_share(v_price, v_players, 'each_pays_own_spot', false, false, 'card');
+  select * into v_cash from public.money_share(v_price, v_players, 'each_pays_own_spot', true, v_premium, 'cash');
+
+  v_credit := public.venue_credit_available_cents(v_uid, p_venue_id);
+  if v_credit > 0 then
+    select jsonb_build_object('credit_cents', c.credit_cents, 'fee_cents', c.fee_cents, 'card_cents', c.card_cents)
+      into v_all_credit from public.money_credit_payment(v_all.pitch_cents, v_all.fee_cents, v_credit) c;
+    select jsonb_build_object('credit_cents', c.credit_cents, 'fee_cents', c.fee_cents, 'card_cents', c.card_cents)
+      into v_mine_credit from public.money_credit_payment(v_mine.pitch_cents, v_mine.fee_cents, v_credit) c;
+  end if;
+
+  v_in_debt := public.profile_has_debt(v_uid);
+  v_kickoff := public.booking_kickoff_at(p_day, p_start);
+
+  return jsonb_build_object(
+    'venue_id', p_venue_id,
+    'day', p_day,
+    'start_time', p_start,
+    'end_time', p_end,
+    'format', p_format,
+    'players_per_side', p_players_per_side,
+    'players', v_players,
+    'pitch_cents', v_price,
+    'is_premium', v_premium,
+    'kickoff_at', v_kickoff,
+    'refunds_stop_at', v_kickoff - public.rule_refund_cutoff(),
+    'non_refundable', public.money_is_non_refundable(now(), v_kickoff),
+    'pay_all', jsonb_build_object(
+      'pitch_cents', v_all.pitch_cents, 'fee_cents', v_all.fee_cents, 'card_cents', v_all.card_cents,
+      'with_credit', v_all_credit),
+    'each_pays', jsonb_build_object(
+      'player_cents', v_each.card_cents, 'player_pitch_cents', v_each.pitch_cents, 'player_fee_cents', v_each.fee_cents,
+      'mine', jsonb_build_object('pitch_cents', v_mine.pitch_cents, 'fee_cents', v_mine.fee_cents,
+                                 'card_cents', v_mine.card_cents, 'with_credit', v_mine_credit),
+      'cash', jsonb_build_object('card_cents', v_cash.card_cents, 'cash_cents', v_cash.cash_cents)),
+    'credit', jsonb_build_object(
+      'available_cents', v_credit,
+      'expires_at', (select min(c.expires_at) from public.venue_credits c
+                     where c.profile_id = v_uid and c.venue_id = p_venue_id and c.expires_at > now() and c.remaining_cents > 0)),
+    'in_debt', v_in_debt,
+    'cash_allowed', not v_in_debt,
+    'cancellation', public.cancellation_terms()
+  );
+end;
+$function$;
+
+-- cancellation_fee_attempted, from the live database (renamed by P8)
+CREATE OR REPLACE FUNCTION public.cancellation_fee_attempted(p_fee_id uuid, p_intent_id text, p_outcome text, p_error text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_fee public.booking_cancellation_fees;
+  v_notify boolean := false;
+begin
+  if p_outcome not in ('requires_action', 'failed', 'error') then
+    raise exception 'invalid_outcome';
+  end if;
+  select * into v_fee from public.booking_cancellation_fees where id = p_fee_id for update;
+  if v_fee.id is null or v_fee.status = 'paid' then
+    return jsonb_build_object('result', 'ignored');
+  end if;
+
+  if p_outcome = 'error' then
+    update public.booking_cancellation_fees
+    set api_errors = api_errors + 1, last_error = p_error, next_attempt_at = public.money_backoff_at(api_errors + 1),
+        stripe_payment_intent_id = coalesce(p_intent_id, stripe_payment_intent_id)
+    where id = p_fee_id;
+    return jsonb_build_object('result', 'retry');
+  end if;
+
+  v_notify := p_outcome = 'failed' and v_fee.failure_notified_at is null;
+  update public.booking_cancellation_fees
+  set status = p_outcome, attempts = attempts + 1, api_errors = 0, last_error = coalesce(p_error, p_outcome),
+      stripe_payment_intent_id = coalesce(p_intent_id, stripe_payment_intent_id),
+      next_attempt_at = public.money_guarantee_retry_at(now()),
+      failure_notified_at = case when v_notify then now() else failure_notified_at end
+  where id = p_fee_id;
+
+  if v_notify then
+    perform public.send_notification(v_fee.profile_id, 'cancellation_fee_failed', jsonb_build_object(
+      'title', 'Update your card',
+      'body', format('We couldn''t take the %s for cancelling your team''s game (%s players x ' || public.money_format_euros(v_fee.amount_cents / v_fee.players) || '). '
+                     || 'The game is still cancelled. Update your card and we''ll try again.',
+                     public.money_format_euros(v_fee.amount_cents), v_fee.players),
+      'bookingId', v_fee.booking_id,
+      'feeId', v_fee.id
+    ));
+  end if;
+  return jsonb_build_object('result', p_outcome, 'notified', v_notify);
+end;
+$function$;
+
+-- share_payment_held_modes, from the live database (renamed by P8)
+CREATE OR REPLACE FUNCTION public.share_payment_held_modes(p_share_id uuid, p_intent_id text, p_amount_cents integer, p_payment_method_id text, p_at timestamp with time zone)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_share public.booking_payment_shares;
+  v_booking public.venue_bookings;
+  v_kickoff timestamptz;
+  v_release jsonb;
+begin
+  select * into v_booking from public.venue_bookings
+  where id = (select booking_id from public.booking_payment_shares where id = p_share_id) for update;
+  select * into v_share from public.booking_payment_shares where id = p_share_id for update;
+  if v_share.id is null then
+    return jsonb_build_object('result', 'unknown');
+  end if;
+  if v_booking.payment_mode is null then
+    return jsonb_build_object('result', 'legacy');
+  end if;
+  v_release := jsonb_build_object('result', 'release', 'booking_id', v_share.booking_id, 'share_id', v_share.id);
+
+  if v_share.stripe_payment_intent_id is distinct from p_intent_id then
+    perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'hold', p_amount_cents, p_intent_id,
+                                         p_intent_id, 'replaced_intent_held');
+    return v_release || jsonb_build_object('reason', 'replaced_intent');
+  end if;
+  if v_share.status in ('credited', 'forfeited', 'refund_due') then
+    return jsonb_build_object('result', 'duplicate', 'share_id', v_share.id);
+  end if;
+  if v_booking.status = 'cancelled' or v_share.status in ('cancelled', 'refunded') then
+    perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'hold', p_amount_cents, p_intent_id,
+                                         p_intent_id, 'share_held');
+    return v_release || jsonb_build_object('reason', 'booking_cancelled');
+  end if;
+  if p_amount_cents is distinct from v_share.amount_cents then
+    perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'hold', p_amount_cents, p_intent_id,
+                                         p_intent_id, 'amount_mismatch_held');
+    return v_release || jsonb_build_object('reason', 'amount_mismatch');
+  end if;
+  if v_share.status <> 'pending' then
+    return jsonb_build_object('result', 'duplicate', 'share_id', v_share.id);
+  end if;
+
+  perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'hold', p_amount_cents, p_intent_id,
+                                       p_intent_id, 'share_held');
+
+  if v_share.is_booker and v_booking.status = 'pending_payment'
+     and p_at > public.booking_payment_window_ends_at(v_booking) then
+    perform public.expire_unpaid_booking(v_booking.id);
+    return jsonb_build_object('result', 'expired', 'booking_id', v_booking.id, 'share_id', v_share.id);
+  end if;
+
+  v_kickoff := public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time);
+  if public.money_is_non_refundable(p_at, v_kickoff) and v_share.non_refundable_accepted_at is null then
+    perform public.send_notification(v_share.profile_id, 'match_payment_due', jsonb_build_object(
+      'title', 'Pay again to keep your spot',
+      'body', 'Your game starts in less than ' || public.rule_duration_words(public.rule_refund_cutoff()) || ', so it''s non-refundable. Your card wasn''t charged: '
+              || 'accept the notice and pay again.',
+      'bookingId', v_share.booking_id
+    ));
+    return v_release || jsonb_build_object('reason', 'non_refundable_not_accepted');
+  end if;
+
+  update public.booking_payment_shares
+  set status = 'authorized', held_at = p_at, capture_due_at = public.money_capture_due_at(p_at, v_kickoff),
+      stripe_payment_method_id = p_payment_method_id
+  where id = v_share.id
+  returning * into v_share;
+
+  return jsonb_build_object('result', 'held', 'share_id', v_share.id, 'booking_id', v_share.booking_id)
+         || public.booker_share_settled(v_share, p_payment_method_id);
+end;
+$function$;
+
+-- release_share_credit_reservation_modes, from the live database (renamed by P8)
+CREATE OR REPLACE FUNCTION public.release_share_credit_reservation_modes(p_share_id uuid, p_intent_id text, p_hold_released boolean DEFAULT false)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_share public.booking_payment_shares;
+  v_booking public.venue_bookings;
+  v_booking_id uuid;
+  v_new_window boolean := false;
+begin
+  select booking_id into v_booking_id from public.booking_payment_shares where id = p_share_id;
+  select * into v_booking from public.venue_bookings where id = v_booking_id for update;
+  select * into v_share from public.booking_payment_shares where id = p_share_id for update;
+  if v_share.id is null
+     or p_intent_id is distinct from coalesce(v_share.stripe_payment_intent_id, v_share.stripe_setup_intent_id) then
+    return false;
+  end if;
+
+  if v_share.status = 'pending' then
+    if not exists (select 1 from public.venue_credit_spends where share_id = p_share_id and status = 'reserved') then
+      return false;
+    end if;
+    perform public.share_drop_credit(p_share_id, 'payment_not_completed');
+    return true;
+  end if;
+
+  if v_share.status <> 'authorized' or not coalesce(p_hold_released, false)
+     or v_share.stripe_payment_intent_id is distinct from p_intent_id or v_booking.status = 'cancelled' then
+    return false;
+  end if;
+
+  update public.booking_payment_shares set status = 'pending', held_at = null, capture_due_at = null
+  where id = p_share_id;
+
+  if v_share.release_job_intent_id = p_intent_id then
+    -- The release job cancelled it: the payment wasn't completed in time.
+    perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'cancel', v_share.amount_cents,
+                                         p_intent_id, p_intent_id, 'payment_not_completed');
+    v_new_window := v_share.is_booker and v_booking.status in ('confirmed', 'pending_payment');
+    if v_new_window then
+      update public.venue_bookings set status = 'pending_payment', payment_window_started_at = now()
+      where id = v_booking.id;
+    end if;
+    perform public.send_notification(v_share.profile_id, 'match_payment_due', jsonb_build_object(
+      'title', 'Pay again to keep your spot',
+      'body', 'Your payment wasn''t completed in time, so your card wasn''t charged and your credit is back. '
+              || case when v_new_window
+                      then 'Pay again within ' || public.rule_duration_words(public.rule_payment_window()) || ' to keep your booking, or it''s cancelled and the pitch released.'
+                      else 'Pay again to keep your spot.' end,
+      'bookingId', v_share.booking_id
+    ));
+    perform public.share_drop_credit(p_share_id, 'payment_not_completed');
+    return true;
+  end if;
+
+  -- Cancelled some other way (expired after 7 days, or in the Stripe
+  -- dashboard): the money for this share is released, the booking stays.
+  perform public.record_money_movement(v_share.booking_id, v_share.id, null, 'cancel', v_share.amount_cents,
+                                       p_intent_id, p_intent_id, 'hold_cancelled');
+  perform public.share_drop_credit(p_share_id, 'hold_cancelled');
+  -- Before kickoff the player is asked to pay again, at the share's price
+  -- now (without credit); after kickoff collection handles it.
+  if now() < public.booking_kickoff_at(v_booking.booking_day, v_booking.start_time) then
+    perform public.send_notification(v_share.profile_id, 'match_payment_due', jsonb_build_object(
+      'title', 'Your payment didn''t go through',
+      'body', format('Your payment for %s, %s, %s didn''t go through. Pay %s to keep your spot.',
+                     (select name from public.venues where id = v_booking.venue_id),
+                     to_char(v_booking.booking_day, 'FMDay DD Mon'), to_char(v_booking.start_time, 'HH24:MI'),
+                     public.money_format_euros((select amount_cents from public.booking_payment_shares where id = p_share_id))),
+      'bookingId', v_share.booking_id
+    ));
+  end if;
+  insert into public.admin_alerts (kind, booking_id, share_id, details)
+  values ('hold_cancelled', v_share.booking_id, v_share.id, jsonb_build_object(
+    'intent_id', p_intent_id, 'amount_cents', v_share.amount_cents, 'credit_cents', v_share.credit_cents,
+    'is_booker', v_share.is_booker, 'booking_status', v_booking.status))
+  on conflict do nothing;
+  return true;
+end;
+$function$;
 
 -- gipedo_window_error, from 20261113185144_pay_gipedo_followups.sql
 create or replace function public.gipedo_window_error(p_kickoff timestamptz, p_at timestamptz)
