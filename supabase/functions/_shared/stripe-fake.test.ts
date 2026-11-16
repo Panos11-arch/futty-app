@@ -49,3 +49,22 @@ Deno.test('rejects calls with nothing scripted', async () => {
 
   await rejects(fake.stripe.customers.create({ email: 'a@futty.test' }), /no response scripted for customers\.create/);
 });
+
+Deno.test('a balance: balance.retrieve, and transfers from the available part', async () => {
+  const fake = createStripeFake();
+  fake.setBalance({ available: 7000, pending: 3000 });
+  const balance = await fake.stripe.balance.retrieve();
+  deepStrictEqual(balance.available, [{ amount: 7000, currency: 'eur' }]);
+  deepStrictEqual(balance.pending, [{ amount: 3000, currency: 'eur' }]);
+
+  const transfer = await fake.stripe.transfers.create({ amount: 6000, currency: 'eur', destination: 'acct_1' });
+  strictEqual(transfer.id, 'tr_fake_1');
+  strictEqual(transfer.amount, 6000);
+  strictEqual(fake.available(), 1000);
+  await rejects(
+    () => fake.stripe.transfers.create({ amount: 1500, currency: 'eur', destination: 'acct_2' }),
+    (err: { code?: string }) => err.code === 'balance_insufficient',
+  );
+  strictEqual(fake.available(), 1000, 'nothing taken by a refused transfer');
+  strictEqual((await fake.stripe.balance.retrieve()).available[0].amount, 1000, 'the balance follows');
+});

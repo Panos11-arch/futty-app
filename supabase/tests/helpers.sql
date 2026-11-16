@@ -893,6 +893,92 @@ begin
 end;
 $$;
 
+-- P4d: payouts.
+
+-- Gives a venue a test-mode Stripe Express account that has finished
+-- onboarding (or not, with p_enabled false), and starts Futty payouts there
+-- (payouts_from a day ago, so every booking a test makes counts).
+create or replace function tests.connect_venue(p_venue uuid, p_enabled boolean default true)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_account text := 'acct_' || replace(p_venue::text, '-', '');
+begin
+  insert into public.venue_stripe_accounts (venue_id, stripe_account_id, details_submitted, charges_enabled, payouts_enabled)
+  values (p_venue, v_account, p_enabled, p_enabled, p_enabled)
+  on conflict (venue_id) do update set details_submitted = p_enabled, charges_enabled = p_enabled, payouts_enabled = p_enabled;
+  update public.venues set payouts_from = coalesce(payouts_from, now() - interval '1 day') where id = p_venue;
+  return v_account;
+end;
+$$;
+
+drop function if exists tests.run_payouts();
+
+-- One run of run-payouts on test keys, with Stripe answering every
+-- transfer: returns how many transfers were made.
+create or replace function tests.run_payouts(p_livemode boolean default false)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_run uuid;
+  v_due record;
+  v_count integer := 0;
+begin
+  v_run := public.prepare_payouts(p_livemode);
+  for v_due in select * from public.payouts_due(p_livemode) loop
+    perform public.payout_sent(v_due.payout_id, 'tr_' || replace(v_due.payout_id::text, '-', ''), v_due.amount_cents);
+    v_count := v_count + 1;
+  end loop;
+  perform public.finish_payout_run(v_run);
+  return v_count;
+end;
+$$;
+
+-- What the venue has been sent for one booking (by transfers that went out).
+create or replace function tests.transferred(p_booking uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(sum(i.venue_cents), 0)::integer
+  from public.venue_payout_items i join public.venue_payouts p on p.id = i.payout_id
+  where i.booking_id = p_booking and i.released_at is null and p.status = 'sent';
+$$;
+
+-- What the ledger says the venue earned on one booking, in the app (money
+-- it took in person left out).
+create or replace function tests.venue_earned(p_booking uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(sum(venue_cents), 0)::integer from public.money_ledger
+  where booking_id = p_booking and kind not in ('cash_received', 'counter_paid', 'debt_cash_received');
+$$;
+
+-- A venue's transfers that went out, smallest first (inside one test's
+-- transaction they all have the same created_at).
+create or replace function tests.payout_amounts(p_venue uuid)
+returns integer[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(array_agg(amount_cents order by amount_cents, id), '{}') from public.venue_payouts
+  where venue_id = p_venue and status = 'sent';
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;

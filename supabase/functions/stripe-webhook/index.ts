@@ -34,10 +34,14 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 import { dbFromSupabase } from '../_shared/db.ts';
 import { handlePaymentModeEvent } from './modes.ts';
+import { handlePayoutEvent } from './payouts.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
+// P4d: the second endpoint, "Listen to events on Connected accounts"
+// (account.updated, account.application.deauthorized), has its own secret.
+const connectWebhookSecret = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET');
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
@@ -194,6 +198,8 @@ async function processEvent(event: Stripe.Event, supabaseAdmin: SupabaseClient) 
   // Bookings made since P4a (booking modes, hold then take after 60
   // minutes, the booker's guarantee): see modes.ts. Everything below is the
   // old flow, kept for bookings made before P4a.
+  // Venue payouts (P4d): Connect accounts and transfers. See payouts.ts.
+  if (await handlePayoutEvent(event, { db: dbFromSupabase(supabaseAdmin) })) return;
   if (await handlePaymentModeEvent(event, { stripe, db: dbFromSupabase(supabaseAdmin) })) return;
 
   if (event.type === 'payment_intent.canceled') {
@@ -260,9 +266,17 @@ Deno.serve(async (req) => {
   try {
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret, undefined, cryptoProvider);
   } catch (err) {
-    return new Response(`Signature verification failed: ${err instanceof Error ? err.message : err}`, {
-      status: 400,
-    });
+    // P4d: or signed by the Connect endpoint.
+    const connected = connectWebhookSecret
+      ? await stripe.webhooks.constructEventAsync(body, signature, connectWebhookSecret, undefined, cryptoProvider)
+        .catch(() => null)
+      : null;
+    if (!connected) {
+      return new Response(`Signature verification failed: ${err instanceof Error ? err.message : err}`, {
+        status: 400,
+      });
+    }
+    event = connected;
   }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
@@ -319,4 +333,12 @@ DEPLOYMENT:
 5. If this endpoint was already configured before item 6, add
    payment_intent.amount_capturable_updated to its subscribed events in the
    Stripe dashboard — it won't receive that event type otherwise.
+
+6. P4d (venue payouts):
+   - add transfer.created and transfer.reversed to this endpoint's events;
+   - add a SECOND endpoint for the same URL with "Listen to events on
+     Connected accounts" ticked, sending account.updated and
+     account.application.deauthorized, and set its signing secret:
+       supabase secrets set STRIPE_CONNECT_WEBHOOK_SECRET=whsec_...
+     (again separately for test and live mode).
 */

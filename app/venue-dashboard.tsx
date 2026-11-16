@@ -13,6 +13,7 @@
 //   training slots (restyled in P6e).
 // The app never computes an amount: it sends ids and choices, and shows the
 // amounts the server returns.
+import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -345,6 +346,14 @@ export default function VenueDashboardScreen() {
                 ) : null}
               </>
             ) : null}
+
+            <ListRow
+              title="Payouts"
+              subtitle="Stripe setup, payouts and what each booking paid"
+              leading={{ icon: 'creditcard.fill' }}
+              chevron
+              onPress={() => router.push({ pathname: '/venue-payouts', params: { venueId: venue.id } })}
+            />
 
             <View style={styles.section}>
               <SectionHeader title="6 v 6 on 5-a-side pitches" />
