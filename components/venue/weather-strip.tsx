@@ -1,8 +1,9 @@
 // The weather strip (P11; docs/specs/13-payments-bookings.md "Forecast for
 // players", 15 Design section 5): rain, wind and temperature for the match
 // hours on the venue page, checkout and booking detail. When the server says
-// any app_rules threshold is met, the banner "Heavy rain forecast. The venue
-// may cancel this booking." It only warns. Beyond the forecast's range,
+// app_rules thresholds are met, a banner names them ("Strong wind forecast.",
+// several on one line if several) then "The venue may cancel this booking."
+// It only warns. Beyond the forecast's range,
 // "Forecast available closer to the date".
 //
 // Apple's attribution rules: wherever its forecast is shown, its "Weather"
@@ -14,11 +15,10 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { Banner, Card, SectionHeader, SkeletonText, Text } from '@/components/ui';
 import { space } from '@/constants/futty-theme';
 import {
-  BANNER_TEXT,
+  bannerText,
   forecastLines,
   type GameWeather,
   OUT_OF_RANGE_TEXT,
-  showsBanner,
   type WeatherAttribution,
 } from '@/lib/weather';
 
@@ -53,10 +53,11 @@ export function WeatherStrip({ weather, loading = false }: WeatherStripProps) {
   if (window.status !== 'forecast' || !attribution) return null;
 
   const { forecast } = window;
+  const banner = bannerText(forecast);
   return (
     <View style={styles.section} testID="weather-strip">
       <SectionHeader title="Weather" />
-      {showsBanner(forecast) ? <Banner tone="warning" message={BANNER_TEXT} /> : null}
+      {banner ? <Banner tone="warning" message={banner} /> : null}
       <Card>
         <View style={styles.lines}>
           {forecastLines(forecast).map((line) => (

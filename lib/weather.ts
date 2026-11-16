@@ -10,7 +10,6 @@
 import { supabase } from '@/lib/supabase';
 import { dayTitle } from '@/lib/venue-today';
 
-export const BANNER_TEXT = 'Heavy rain forecast. The venue may cancel this booking.';
 export const OUT_OF_RANGE_TEXT = 'Forecast available closer to the date';
 
 export type Warning = 'rain_chance' | 'heavy_rain' | 'wind' | 'thunderstorm' | 'heat';
@@ -81,9 +80,20 @@ export async function fetchWeatherNudges(venueId: string): Promise<WeatherNudges
   }
 }
 
-/** Any app_rules threshold met: the banner shows. */
-export function showsBanner(forecast: Forecast): boolean {
-  return forecast.warnings.length > 0;
+// The banner names what was met, in this order, then the warning. A rain
+// chance and heavy rain both read as heavy rain, named once.
+const BANNER_REASONS: { reason: string; warnings: Warning[] }[] = [
+  { reason: 'Heavy rain forecast.', warnings: ['rain_chance', 'heavy_rain'] },
+  { reason: 'Strong wind forecast.', warnings: ['wind'] },
+  { reason: 'Thunderstorms forecast.', warnings: ['thunderstorm'] },
+  { reason: 'Extreme heat forecast.', warnings: ['heat'] },
+];
+const BANNER_TAIL = 'The venue may cancel this booking.';
+
+/** The banner, e.g. "Strong wind forecast. The venue may cancel this booking."; null when no threshold is met. */
+export function bannerText(forecast: Forecast): string | null {
+  const reasons = BANNER_REASONS.filter((r) => r.warnings.some((w) => forecast.warnings.includes(w))).map((r) => r.reason);
+  return reasons.length ? [...reasons, BANNER_TAIL].join(' ') : null;
 }
 
 /** The strip's lines: rain, wind, temperature, and thunderstorms when forecast. */

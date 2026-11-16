@@ -20,7 +20,8 @@ jest.mock('@/components/ui/icon-symbol', () =>
 );
 
 const GAME = { day: '2026-11-20', start: '18:00', end: '19:00' };
-const BANNER = 'Heavy rain forecast. The venue may cancel this booking.';
+const TAIL = 'The venue may cancel this booking.';
+const BANNER = new RegExp(TAIL.replace(/\./g, '\\.'));
 
 const forecast = (f = CALM_FORECAST): GameWeather => ({
   attribution: ATTRIBUTION,
@@ -28,13 +29,23 @@ const forecast = (f = CALM_FORECAST): GameWeather => ({
 });
 
 describe('WeatherStrip', () => {
-  it.each<Warning>(['rain_chance', 'heavy_rain', 'wind', 'thunderstorm', 'heat'])(
-    'any threshold met (%s): the banner',
-    async (warning) => {
-      await render(<WeatherStrip weather={forecast(forecastWith([warning]))} />);
-      expect(screen.getByText(BANNER)).toBeTruthy();
-    },
-  );
+  it.each<[Warning, string]>([
+    ['rain_chance', 'Heavy rain forecast.'],
+    ['heavy_rain', 'Heavy rain forecast.'],
+    ['wind', 'Strong wind forecast.'],
+    ['thunderstorm', 'Thunderstorms forecast.'],
+    ['heat', 'Extreme heat forecast.'],
+  ])('%s met: the banner names it', async (warning, reason) => {
+    await render(<WeatherStrip weather={forecast(forecastWith([warning]))} />);
+    expect(screen.getByText(`${reason} ${TAIL}`)).toBeTruthy();
+  });
+
+  it('several met: all named on one line', async () => {
+    await render(<WeatherStrip weather={forecast(forecastWith(['wind', 'rain_chance', 'heat']))} />);
+    expect(
+      screen.getByText(`Heavy rain forecast. Strong wind forecast. Extreme heat forecast. ${TAIL}`),
+    ).toBeTruthy();
+  });
 
   it('below every threshold: the forecast, no banner', async () => {
     await render(<WeatherStrip weather={forecast()} />);

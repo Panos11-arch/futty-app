@@ -6,13 +6,12 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 import {
-  BANNER_TEXT,
   fetchGameWeather,
   fetchWeatherNudges,
   forecastLines,
   nudgeTitle,
   OUT_OF_RANGE_TEXT,
-  showsBanner,
+  bannerText,
   warningWords,
 } from '@/lib/weather';
 import { ATTRIBUTION, CALM_FORECAST, forecastWith } from '@/lib/weather.fixtures';
@@ -20,18 +19,31 @@ import { ATTRIBUTION, CALM_FORECAST, forecastWith } from '@/lib/weather.fixtures
 beforeEach(() => mockInvoke.mockReset());
 
 describe('the words spec 13 fixes', () => {
-  it('banner and out-of-range text', () => {
-    expect(BANNER_TEXT).toBe('Heavy rain forecast. The venue may cancel this booking.');
+  it('out-of-range text', () => {
     expect(OUT_OF_RANGE_TEXT).toBe('Forecast available closer to the date');
   });
 });
 
-describe('showsBanner', () => {
-  it.each(['rain_chance', 'heavy_rain', 'wind', 'thunderstorm', 'heat'] as const)('any threshold met (%s) shows it', (w) => {
-    expect(showsBanner(forecastWith([w]))).toBe(true);
+describe('bannerText: names the thresholds met, then the warning', () => {
+  it.each([
+    ['rain_chance', 'Heavy rain forecast. The venue may cancel this booking.'],
+    ['heavy_rain', 'Heavy rain forecast. The venue may cancel this booking.'],
+    ['wind', 'Strong wind forecast. The venue may cancel this booking.'],
+    ['thunderstorm', 'Thunderstorms forecast. The venue may cancel this booking.'],
+    ['heat', 'Extreme heat forecast. The venue may cancel this booking.'],
+  ] as const)('%s alone', (w, text) => {
+    expect(bannerText(forecastWith([w]))).toBe(text);
   });
-  it('below every threshold it does not', () => {
-    expect(showsBanner(CALM_FORECAST)).toBe(false);
+  it('several on one line, rain named once, in a fixed order', () => {
+    expect(bannerText(forecastWith(['heat', 'thunderstorm', 'heavy_rain', 'wind', 'rain_chance']))).toBe(
+      'Heavy rain forecast. Strong wind forecast. Thunderstorms forecast. Extreme heat forecast. The venue may cancel this booking.',
+    );
+    expect(bannerText(forecastWith(['heat', 'wind']))).toBe(
+      'Strong wind forecast. Extreme heat forecast. The venue may cancel this booking.',
+    );
+  });
+  it('below every threshold: no banner', () => {
+    expect(bannerText(CALM_FORECAST)).toBeNull();
   });
 });
 

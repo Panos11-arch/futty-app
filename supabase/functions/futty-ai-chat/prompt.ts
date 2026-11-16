@@ -98,7 +98,7 @@ GIPEDO PANO (a team booking where the losing team pays for the pitch)
 CONDITIONS AND WEATHER
 - A venue can warn that conditions may be unsuitable (for example a waterlogged pitch); everyone booked then is notified. Normal cancellation rules apply, so players can cancel at least ${cutoff} before kickoff to keep their money as venue credit.
 - The venue page, checkout and each booking show the forecast for the match hours (rain, wind and temperature), from Apple Weather. The forecast only reaches about ten days ahead; further out the app says "Forecast available closer to the date".
-- When the forecast for the match hours shows ${weatherConditions(r)}, the app shows a banner: "Heavy rain forecast. The venue may cancel this booking." It only warns; it never promises a cancellation. Normal cancellation rules still apply.
+- When the forecast for the match hours shows ${weatherConditions(r)}, the app shows a banner naming what was forecast: "Heavy rain forecast.", "Strong wind forecast.", "Thunderstorms forecast." or "Extreme heat forecast." (several on one line if several), followed by "The venue may cancel this booking." It only warns; it never promises a cancellation. Normal cancellation rules still apply.
 
 XP AND SCORING
 - Played/won/drawn/lost/goals are tracked accurately for every match (friendly and league).
