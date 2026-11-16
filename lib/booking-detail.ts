@@ -16,6 +16,7 @@ import {
   type CalendarBooking,
 } from '@/lib/calendar';
 import { formatEuros } from '@/lib/money/format';
+import { hoursText, ruleText } from '@/lib/rules';
 import { supabase } from '@/lib/supabase';
 import type { CancellationTerms } from '@/lib/venue-page';
 
@@ -192,7 +193,10 @@ export function describeQuote(quote: CancellationQuote, venueName: string): stri
   if (back.length > 0) {
     let sentence = `${plural(back.length, 'other player gets', 'other players get')} their money back in full.`;
     if (back.some((l) => l.action === 'refund_choice')) {
-      sentence += ' A player whose payment was already taken chooses a card refund or credit within 48 hours.';
+      sentence += ruleText(
+        (r) => ` A player whose payment was already taken chooses a card refund or credit within ${hoursText(r.refund_choice_hours)}.`,
+        ' A player whose payment was already taken chooses a card refund or credit.',
+      );
     }
     words.push(sentence);
   }

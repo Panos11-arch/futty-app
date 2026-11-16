@@ -1,4 +1,10 @@
 import { describeBookingErrorMessage } from './booking-errors';
+import { primeRules } from '@/lib/rules.fixtures';
+
+// Spec 13's rules as the migration's defaults (P10): the text below reads them.
+beforeEach(() => {
+  primeRules();
+});
 
 describe('describeBookingErrorMessage', () => {
   // Every code book_slot raises gets a sentence, not the raw code.

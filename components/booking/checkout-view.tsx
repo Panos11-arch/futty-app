@@ -39,6 +39,7 @@ import {
   type LoadState,
 } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
+import { hoursText, minutesText, ruleText } from '@/lib/rules';
 
 export type CheckoutViewProps = {
   venueName: string;
@@ -59,19 +60,33 @@ type Who = 'pay_all' | 'each_pays' | 'gipedo_pano';
 type Each = 'each_pays_responsible' | 'each_pays_own_spot';
 
 // Spec 13, "Booking modes": who pays, and who covers a spot nobody paid.
-const MODE_SENTENCES: Record<Exclude<Who, 'gipedo_pano'> | Each, string> = {
-  pay_all: 'You pay for the whole pitch in one payment.',
-  each_pays: 'Each player pays their own share, by card or cash.',
-  each_pays_responsible:
-    "I'm responsible for the team: each player pays their own share. Any spot still unpaid is taken from your guarantee hold 2 hours after the match.",
-  each_pays_own_spot:
-    "Just my spot: each player pays their own share. A player who doesn't pay owes the venue themselves.",
-};
+// Built at each render: the hours come from the rules (lib/rules.ts).
+export function modeSentences(): Record<Exclude<Who, 'gipedo_pano'> | Each, string> {
+  return {
+    pay_all: 'You pay for the whole pitch in one payment.',
+    each_pays: 'Each player pays their own share, by card or cash.',
+    each_pays_responsible:
+      "I'm responsible for the team: each player pays their own share. " +
+      ruleText(
+        (r) => `Any spot still unpaid is taken from your guarantee hold ${hoursText(r.collection_delay_hours)} after the match.`,
+        'Any spot still unpaid is taken from your guarantee hold after the match.',
+      ),
+    each_pays_own_spot:
+      "Just my spot: each player pays their own share. A player who doesn't pay owes the venue themselves.",
+  };
+}
 
 // Spec 13, "When money is held and taken" rule 5: an unpaid booking is
-// released after 15 minutes.
-export const HELD_LINE =
-  "Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 15 minutes.";
+// released when the payment window (app_rules.payment_window_minutes) ends.
+export function heldLine(): string {
+  return (
+    'Who pays is fixed once payment starts. ' +
+    ruleText(
+      (r) => `If you don't finish paying, the booking is released after ${minutesText(r.payment_window_minutes)}.`,
+      "If you don't finish paying in time, the booking is released.",
+    )
+  );
+}
 
 export function CheckoutView(props: CheckoutViewProps) {
   const { quote } = props;
@@ -175,7 +190,7 @@ function CheckoutReady({
           />
           {who && who !== 'gipedo_pano' ? (
             <Text variant="callout" tone="inkMuted">
-              {MODE_SENTENCES[who]}
+              {modeSentences()[who]}
             </Text>
           ) : null}
           {gipedo ? (
@@ -209,16 +224,16 @@ function CheckoutReady({
                 onChange={choose(setEach)}
               />
               <Text variant="callout" tone="inkMuted">
-                {MODE_SENTENCES.each_pays_responsible}
+                {modeSentences().each_pays_responsible}
               </Text>
               <Text variant="callout" tone="inkMuted">
-                {MODE_SENTENCES.each_pays_own_spot}
+                {modeSentences().each_pays_own_spot}
               </Text>
             </>
           ) : null}
           {bookingHeld ? (
             <Text variant="callout" tone="inkMuted">
-              {HELD_LINE}
+              {heldLine()}
             </Text>
           ) : null}
         </View>

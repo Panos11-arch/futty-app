@@ -1,35 +1,9 @@
 // _shared/rules.ts: spec 13's rules read from public.app_rules, never a default.
 import { deepStrictEqual, rejects, strictEqual, throws } from 'node:assert/strict';
 import { createDbFake } from './db-fake.ts';
-import { type AppRules, days, euros, hours, loadRules, minutes, months, parseRules } from './rules.ts';
+import { days, euros, hours, loadRules, minutes, months, parseRules } from './rules.ts';
+import { SPEC_RULES } from './rules.fixtures.ts';
 
-/** The defaults in the migration, which are spec 13's numbers. */
-export const SPEC_RULES: AppRules = {
-  fee_each_pays_cents: 80,
-  fee_pay_all_cents: 55,
-  fee_premium_cents: 0,
-  gipedo_fee_cents: 55,
-  window_standard_days: 7,
-  window_premium_days: 14,
-  free_cancel_minutes: 60,
-  cancel_fee_cents: 100,
-  refund_cutoff_hours: 6,
-  refund_choice_hours: 48,
-  capture_delay_minutes: 60,
-  payment_window_minutes: 15,
-  guarantee_hold_lead_hours: 72,
-  guarantee_retry_hours: 6,
-  collection_delay_hours: 2,
-  credit_expiry_months: 12,
-  gipedo_max_days: 5,
-  gipedo_opponent_hours: 24,
-  premium_price_label: '€3.99',
-  weather_rain_chance_pct: 60,
-  weather_heavy_rain: true,
-  weather_wind_kmh: 40,
-  weather_thunderstorms: true,
-  weather_heat_c: 38,
-};
 
 Deno.test('loads the rules from the database, as they are', async () => {
   const fake = createDbFake();

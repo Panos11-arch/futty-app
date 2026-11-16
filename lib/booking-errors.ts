@@ -1,12 +1,16 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
+import { daysText, hoursText, minutesText, ruleText } from '@/lib/rules';
+
 /** Maps the plain-text exceptions raised by book_slot/cancel_booking/
  *  log_booking_result (supabase/legacy/booking-payments.sql, booking-results.sql)
  *  to what the button should say. Takes a plain string rather than an error
  *  object, since callers going through an Edge Function (create-booking-
  *  payment, cancel-booking) need to extract the real message via
  *  lib/edge-functions.ts's describeFunctionError first — supabase.functions.
- *  invoke() doesn't surface it directly the way a plain RPC error does. */
+ *  invoke() doesn't surface it directly the way a plain RPC error does.
+ *  Every number in a message comes from spec 13's rules (lib/rules.ts); with
+ *  none loaded yet the message is the same without the number. */
 export function describeBookingErrorMessage(message: string) {
   switch (message) {
     case 'slot_full':
@@ -20,7 +24,11 @@ export function describeBookingErrorMessage(message: string) {
     case 'venue_not_live':
       return "This venue isn't taking bookings on Futty right now.";
     case 'beyond_booking_window':
-      return 'That day is too far ahead — standard accounts book up to 7 days ahead, Premium up to 14.';
+      return ruleText(
+        (r) =>
+          `That day is too far ahead — standard accounts book up to ${daysText(r.window_standard_days)} ahead, Premium up to ${r.window_premium_days}.`,
+        'That day is too far ahead for your account.',
+      );
     case 'invalid_pitches':
       return "This venue doesn't have that many pitches.";
     case 'invalid_time_range':
@@ -48,9 +56,16 @@ export function describeBookingErrorMessage(message: string) {
     case 'not_captain':
       return 'Only a team captain can do this.';
     case 'gipedo_too_far_ahead':
-      return 'Gipedo Pano can only be booked up to 5 days ahead.';
+      return ruleText(
+        (r) => `Gipedo Pano can only be booked up to ${daysText(r.gipedo_max_days)} ahead.`,
+        "Gipedo Pano can't be booked that far ahead.",
+      );
     case 'gipedo_too_soon':
-      return 'Gipedo Pano needs at least 24 hours before kickoff, so there is time to find an opponent.';
+      return ruleText(
+        (r) =>
+          `Gipedo Pano needs at least ${hoursText(r.gipedo_opponent_hours)} before kickoff, so there is time to find an opponent.`,
+        'Gipedo Pano needs more time before kickoff, so there is time to find an opponent.',
+      );
     case 'credit_not_allowed':
       return "Venue credit can't be used for a Gipedo Pano hold. Pay by card.";
     case 'use_gipedo_pull_out':
@@ -66,7 +81,10 @@ export function describeBookingErrorMessage(message: string) {
     case 'already_chosen':
       return "You've already chosen what happens to this game.";
     case 'choice_closed':
-      return 'Kickoff is less than 6 hours away, so the game has been cancelled free.';
+      return ruleText(
+        (r) => `Kickoff is less than ${hoursText(r.refund_cutoff_hours)} away, so the game has been cancelled free.`,
+        'Kickoff is too close now, so the game has been cancelled free.',
+      );
     case 'invalid_choice':
       return 'Choose to play it as a normal booking or cancel it free.';
     case 'post_closed':
@@ -74,7 +92,10 @@ export function describeBookingErrorMessage(message: string) {
     case 'cannot_rejoin':
       return "Your team pulled out of this game, so it can't take it on again.";
     case 'non_refundable_not_accepted':
-      return 'This game starts in less than 6 hours, so it is non-refundable. Accept that to pay.';
+      return ruleText(
+        (r) => `This game starts in less than ${hoursText(r.refund_cutoff_hours)}, so it is non-refundable. Accept that to pay.`,
+        'This game starts soon, so it is non-refundable. Accept that to pay.',
+      );
     case 'cash_not_allowed':
       return "Cash isn't available when the booker pays for everyone.";
     case 'not_your_share':
@@ -86,7 +107,11 @@ export function describeBookingErrorMessage(message: string) {
     case 'share_changed':
       return 'Your payment changed on another device. Check your booking and try again.';
     case 'payment_window_closed':
-      return 'Payment had to be completed within 15 minutes of booking, so this booking was cancelled.';
+      return ruleText(
+        (r) =>
+          `Payment had to be completed within ${minutesText(r.payment_window_minutes)} of booking, so this booking was cancelled.`,
+        "Payment wasn't completed in time, so this booking was cancelled.",
+      );
     case 'saved_card_required':
       return "Paying this way needs a saved card, which isn't available yet. Pay by card instead.";
     case 'guarantee_closed':
@@ -112,7 +137,10 @@ export function describeBookingErrorMessage(message: string) {
     case 'already_cancelled':
       return 'That booking is already cancelled.';
     case 'too_late_to_cancel':
-      return 'Less than 6 hours to kickoff, so this booking can no longer be refunded.';
+      return ruleText(
+        (r) => `Less than ${hoursText(r.refund_cutoff_hours)} to kickoff, so this booking can no longer be refunded.`,
+        'Kickoff is too close, so this booking can no longer be refunded.',
+      );
     case 'booking_cancelled':
       return 'This booking has been cancelled.';
     case 'booking_not_found':

@@ -7,9 +7,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { PERSONAL_PREMIUM_PRICE_LABEL } from '@/lib/premium';
+import { personalPremiumPriceLabel } from '@/lib/premium';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
+import { useRules } from '@/lib/use-rules';
 import { useProfile } from '@/lib/use-profile';
 
 type PlanRow = {
@@ -27,6 +28,8 @@ type PlanRow = {
 export default function GoPremiumScreen() {
   const profile = useProfile();
   const myTeams = useMyTeams();
+  // The Premium price label is a rule (P10); blank until the rules are loaded.
+  const rulesState = useRules().state;
   const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   if (profile.status === 'loading' || myTeams.status === 'loading') {
@@ -50,7 +53,7 @@ export default function GoPremiumScreen() {
       plan: 'personal',
       icon: 'star.fill',
       title: 'Personal Premium',
-      priceLabel: `${PERSONAL_PREMIUM_PRICE_LABEL}/mo`,
+      priceLabel: personalPremiumPriceLabel(rulesState.status === 'ready' ? rulesState.rules : null),
       active: profile.status === 'ready' && profile.profile.is_premium,
     },
     {

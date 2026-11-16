@@ -3,6 +3,12 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { CheckoutView, type CheckoutViewProps } from '@/components/booking/checkout-view';
 import { quoteFixture } from '@/lib/booking-search.fixtures';
 import type { BookingQuote } from '@/lib/booking-search';
+import { CHANGED_RULES, primeRules } from '@/lib/rules.fixtures';
+
+// Spec 13's rules as the migration's defaults (P10): the text below reads them.
+beforeEach(() => {
+  primeRules();
+});
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -145,6 +151,38 @@ describe('CheckoutView', () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText('Less than 6 hours before kickoff, there are no refunds.')).toBeTruthy();
+  });
+
+  describe('spec 13’s rules in the text (P10)', () => {
+    it('changed rules: the guarantee is taken 3 hours after the match', async () => {
+      primeRules(CHANGED_RULES);
+      await render(<CheckoutView {...props()} />);
+      await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
+      expect(screen.getByText(/taken from your guarantee hold 3 hours after the match/)).toBeTruthy();
+    });
+
+    it('changed rules: an unpaid booking is released after 30 minutes', async () => {
+      primeRules(CHANGED_RULES);
+      await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
+      expect(
+        screen.getByText("Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 30 minutes."),
+      ).toBeTruthy();
+    });
+
+    it('no rules loaded yet: the guarantee sentence without a number', async () => {
+      primeRules(null);
+      await render(<CheckoutView {...props()} />);
+      await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
+      expect(screen.getByText(/taken from your guarantee hold after the match/)).toBeTruthy();
+    });
+
+    it('no rules loaded yet: the payment window without a number', async () => {
+      primeRules(null);
+      await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
+      expect(
+        screen.getByText("Who pays is fixed once payment starts. If you don't finish paying in time, the booking is released."),
+      ).toBeTruthy();
+    });
   });
 
   it('once payment has started, says who pays is fixed and an unpaid booking is released after 15 minutes', async () => {

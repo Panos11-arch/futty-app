@@ -30,8 +30,12 @@ import { addBookingPlayer } from '@/lib/booking-shares';
 import { isBookingInCalendar, removeBookingFromCalendar } from '@/lib/calendar';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { appleMapsUrl, googleMapsUrl } from '@/lib/venue-page';
+import { useRules } from '@/lib/use-rules';
 
 export default function BookingDetailScreen() {
+  // Spec 13's rules for the numbers in this screen's text (P10): loads them
+  // and re-renders when they arrive.
+  useRules();
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const load = useCallback(() => fetchBookingDetail(id), [id]);
   const { state, reload } = useLoad(id || null, load);

@@ -7,6 +7,7 @@
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import type { GipedoDetail, RosterState } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
+import { hoursText, ruleText } from '@/lib/rules';
 import { supabase } from '@/lib/supabase';
 
 /** Checkout: what choosing Gipedo Pano means, with the server's hold. */
@@ -14,7 +15,10 @@ export function gipedoModeSentence(holdCents: number): string {
   return (
     `Gipedo Pano: the losing team pays for the pitch. Your card is held for ${formatEuros(holdCents)} and nothing is taken now. ` +
     "After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released. " +
-    'Another team can take it on until 24 hours before kickoff.'
+    ruleText(
+      (r) => `Another team can take it on until ${hoursText(r.gipedo_opponent_hours)} before kickoff.`,
+      'Another team can take it on until shortly before kickoff.',
+    )
   );
 }
 
@@ -23,7 +27,10 @@ export function gipedoStatusLine(g: GipedoDetail): string {
   const them = g.opponent.team?.name ?? 'The other team';
   if (g.opponent.state === 'held') return `${g.team?.name ?? 'Your team'} v ${them}. Both cards are held; the losing team pays the pitch.`;
   if (g.opponent.state === 'offered') return `${them} offered to play. Waiting for their card to be held.`;
-  return 'Waiting for an opponent. Teams can take it on until 24 hours before kickoff.';
+  return ruleText(
+    (r) => `Waiting for an opponent. Teams can take it on until ${hoursText(r.gipedo_opponent_hours)} before kickoff.`,
+    'Waiting for an opponent. Teams can take it on until shortly before kickoff.',
+  );
 }
 
 /** What pulling out does, from the server's pull-out quote (its amount and
@@ -34,7 +41,10 @@ export function pullOutWords(g: GipedoDetail): string[] {
   if (pull.kind === 'free') return ['The booking is cancelled and your hold is released. Nothing is taken.'];
   if (pull.kind === 'forfeit') {
     return [
-      `Kickoff is less than 6 hours away, so your team counts as the losing team: ${formatEuros(pull.cents)} is taken from your hold straight away and the other team's hold is released.`,
+      ruleText(
+        (r) => `Kickoff is less than ${hoursText(r.refund_cutoff_hours)} away, so your team counts as the losing team: `,
+        'Kickoff is close, so your team counts as the losing team: ',
+      ) + `${formatEuros(pull.cents)} is taken from your hold straight away and the other team's hold is released.`,
     ];
   }
   const perPlayer = pull.fee_per_player_cents === null ? '' : ` (${formatEuros(pull.fee_per_player_cents)} per player)`;
@@ -46,13 +56,16 @@ export function pullOutWords(g: GipedoDetail): string[] {
   ];
 }
 
-/** No opponent 24 hours before kickoff: the booking captain's choice. */
+/** No opponent as kickoff nears (app_rules.gipedo_opponent_hours): the booking captain's choice. */
 export function choiceWords(g: GipedoDetail): { message: string; playLabel: string; cancelLabel: string } | null {
   if (!g.choice_due || g.play_normal_cents === null) return null;
   return {
     message:
       'Nobody has taken on this game. Play it as a normal booking or cancel it free. ' +
-      'If you don’t choose by 6 hours before kickoff, it is cancelled free.',
+      ruleText(
+        (r) => `If you don’t choose by ${hoursText(r.refund_cutoff_hours)} before kickoff, it is cancelled free.`,
+        'If you don’t choose in time, it is cancelled free.',
+      ),
     playLabel: `Play as normal: ${formatEuros(g.play_normal_cents)}`,
     cancelLabel: 'Cancel free',
   };

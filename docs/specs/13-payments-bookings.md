@@ -391,6 +391,7 @@ Every number in this document lives once, in `public.app_rules`: the service fee
 - **Only Futty changes a rule** (service role), and every change is kept with what it was before.
 - **A change applies at once.** Rules are read when they're used, so a new cutoff also applies to bookings already made. What a booking already stored (its pitch price and its service fee per player) doesn't change, and neither does a deadline already set: when a held share is taken, when the guarantee hold is placed, the deadline to choose venue credit, and when credit expires keep the value in force when they were set. A quote the player saw is checked again when they confirm, so nobody is charged on an old rule.
 - **The app keeps the last rules it fetched** for when it's offline; a phone that has never fetched them shows a placeholder, never a guessed number.
+- **The Futty AI's answers come from the same rules (decided 16 November).** It describes only what players can do in the app today: 6 v 6 switching and weather forecasts are "coming soon" until P12 and P11 ship, and each adds its own lines to the prompt then.
 
 ## Server-side checks that make it airtight
 
