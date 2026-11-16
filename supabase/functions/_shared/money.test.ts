@@ -89,3 +89,8 @@ Deno.test('P8 review: a Gipedo Pano offer made again is a new attempt with its o
   strictEqual(idempotencyKeys.shareIntent({ ...hold, offerAttempt: 2 }), 'share-s1-offer-2-6550-card-manual-after-none');
   strictEqual(idempotencyKeys.gipedoRelease('g1'), 'gipedo-release-g1', 'a settlement releasing a hold: keyed on our row');
 });
+
+Deno.test('P4d: a transfer and a Connect account are keyed on our row ids', () => {
+  strictEqual(idempotencyKeys.payout('po1'), 'payout-po1', 'one payout row, one transfer');
+  strictEqual(idempotencyKeys.connectAccount('v1'), 'connect-account-v1', 'one Express account per venue');
+});

@@ -84,4 +84,9 @@ export const idempotencyKeys = {
    *  replacing previousIntentId (cancelled first). */
   owed: (kind: 'debt' | 'cash', id: string, amountCents: number, previousIntentId: string | null) =>
     `owed-${kind}-${id}-${amountCents}-after-${previousIntentId ?? 'none'}`,
+  /** P4d: one transfer to a venue (one payout row, one amount): a retry
+   *  after no answer is the same transfer, never a second one. */
+  payout: (payoutId: string) => `payout-${payoutId}`,
+  /** P4d: a venue's Stripe Express account, created once per venue. */
+  connectAccount: (venueId: string) => `connect-account-${venueId}`,
 };
