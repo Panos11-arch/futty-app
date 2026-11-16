@@ -844,6 +844,55 @@ begin
 end;
 $$;
 
+-- P12: switching 5 v 5 / 6 v 6.
+
+-- tests.booking_with_players, booked 6 v 6 on a 5-a-side pitch (the venue is
+-- set to allow it).
+create or replace function tests.booking_6v6_with_players(
+  p_booker uuid,
+  p_venue uuid,
+  p_mode text,
+  p_others integer,
+  p_day date,
+  p_label text default 'player'
+)
+returns public.venue_bookings
+language plpgsql
+as $$
+declare
+  v_booking public.venue_bookings;
+  v_player uuid;
+  i integer;
+begin
+  update public.venues set allows_6v6_on_5s = true where id = p_venue;
+  perform tests.act_as(p_booker);
+  v_booking := public.book_slot(p_venue, p_day, '12:00', '13:00', 1, '5-a-side', 6, p_mode);
+  perform tests.act_as_postgres();
+  for i in 1 .. p_others loop
+    v_player := tests.create_user(format('%s-%s-%s@futty.test', p_label, i, left(gen_random_uuid()::text, 8)));
+    perform public.add_booking_share_internal(v_booking.id, v_player);
+    update public.booking_payment_shares set created_at = created_at + make_interval(secs => i)
+    where booking_id = v_booking.id and profile_id = v_player;
+  end loop;
+  return v_booking;
+end;
+$$;
+
+-- The booker switches p_booking to p_side a side, as the app does.
+create or replace function tests.switch(p_booking uuid, p_side integer)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_result jsonb;
+begin
+  perform tests.act_as((select created_by from public.venue_bookings where id = p_booking));
+  v_result := public.switch_players_per_side(p_booking, p_side);
+  perform tests.act_as_postgres();
+  return v_result;
+end;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
