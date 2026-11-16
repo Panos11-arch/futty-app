@@ -11,7 +11,11 @@
 --                      paid_pitch_cents is the cash it paid (cash_cents when
 --                      staff ticked it, the card payment when the player
 --                      paid it by card after the match), less its switch
---                      credit; it was 0
+--                      credit; it was 0. And a ticked cash share forfeited
+--                      by a late cancellation counts the cash the venue
+--                      kept toward the pitch price, as a card share does
+--                      (decided 10 November), so the others don't pay it
+--                      again
 --   start_collection   (20261111090000_pay_collection_decisions) only an
 --                      unticked cash share is left to the cash path; a
 --                      ticked one gets a top-up when it paid less than due
@@ -60,11 +64,19 @@ begin
     return;
   end if;
 
-  -- The pitch part a late cancellation kept: a cash player's pitch part
-  -- was never paid, so it keeps none. P12: less the switch credit the
-  -- share was given before it was cancelled.
+  -- The pitch part a late cancellation kept: an unticked cash player's
+  -- pitch part was never paid, so it keeps none; ticked cash the venue
+  -- keeps counts like a card payment (decided 10 November, "A late
+  -- cancellation's kept money"): what was ticked, less any of it handed
+  -- back. P12: less the switch credit the share was given before it was
+  -- cancelled.
   select coalesce(sum(coalesce(s.pitch_cents, 0) - s.cash_cents
-                      - case when s.payment_method = 'card' and s.switch_credit_issued_at is not null
+                      + case when s.payment_method = 'cash' and s.cash_received_at is not null
+                             then coalesce((select sum(m.venue_cents) from public.money_ledger m
+                                            where m.share_id = s.id and m.kind = 'cash_received'), 0)
+                             else 0 end
+                      - case when s.switch_credit_issued_at is not null
+                                  and (s.payment_method = 'card' or s.cash_received_at is not null)
                              then s.switch_credit_cents else 0 end), 0)::integer into v_kept
   from public.booking_payment_shares s
   where s.booking_id = p_booking_id and s.status = 'forfeited';

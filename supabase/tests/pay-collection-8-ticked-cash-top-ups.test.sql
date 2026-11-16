@@ -208,4 +208,49 @@ begin
   assert tests.owed(v_ticked.profile_id) = 0, 'the player owes no debt';
 end $$;
 
+-- A late cancellation's kept money counts toward the pitch price (decided
+-- 10 November), ticked cash too: 10 players at €60, a ticked cash player
+-- cancels less than 6 hours before kickoff and nobody takes the spot. The
+-- venue keeps their 600 cash, so the other 9 owe only the remaining 5400
+-- and nobody gets a top-up.
+do $$
+declare
+  v_owner uuid := tests.create_user('tcash-late-owner@futty.test');
+  v_booker uuid := tests.create_user('tcash-late-booker@futty.test');
+  v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
+  v_booking public.venue_bookings;
+  v_cash public.booking_payment_shares;
+  v_start jsonb;
+  i integer;
+begin
+  perform tests.set_price(v_venue, '5-a-side', 6000);
+  v_booking := tests.booking_with_players(v_booker, v_venue, 'each_pays_own_spot', 9, tests.cyprus_today() + 3,
+                                          p_label => 'tcash-late');
+  for i in 0 .. 9 loop
+    perform tests.pay_ago((tests.player(v_booking.id, i)).id, 'pi_tclate_' || i, interval '2 hours',
+                          case when i = 9 then 'cash' else 'card' end);
+  end loop;
+  v_cash := tests.player(v_booking.id, 9);
+  perform tests.act_as(v_owner);
+  perform public.mark_cash_received(v_cash.id);
+  perform tests.act_as_postgres();
+
+  perform tests.set_kickoff(v_booking.id, now() + interval '5 hours');
+  perform tests.cancel(v_booking.id, 'my_spot', v_cash.profile_id);
+  assert (tests.player(v_booking.id, 9)).status = 'forfeited', 'a late cancellation keeps the money';
+  assert (select coalesce(sum(venue_cents), 0) from public.money_ledger
+          where share_id = v_cash.id and kind = 'cash_received') = 600,
+    'the venue keeps the 600 cash';
+
+  perform tests.end_match(v_booking.id);
+  v_start := public.start_collection(v_booking.id);
+  assert (v_start ->> 'joined_players')::integer = 9, '9 still hold a spot';
+  assert (select pitch_due_cents from public.booking_collections where booking_id = v_booking.id) = 5400,
+    format('the other 9 owe only the remaining 5400, got %s',
+           (select pitch_due_cents from public.booking_collections where booking_id = v_booking.id));
+  assert not exists (select 1 from public.booking_collection_items where booking_id = v_booking.id),
+    format('the kept 600 cash covers the empty spot: no top-ups, got %s',
+           (select jsonb_agg(row_to_json(i)) from public.booking_collection_items i where i.booking_id = v_booking.id));
+end $$;
+
 rollback;
