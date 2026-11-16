@@ -59,4 +59,4 @@ Spec: docs/specs/13-payments-bookings.md "Weather, condition warnings and blocki
 - "Heavy rain" = Apple's `HeavyRain` condition (no mm/h number invented); thunderstorms = Apple's thunderstorm
   conditions; wind = sustained wind, not gusts; heat = air temperature, not "feels like".
 - Nudge only while kickoff is 12h+ away (the spec's "at least 12 hours before kickoff"); hidden once flagged.
-- One banner wording for every threshold (the spec's only wording).
+- The banner names the thresholds met ("Heavy rain forecast.", "Strong wind forecast.", "Thunderstorms forecast.", "Extreme heat forecast.", several on one line), then "The venue may cancel this booking." (Dimitris, 16 November).
