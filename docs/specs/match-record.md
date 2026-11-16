@@ -393,6 +393,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `gipedo_no_opponent` | payments (P8): no opponent 24 hours before kickoff, play as normal or cancel free | ✓ |
 | `gipedo_pulled_out` | payments (P8): the other team pulled out | ✓ |
 | `gipedo_settled` | payments (P8): what a Gipedo Pano hold paid after the match | ✓ |
+| `booking_switched` | payments (P12): the booker switched 5 v 5 / 6 v 6, with the player's credit or extra | ✓ |
 | `match_result_submitted` | match (A2) | |
 | `match_result_confirmed` | match (A2) | |
 | `match_result_disputed` | match (A2) | |

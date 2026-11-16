@@ -47,7 +47,8 @@ begin
 end $$;
 
 -- An unticked cash player owes their cash part (750 in a 4 v 4); a cash
--- player the venue ticked owes nothing.
+-- player the venue ticked paid 600, so is topped up 150 by card like
+-- everyone else (decided 16 November).
 do $$
 declare
   v_owner uuid := tests.create_user('own-cash-owner@futty.test');
@@ -75,7 +76,8 @@ begin
 
   perform tests.end_match(v_booking.id);
   v_start := public.start_collection(v_booking.id);
-  assert (tests.item(v_booking.id, v_ticked.id)).id is null, 'ticked: paid in person';
+  assert (tests.item(v_booking.id, v_ticked.id)).kind = 'top_up' and (tests.item(v_booking.id, v_ticked.id)).amount_cents = 150,
+    'ticked: 600 paid in person, a 150 top-up';
   assert (tests.item(v_booking.id, v_unticked.id)).kind = 'unpaid_cash', 'unticked: still owed';
   perform tests.charge_top_ups((v_start ->> 'collection_id')::uuid);
   perform public.settle_collection((v_start ->> 'collection_id')::uuid);
@@ -84,7 +86,8 @@ begin
   assert v_debt.amount_cents = 750 and v_debt.venue_cents = 750 and v_debt.futty_cents = 0
          and v_debt.reason = 'cash_unpaid',
     format('a short game''s cash part, 750, got %s', row_to_json(v_debt));
-  assert tests.owed(v_ticked.profile_id) = 0, 'the ticked player owes nothing';
+  assert (tests.item(v_booking.id, v_ticked.id)).status = 'paid' and tests.owed(v_ticked.profile_id) = 0,
+    'the ticked player''s top-up was taken; they owe nothing';
 end $$;
 
 -- The booker's own payment failed: they owe only their own share, 680.
