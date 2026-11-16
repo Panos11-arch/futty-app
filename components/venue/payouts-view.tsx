@@ -22,6 +22,7 @@ import type { LoadState } from '@/lib/booking-search';
 import {
   accountWords,
   balanceWords,
+  beforePayoutsWords,
   bookingMoneyLines,
   cyprusWhen,
   payoutRowWords,
@@ -70,7 +71,7 @@ export function PayoutsView({ state, venueName, onRetry, onStripe, onOpenPayout 
   }
 
   const overview = state.data;
-  const account = accountWords(overview.account);
+  const account = accountWords(overview.account, overview.payouts_from);
   const balance = balanceWords(overview);
 
   async function stripe(action: StripeAction) {
@@ -137,7 +138,7 @@ export function PayoutsView({ state, venueName, onRetry, onStripe, onOpenPayout 
             <View style={styles.list}>
               {overview.payouts.map((row) => {
                 const words = payoutRowWords(row);
-                const status = payoutStatus(row.status);
+                const status = payoutStatus(row.status, row.waiting);
                 return (
                   <ListRow
                     key={row.id}
@@ -161,6 +162,35 @@ export function PayoutsView({ state, venueName, onRetry, onStripe, onOpenPayout 
             </View>
           )}
         </View>
+
+        {overview.before_payouts.length > 0 ? (
+          <View style={styles.section}>
+            <SectionHeader title="Before Futty payouts" />
+            <Text variant="callout" tone="inkMuted">
+              {overview.payouts_from
+                ? 'These bookings were made before Futty payouts started at your venue, so their money is not sent through Futty.'
+                : "Futty payouts haven't started at your venue yet, so these bookings' money is not sent through Futty."}
+            </Text>
+            <View style={styles.list}>
+              {overview.before_payouts.map((row) => {
+                const words = beforePayoutsWords(row);
+                return (
+                  <ListRow
+                    key={row.booking_id}
+                    testID={`before-payouts-${row.booking_id}`}
+                    title={words.title}
+                    subtitle={words.subtitle}
+                    trailing={
+                      <Text variant="callout" tone="inkMuted" tabular>
+                        {words.amount}
+                      </Text>
+                    }
+                  />
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       <Sheet

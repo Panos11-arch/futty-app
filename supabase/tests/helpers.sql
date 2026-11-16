@@ -895,8 +895,9 @@ $$;
 
 -- P4d: payouts.
 
--- Gives a venue a Stripe Express account that has finished onboarding (or
--- not, with p_enabled false).
+-- Gives a venue a test-mode Stripe Express account that has finished
+-- onboarding (or not, with p_enabled false), and starts Futty payouts there
+-- (payouts_from a day ago, so every booking a test makes counts).
 create or replace function tests.connect_venue(p_venue uuid, p_enabled boolean default true)
 returns text
 language plpgsql
@@ -909,13 +910,16 @@ begin
   insert into public.venue_stripe_accounts (venue_id, stripe_account_id, details_submitted, charges_enabled, payouts_enabled)
   values (p_venue, v_account, p_enabled, p_enabled, p_enabled)
   on conflict (venue_id) do update set details_submitted = p_enabled, charges_enabled = p_enabled, payouts_enabled = p_enabled;
+  update public.venues set payouts_from = coalesce(payouts_from, now() - interval '1 day') where id = p_venue;
   return v_account;
 end;
 $$;
 
--- One run of run-payouts, with Stripe answering every transfer: returns how
--- many transfers were made.
-create or replace function tests.run_payouts()
+drop function if exists tests.run_payouts();
+
+-- One run of run-payouts on test keys, with Stripe answering every
+-- transfer: returns how many transfers were made.
+create or replace function tests.run_payouts(p_livemode boolean default false)
 returns integer
 language plpgsql
 security definer
@@ -926,8 +930,8 @@ declare
   v_due record;
   v_count integer := 0;
 begin
-  v_run := public.prepare_payouts();
-  for v_due in select * from public.payouts_due() loop
+  v_run := public.prepare_payouts(p_livemode);
+  for v_due in select * from public.payouts_due(p_livemode) loop
     perform public.payout_sent(v_due.payout_id, 'tr_' || replace(v_due.payout_id::text, '-', ''), v_due.amount_cents);
     v_count := v_count + 1;
   end loop;

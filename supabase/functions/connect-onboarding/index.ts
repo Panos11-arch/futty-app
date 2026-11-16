@@ -6,12 +6,14 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 import { dbFromSupabase } from '../_shared/db.ts';
+import { isLiveKey } from '../_shared/stripe-mode.ts';
 import { connectOnboarding } from './handler.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!;
+const stripe = new Stripe(stripeKey);
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get('Authorization');
@@ -37,6 +39,7 @@ Deno.serve(async (req) => {
         db: dbFromSupabase(createClient(supabaseUrl, serviceRoleKey)),
         returnUrl: `${supabaseUrl}/functions/v1/connect-return`,
         now: () => new Date(),
+        livemode: isLiveKey(stripeKey),
       },
       { id: userData.user.id, email: userData.user.email },
       body,

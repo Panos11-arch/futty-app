@@ -92,5 +92,6 @@ Deno.test('P8 review: a Gipedo Pano offer made again is a new attempt with its o
 
 Deno.test('P4d: a transfer and a Connect account are keyed on our row ids', () => {
   strictEqual(idempotencyKeys.payout('po1'), 'payout-po1', 'one payout row, one transfer');
-  strictEqual(idempotencyKeys.connectAccount('v1'), 'connect-account-v1', 'one Express account per venue');
+  strictEqual(idempotencyKeys.connectAccount('v1', false), 'connect-account-v1-test', 'one Express account per venue and mode');
+  strictEqual(idempotencyKeys.connectAccount('v1', true), 'connect-account-v1-live');
 });

@@ -33,7 +33,7 @@ describe('PayoutsView: onboarding', () => {
   it('not set up: one button opens Stripe onboarding', async () => {
     const p = props({ state: { status: 'ready', data: overview({ account: { status: 'not_started', venue_live: true, requirements_due: 0 }, payouts: [], can_receive: false, ready_cents: 6000 }) } });
     await render(<PayoutsView {...p} />);
-    expect(screen.getByText('€60.00 is waiting for payouts to be set up.')).toBeTruthy();
+    expect(screen.getByText('€60.00 is waiting for payouts to start at your venue.')).toBeTruthy();
     expect(screen.getByText(/No payouts yet/)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Set up payouts' }));
     expect(p.onStripe).toHaveBeenCalledWith('onboard');
@@ -67,7 +67,7 @@ describe('PayoutsView: payouts and what each booking paid', () => {
     expect(screen.getByTestId('payout-po2')).toBeTruthy();
     expect(screen.getByText('€58.95')).toBeTruthy();
     expect(screen.getByText('Sent to Stripe · Tue 17 Nov, 23:05 · and 1 earlier booking')).toBeTruthy();
-    expect(screen.getByText('Being sent · Mon 16 Nov, 22:00')).toBeTruthy();
+    expect(screen.getByText('Waiting for card payments to clear · Mon 16 Nov, 22:00')).toBeTruthy();
   });
 
   it("tapping a payout shows each booking it covered: this payout's part and what the booking paid", async () => {
@@ -87,6 +87,32 @@ describe('PayoutsView: payouts and what each booking paid', () => {
     await render(<PayoutsView {...props({ onOpenPayout: jest.fn(async () => ({ error: 'That payout could not be found.' })) })} />);
     await fireEvent.press(screen.getByTestId('payout-po1'));
     expect(await screen.findByText('That payout could not be found.')).toBeTruthy();
+  });
+
+  it('bookings from before Futty payouts are listed as such, with no payout', async () => {
+    const data = overview({ before_payouts: [{ booking_id: 'b0', label: 'Nuevo Campo on Friday 6 Nov at 19:00', venue_cents: 6000 }] });
+    await render(<PayoutsView {...props({ state: { status: 'ready', data } })} />);
+    expect(screen.getByText('Before Futty payouts')).toBeTruthy();
+    expect(screen.getByTestId('before-payouts-b0')).toBeTruthy();
+    expect(screen.getByText('Before Futty payouts: not sent through Futty')).toBeTruthy();
+    expect(screen.getByText(/made before Futty payouts started at your venue/)).toBeTruthy();
+  });
+
+  it("payouts not started at the venue: its bookings are all before Futty payouts", async () => {
+    const data = overview({
+      payouts_from: null, payouts: [],
+      before_payouts: [{ booking_id: 'b0', label: 'Nuevo Campo on Friday 6 Nov at 19:00', venue_cents: 6000 }],
+    });
+    await render(<PayoutsView {...props({ state: { status: 'ready', data } })} />);
+    expect(screen.getByText('Payouts start when your venue is live')).toBeTruthy();
+    expect(screen.getByText(/haven't started at your venue yet/)).toBeTruthy();
+  });
+
+  it('waiting for card payments to clear: said so, not "within minutes"', async () => {
+    const data = overview({ sending_cents: 5895, waiting_for_balance_cents: 5895 });
+    await render(<PayoutsView {...props({ state: { status: 'ready', data } })} />);
+    expect(screen.getByText(/waiting for players' card payments to clear in Stripe/)).toBeTruthy();
+    expect(screen.queryByText(/minute/)).toBeNull();
   });
 
   it('owed to Futty: told it comes off the next payout', async () => {

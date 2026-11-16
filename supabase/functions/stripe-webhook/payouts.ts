@@ -2,7 +2,8 @@
 // "Payouts"). Each state change is made by a database function:
 //   account.updated                  (Connect) what the venue's Express
 //                                    account can do: whether it can
-//                                    receive payouts (onboarding finished)
+//                                    receive payouts (onboarding finished),
+//                                    and its mode (test or live)
 //   account.application.deauthorized (Connect) the venue disconnected
 //                                    Futty: no more transfers; alerted
 //   transfer.created                 a transfer run-payouts made, when its
@@ -27,6 +28,7 @@ export async function handlePayoutEvent(event: Stripe.Event, deps: Deps): Promis
       p_payouts_enabled: account.payouts_enabled ?? false,
       p_requirements_due: account.requirements?.currently_due?.length ?? 0,
       p_disabled_reason: account.requirements?.disabled_reason ?? null,
+      p_livemode: event.livemode,
     });
     return true;
   }

@@ -6,10 +6,13 @@ import type { BookingMoney, PayoutDetail, PayoutsOverview } from './payouts';
 export function overview(overrides: Partial<PayoutsOverview> = {}): PayoutsOverview {
   return {
     account: { status: 'ready', venue_live: true, requirements_due: 0 },
+    payouts_from: '2026-11-01T00:00:00Z',
     can_receive: true,
     ready_cents: 0,
     owed_to_futty_cents: 0,
     sending_cents: 0,
+    waiting_for_balance_cents: 0,
+    before_payouts: [],
     payouts: [
       {
         id: 'po2', booking_id: 'b2', label: 'Nuevo Campo on Tuesday 17 Nov at 20:00', amount_cents: 5895,
@@ -17,7 +20,7 @@ export function overview(overrides: Partial<PayoutsOverview> = {}): PayoutsOverv
       },
       {
         id: 'po1', booking_id: 'b1', label: 'Nuevo Campo on Monday 16 Nov at 19:00', amount_cents: 6000,
-        status: 'pending', created_at: '2026-11-16T20:00:00Z', sent_at: null, bookings: 1,
+        status: 'pending', created_at: '2026-11-16T20:00:00Z', sent_at: null, bookings: 1, waiting: true,
       },
     ],
     ...overrides,

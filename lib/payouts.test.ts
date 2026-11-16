@@ -3,6 +3,7 @@ import { bookingMoney, overview } from '@/lib/payouts.fixtures';
 import {
   accountWords,
   balanceWords,
+  beforePayoutsWords,
   bookingMoneyLines,
   cyprusWhen,
   describePayoutError,
@@ -24,20 +25,29 @@ describe('accountWords: the Stripe account in plain words, with the one thing to
     ['disconnected', 'Payouts are disconnected', null],
     ['ready', 'Payouts are on', { label: 'Open Stripe dashboard', kind: 'dashboard' }],
   ] as const)('%s', (status, title, action) => {
-    const words = accountWords({ status, venue_live: true, requirements_due: 2 });
+    const words = accountWords({ status, venue_live: true, requirements_due: 2 }, '2026-11-01T00:00:00Z');
     expect(words.title).toBe(title);
     expect(words.action).toEqual(action);
   });
 
   it('needs information: how many details, from Stripe', () => {
-    expect(accountWords({ status: 'needs_information', venue_live: true, requirements_due: 1 }).body)
+    expect(accountWords({ status: 'needs_information', venue_live: true, requirements_due: 1 }, null).body)
       .toBe('Stripe needs one more detail before it can send you money.');
-    expect(accountWords({ status: 'needs_information', venue_live: true, requirements_due: 3 }).body)
+    expect(accountWords({ status: 'needs_information', venue_live: true, requirements_due: 3 }, null).body)
       .toBe('Stripe needs 3 more details before it can send you money.');
   });
 
-  it('ready but not live: payouts start once the venue is live', () => {
-    expect(accountWords({ status: 'ready', venue_live: false, requirements_due: 0 }).title).toBe('Payouts start when your venue is live');
+  it('ready but not live, or payouts not started there: payouts start once the venue is live', () => {
+    expect(accountWords({ status: 'ready', venue_live: false, requirements_due: 0 }, '2026-11-01T00:00:00Z').title)
+      .toBe('Payouts start when your venue is live');
+    expect(accountWords({ status: 'ready', venue_live: true, requirements_due: 0 }, null).title)
+      .toBe('Payouts start when your venue is live');
+  });
+
+  it('payouts on: sent once card payments have cleared in Stripe, never "within minutes"', () => {
+    const body = accountWords({ status: 'ready', venue_live: true, requirements_due: 0 }, '2026-11-01T00:00:00Z').body;
+    expect(body).toContain('once the players\' card payments have cleared in Stripe');
+    expect(body).not.toMatch(/minute/);
   });
 });
 
@@ -46,16 +56,19 @@ describe('balanceWords: money not sent yet', () => {
     expect(balanceWords(overview())).toEqual([]);
   });
 
-  it('being sent, in the next payout, and owed to Futty', () => {
-    expect(balanceWords(overview({ sending_cents: 6000, ready_cents: 5895, owed_to_futty_cents: 105 }))).toEqual([
-      '€60.00 is being sent now.',
-      '€58.95 goes in the next payout, within minutes.',
+  it('on its way, waiting for card payments to clear, in the next payout, and owed to Futty', () => {
+    const words = balanceWords(overview({ sending_cents: 11895, waiting_for_balance_cents: 5895, ready_cents: 6000, owed_to_futty_cents: 105 }));
+    expect(words).toEqual([
+      '€118.95 is on its way to your Stripe account.',
+      "€58.95 of it is waiting for players' card payments to clear in Stripe. It's sent as soon as they have.",
+      "€60.00 goes in your next payout, once players' card payments have cleared in Stripe.",
       "You owe Futty €1.05 (for example Stripe's fee on a booking you cancelled). It comes off your next payout.",
     ]);
+    expect(words.join(' ')).not.toMatch(/minute/);
   });
 
-  it('waiting for setup', () => {
-    expect(balanceWords(overview({ can_receive: false, ready_cents: 6000 }))).toEqual(['€60.00 is waiting for payouts to be set up.']);
+  it('waiting for payouts to start', () => {
+    expect(balanceWords(overview({ can_receive: false, ready_cents: 6000 }))).toEqual(['€60.00 is waiting for payouts to start at your venue.']);
   });
 });
 
@@ -73,8 +86,18 @@ describe('payouts and bookings', () => {
 
   it('statuses', () => {
     expect(payoutStatus('pending')).toEqual({ pill: 'pending', words: 'Being sent' });
+    expect(payoutStatus('pending', true)).toEqual({ pill: 'pending', words: 'Waiting for card payments to clear' });
+    expect(payoutStatus('sent', true)).toEqual({ pill: 'paid', words: 'Sent to Stripe' });
     expect(payoutStatus('sent')).toEqual({ pill: 'paid', words: 'Sent to Stripe' });
     expect(payoutStatus('reversed')).toEqual({ pill: 'refunded', words: 'Reversed' });
+  });
+
+  it('a booking from before Futty payouts', () => {
+    expect(beforePayoutsWords({ booking_id: 'b0', label: 'Nuevo Campo on Friday 6 Nov at 19:00', venue_cents: 6000 })).toEqual({
+      title: 'Nuevo Campo on Friday 6 Nov at 19:00',
+      subtitle: 'Before Futty payouts: not sent through Futty',
+      amount: '€60.00',
+    });
   });
 
   it('Cyprus time', () => {

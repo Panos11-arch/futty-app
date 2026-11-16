@@ -19,12 +19,13 @@ begin
   assert not has_table_privilege('authenticated', 'public.payout_runs', 'select'), 'the job''s runs are internal';
 
   foreach v_fn in array array[
-    'public.payout_ready_at(public.venue_bookings)', 'public.payout_rows(uuid)', 'public.venue_can_receive_payouts(uuid)',
-    'public.prepare_payouts()', 'public.payouts_due()', 'public.finish_payout_run(uuid)',
+    'public.payout_ready_at(public.venue_bookings)', 'public.payout_rows(uuid)', 'public.venue_can_receive_payouts(uuid, boolean)',
+    'public.payouts_livemode()', 'public.prepare_payouts(boolean)', 'public.payouts_due(boolean)', 'public.payout_waiting(uuid)',
+    'public.finish_payout_run(uuid)',
     'public.payout_sent(uuid, text, integer)', 'public.payout_errored(uuid, text)',
     'public.payout_reversed(text, text, integer, integer)', 'public.connect_account_for_venue(uuid, uuid)',
-    'public.connect_account_created(uuid, text)',
-    'public.connect_account_updated(text, boolean, boolean, boolean, integer, text)',
+    'public.connect_account_created(uuid, text, boolean)',
+    'public.connect_account_updated(text, boolean, boolean, boolean, integer, text, boolean)',
     'public.connect_account_deauthorized(text)', 'public.reconcile_money()', 'public.booking_money_breakdown(uuid)'
   ] loop
     assert has_function_privilege('service_role', v_fn, 'execute'), format('%s: service_role', v_fn);

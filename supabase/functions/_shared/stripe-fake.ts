@@ -7,6 +7,10 @@
 //   await handler(fake.stripe);              // typed as the real Stripe client
 //   fake.calls[0].idempotencyKey             // 'refund-share-…'
 //
+// Futty's Stripe balance (P4d): fake.setBalance({ available: 6000 }) answers
+// balance.retrieve, and transfers come out of the available EUR balance;
+// one that doesn't fit fails with balance_insufficient, as Stripe's does.
+//
 // Calling a method with nothing scripted throws, so a test can't pass by
 // accident on a call it didn't expect.
 import type Stripe from 'npm:stripe@^22';
@@ -89,6 +93,10 @@ export function createStripeFake() {
       },
     });
 
+  // Futty's balance, in EUR cents, once setBalance is called.
+  const balance = { available: 0, pending: 0 };
+  let transfers = 0;
+
   return {
     stripe: node([]) as unknown as Stripe,
     calls,
@@ -98,6 +106,29 @@ export function createStripeFake() {
     respond(method: string, result: unknown) {
       handlers.set(method, typeof result === 'function' ? (result as Handler) : () => structuredClone(result));
     },
+    /** Futty's EUR balance: answers balance.retrieve, and transfers.create
+     *  takes from the available part (balance_insufficient when it doesn't
+     *  fit). A later respond('transfers.create', ...) replaces the latter. */
+    setBalance({ available, pending = 0 }: { available: number; pending?: number }) {
+      balance.available = available;
+      balance.pending = pending;
+      handlers.set('balance.retrieve', () => ({
+        object: 'balance',
+        available: [{ amount: balance.available, currency: 'eur' }],
+        pending: [{ amount: balance.pending, currency: 'eur' }],
+      }));
+      handlers.set('transfers.create', (call) => {
+        const amount = call.params?.amount as number;
+        if (amount > balance.available) {
+          throw stripeError({ code: 'balance_insufficient', message: 'You have insufficient available funds in your Stripe account.' });
+        }
+        balance.available -= amount;
+        transfers += 1;
+        return { id: `tr_fake_${transfers}`, object: 'transfer', ...call.params };
+      });
+    },
+    /** What's left of the available balance. */
+    available: () => balance.available,
     /** Make every call to `method` throw `error` (see stripeError). */
     fail(method: string, error: unknown) {
       handlers.set(method, () => {

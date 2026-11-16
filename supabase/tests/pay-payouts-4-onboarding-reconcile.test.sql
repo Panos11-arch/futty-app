@@ -40,21 +40,23 @@ begin
   perform tests.act_as(g.owner);
   v_overview := public.venue_payouts_overview(g.venue);
   perform tests.act_as_postgres();
-  assert v_overview -> 'account' ->> 'status' = 'not_started' and (v_overview ->> 'ready_cents')::integer = 6000
-         and v_overview -> 'payouts' = '[]'::jsonb and not (v_overview ->> 'can_receive')::boolean,
-    format('not started, 6000 waiting, got %s', v_overview);
+  assert v_overview -> 'account' ->> 'status' = 'not_started' and (v_overview ->> 'ready_cents')::integer = 0
+         and v_overview -> 'payouts' = '[]'::jsonb and not (v_overview ->> 'can_receive')::boolean
+         and v_overview -> 'payouts_from' = 'null'::jsonb
+         and v_overview -> 'before_payouts' -> 0 @> jsonb_build_object('booking_id', g.booking, 'venue_cents', 6000),
+    format('not started; payouts not started at the venue, so the booking shows as before payouts; got %s', v_overview);
   assert tests.run_payouts() = 0, 'no account: nothing';
 
   -- The account exists, onboarding not finished.
   perform tests.act_as_service_role();
-  v_account := public.connect_account_created(g.venue, 'acct_pp4onboard');
-  assert public.connect_account_created(g.venue, 'acct_other') = 'acct_pp4onboard', 'one account per venue';
+  v_account := public.connect_account_created(g.venue, 'acct_pp4onboard', false);
+  assert public.connect_account_created(g.venue, 'acct_other', false) = 'acct_pp4onboard', 'one account per venue and mode';
   perform tests.act_as_postgres();
   assert tests.run_payouts() = 0, 'onboarding not finished: nothing';
   perform tests.act_as(g.owner);
   assert public.venue_payouts_overview(g.venue) -> 'account' ->> 'status' = 'in_progress', 'in progress';
   perform tests.act_as_service_role();
-  perform public.connect_account_updated('acct_pp4onboard', true, false, false, 2, 'requirements.past_due');
+  perform public.connect_account_updated('acct_pp4onboard', true, false, false, 2, 'requirements.past_due', false);
   perform tests.act_as(g.owner);
   assert public.venue_payouts_overview(g.venue) -> 'account' @> '{"status": "needs_information", "requirements_due": 2}',
     'needs information';
@@ -64,8 +66,8 @@ begin
   -- Onboarding finished, but the venue hasn't signed (not live).
   update public.venues set is_live = false where id = g.venue;
   perform tests.act_as_service_role();
-  assert public.connect_account_updated('acct_pp4onboard', true, true, true, 0, null) ->> 'result' = 'updated', 'updated';
-  assert public.connect_account_updated('acct_unknown', true, true, true, 0, null) ->> 'result' = 'unknown', 'unknown account';
+  assert public.connect_account_updated('acct_pp4onboard', true, true, true, 0, null, false) ->> 'result' = 'updated', 'updated';
+  assert public.connect_account_updated('acct_unknown', true, true, true, 0, null, false) ->> 'result' = 'unknown', 'unknown account';
   perform tests.act_as_postgres();
   assert tests.run_payouts() = 0, 'not live: nothing';
   perform tests.act_as(g.owner);
@@ -73,9 +75,12 @@ begin
   perform tests.act_as_postgres();
   assert v_overview -> 'account' @> '{"status": "ready", "venue_live": false}', format('ready, not live, got %s', v_overview);
 
-  -- Live: the 6000 goes out.
+  -- Live, but Futty payouts haven't started at the venue (payouts_from).
   update public.venues set is_live = true where id = g.venue;
-  assert tests.run_payouts() = 1, 'live and onboarded: one transfer';
+  assert tests.run_payouts() = 0, 'payouts_from not set: nothing';
+  -- Panos starts payouts there: the 6000 goes out.
+  update public.venues set payouts_from = now() - interval '1 day' where id = g.venue;
+  assert tests.run_payouts() = 1, 'live, onboarded, payouts started: one transfer';
   assert tests.payout_amounts(g.venue) = array[6000], format('6000, got %s', tests.payout_amounts(g.venue));
   assert (select stripe_account_id from public.venue_payouts where venue_id = g.venue) = 'acct_pp4onboard', 'to its account';
   perform tests.act_as(g.owner);
@@ -89,9 +94,9 @@ begin
   perform tests.act_as_service_role();
   assert public.connect_account_deauthorized('acct_pp4onboard') ->> 'result' = 'deauthorized', 'deauthorized';
   perform public.connect_account_deauthorized('acct_pp4onboard');
-  perform public.connect_account_updated('acct_pp4onboard', true, true, true, 0, null);
+  perform public.connect_account_updated('acct_pp4onboard', true, true, true, 0, null, false);
   perform tests.act_as_postgres();
-  assert not public.venue_can_receive_payouts(g.venue), 'can''t receive any more, even if Stripe says payouts are on';
+  assert not public.venue_can_receive_payouts(g.venue, false), 'can''t receive any more, even if Stripe says payouts are on';
   assert (select count(*) from public.admin_alerts where kind = 'connect_deauthorized'
           and details ->> 'stripe_account_id' = 'acct_pp4onboard') = 1, 'alerted once';
   perform tests.act_as(g.owner);
@@ -111,11 +116,11 @@ declare
 begin
   select * into g from tests.pp_collected('life');
   perform tests.connect_venue(g.venue);
-  v_run := public.prepare_payouts();
+  v_run := public.prepare_payouts(false);
   select * into v_payout from public.venue_payouts where venue_id = g.venue;
   assert v_payout.status = 'pending' and v_payout.amount_cents = 6000, 'one pending transfer';
-  assert (select count(*) from public.payouts_due() where payout_id = v_payout.id) = 1, 'due now';
-  perform public.prepare_payouts();
+  assert (select count(*) from public.payouts_due(false) where payout_id = v_payout.id) = 1, 'due now';
+  perform public.prepare_payouts(false);
   assert (select count(*) from public.venue_payouts where venue_id = g.venue) = 1, 'preparing again adds nothing';
 
   for i in 1 .. 3 loop
@@ -124,7 +129,7 @@ begin
   select * into v_payout from public.venue_payouts where id = v_payout.id;
   assert v_payout.attempts = 3 and v_payout.next_attempt_at > now() and v_payout.last_error = 'balance_insufficient',
     format('three failures, backing off, got %s', row_to_json(v_payout));
-  assert not exists (select 1 from public.payouts_due() where payout_id = v_payout.id), 'not due during the back-off';
+  assert not exists (select 1 from public.payouts_due(false) where payout_id = v_payout.id), 'not due during the back-off';
   assert (select count(*) from public.admin_alerts where kind = 'payout_failing' and booking_id = g.booking) = 1,
     'the founders are alerted at the third';
 
@@ -162,13 +167,19 @@ declare
 begin
   select * into g from tests.pp_collected('check');
   perform tests.connect_venue(g.venue);
+  perform tests.run_payouts();
   v_result := public.reconcile_money();
   assert (v_result ->> 'unbalanced')::integer = 0 and (v_result ->> 'missing_transfers')::integer = 0,
-    format('all well before any run, got %s', v_result);
+    format('all paid: all well, got %s', v_result);
 
-  -- The payout run finished after the money was due, and no transfer
-  -- covered it (as if the job had skipped the venue): a missing transfer.
-  insert into public.payout_runs (started_at, finished_at) values (now() + interval '1 minute', now() + interval '2 minutes');
+  -- Undo that transfer, as if the job had skipped the venue; a payout run
+  -- finished after the money was due: a missing transfer.
+  delete from public.venue_payout_items i using public.venue_payouts p
+  where p.id = i.payout_id and p.booking_id = g.booking;
+  delete from public.money_ledger where kind = 'payout' and booking_id = g.booking;
+  delete from public.venue_payouts where booking_id = g.booking;
+  insert into public.payout_runs (started_at, finished_at, livemode)
+  values (now() + interval '1 minute', now() + interval '2 minutes', false);
   v_result := public.reconcile_money();
   assert (v_result ->> 'missing_transfers')::integer = 1, format('the missing transfer, got %s', v_result);
   assert (select details ->> 'unpaid_cents' from public.admin_alerts where kind = 'payout_missing' and booking_id = g.booking) = '6000',

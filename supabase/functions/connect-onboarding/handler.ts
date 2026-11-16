@@ -7,6 +7,9 @@
 //                       own schedule)
 // Whether the account can receive payouts is only ever learnt from Stripe's
 // account.updated webhook (stripe-webhook/payouts.ts), never from the app.
+// An account from the other Stripe mode (a test-mode account once Futty is
+// on live keys) is ignored: onboarding creates one in the current mode,
+// which replaces it.
 // Links come back to connect-return, which opens the app again.
 import type Stripe from 'npm:stripe@^22';
 import { type Db, DbError, rpc } from '../_shared/db.ts';
@@ -20,12 +23,20 @@ export type Deps = {
   /** For the link's idempotency key: a link is single-use, so each minute's
    *  request is its own. */
   now: () => Date;
+  /** The mode of the Stripe key (sk_live_: live). */
+  livemode: boolean;
 };
 export type Caller = { id: string; email?: string | null };
 export type Body = { venueId?: unknown; action?: unknown };
 export type Result = { status: number; body: Record<string, unknown> };
 
-type Account = { venue_id: string; venue_name: string; stripe_account_id: string | null; payouts_enabled: boolean };
+type Account = {
+  venue_id: string;
+  venue_name: string;
+  stripe_account_id: string | null;
+  livemode: boolean | null;
+  payouts_enabled: boolean;
+};
 
 const ERROR_STATUS: Record<string, number> = { venue_not_found: 404, not_venue_staff: 403 };
 
@@ -42,16 +53,18 @@ export async function connectOnboarding(deps: Deps, caller: Caller, body: Body):
     return { status: ERROR_STATUS[code] ?? 500, body: { error: code } };
   }
   const minute = Math.floor(deps.now().getTime() / 60_000);
+  // Only an account from this Stripe mode counts.
+  const current = account.stripe_account_id && account.livemode === deps.livemode ? account.stripe_account_id : null;
 
   if (action === 'dashboard') {
-    if (!account.stripe_account_id) return { status: 409, body: { error: 'not_onboarded' } };
-    const link = await deps.stripe.accounts.createLoginLink(account.stripe_account_id, {}, {
+    if (!current) return { status: 409, body: { error: 'not_onboarded' } };
+    const link = await deps.stripe.accounts.createLoginLink(current, {}, {
       idempotencyKey: `connect-login-${venueId}-${minute}`,
     });
     return { status: 200, body: { url: link.url } };
   }
 
-  let accountId = account.stripe_account_id;
+  let accountId = current;
   if (!accountId) {
     const created = await deps.stripe.accounts.create(
       {
@@ -62,9 +75,14 @@ export async function connectOnboarding(deps: Deps, caller: Caller, body: Body):
         capabilities: { transfers: { requested: true } },
         metadata: { venue_id: venueId },
       },
-      { idempotencyKey: idempotencyKeys.connectAccount(venueId) },
+      { idempotencyKey: idempotencyKeys.connectAccount(venueId, deps.livemode) },
     );
-    accountId = await rpc<string>(deps.db, 'connect_account_created', { p_venue_id: venueId, p_account_id: created.id });
+    accountId = await rpc<string>(deps.db, 'connect_account_created', {
+      p_venue_id: venueId,
+      p_account_id: created.id,
+      // An account is created in the mode of the key that creates it.
+      p_livemode: deps.livemode,
+    });
   }
   const back = (state: 'return' | 'refresh') =>
     `${deps.returnUrl}?venueId=${encodeURIComponent(venueId)}&state=${state}`;

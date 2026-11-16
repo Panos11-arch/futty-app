@@ -10,15 +10,15 @@ const caller = { id: 'owner1', email: 'owner@venue.test' };
 const now = () => new Date('2026-11-16T10:00:30Z');
 const minute = Math.floor(now().getTime() / 60_000);
 
-function setup(account: Record<string, unknown> = { stripe_account_id: null, payouts_enabled: false }) {
+function setup(account: Record<string, unknown> = { stripe_account_id: null, livemode: null, payouts_enabled: false }, livemode = false) {
   const db = createDbFake();
   db.respond('connect_account_for_venue', { venue_id: 'v1', venue_name: 'Nuevo Campo', ...account });
   db.respond('connect_account_created', (args: Record<string, unknown>) => args.p_account_id);
   const stripe = createStripeFake();
-  stripe.respond('accounts.create', { id: 'acct_new' });
+  stripe.respond('accounts.create', { id: 'acct_new', livemode });
   stripe.respond('accountLinks.create', { url: 'https://connect.stripe.com/setup/e/acct_new/abc' });
   stripe.respond('accounts.createLoginLink', { url: 'https://connect.stripe.com/express/acct_1/xyz' });
-  const deps = { db: db.db, stripe: stripe.stripe, returnUrl: 'https://ref.supabase.co/functions/v1/connect-return', now };
+  const deps = { db: db.db, stripe: stripe.stripe, returnUrl: 'https://ref.supabase.co/functions/v1/connect-return', now, livemode };
   return { db, stripe, deps };
 }
 
@@ -39,8 +39,8 @@ Deno.test('onboard, first time: an Express account for the venue, once, then the
     capabilities: { transfers: { requested: true } },
     metadata: { venue_id: 'v1' },
   });
-  strictEqual(created[0].idempotencyKey, 'connect-account-v1', 'one account per venue, however often asked');
-  deepStrictEqual(db.callsTo('connect_account_created')[0].args, { p_venue_id: 'v1', p_account_id: 'acct_new' });
+  strictEqual(created[0].idempotencyKey, 'connect-account-v1-test', 'one account per venue and mode, however often asked');
+  deepStrictEqual(db.callsTo('connect_account_created')[0].args, { p_venue_id: 'v1', p_account_id: 'acct_new', p_livemode: false });
 
   const link = stripe.callsTo('accountLinks.create')[0];
   deepStrictEqual(link.params, {
@@ -53,7 +53,7 @@ Deno.test('onboard, first time: an Express account for the venue, once, then the
 });
 
 Deno.test('onboard again: the existing account, no new one', async () => {
-  const { stripe, deps } = setup({ stripe_account_id: 'acct_1', payouts_enabled: false });
+  const { stripe, deps } = setup({ stripe_account_id: 'acct_1', livemode: false, payouts_enabled: false });
   const result = await connectOnboarding(deps, caller, { venueId: 'v1', action: 'onboard' });
   strictEqual(result.status, 200);
   strictEqual(stripe.callsTo('accounts.create').length, 0);
@@ -61,12 +61,34 @@ Deno.test('onboard again: the existing account, no new one', async () => {
 });
 
 Deno.test("dashboard: the venue's Stripe Express dashboard (its bank payouts)", async () => {
-  const { stripe, deps } = setup({ stripe_account_id: 'acct_1', payouts_enabled: true });
+  const { stripe, deps } = setup({ stripe_account_id: 'acct_1', livemode: false, payouts_enabled: true });
   const result = await connectOnboarding(deps, caller, { venueId: 'v1', action: 'dashboard' });
   deepStrictEqual(result, { status: 200, body: { url: 'https://connect.stripe.com/express/acct_1/xyz' } });
   const login = stripe.callsTo('accounts.createLoginLink')[0];
   strictEqual(login.id, 'acct_1');
   strictEqual(login.idempotencyKey, `connect-login-v1-${minute}`);
+});
+
+Deno.test('on live keys, a test-mode account is skipped and replaced: a new live account', async () => {
+  const { db, stripe, deps } = setup({ stripe_account_id: 'acct_test1', livemode: false, payouts_enabled: true }, true);
+  deepStrictEqual(await connectOnboarding(deps, caller, { venueId: 'v1', action: 'dashboard' }),
+    { status: 409, body: { error: 'not_onboarded' } }, 'no dashboard for the test account');
+  strictEqual(stripe.callsTo('accounts.createLoginLink').length, 0);
+
+  const result = await connectOnboarding(deps, caller, { venueId: 'v1', action: 'onboard' });
+  strictEqual(result.status, 200);
+  const created = stripe.callsTo('accounts.create');
+  strictEqual(created.length, 1, 'a new account in live mode');
+  strictEqual(created[0].idempotencyKey, 'connect-account-v1-live');
+  deepStrictEqual(db.callsTo('connect_account_created')[0].args, { p_venue_id: 'v1', p_account_id: 'acct_new', p_livemode: true },
+    'it replaces the test account');
+  strictEqual(stripe.callsTo('accountLinks.create')[0].params?.account, 'acct_new', 'onboarding for the live account');
+});
+
+Deno.test('a live account on test keys is skipped the same way', async () => {
+  const { stripe, deps } = setup({ stripe_account_id: 'acct_live1', livemode: true, payouts_enabled: true }, false);
+  await connectOnboarding(deps, caller, { venueId: 'v1', action: 'onboard' });
+  strictEqual(stripe.callsTo('accounts.create')[0].idempotencyKey, 'connect-account-v1-test');
 });
 
 Deno.test('dashboard before onboarding: refused', async () => {

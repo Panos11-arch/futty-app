@@ -23,15 +23,26 @@ export type PayoutRow = {
   created_at: string;
   sent_at: string | null;
   bookings: number;
+  /** Waiting for card payments to clear in Stripe (Futty's available balance). */
+  waiting?: boolean;
 };
+
+/** A booking from before Futty payouts started at the venue: never sent. */
+export type BeforePayoutsRow = { booking_id: string; label: string; venue_cents: number };
 
 export type PayoutsOverview = {
   account: { status: AccountStatus; venue_live: boolean; requirements_due: number };
+  /** When Futty payouts started at the venue; null while they haven't. */
+  payouts_from: string | null;
   can_receive: boolean;
   ready_cents: number;
   owed_to_futty_cents: number;
+  /** Payouts made but not yet sent; waiting_for_balance_cents of them wait
+   *  for card payments to clear in Stripe. */
   sending_cents: number;
+  waiting_for_balance_cents: number;
   payouts: PayoutRow[];
+  before_payouts: BeforePayoutsRow[];
 };
 
 export type BookingMoney = {
@@ -39,6 +50,8 @@ export type BookingMoney = {
   label: string;
   status: string;
   ready: boolean;
+  /** Created before Futty payouts started at the venue: never sent. */
+  before_payouts?: boolean;
   taken_cents: number;
   refunded_cents: number;
   futty_cents: number;
@@ -131,8 +144,9 @@ export type AccountWords = {
   tone: 'info' | 'warning' | 'danger';
 };
 
-/** The Stripe account's state in plain words, with the one thing to do. */
-export function accountWords(account: PayoutsOverview['account']): AccountWords {
+/** The Stripe account's state in plain words, with the one thing to do.
+ *  payoutsFrom: when Futty payouts started at the venue (null: not yet). */
+export function accountWords(account: PayoutsOverview['account'], payoutsFrom: string | null): AccountWords {
   switch (account.status) {
     case 'not_started':
       return {
@@ -166,32 +180,38 @@ export function accountWords(account: PayoutsOverview['account']): AccountWords 
         tone: 'danger',
       };
     default:
-      return account.venue_live
+      return account.venue_live && payoutsFrom
         ? {
             title: 'Payouts are on',
-            body: "Each booking's money is sent to your Stripe account once it's final, after the match's collection. Stripe then pays it into your bank.",
+            body: "Each booking's money is sent to your Stripe account once it's final, after the match's collection, and once the players' card payments have cleared in Stripe. Stripe then pays it into your bank.",
             action: { label: 'Open Stripe dashboard', kind: 'dashboard' },
             tone: 'info',
           }
         : {
             title: 'Payouts start when your venue is live',
-            body: 'Your Stripe account is ready. Money is sent once your venue is live on Futty.',
+            body: 'Your Stripe account is ready. Futty starts sending money once your venue is live with real payments.',
             action: { label: 'Open Stripe dashboard', kind: 'dashboard' },
             tone: 'info',
           };
   }
 }
 
-/** The money not yet sent, in words: on its way, waiting for setup, or
- *  owed to Futty (taken off the next payout, never charged). */
+/** The money not yet sent, in words: on its way (or waiting for card
+ *  payments to clear in Stripe), waiting for setup, or owed to Futty (taken
+ *  off the next payout, never charged). */
 export function balanceWords(overview: PayoutsOverview): string[] {
   const words: string[] = [];
-  if (overview.sending_cents > 0) words.push(`${formatEuros(overview.sending_cents)} is being sent now.`);
+  if (overview.sending_cents > 0) words.push(`${formatEuros(overview.sending_cents)} is on its way to your Stripe account.`);
+  if (overview.waiting_for_balance_cents > 0) {
+    words.push(
+      `${formatEuros(overview.waiting_for_balance_cents)} of it is waiting for players' card payments to clear in Stripe. It's sent as soon as they have.`,
+    );
+  }
   if (overview.ready_cents > 0) {
     words.push(
       overview.can_receive
-        ? `${formatEuros(overview.ready_cents)} goes in the next payout, within minutes.`
-        : `${formatEuros(overview.ready_cents)} is waiting for payouts to be set up.`,
+        ? `${formatEuros(overview.ready_cents)} goes in your next payout, once players' card payments have cleared in Stripe.`
+        : `${formatEuros(overview.ready_cents)} is waiting for payouts to start at your venue.`,
     );
   }
   if (overview.owed_to_futty_cents > 0) {
@@ -210,8 +230,17 @@ const PAYOUT_PILL: Record<PayoutStatus, { pill: Status; words: string }> = {
   reversed: { pill: 'refunded', words: 'Reversed' },
 };
 
-export function payoutStatus(status: PayoutStatus) {
+/** A payout's state; a pending one may be waiting for card payments to
+ *  clear in Stripe. */
+export function payoutStatus(status: PayoutStatus, waiting = false) {
+  if (status === 'pending' && waiting) return { pill: 'pending' as Status, words: 'Waiting for card payments to clear' };
   return PAYOUT_PILL[status];
+}
+
+/** A booking from before Futty payouts started: its money was never sent
+ *  through Futty. */
+export function beforePayoutsWords(row: BeforePayoutsRow): { title: string; subtitle: string; amount: string } {
+  return { title: row.label, subtitle: 'Before Futty payouts: not sent through Futty', amount: formatEuros(row.venue_cents) };
 }
 
 /** "Mon 16 Nov, 12:00", in Cyprus. */

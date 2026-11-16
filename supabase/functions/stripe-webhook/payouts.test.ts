@@ -5,8 +5,8 @@ import type Stripe from 'npm:stripe@^22';
 import { createDbFake } from '../_shared/db-fake.ts';
 import { handlePayoutEvent } from './payouts.ts';
 
-const event = (type: string, object: Record<string, unknown>, account?: string) =>
-  ({ id: 'evt_1', type, account, data: { object } }) as unknown as Stripe.Event;
+const event = (type: string, object: Record<string, unknown>, account?: string, livemode = false) =>
+  ({ id: 'evt_1', type, account, livemode, data: { object } }) as unknown as Stripe.Event;
 
 Deno.test('account.updated: what the Express account can do, from Stripe', async () => {
   const db = createDbFake();
@@ -18,14 +18,14 @@ Deno.test('account.updated: what the Express account can do, from Stripe', async
   strictEqual(handled, true);
   deepStrictEqual(db.callsTo('connect_account_updated')[0].args, {
     p_account_id: 'acct_1', p_details_submitted: true, p_charges_enabled: true, p_payouts_enabled: false,
-    p_requirements_due: 2, p_disabled_reason: 'requirements.past_due',
+    p_requirements_due: 2, p_disabled_reason: 'requirements.past_due', p_livemode: false,
   });
 
-  await handlePayoutEvent(event('account.updated', { id: 'acct_2' }), { db: db.db });
+  await handlePayoutEvent(event('account.updated', { id: 'acct_2' }, undefined, true), { db: db.db });
   deepStrictEqual(db.callsTo('connect_account_updated')[1].args, {
     p_account_id: 'acct_2', p_details_submitted: false, p_charges_enabled: false, p_payouts_enabled: false,
-    p_requirements_due: 0, p_disabled_reason: null,
-  }, 'missing fields are read as "not yet"');
+    p_requirements_due: 0, p_disabled_reason: null, p_livemode: true,
+  }, "missing fields are read as 'not yet'; the mode is the event's");
 });
 
 Deno.test("account.application.deauthorized: the connected account is the event's", async () => {

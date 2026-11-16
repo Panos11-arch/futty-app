@@ -4,12 +4,15 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 import { dbFromSupabase } from '../_shared/db.ts';
+import { isLiveKey } from '../_shared/stripe-mode.ts';
 import { runPayouts } from './handler.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const cronSecret = Deno.env.get('CRON_SECRET');
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!);
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')!;
+const stripe = new Stripe(stripeKey);
+const livemode = isLiveKey(stripeKey);
 
 Deno.serve(async (req) => {
   if (!cronSecret || req.headers.get('x-cron-secret') !== cronSecret) {
@@ -17,7 +20,7 @@ Deno.serve(async (req) => {
   }
   const db = dbFromSupabase(createClient(supabaseUrl, serviceRoleKey));
   try {
-    const summary = await runPayouts({ stripe, db });
+    const summary = await runPayouts({ stripe, db, livemode });
     return new Response(JSON.stringify(summary), { headers: { 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('run-payouts failed:', err);
