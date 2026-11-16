@@ -1,5 +1,5 @@
 // P10: the Futty AI's system prompt comes from public.app_rules and spec 13.
-// 20 real player questions, each with the facts its answer needs; every
+// 22 real player questions, each with the facts its answer needs; every
 // question goes through the handler to a mocked model, and the system prompt
 // it was sent must carry those facts, built from the rules (so they follow a
 // rule change with no code change). Plus: prompt caching, the tool loop on
@@ -50,7 +50,7 @@ function fake(rules: AppRules, replies: ModelResponse[] = [{ stop_reason: 'end_t
 
 const systemTexts = (request: Record<string, unknown>) => (request.system as { text: string }[]).map((b) => b.text);
 
-/** 20 real player questions and the facts the prompt must give the model for each. */
+/** 22 real player questions and the facts the prompt must give the model for each. */
 const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   {
     question: 'Can I get my money back if I cancel 3 hours before?',
@@ -131,9 +131,29 @@ const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   },
   {
     question: 'Can we play 6 v 6 on a 5-a-side pitch?',
-    facts: () => [
+    facts: (r) => [
       '"Players per side: 5 v 5 / 6 v 6"',
-      'Switching a booking between 5 v 5 and 6 v 6 after booking is coming soon',
+      `only the booker can switch a 5-a-side booking between 5 v 5 and 6 v 6, once, from the booking screen, until ${hours(r.refund_cutoff_hours)} before kickoff`,
+      'Every player is told.',
+    ],
+  },
+  {
+    question: "We booked 5 v 5 but there are 12 of us. What happens to our money if we switch?",
+    facts: (r) => [
+      'each player who has paid gets the difference in their share of the pitch price back as venue credit',
+      'Example only: on a €60 pitch, €6.00 a player becomes €5.00, so €1.00 each.',
+      `it is not the ${euros(r.cancel_fee_cents)} cancellation fee`,
+      "A cash player the venue hasn't marked as paid gets no credit and pays less in cash instead",
+      'When the booker paid for everyone, switching moves no money.',
+    ],
+  },
+  {
+    question: 'Only 9 of us are coming now. Can we go back from 6 v 6 to 5 v 5?',
+    facts: () => [
+      '6 v 6 to 5 v 5 (only while 10 or fewer players have joined)',
+      'including cash already marked as paid at the venue, pays the difference after the match, charged to their saved card with the top-ups',
+      `the booker's hold covers it ("I'm responsible for the team") or it becomes the player's debt to the venue ("just my spot")`,
+      'A booking can be switched only once.',
     ],
   },
   {
@@ -182,8 +202,8 @@ const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   },
 ];
 
-Deno.test('20 player questions: each reaches the model with the facts it needs, from the rules', async () => {
-  strictEqual(QUESTIONS.length, 20);
+Deno.test('22 player questions: each reaches the model with the facts it needs, from the rules', async () => {
+  strictEqual(QUESTIONS.length, 22);
   for (const rules of [SPEC_RULES, CHANGED_RULES]) {
     for (const { question, facts } of QUESTIONS) {
       const f = fake(rules);
@@ -238,6 +258,20 @@ Deno.test('the old, wrong facts are gone', () => {
   for (const stale of ['21 days', '2 days ahead', '30 minutes before kickoff', '€4.99']) {
     ok(!prompt.includes(stale), `no "${stale}"`);
   }
+  ok(!prompt.includes('Switching a booking between 5 v 5 and 6 v 6 after booking is coming soon'), 'switching has shipped');
+});
+
+Deno.test("switching's €60 example is an example, never a rule or the cancellation fee", () => {
+  const example = 'Example only: on a €60 pitch, €6.00 a player becomes €5.00, so €1.00 each.';
+  const sameExample = '(on the same €60 example, €1.00 each)';
+  const prompt = buildSystemPrompt(CHANGED_RULES);
+  ok(prompt.includes(example), 'the worked example, marked as one');
+  ok(prompt.includes('it is not the €1.50 cancellation fee'), 'told apart from the cancellation fee, which follows the rules');
+  // Without the example, nothing is left of spec 13's numbers when the
+  // rules change: no €1.00 fee and no 6-hour cutoff.
+  const rest = prompt.replace(example, '').replace(sameExample, '');
+  for (const stale of ['€1.00', '6 hours', '€0.80', '€0.55']) ok(!rest.includes(stale), `no "${stale}" outside the example`);
+  ok(rest.includes('until 4 hours before kickoff (exactly 4 hours before is still allowed)'), 'the cutoff is the rule');
 });
 
 Deno.test("prompt caching: the rules' prompt is the cached block; today's date comes after it", async () => {

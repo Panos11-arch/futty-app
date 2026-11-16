@@ -4,7 +4,7 @@ import { Modal, Text } from 'react-native';
 import { BookingDetailView, OLD_RULES_WORDS, type BookingDetailViewProps } from '@/components/booking/booking-detail-view';
 import { loadWithFile } from '@/components/ui/test-utils';
 import type { BookingDetailData } from '@/lib/booking-detail';
-import { bookerDetail, mySpotQuote, playerDetail, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
+import { bookerDetail, mySpotQuote, playerDetail, switchInfo, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
 
 // The cancel sheet is a Modal: load it with the file, not in the first test.
 loadWithFile(Modal, BookingDetailView);
@@ -310,5 +310,25 @@ describe('BookingDetailView: Gipedo Pano (P8)', () => {
   it('no Gipedo panel on an ordinary booking', async () => {
     await render(<BookingDetailView {...props(playerDetail())} />);
     expect(screen.queryByText('Gipedo Pano')).toBeNull();
+  });
+});
+
+describe('BookingDetailView: switching 5 v 5 / 6 v 6 (P12)', () => {
+  it('the booker who can switch sees it; a player never does', async () => {
+    const onSwitch = jest.fn(async () => null);
+    await render(<BookingDetailView {...props(bookerDetail({ switch: switchInfo() }), { onSwitch })} />);
+    expect(screen.getByRole('button', { name: 'Switch to 5 v 5' })).toBeTruthy();
+
+    await render(<BookingDetailView {...props(playerDetail({ switch: switchInfo({ can_switch: false, refusal: 'not_booker' }) }), { onSwitch })} />);
+    expect(screen.queryByRole('button', { name: 'Switch to 5 v 5' })).toBeNull();
+  });
+
+  it('two taps switch it, with the side the server offered', async () => {
+    const onSwitch = jest.fn(async () => null);
+    await render(<BookingDetailView {...props(bookerDetail({ switch: switchInfo() }), { onSwitch })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Switch to 5 v 5' }));
+    expect(onSwitch).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirm: switch to 5 v 5' }));
+    expect(onSwitch).toHaveBeenCalledWith(5);
   });
 });

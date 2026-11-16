@@ -53,6 +53,18 @@ const ALLOWED: { file: string; text: string; why: string }[] = [
     why: "The AI tool's default game length for a search, not a spec 13 rule.",
   },
   {
+    file: 'supabase/functions/futty-ai-chat/prompt.ts',
+    text: 'Example only: on a €60 pitch, €6.00 a player becomes €5.00, so €1.00 each.',
+    why:
+      "Spec 13's worked example for switching 5 v 5 to 6 v 6 (decided 16 November to keep it in the prompt): " +
+      'a pitch-price difference on a €60 pitch, not the cancellation fee. The prompt says so, and the fee next to it is built from app_rules.',
+  },
+  {
+    file: 'supabase/functions/futty-ai-chat/prompt.ts',
+    text: '(on the same €60 example, €1.00 each)',
+    why: 'The same worked example, for switching 6 v 6 to 5 v 5.',
+  },
+  {
     file: 'lib/notifications.ts',
     text: "match_reminder_2h: '2 hours before a game'",
     why: 'A match reminder setting (match record, docs/specs/match-record.md), not a spec 13 rule.',

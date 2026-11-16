@@ -27,6 +27,7 @@ import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { chooseNoOpponent, pullOutOfGipedo } from '@/lib/booking-gipedo';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
+import { switchPlayersPerSide } from '@/lib/booking-switch';
 import { isBookingInCalendar, removeBookingFromCalendar } from '@/lib/calendar';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { appleMapsUrl, googleMapsUrl } from '@/lib/venue-page';
@@ -90,6 +91,19 @@ export default function BookingDetailScreen() {
     return error;
   }
 
+  // P12: the server switches and tells every player; the screen reloads.
+  async function switchFormat(to: 5 | 6): Promise<string | null> {
+    const error = await switchPlayersPerSide(id, to);
+    if (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      return error;
+    }
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    setNotice(`Switched to ${to} v ${to}. Every player has been told.`);
+    reload();
+    return null;
+  }
+
   async function invite(username: string): Promise<string | null> {
     const { error } = await addBookingPlayer(id, username);
     return error ? describeBookingErrorMessage(error.message) : null;
@@ -135,6 +149,7 @@ export default function BookingDetailScreen() {
         notice={notice}
         onGipedoPullOut={() => gipedoAction(() => pullOutOfGipedo(id))}
         onGipedoChoose={(choice) => gipedoAction(() => chooseNoOpponent(id, choice))}
+        onSwitch={switchFormat}
         squadNeed={
           // A Gipedo Pano booking's opposition post is made by the server.
           detail && !detail.gipedo ? (

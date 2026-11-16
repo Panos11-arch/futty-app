@@ -5,7 +5,7 @@
 import type { CancellationLine, CancellationQuote } from './booking-actions';
 import type { BookingDetailData } from './booking-detail';
 import { detailFixture } from './booking-search.fixtures';
-import type { RosterEntry } from './booking-search';
+import type { RosterEntry, SwitchInfo } from './booking-search';
 
 /** cancellation_terms() as the server returns it. */
 export const TERMS = { fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 };
@@ -119,6 +119,23 @@ export function wholeTeamQuote(overrides: Partial<CancellationQuote> = {}): Canc
     booker_fee: { profile_id: 'p1', players: 6, amount_cents: 600 },
     guarantee_hold_placed: true,
     quote: 'q2',
+    ...overrides,
+  };
+}
+
+/** booking_detail's 'switch' (P12, booking_switch_info), on a €60 pitch:
+ *  6 v 6 -> 5 v 5 by default, each paid player owing 100 more. */
+export function switchInfo(overrides: Partial<SwitchInfo> = {}): SwitchInfo {
+  return {
+    switched: false,
+    switched_at: null,
+    can_switch: true,
+    refusal: null,
+    to_players_per_side: 5,
+    closes_at: '2026-11-16T10:00:00+00:00',
+    money: 'extra',
+    each_cents: 100,
+    booker_cents: 100,
     ...overrides,
   };
 }
