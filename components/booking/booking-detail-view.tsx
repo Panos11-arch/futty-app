@@ -21,6 +21,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { GipedoPanel } from '@/components/booking/gipedo-panel';
+import { SwitchFormat } from '@/components/booking/switch-format';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import {
@@ -67,6 +68,9 @@ export type BookingDetailViewProps = {
   onGipedoChoose?: (choice: 'play_normal' | 'cancel') => Promise<string | null>;
   /** The booker's Need players / Need opposition panel. */
   squadNeed?: ReactNode;
+  /** P12: switches 5 v 5 / 6 v 6; resolves to an error message, or null
+   *  once switched. */
+  onSwitch?: (to: 5 | 6) => Promise<string | null>;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -119,6 +123,7 @@ function BookingDetailReady({
   squadNeed,
   onGipedoPullOut,
   onGipedoChoose,
+  onSwitch,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -297,6 +302,18 @@ function BookingDetailReady({
             <Button label="Invite" variant="secondary" onPress={invite} loading={inviting} disabled={!username.trim()} />
             {squadNeed}
           </View>
+        ) : null}
+
+        {onSwitch ? (
+          <SwitchFormat
+            info={detail.switch}
+            isBooker={isBooker}
+            live={live}
+            inGame={meActive}
+            playersPerSide={booking.players_per_side}
+            venueName={venue.name}
+            onSwitch={onSwitch}
+          />
         ) : null}
 
         <View style={styles.section}>

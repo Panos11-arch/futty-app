@@ -4,6 +4,7 @@
 import { describeQuote } from '@/lib/booking-detail';
 import { line, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
+import { switchErrorMessage } from '@/lib/booking-switch';
 import { choiceWords, gipedoModeSentence, gipedoStatusLine, pullOutWords } from '@/lib/booking-gipedo';
 import type { GipedoDetail } from '@/lib/booking-search';
 import { personalPremiumPerks, personalPremiumPriceLabel } from '@/lib/premium';
@@ -54,6 +55,7 @@ function sentences() {
     nonRefundable: describeBookingErrorMessage('non_refundable_not_accepted'),
     paymentWindow: describeBookingErrorMessage('payment_window_closed'),
     tooLate: describeBookingErrorMessage('too_late_to_cancel'),
+    switchClosed: switchErrorMessage('switch_closed'),
     gipedoMode: gipedoModeSentence(6550),
     gipedoStatus: gipedoStatusLine(gipedo()),
     forfeit: pullOutWords(gipedo())[0],
@@ -136,6 +138,7 @@ describe('every sentence with a rule follows app_rules', () => {
     expect(s.nonRefundable).toBe('This game starts in less than 6 hours, so it is non-refundable. Accept that to pay.');
     expect(s.paymentWindow).toBe('Payment had to be completed within 15 minutes of booking, so this booking was cancelled.');
     expect(s.tooLate).toBe('Less than 6 hours to kickoff, so this booking can no longer be refunded.');
+    expect(s.switchClosed).toBe("Switching closes 6 hours before kickoff, so this booking can't be switched now.");
     expect(s.gipedoMode).toContain('Another team can take it on until 24 hours before kickoff.');
     expect(s.gipedoStatus).toBe('Waiting for an opponent. Teams can take it on until 24 hours before kickoff.');
     expect(s.forfeit).toMatch(/^Kickoff is less than 6 hours away, so your team counts as the losing team: €65\.50/);
@@ -153,6 +156,7 @@ describe('every sentence with a rule follows app_rules', () => {
     expect(s.nonRefundable).toContain('less than 4 hours');
     expect(s.paymentWindow).toContain('within 30 minutes of booking');
     expect(s.tooLate).toContain('Less than 4 hours to kickoff');
+    expect(s.switchClosed).toContain('closes 4 hours before kickoff');
     expect(s.gipedoMode).toContain('until 12 hours before kickoff');
     expect(s.gipedoStatus).toContain('until 12 hours before kickoff');
     expect(s.forfeit).toContain('less than 4 hours away');

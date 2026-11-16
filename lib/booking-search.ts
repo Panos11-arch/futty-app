@@ -124,6 +124,25 @@ export type RosterEntry = {
  *  refunds stopping before kickoff; null once refunds have stopped. */
 export type NextCutoff = { kind: 'free_hour_ends' | 'refunds_stop'; at: string } | null;
 
+/** booking_detail's 'switch' (P12; spec 13 "Switching after booking"): set
+ *  on a 5-a-side booking that can ever switch, null otherwise. The amounts
+ *  are each player's pitch-part change, worked out by the server. */
+export type SwitchInfo = {
+  switched: boolean;
+  switched_at: string | null;
+  can_switch: boolean;
+  /** Why the caller can't switch now: a switch_refusal code, or null. */
+  refusal: string | null;
+  /** 6 from 5 v 5, 5 from 6 v 6; null once switched. */
+  to_players_per_side: 5 | 6 | null;
+  closes_at?: string;
+  /** credit: each paid player gets credit; extra: each pays more after the
+   *  match; none: the booker paid for everyone. */
+  money?: 'credit' | 'extra' | 'none';
+  each_cents?: number;
+  booker_cents?: number;
+};
+
 /** booking_detail(): a booking the caller is in. */
 export type BookingDetail = {
   booking: {
@@ -165,6 +184,8 @@ export type BookingDetail = {
   can_cancel: { my_spot: boolean; whole_team: boolean };
   /** Set on a Gipedo Pano booking (P8), null otherwise. */
   gipedo?: GipedoDetail | null;
+  /** 5 v 5 / 6 v 6 switching (P12). */
+  switch?: SwitchInfo | null;
 };
 
 // ---- The search choices ------------------------------------------------

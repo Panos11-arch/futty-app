@@ -4,8 +4,10 @@
 // prompt follows, with no code change.
 //
 // Only what players can do in the app today is described (decided 16
-// November): 6 v 6 switching (P12) and weather forecasts (P11) are "coming
-// soon" until they ship and add their own lines. The sections that aren't
+// November): weather forecasts (P11) are "coming soon" until they ship and
+// add their own lines. 6 v 6 switching (P12) shipped: spec 13's switching
+// rules and decisions of 16 November, with its worked example (a €60 pitch)
+// marked as an example, since a pitch price is not a rule. The sections that aren't
 // spec 13 (XP, leagues, team Premium, community, squads) are kept as they were.
 //
 // Two system blocks: this text, marked for prompt caching (it only changes
@@ -69,7 +71,12 @@ DEBT
 
 6 V 6
 - At venues that allow it, the booking form shows "Players per side: 5 v 5 / 6 v 6" for 5-a-side: 6 v 6 splits the same pitch price between 12 players.
-- Switching a booking between 5 v 5 and 6 v 6 after booking is coming soon; it isn't in the app yet.
+- Switching after booking: only the booker can switch a 5-a-side booking between 5 v 5 and 6 v 6, once, from the booking screen, until ${cutoff} before kickoff (exactly ${cutoff} before is still allowed). Every player is told. Before the booker confirms, the booking screen shows what the switch means for everyone's money.
+- 5 v 5 to 6 v 6 (only at venues that allow 6 v 6 on that 5-a-side pitch): each player who has paid gets the difference in their share of the pitch price back as venue credit. Example only: on a €60 pitch, €6.00 a player becomes €5.00, so €1.00 each. That difference depends on the pitch price; it is not the ${euros(r.cancel_fee_cents)} cancellation fee. A payment that is still held gets its credit when it's taken, and credit that paid for the spot goes back to that credit first. A cash player the venue hasn't marked as paid gets no credit and pays less in cash instead; one already marked as paid gets the credit.
+- 6 v 6 to 5 v 5 (only while 10 or fewer players have joined): each player who has paid, including cash already marked as paid at the venue, pays the difference after the match, charged to their saved card with the top-ups (on the same €60 example, €1.00 each). If that charge fails, the booker's hold covers it ("I'm responsible for the team") or it becomes the player's debt to the venue ("just my spot"). A cash player who hasn't paid yet pays the 5 v 5 amount in cash.
+- When the booker paid for everyone, switching moves no money.
+- Premium players get the difference too. Cancelling after a switch works from what is left after it.
+- A booking can be switched only once. Gipedo Pano bookings can't be switched, and a 5 v 5 booked on a bigger pitch can't switch to 6 v 6.
 
 GIPEDO PANO (a team booking where the losing team pays for the pitch)
 - Each team's captain has their card held for the pitch price plus ${euros(r.gipedo_fee_cents)} per player. After the match the loser's hold is taken and the winner's released; a draw, a dispute or no result is split 50/50.
