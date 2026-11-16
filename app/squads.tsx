@@ -26,6 +26,8 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useSquadPosts, type SquadPostWithDetails } from '@/lib/use-squad-posts';
+import { minutesText, ruleText } from '@/lib/rules';
+import { useRules } from '@/lib/use-rules';
 
 // Cancelling a matched opposition post is blocked from 30 minutes before
 // kickoff onward — matches cancel_opposition_offer's server-side check
@@ -339,7 +341,12 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           ) : null}
           <ThemedText style={styles.note}>
             {post.payment_mode === 'gipedo_pano'
-              ? "Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. Place the hold within 15 minutes or the offer lapses. After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released."
+              ? 'Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. ' +
+                ruleText(
+                  (r) => `Place the hold within ${minutesText(r.payment_window_minutes)} or the offer lapses. `,
+                  'Place the hold straight away or the offer lapses. ',
+                ) +
+                "After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released."
               : 'Split payment: both full rosters share the pitch cost evenly, regardless of the result.'}
           </ThemedText>
           {error ? <AuthError>{error}</AuthError> : null}
@@ -367,6 +374,9 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 }
 
 export default function SquadsScreen() {
+  // Spec 13's rules for the numbers in this screen's text (P10): loads them
+  // and re-renders when they arrive.
+  useRules();
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<'players' | 'opposition'>(
     params.view === 'opposition' ? 'opposition' : 'players'

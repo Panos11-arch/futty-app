@@ -10,7 +10,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatEuros } from '@/lib/service-fee';
+import { formatEuros } from '@/lib/money/format';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';

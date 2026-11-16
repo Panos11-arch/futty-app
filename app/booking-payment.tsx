@@ -10,6 +10,7 @@ import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/
 import { afterPayment } from '@/lib/booking-navigation';
 import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
 import { useReloadOnReturn } from '@/lib/use-owed';
+import { useRules } from '@/lib/use-rules';
 
 const openPayOwed = () => router.push('/account/payments/owed');
 
@@ -27,6 +28,9 @@ type Params = {
 /** Checkout for a new booking (from Book), or Pay my share for a booking
  *  that already exists (bookingId: notifications, transactions). */
 export default function BookingPaymentScreen() {
+  // Spec 13's rules for the numbers in this screen's text (P10): loads them
+  // and re-renders when they arrive.
+  useRules();
   const params = useLocalSearchParams<Params>();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const sheet: PaymentSheet = useMemo(

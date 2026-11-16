@@ -8,9 +8,10 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { describeFunctionError } from '@/lib/edge-functions';
-import { PERSONAL_PREMIUM_PRICE_LABEL, PERSONAL_PREMIUM_SKU, verifyPurchaseOnServer } from '@/lib/premium';
+import { personalPremiumPerks, personalPremiumPriceLabel, PERSONAL_PREMIUM_SKU, verifyPurchaseOnServer } from '@/lib/premium';
 import { PREMIUM_FORMAT_PRICES, TEAM_PREMIUM_SKUS, verifyTeamPurchaseOnServer } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
+import { useRules } from '@/lib/use-rules';
 import { useProfile } from '@/lib/use-profile';
 
 type Plan = 'personal' | 'team-9-a-side' | 'team-11-a-side';
@@ -18,12 +19,8 @@ type Plan = 'personal' | 'team-9-a-side' | 'team-11-a-side';
 const PLAN_COPY: Record<Plan, { title: string; perks: string[] }> = {
   personal: {
     title: 'Personal Premium',
-    perks: [
-      'Book up to 21 days ahead, not just 2',
-      'Verified badge on your profile',
-      'No booking fees (coming soon)',
-      'Priority evening slots (coming soon)',
-    ],
+    // From spec 13's rules at render time: personalPremiumPerks (lib/premium.ts).
+    perks: [],
   },
   'team-9-a-side': {
     title: 'Team Premium — 9-a-side',
@@ -56,6 +53,8 @@ export default function PremiumPlanScreen() {
 
   const profile = useProfile();
   const myTeams = useMyTeams();
+  const rulesState = useRules().state;
+  const rules = rulesState.status === 'ready' ? rulesState.rules : null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +114,7 @@ export default function PremiumPlanScreen() {
 
   const priceLabel =
     plan === 'personal'
-      ? `${subscriptions.find((s) => s.id === sku)?.displayPrice ?? PERSONAL_PREMIUM_PRICE_LABEL}/mo`
+      ? personalPremiumPriceLabel(rules, subscriptions.find((s) => s.id === sku)?.displayPrice)
       : format
         ? `€${PREMIUM_FORMAT_PRICES[format]}/season`
         : '';
@@ -148,7 +147,7 @@ export default function PremiumPlanScreen() {
     }
   }
 
-  const copy = PLAN_COPY[plan];
+  const copy = plan === 'personal' ? { ...PLAN_COPY.personal, perks: personalPremiumPerks(rules) } : PLAN_COPY[plan];
   const missingTeam = format && !team;
 
   return (

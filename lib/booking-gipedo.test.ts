@@ -9,6 +9,12 @@ import {
   settlementLine,
 } from './booking-gipedo';
 import type { GipedoDetail } from './booking-search';
+import { primeRules } from '@/lib/rules.fixtures';
+
+// Spec 13's rules as the migration's defaults (P10): the text below reads them.
+beforeEach(() => {
+  primeRules();
+});
 
 const mockRpc = jest.fn();
 jest.mock('@/lib/supabase', () => ({ supabase: { rpc: (...a: unknown[]) => mockRpc(...a) } }));

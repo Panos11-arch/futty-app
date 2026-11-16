@@ -12,10 +12,14 @@ import {
 } from '@/lib/booking-search';
 import { useDebtBlock } from '@/lib/use-owed';
 import { useVenuePage } from '@/lib/use-venue-page';
+import { useRules } from '@/lib/use-rules';
 
 /** Book a pitch (P5): the server's window, free venues and prices; checkout
  *  happens on booking-payment. From a venue page (venueId), only that venue. */
 export default function BookScreen() {
+  // Spec 13's rules for the numbers in this screen's text (P10): loads them
+  // and re-renders when they arrive.
+  useRules();
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const options = useLoad('options', fetchSearchOptions);
   const venuePage = useVenuePage(venueId);

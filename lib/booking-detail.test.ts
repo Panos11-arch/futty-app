@@ -16,6 +16,12 @@ import {
   type CancelDeps,
 } from './booking-detail';
 import { bookerDetail, line, mySpotQuote, playerDetail, wholeTeamQuote } from './booking-detail.fixtures';
+import { primeRules } from '@/lib/rules.fixtures';
+
+// Spec 13's rules as the migration's defaults (P10): the text below reads them.
+beforeEach(() => {
+  primeRules();
+});
 
 const mockAdd = jest.fn();
 const mockSync = jest.fn();
