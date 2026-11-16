@@ -45,11 +45,20 @@ begin
           from public.money_ledger where share_id = v_cash.id and kind = 'cash_received'),
     'the pitch part, all the venue''s, no Stripe';
 
-  -- Collection amounts are what they were.
+  -- Collection amounts are what they were, except that the ticked cash
+  -- now counts as paid (decided 16 November: it is topped up like a card).
   select jsonb_agg(to_jsonb(a) order by a.share_id) into v_after from public.collection_amounts(v_booking.id) a;
-  assert (select jsonb_agg(e - 'cash_received' order by e ->> 'share_id') from jsonb_array_elements(v_after) e)
-       = (select jsonb_agg(e - 'cash_received' order by e ->> 'share_id') from jsonb_array_elements(v_before) e),
-    'amounts unchanged by the tick';
+  assert (select jsonb_agg(e - 'cash_received' - 'paid_pitch_cents' order by e ->> 'share_id') from jsonb_array_elements(v_after) e)
+       = (select jsonb_agg(e - 'cash_received' - 'paid_pitch_cents' order by e ->> 'share_id') from jsonb_array_elements(v_before) e),
+    'amounts due unchanged by the tick';
+  assert (select jsonb_agg(e -> 'paid_pitch_cents' order by e ->> 'share_id') from jsonb_array_elements(v_after) e
+          where e ->> 'share_id' <> v_cash.id::text)
+       = (select jsonb_agg(e -> 'paid_pitch_cents' order by e ->> 'share_id') from jsonb_array_elements(v_before) e
+          where e ->> 'share_id' <> v_cash.id::text),
+    'what the others paid is unchanged';
+  assert (select (e ->> 'paid_pitch_cents')::integer from jsonb_array_elements(v_after) e
+          where e ->> 'share_id' = v_cash.id::text) = 600,
+    'the ticked cash player has paid 600';
 
   -- After the match, the other cash player pays it by card in the app
   -- instead: a Stripe capture, not cash. Ticking it afterwards adds nothing.

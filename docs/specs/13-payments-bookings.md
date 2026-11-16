@@ -161,6 +161,7 @@ If fewer players join than the booking is for, the players who joined split the 
 - **2 hours after the match**, top-ups are charged to each player's saved card. Someone who joins at the last minute just makes the top-up smaller, with no refunds.
 - **Futty absorbs Stripe's fee on top-ups.** That's about €0.27 on €1.50, leaving Futty about €0.18 per player in that game.
 - **Cash players' amount goes up** on the venue dashboard: €7.50 instead of €6.00.
+- **A cash player already ticked as paid is topped up by card like everyone else (decided 16 November).** They saved a card when joining, so the difference between their pitch part and the cash they paid is charged to it with the other top-ups, with no extra fee. A failed top-up takes the normal path: the booker's hold covers it (responsible mode) or it becomes the player's debt (just my spot). This applies to every short game and to a switch to fewer players. For example, a 5 v 5 played by 9 = €60 ÷ 9 = €6.66 (the booker €6.72): a ticked cash player who paid €6.00 gets a **€0.66 top-up**. A cash player who paid by card in the app after the match already paid what was due then and owes nothing more.
 - **A failed top-up:** the player is asked to pay in the app. If they don't, the booker's hold covers it (responsible mode) or it becomes the player's debt (just my spot).
 - **Booker pays for everyone:** there are no top-ups, because the booker already paid the full pitch price.
 - **Confirmed:** "joined" means everyone who holds a spot in the booking, not who turns up. A no-show still owes their share; a venue-provided player counts as an empty spot.
@@ -188,6 +189,7 @@ If fewer players join than the booking is for, the players who joined split the 
   - **One switch per booking,** either direction. A second switch is refused, so credit can't be issued and spent before the top-up is collected.
   - **6 v 6 only on 5-a-side pitches:** a 5 v 5 booked on a bigger pitch can't switch to 6 v 6. Gipedo Pano bookings can't switch.
   - **Exactly 6 hours before kickoff is still allowed,** as for cancellations.
+  - **6 v 6 → 5 v 5 with a cash player already ticked as paid (decided 16 November):** they are topped up by card like a card player, €1.00 on a €60 pitch (€5.00 paid in cash, €6.00 due), with the normal failed top-up path (see Short games).
 
 ## Cash, debt and venue credit
 
