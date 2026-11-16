@@ -4,8 +4,8 @@
 // prompt follows, with no code change.
 //
 // Only what players can do in the app today is described (decided 16
-// November): weather forecasts (P11) are "coming soon" until they ship and
-// add their own lines. 6 v 6 switching (P12) shipped: spec 13's switching
+// November): weather forecasts (P11) shipped, with their thresholds from
+// app_rules. 6 v 6 switching (P12) shipped: spec 13's switching
 // rules and decisions of 16 November, with its worked example (a €60 pitch)
 // marked as an example, since a pitch price is not a rule. The sections that aren't
 // spec 13 (XP, leagues, team Premium, community, squads) are kept as they were.
@@ -15,6 +15,17 @@
 // daily date doesn't invalidate the cache. A question can take several model
 // calls (the tool loop), each reusing the cached prefix.
 import { type AppRules, days, euros, hours, minutes, months } from '../_shared/rules.ts';
+
+/** Spec 13's weather thresholds as app_rules has them, e.g. "a rain chance of 60% or more, heavy rain, ...". */
+function weatherConditions(r: AppRules): string {
+  return [
+    `a rain chance of ${r.weather_rain_chance_pct}% or more`,
+    ...(r.weather_heavy_rain ? ['heavy rain'] : []),
+    `wind of ${r.weather_wind_kmh} km/h or more`,
+    ...(r.weather_thunderstorms ? ['thunderstorms'] : []),
+    `or ${r.weather_heat_c}°C or hotter`,
+  ].join(', ');
+}
 
 export function buildSystemPrompt(r: AppRules): string {
   const cutoff = hours(r.refund_cutoff_hours);
@@ -86,7 +97,8 @@ GIPEDO PANO (a team booking where the losing team pays for the pitch)
 
 CONDITIONS AND WEATHER
 - A venue can warn that conditions may be unsuitable (for example a waterlogged pitch); everyone booked then is notified. Normal cancellation rules apply, so players can cancel at least ${cutoff} before kickoff to keep their money as venue credit.
-- Weather forecasts and bad-weather warnings in the app are coming soon; they aren't in the app yet.
+- The venue page, checkout and each booking show the forecast for the match hours (rain, wind and temperature), from Apple Weather. The forecast only reaches about ten days ahead; further out the app says "Forecast available closer to the date".
+- When the forecast for the match hours shows ${weatherConditions(r)}, the app shows a banner: "Heavy rain forecast. The venue may cancel this booking." It only warns; it never promises a cancellation. Normal cancellation rules still apply.
 
 XP AND SCORING
 - Played/won/drawn/lost/goals are tracked accurately for every match (friendly and league).

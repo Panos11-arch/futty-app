@@ -1,7 +1,7 @@
 // Checkout (spec 15 section 5; spec 13 "Booking modes", "Cash at the
 // venue", "Venue credit"). Every amount is booking_quote's, shown as it is:
 // the two prices, the breakdown, the total. The player only chooses.
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -54,6 +54,8 @@ export type CheckoutViewProps = {
   bookingHeld: boolean;
   /** For tests; the screen uses the clock. */
   now?: Date;
+  /** The weather strip for the game's hours (P11). Nothing renders until one is passed in. */
+  weather?: ReactNode;
 };
 
 type Who = 'pay_all' | 'each_pays' | 'gipedo_pano';
@@ -120,6 +122,7 @@ function CheckoutReady({
   onPayOwed,
   bookingHeld,
   now: nowOverride,
+  weather,
 }: Omit<CheckoutViewProps, 'quote' | 'onRetry'> & { quote: BookingQuote }) {
   const clock = useNow();
   const now = nowOverride ?? clock;
@@ -173,6 +176,8 @@ function CheckoutReady({
         </View>
 
         {quote.in_debt ? <Banner tone="danger" message={DEBT_LINE} action={payOwedAction(onPayOwed)} /> : null}
+
+        {weather ? <View testID="checkout-weather">{weather}</View> : null}
 
         <View style={styles.section}>
           <SectionHeader title="Who pays" />

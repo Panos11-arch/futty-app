@@ -183,7 +183,12 @@ const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   {
     question: 'Will I be warned about bad weather?',
     facts: (r) => [
-      'Weather forecasts and bad-weather warnings in the app are coming soon',
+      `a rain chance of ${r.weather_rain_chance_pct}% or more`,
+      `wind of ${r.weather_wind_kmh} km/h or more`,
+      `${r.weather_heat_c}°C or hotter`,
+      '"Heavy rain forecast. The venue may cancel this booking."',
+      'It only warns; it never promises a cancellation.',
+      'Forecast available closer to the date',
       'A venue can warn that conditions may be unsuitable',
       `cancel at least ${hours(r.refund_cutoff_hours)} before kickoff to keep their money as venue credit`,
     ],
@@ -251,6 +256,26 @@ Deno.test('changing a rule changes the prompt, with no code change', () => {
     'a €0.10 service fee on your own spot',
   ]) ok(after.includes(fact), fact);
   ok(!after.includes('Less than 6 hours'), 'no trace of the old cutoff');
+});
+
+Deno.test('weather (P11): the thresholds follow app_rules, and forecasts are no longer "coming soon"', () => {
+  const changed = buildSystemPrompt({
+    ...SPEC_RULES,
+    weather_rain_chance_pct: 70,
+    weather_wind_kmh: 50,
+    weather_heat_c: 40,
+    weather_heavy_rain: false,
+    weather_thunderstorms: false,
+  });
+  for (const fact of ['a rain chance of 70% or more', 'wind of 50 km/h or more', '40°C or hotter']) {
+    ok(changed.includes(fact), fact);
+  }
+  ok(!changed.includes('heavy rain,'), 'heavy rain left out when the rule is off');
+  ok(!changed.includes('thunderstorms,'), 'thunderstorms left out when the rule is off');
+  const spec = buildSystemPrompt(SPEC_RULES);
+  ok(spec.includes('heavy rain, '), 'heavy rain counts under spec 13');
+  ok(spec.includes('thunderstorms, '), 'thunderstorms count under spec 13');
+  ok(!spec.includes('coming soon; they aren\'t in the app yet'), 'weather has shipped');
 });
 
 Deno.test('the old, wrong facts are gone', () => {
