@@ -16,6 +16,7 @@ import { CAPACITY_OPTIONS } from '@/lib/booking';
 import { canLogFixtureScore, formatFixtureWhen } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
 import { playHref } from '@/lib/play-segments';
+import { leagueFormatOpen } from '@/lib/premium';
 import { registerTeamForLeague, startLeagueSeason, type League } from '@/lib/leagues';
 import { supabase } from '@/lib/supabase';
 import {
@@ -180,6 +181,12 @@ function JoinLeagueControl({
     return (
       <ThemedText style={styles.note}>You&apos;re already in this league.</ThemedText>
     );
+  }
+
+  // 9-a-side and 11-a-side need Team Premium, which is off for the release
+  // (lib/premium.ts): registration opens with it.
+  if (!leagueFormatOpen(format)) {
+    return <ThemedText style={styles.note}>{format} leagues are coming soon.</ThemedText>;
   }
 
   if (justCreated) {

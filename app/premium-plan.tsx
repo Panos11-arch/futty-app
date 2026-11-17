@@ -8,7 +8,13 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { describeFunctionError } from '@/lib/edge-functions';
-import { personalPremiumPerks, personalPremiumPriceLabel, PERSONAL_PREMIUM_SKU, verifyPurchaseOnServer } from '@/lib/premium';
+import {
+  openablePlan,
+  personalPremiumPerks,
+  personalPremiumPriceLabel,
+  PERSONAL_PREMIUM_SKU,
+  verifyPurchaseOnServer,
+} from '@/lib/premium';
 import { PREMIUM_FORMAT_PRICES, TEAM_PREMIUM_SKUS, verifyTeamPurchaseOnServer } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useRules } from '@/lib/use-rules';
@@ -48,7 +54,7 @@ const PLAN_COPY: Record<Plan, { title: string; perks: string[] }> = {
  *  where that split actually matters. */
 export default function PremiumPlanScreen() {
   const { plan: rawPlan, teamId } = useLocalSearchParams<{ plan: Plan; teamId?: string }>();
-  const plan: Plan = rawPlan === 'team-9-a-side' || rawPlan === 'team-11-a-side' ? rawPlan : 'personal';
+  const plan: Plan = openablePlan(rawPlan === 'team-9-a-side' || rawPlan === 'team-11-a-side' ? rawPlan : 'personal');
   const format = plan === 'team-9-a-side' ? '9-a-side' : plan === 'team-11-a-side' ? '11-a-side' : null;
 
   const profile = useProfile();
