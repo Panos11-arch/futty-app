@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
-import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { space } from '@/constants/futty-theme';
 import { shareTeamInvite } from '@/lib/invite';
 import { describeInviteError } from '@/lib/invites';
 import { findProfileByUsername, inviteTeamMember } from '@/lib/teams';
@@ -70,13 +72,12 @@ export function AddPlayerRow({
     }
   }
 
+  const label = `${role === 'substitute' ? 'Add a substitute' : 'Add a player'} (${remaining} slot${remaining === 1 ? '' : 's'} left)`;
+
   return (
     <View style={styles.addRow}>
-      <ThemedText style={styles.note}>
-        {role === 'substitute' ? 'Add a substitute' : 'Add a player'} ({remaining} slot
-        {remaining === 1 ? '' : 's'} left)
-      </ThemedText>
-      <AuthField
+      <TextField
+        label={label}
         value={username}
         onChangeText={(text) => {
           setUsername(text);
@@ -87,35 +88,31 @@ export function AddPlayerRow({
         editable={!busy}
         onSubmitEditing={submit}
         returnKeyType="done"
+        error={error ?? undefined}
       />
-      {error ? <AuthError>{error}</AuthError> : null}
       {invited ? (
-        <ThemedText style={styles.note}>Invite sent to {invited} — they join once they accept.</ThemedText>
+        <Text variant="callout" tone="inkMuted">
+          Invite sent to {invited} — they join once they accept.
+        </Text>
       ) : null}
       {notFound ? (
         <>
-          <ThemedText style={styles.note}>
+          <Text variant="callout" tone="inkMuted">
             No one on Futty uses &quot;{notFound}&quot; yet — invite them instead?
-          </ThemedText>
-          <AuthButton
+          </Text>
+          <Button
             label="Invite by message"
             variant="secondary"
             onPress={() => shareTeamInvite({ teamName, inviterUsername })}
           />
         </>
       ) : (
-        <AuthButton label="Invite" onPress={submit} disabled={!username.trim()} busy={busy} />
+        <Button label="Invite" onPress={submit} disabled={!username.trim()} loading={busy} />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  addRow: {
-    gap: 6,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
+  addRow: { gap: space.sm },
 });

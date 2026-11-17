@@ -1,13 +1,19 @@
+
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError } from '@/components/auth-form';
 import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { FuttyColors } from '@/constants/futty-theme';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ICON } from '@/components/ui/foundation';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, space } from '@/constants/futty-theme';
 import {
   canLogFixtureScore,
   FIXTURE_SCHEDULING_WINDOW_DAYS,
@@ -34,14 +40,18 @@ function ResolveOutcomeButton({ fixtureId, onChanged }: { fixtureId: string; onC
   }
 
   return (
-    <View>
-      <AuthButton
+    <View style={styles.stack}>
+      <Button
         label="Resolve outcome — no agreed date this week"
         variant="secondary"
         onPress={resolve}
-        busy={busy}
+        loading={busy}
       />
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -80,36 +90,34 @@ function FixtureRow({
   const needsAction = isCaptain && (fixture.status === 'unscheduled' || fixture.status === 'proposed');
 
   return (
-    <View style={styles.fixtureRow}>
-      <ThemedText type="defaultSemiBold">
+    <Card testID="fixture-card" style={styles.stack}>
+      <Text variant="headline">
         {fixture.home_team?.name ?? 'Unknown team'} vs {fixture.away_team?.name ?? 'Unknown team'}
-      </ThemedText>
-      <ThemedText style={styles.note}>{statusLabel}</ThemedText>
+      </Text>
+      <Text variant="callout" tone="inkMuted" tabular>
+        {statusLabel}
+      </Text>
       {fixture.score_locked ? (
-        <IconLabel icon="lock.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={12}>
-          Captains couldn&apos;t agree a score after 3 tries — locked.
-        </IconLabel>
+        <View style={styles.iconRow}>
+          <IconSymbol name="lock.fill" size={ICON.small} color={colors.inkMuted} />
+          <Text variant="callout" tone="inkMuted" style={styles.flex}>
+            Captains couldn&apos;t agree a score after 3 tries — locked.
+          </Text>
+        </View>
       ) : null}
       {canLogScore ? <FixtureScoreEntry fixture={fixture} onSubmitted={onChanged} /> : null}
       {needsAction ? (
-        <AuthButton
-          label="Go to matchmaking"
-          variant="secondary"
-          onPress={() => router.push('/matchmaking')}
-          compact
-        />
+        <Button label="Go to matchmaking" variant="secondary" onPress={() => router.push('/matchmaking')} />
       ) : null}
       {canResolve ? <ResolveOutcomeButton fixtureId={fixture.id} onChanged={onChanged} /> : null}
       {isCaptain ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/fixture-chat', params: { fixtureId: fixture.id } })}>
-          <IconLabel icon="bubble.left.fill" type="link" iconColor={FuttyColors.emerald700}>
-            Message the other captain
-          </IconLabel>
-        </Pressable>
+        <Button
+          label="Message the other captain"
+          variant="plain"
+          onPress={() => router.push({ pathname: '/fixture-chat', params: { fixtureId: fixture.id } })}
+        />
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -135,15 +143,23 @@ export function UpcomingFixturesList() {
 
   return (
     <View style={styles.list}>
-      {fixtures.status === 'loading' ? <ActivityIndicator /> : null}
+      {fixtures.status === 'loading' ? (
+        <Card testID="upcoming-fixtures-skeleton">
+          <SkeletonText lines={3} />
+        </Card>
+      ) : null}
       {fixtures.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load fixtures: {fixtures.message}</ThemedText>
+        <Banner
+          tone="danger"
+          message={`Could not load fixtures: ${fixtures.message}`}
+          action={{ label: 'Try again', onPress: fixtures.reload }}
+        />
       ) : null}
       {fixtures.status === 'ready' && upcoming.length === 0 ? (
-        <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-          No upcoming fixtures — these fill in once your team is registered in a league with
-          opponents.
-        </IconLabel>
+        <EmptyState
+          icon="calendar"
+          message="No upcoming fixtures — these fill in once your team is registered in a league with opponents."
+        />
       ) : null}
       {upcoming.map((fixture) => (
         <FixtureRow
@@ -159,7 +175,7 @@ export function UpcomingFixturesList() {
 
 export default function UpcomingFixturesScreen() {
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <UpcomingFixturesList />
       </ScrollView>
@@ -168,25 +184,10 @@ export default function UpcomingFixturesScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  list: {
-    gap: 10,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  fixtureRow: {
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { padding: space.lg, paddingBottom: space.xxl },
+  list: { gap: space.md },
+  stack: { gap: space.sm },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

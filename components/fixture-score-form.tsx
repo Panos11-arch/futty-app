@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
+import { AuthField } from '@/components/auth-form';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { space, tabular } from '@/constants/futty-theme';
 import { submitFixtureScore, type Fixture } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
 
@@ -31,58 +34,52 @@ export function FixtureScoreForm({ fixture, onSubmitted }: { fixture: Fixture; o
     }
   }
 
+  const homeName = fixture.home_team?.name ?? 'Team';
+  const awayName = fixture.away_team?.name ?? 'Team';
+
   return (
-    <View style={styles.scoreForm}>
-      <Text style={styles.scoreFormTitle}>
-        {fixture.home_team?.name ?? 'Team'} vs {fixture.away_team?.name ?? 'Team'}
+    <View style={styles.form}>
+      <Text variant="callout">
+        {homeName} vs {awayName}
       </Text>
-      <View style={styles.scoreInputsRow}>
+      <View style={styles.inputsRow}>
         <AuthField
           value={homeScore}
           onChangeText={setHomeScore}
           placeholder="0"
           keyboardType="number-pad"
+          accessibilityLabel={`${homeName} score`}
           style={styles.scoreInput}
         />
-        <Text style={styles.scoreDash}>–</Text>
+        <Text variant="body" tone="inkMuted">
+          –
+        </Text>
         <AuthField
           value={awayScore}
           onChangeText={setAwayScore}
           placeholder="0"
           keyboardType="number-pad"
+          accessibilityLabel={`${awayName} score`}
           style={styles.scoreInput}
         />
-        <AuthButton
+        <Button
           label="Log score"
           onPress={submit}
           disabled={!homeScore.trim() || !awayScore.trim()}
-          busy={busy}
+          loading={busy}
         />
       </View>
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scoreForm: {
-    gap: 6,
-  },
-  scoreFormTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  scoreInputsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  scoreInput: {
-    width: 48,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-  scoreDash: {
-    opacity: 0.6,
-  },
+  form: { gap: space.sm },
+  inputsRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  scoreInput: { width: space.xxl + space.lg, textAlign: 'center', paddingHorizontal: space.sm, ...tabular },
 });

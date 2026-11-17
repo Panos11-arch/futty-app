@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { FixtureConfirmedCard } from '@/components/fixture-confirmed-card';
-import { PitchBackground } from '@/components/pitch-background';
 import { PopupModal } from '@/components/popup-modal';
-import { ThemedText } from '@/components/themed-text';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { space } from '@/constants/futty-theme';
 import { formatFixtureWhen, getFixture } from '@/lib/fixtures';
 import { describePaymentMode } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +25,7 @@ type CardState =
       paymentModeLabel: string | null;
     };
 
-/** "Match Found" — shown for a matched "need opposition" squad post
+/** "Match found" — shown for a matched "need opposition" squad post
  *  (kind=squad), an 'agreed' league fixture (kind=league), or a plain
  *  booking (kind=booking, no opponent). Reached from a notification tap
  *  (app/notifications.tsx), right after booking/joining completes, or a
@@ -145,20 +146,16 @@ export default function FixtureConfirmedScreen() {
     <PopupModal
       visible
       onClose={() => router.back()}
-      title="Match Found"
-      backgroundImage={<PitchBackground />}
-      dark
-      footer={
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.replace('/my-bookings')}
-          style={styles.viewBookingButton}>
-          <ThemedText style={styles.viewBookingButtonText}>View booking</ThemedText>
-        </Pressable>
-      }>
+      title="Match found"
+      footer={<Button label="View booking" fullWidth onPress={() => router.replace('/my-bookings')} />}>
       <View style={styles.center}>
-        {state.status === 'loading' ? <ActivityIndicator color="#fff" /> : null}
-        {state.status === 'error' ? <ThemedText style={styles.errorText}>{state.message}</ThemedText> : null}
+        {state.status === 'loading' ? (
+          <View testID="fixture-confirmed-skeleton" style={styles.skeleton}>
+            <SkeletonBlock width={space.xxl * 2} height={space.xxl * 2} rounded="pill" />
+            <SkeletonText lines={3} />
+          </View>
+        ) : null}
+        {state.status === 'error' ? <Banner tone="danger" message={state.message} /> : null}
         {state.status === 'ready' ? (
           <FixtureConfirmedCard
             teamAName={state.teamAName}
@@ -179,21 +176,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: space.xl,
   },
-  errorText: {
-    color: FuttyColors.white,
-  },
-  viewBookingButton: {
-    height: 50,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.amber400,
-  },
-  viewBookingButtonText: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 16,
-    color: FuttyColors.stone900,
-  },
+  skeleton: { alignSelf: 'stretch', alignItems: 'center', gap: space.lg },
 });

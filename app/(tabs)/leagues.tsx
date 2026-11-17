@@ -1,17 +1,23 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
 import { Chip } from '@/components/chip';
 import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { ListRow } from '@/components/ui/list-row';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { colors, hairline, space, type } from '@/constants/futty-theme';
 import { CAPACITY_OPTIONS } from '@/lib/booking';
 import { canLogFixtureScore, formatFixtureWhen } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
@@ -38,61 +44,91 @@ import { useProfile } from '@/lib/use-profile';
 const FORMATS = CAPACITY_OPTIONS.map((option) => option.format);
 const CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'];
 
-function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[]; highlightTeamIds: Set<string> }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const tint = useThemeColor({}, 'tint');
+const STAT_COLUMNS = ['P', 'W', 'D', 'L', 'F', 'A', 'GD', 'Pts'] as const;
 
+function ErrorText({ children }: { children: string }) {
+  return (
+    <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+      {children}
+    </Text>
+  );
+}
+
+function Note({ children }: { children: string }) {
+  return (
+    <Text variant="callout" tone="inkMuted">
+      {children}
+    </Text>
+  );
+}
+
+/** A league table. Rows whose team is in `highlightTeamIds` sit on brandSoft. */
+export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[]; highlightTeamIds: Set<string> }) {
   if (rows.length === 0) {
-    return <ThemedText style={styles.note}>No teams registered yet.</ThemedText>;
+    return <Note>No teams registered yet.</Note>;
   }
 
   return (
-    <View style={[styles.table, { borderColor: border }]}>
+    <Card padded={false} testID="standings-table">
       <View style={styles.tableRow}>
-        <ThemedText style={[styles.tableTeam, styles.tableHeaderLabel]}>Team</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>P</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>W</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>D</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>L</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>F</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>A</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>GD</ThemedText>
-        <ThemedText style={styles.tableStatHeader}>PTS</ThemedText>
+        <Text variant="caption" tone="inkMuted" style={styles.tableTeam}>
+          Team
+        </Text>
+        {STAT_COLUMNS.map((label) => (
+          <Text key={label} variant="caption" tone="inkMuted" style={styles.tableStat}>
+            {label}
+          </Text>
+        ))}
       </View>
       {rows.map((row) => {
         const pts = row.won * 3 + row.drawn + row.pts_adjustment;
         const gd = row.goals_for - row.goals_against;
         const isMine = highlightTeamIds.has(row.team_id);
+        const values = [
+          row.played,
+          row.won,
+          row.drawn,
+          row.lost,
+          row.goals_for,
+          row.goals_against,
+          gd >= 0 ? `+${gd}` : gd,
+        ];
         return (
-          <View key={row.id} style={[styles.tableRow, { borderTopColor: border, borderTopWidth: 1 }]}>
-            <ThemedText style={[styles.tableTeam, isMine && { color: tint, fontWeight: '700' }]}>
+          <View
+            key={row.id}
+            testID={isMine ? 'standings-row-mine' : 'standings-row'}
+            style={[styles.tableRow, styles.tableRowDivider, isMine && styles.tableRowMine]}>
+            <Text variant="callout" numberOfLines={1} style={styles.tableTeam}>
               {row.team_name}
-            </ThemedText>
-            <ThemedText style={styles.tableStat}>{row.played}</ThemedText>
-            <ThemedText style={styles.tableStat}>{row.won}</ThemedText>
-            <ThemedText style={styles.tableStat}>{row.drawn}</ThemedText>
-            <ThemedText style={styles.tableStat}>{row.lost}</ThemedText>
-            <ThemedText style={styles.tableStat}>{row.goals_for}</ThemedText>
-            <ThemedText style={styles.tableStat}>{row.goals_against}</ThemedText>
-            <ThemedText style={styles.tableStat}>{gd >= 0 ? `+${gd}` : gd}</ThemedText>
-            <ThemedText style={[styles.tableStat, styles.tablePts]}>{pts}</ThemedText>
+            </Text>
+            {values.map((value, i) => (
+              <Text key={STAT_COLUMNS[i]} variant="callout" tabular style={styles.tableStat}>
+                {String(value)}
+              </Text>
+            ))}
+            <Text variant="callout" tabular style={[styles.tableStat, styles.tablePts]}>
+              {String(pts)}
+            </Text>
           </View>
         );
       })}
-    </View>
+    </Card>
   );
 }
 
 function DivisionCard({ division, highlightTeamIds }: { division: League; highlightTeamIds: Set<string> }) {
   const standings = useLeagueStandings(division.id);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   return (
-    <View style={[styles.divisionCard, { borderColor: border }]}>
-      <ThemedText type="defaultSemiBold">{division.name}</ThemedText>
-      {standings.status === 'loading' ? <ActivityIndicator /> : null}
+    <View style={styles.section}>
+      <Text variant="headline">{division.name}</Text>
+      {standings.status === 'loading' ? <SkeletonText lines={3} /> : null}
       {standings.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load: {standings.message}</ThemedText>
+        <Banner
+          tone="danger"
+          message={`Could not load: ${standings.message}`}
+          action={{ label: 'Try again', onPress: standings.reload }}
+        />
       ) : null}
       {standings.status === 'ready' ? (
         <StandingsTable rows={standings.rows} highlightTeamIds={highlightTeamIds} />
@@ -156,9 +192,15 @@ function JoinLeagueControl({
     loadJustCreatedRoster(justCreated.id);
   }, [justCreated?.id, loadJustCreatedRoster]);
 
-  if (myTeams.status === 'loading') return <ActivityIndicator />;
+  if (myTeams.status === 'loading') return <SkeletonText lines={2} />;
   if (myTeams.status === 'error') {
-    return <ThemedText style={styles.note}>Could not load your teams: {myTeams.message}</ThemedText>;
+    return (
+      <Banner
+        tone="danger"
+        message={`Could not load your teams: ${myTeams.message}`}
+        action={{ label: 'Try again', onPress: myTeams.reload }}
+      />
+    );
   }
 
   const inviterUsername = myProfile.status === 'ready' ? myProfile.profile.username : null;
@@ -178,15 +220,13 @@ function JoinLeagueControl({
   );
 
   if (alreadyHaveTeamHere && !justCreated) {
-    return (
-      <ThemedText style={styles.note}>You&apos;re already in this league.</ThemedText>
-    );
+    return <Note>You’re already in this league.</Note>;
   }
 
   // 9-a-side and 11-a-side need Team Premium, which is off for the release
   // (lib/premium.ts): registration opens with it.
   if (!leagueFormatOpen(format)) {
-    return <ThemedText style={styles.note}>{format} leagues are coming soon.</ThemedText>;
+    return <Note>{`${format} leagues are coming soon.`}</Note>;
   }
 
   if (justCreated) {
@@ -225,8 +265,8 @@ function JoinLeagueControl({
     }
 
     return (
-      <View style={styles.section}>
-        <ThemedText style={styles.note}>
+      <Card style={styles.section}>
+        <Note>
           {!justCreatedRoster
             ? 'Loading roster…'
             : !rosterReady
@@ -234,16 +274,10 @@ function JoinLeagueControl({
               : needsPremium
                 ? `Squad ready — but ${format} needs Team Premium (€${PREMIUM_FORMAT_PRICES[format]}/season) first.`
                 : 'Squad ready — register below.'}
-        </ThemedText>
+        </Note>
 
         {needsPremium ? (
-          <AuthButton
-            label="Buy Team Premium"
-            variant="secondary"
-            onPress={() => router.push('/team')}
-            disabled={busy}
-            compact
-          />
+          <Button label="Buy Team Premium" variant="secondary" onPress={() => router.push('/team')} disabled={busy} />
         ) : null}
 
         {justCreatedRoster ? (
@@ -266,20 +300,16 @@ function JoinLeagueControl({
             />
           </>
         ) : (
-          <ActivityIndicator />
+          <SkeletonText lines={2} />
         )}
 
-        {error ? <AuthError>{error}</AuthError> : null}
+        {error ? <ErrorText>{error}</ErrorText> : null}
 
-        <AuthButton
-          label={joinLabel}
-          onPress={finishRegistration}
-          disabled={!canRegister}
-          busy={busy}
-        />
-        <AuthButton
+        <Button label={joinLabel} fullWidth onPress={finishRegistration} disabled={!canRegister} loading={busy} />
+        <Button
           label="Finish squad later (won't register yet)"
           variant="secondary"
+          fullWidth
           onPress={() => {
             setJustCreated(null);
             setCreating(false);
@@ -287,7 +317,7 @@ function JoinLeagueControl({
           }}
           disabled={busy}
         />
-      </View>
+      </Card>
     );
   }
 
@@ -311,9 +341,9 @@ function JoinLeagueControl({
   if (!creating) {
     return (
       <View style={styles.section}>
-        <AuthButton label="Register a new team" onPress={() => setCreating(true)} disabled={busy} compact />
+        <Button label="Register a new team" onPress={() => setCreating(true)} disabled={busy} />
 
-        {error ? <AuthError>{error}</AuthError> : null}
+        {error ? <ErrorText>{error}</ErrorText> : null}
 
         {/* Every row here is one of the CURRENT user's own teams not yet in
          *  this league — i.e. an incomplete registration by definition, so
@@ -322,32 +352,35 @@ function JoinLeagueControl({
          *  or already full and ready to hit Register). No separate "Join" —
          *  it duplicated this with a button that just bounced back with
          *  roster_incomplete for anything not already full. */}
-        {eligibleTeams.map(({ team }) => {
-          const needsPremium = premiumGated && !hasTeamPremium(team, format);
-          return (
-            <View key={team.id} style={styles.joinRow}>
-              <View style={styles.joinRowLabel}>
-                {needsPremium ? (
-                  <IconSymbol name="lock.fill" size={12} color={FuttyColors.stone500} />
-                ) : null}
-                <ThemedText style={styles.note}>{team.name}</ThemedText>
-              </View>
-              <AuthButton
-                label={needsPremium ? 'Buy Team Premium' : 'Finish register'}
-                variant="secondary"
-                onPress={() => (needsPremium ? router.push('/team') : setJustCreated(team))}
-                disabled={busy}
-              />
-            </View>
-          );
-        })}
+        {eligibleTeams.length > 0 ? (
+          <Card padded={false}>
+            {eligibleTeams.map(({ team }) => {
+              const needsPremium = premiumGated && !hasTeamPremium(team, format);
+              return (
+                <ListRow
+                  key={team.id}
+                  title={team.name}
+                  leading={needsPremium ? { icon: 'lock.fill' } : undefined}
+                  trailing={
+                    <Button
+                      label={needsPremium ? 'Buy Team Premium' : 'Finish register'}
+                      variant="secondary"
+                      onPress={() => (needsPremium ? router.push('/team') : setJustCreated(team))}
+                      disabled={busy}
+                    />
+                  }
+                />
+              );
+            })}
+          </Card>
+        ) : null}
       </View>
     );
   }
 
   return (
-    <View style={styles.section}>
-      <ThemedText style={styles.note}>Squad size (including you)</ThemedText>
+    <Card style={styles.section}>
+      <Note>Squad size (including you)</Note>
       <View style={styles.wrapRow}>
         {ROSTER_SIZE_PRESETS.map((size) => (
           <Chip
@@ -359,7 +392,7 @@ function JoinLeagueControl({
         ))}
       </View>
 
-      <ThemedText style={styles.note}>Substitutes (optional)</ThemedText>
+      <Note>Substitutes (optional)</Note>
       <View style={styles.wrapRow}>
         {[0, 1, 2, 3, 4].map((count) => (
           <Chip
@@ -371,9 +404,9 @@ function JoinLeagueControl({
         ))}
       </View>
 
-      <AuthField value={name} onChangeText={setName} placeholder="Team name" editable={!busy} />
+      <TextField label="Team name" value={name} onChangeText={setName} placeholder="Team name" editable={!busy} />
 
-      <ThemedText style={styles.note}>City</ThemedText>
+      <Note>City</Note>
       <View style={styles.wrapRow}>
         {CITIES.map((c) => (
           <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
@@ -381,26 +414,22 @@ function JoinLeagueControl({
       </View>
 
       {premiumGated ? (
-        <View style={styles.premiumNoteRow}>
-          <IconSymbol name="lock.fill" size={12} color={FuttyColors.stone500} />
-          <ThemedText style={styles.note}>
+        <View style={styles.iconRow}>
+          <IconSymbol name="lock.fill" size={ICON.small} color={colors.inkMuted} />
+          <Text variant="callout" tone="inkMuted" style={styles.flex}>
             {format} needs Team Premium (€{price}/season) to register — buy it from the Team tab once this
             squad is created
-          </ThemedText>
+          </Text>
         </View>
       ) : null}
 
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
-      <AuthButton label="Create team" onPress={createTeamOnly} disabled={!name.trim()} busy={busy} compact />
-      <AuthButton
-        label="Cancel"
-        variant="secondary"
-        onPress={() => setCreating(false)}
-        disabled={busy}
-        compact
-      />
-    </View>
+      <View style={styles.buttonRow}>
+        <Button label="Create team" onPress={createTeamOnly} disabled={!name.trim()} loading={busy} />
+        <Button label="Cancel" variant="secondary" onPress={() => setCreating(false)} disabled={busy} />
+      </View>
+    </Card>
   );
 }
 
@@ -422,9 +451,15 @@ function FixturesSection() {
     }, [])
   );
 
-  if (fixtures.status === 'loading') return <ActivityIndicator />;
+  if (fixtures.status === 'loading') return <SkeletonText lines={2} />;
   if (fixtures.status === 'error') {
-    return <ThemedText style={styles.note}>Could not load fixtures: {fixtures.message}</ThemedText>;
+    return (
+      <Banner
+        tone="danger"
+        message={`Could not load fixtures: ${fixtures.message}`}
+        action={{ label: 'Try again', onPress: fixtures.reload }}
+      />
+    );
   }
 
   // Completed fixtures aren't "upcoming" — excluded so a past result can't
@@ -432,11 +467,7 @@ function FixturesSection() {
   const upcoming = fixtures.fixtures.filter((f) => f.status !== 'completed');
 
   if (upcoming.length === 0) {
-    return (
-      <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-        No upcoming fixtures yet.
-      </IconLabel>
-    );
+    return <EmptyState icon="calendar" message="No upcoming fixtures yet." />;
   }
 
   const next = upcoming[0];
@@ -450,20 +481,19 @@ function FixturesSection() {
 
   return (
     <View style={styles.section}>
-      <View style={styles.fixtureRow}>
-        <ThemedText type="defaultSemiBold">
+      <Card style={styles.section}>
+        <Text variant="headline">
           {next.home_team?.name ?? 'Unknown team'} vs {next.away_team?.name ?? 'Unknown team'}
-        </ThemedText>
-        <ThemedText style={styles.note}>{statusLabel}</ThemedText>
-      </View>
+        </Text>
+        <Text variant="callout" tone="inkMuted" tabular>
+          {statusLabel}
+        </Text>
+        {canLogFixtureScore(next, myCaptainTeamIds) ? (
+          <FixtureScoreEntry fixture={next} onSubmitted={fixtures.reload} />
+        ) : null}
+      </Card>
 
-      {canLogFixtureScore(next, myCaptainTeamIds) ? (
-        <FixtureScoreEntry fixture={next} onSubmitted={fixtures.reload} />
-      ) : null}
-
-      <Pressable accessibilityRole="button" onPress={() => router.push('/upcoming-fixtures')}>
-        <ThemedText type="link">Upcoming fixtures</ThemedText>
-      </Pressable>
+      <Button label="Upcoming fixtures" variant="plain" onPress={() => router.push('/upcoming-fixtures')} />
     </View>
   );
 }
@@ -473,21 +503,21 @@ function StandardLeagueSection({ format, leagues }: { format: string; leagues: L
   const standings = useLeagueStandings(league?.id ?? '');
 
   if (!league) {
-    return (
-      <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-        No {format} league found yet.
-      </IconLabel>
-    );
+    return <EmptyState icon="trophy.fill" message={`No ${format} league found yet.`} />;
   }
 
   const registeredTeamIds = new Set(standings.status === 'ready' ? standings.rows.map((r) => r.team_id) : []);
 
   return (
     <View style={styles.section}>
-      <ThemedText type="defaultSemiBold">{league.name}</ThemedText>
-      {standings.status === 'loading' ? <ActivityIndicator /> : null}
+      <Text variant="headline">{league.name}</Text>
+      {standings.status === 'loading' ? <SkeletonText lines={3} /> : null}
       {standings.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load: {standings.message}</ThemedText>
+        <Banner
+          tone="danger"
+          message={`Could not load: ${standings.message}`}
+          action={{ label: 'Try again', onPress: standings.reload }}
+        />
       ) : null}
       {standings.status === 'ready' ? (
         <StandingsTable rows={standings.rows} highlightTeamIds={registeredTeamIds} />
@@ -501,7 +531,9 @@ function StandardLeagueSection({ format, leagues }: { format: string; leagues: L
         onJoined={standings.reload}
       />
 
-      <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
+      <View style={styles.wrapRow}>
+        <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
+      </View>
     </View>
   );
 }
@@ -543,11 +575,7 @@ function OpenLeagueSection({
   }, [hub, divisions.map((d) => d.id).join(',')]);
 
   if (!hub) {
-    return (
-      <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-        No {city} league found yet.
-      </IconLabel>
-    );
+    return <EmptyState icon="trophy.fill" message={`No ${city} league found yet.`} />;
   }
 
   async function runAction(action: () => Promise<{ error: PostgrestError | null }>) {
@@ -565,11 +593,11 @@ function OpenLeagueSection({
 
   return (
     <View style={styles.section}>
-      <ThemedText type="defaultSemiBold">{hub.name}</ThemedText>
-      <ThemedText style={styles.note}>
+      <Text variant="headline">{hub.name}</Text>
+      <Text variant="callout" tone="inkMuted" tabular>
         {hub.stage === 'signup' ? 'Open for signups' : hub.stage === 'season' ? 'Season in progress' : 'In divisions'}
         {hub.capacity ? ` · ${hub.capacity} spots` : ''}
-      </ThemedText>
+      </Text>
 
       {hub.stage !== 'divisions' && standings.status === 'ready' ? (
         <StandingsTable rows={standings.rows} highlightTeamIds={treeTeamIds} />
@@ -580,14 +608,14 @@ function OpenLeagueSection({
           {divisions.map((division) => (
             <DivisionCard key={division.id} division={division} highlightTeamIds={treeTeamIds} />
           ))}
-          <ThemedText type="defaultSemiBold">Waiting pool</ThemedText>
+          <Text variant="headline">Waiting pool</Text>
           {standings.status === 'ready' ? (
             <StandingsTable rows={standings.rows} highlightTeamIds={treeTeamIds} />
           ) : null}
         </>
       ) : null}
 
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
       {hub.stage !== 'season' ? (
         <JoinLeagueControl
@@ -608,27 +636,30 @@ function OpenLeagueSection({
        *  there's no legitimate reason to skip that early, so this manual
        *  trigger must never reach production. */}
       {__DEV__ && hub.stage === 'signup' ? (
-        <AuthButton
+        <Button
           label="Start season (dev only)"
           variant="secondary"
           onPress={() => runAction(() => startLeagueSeason(hub.id))}
-          busy={busy}
-          compact
+          loading={busy}
         />
       ) : null}
 
       {hub.stage === 'season' ? (
-        <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
+        <View style={styles.wrapRow}>
+          <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
+        </View>
       ) : null}
 
       {hub.stage === 'divisions' ? (
-        <Chip
-          label="New divisions & promotion/relegation — coming soon"
-          selected={false}
-          disabled
-          locked
-          onPress={() => {}}
-        />
+        <View style={styles.wrapRow}>
+          <Chip
+            label="New divisions & promotion/relegation — coming soon"
+            selected={false}
+            disabled
+            locked
+            onPress={() => {}}
+          />
+        </View>
       ) : null}
     </View>
   );
@@ -645,51 +676,65 @@ export function LeaguesContent() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
-      <View style={styles.titleRow}>
-        <Pressable
-          accessibilityRole="button"
+      <Card padded={false}>
+        <ListRow
+          title="Matchmaking"
+          leading={{ icon: 'calendar' }}
+          chevron
           onPress={() => router.push('/matchmaking')}
-          style={styles.matchmakingLink}>
-          <IconSymbol name="calendar" size={14} color={FuttyColors.emerald950} />
-          <ThemedText style={styles.matchmakingLinkText}>Matchmaking</ThemedText>
-          <IconSymbol name="chevron.right" size={16} color={FuttyColors.emerald950} />
-        </Pressable>
+        />
+      </Card>
+
+      <View style={styles.section}>
+        <SectionHeader title="Format" />
+        <View style={styles.wrapRow}>
+          {FORMATS.map((f) => (
+            <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
+          ))}
+        </View>
       </View>
 
-      <IconLabel icon="sportscourt.fill" type="subtitle">Format</IconLabel>
-      <View style={styles.wrapRow}>
-        {FORMATS.map((f) => (
-          <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
-        ))}
-      </View>
-
-      {leaguesState.status === 'loading' ? <ActivityIndicator /> : null}
+      {leaguesState.status === 'loading' ? (
+        <Card testID="leagues-skeleton">
+          <SkeletonText lines={4} />
+        </Card>
+      ) : null}
       {leaguesState.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load leagues: {leaguesState.message}</ThemedText>
+        <Banner
+          tone="danger"
+          message={`Could not load leagues: ${leaguesState.message}`}
+          action={{ label: 'Try again', onPress: leaguesState.reload }}
+        />
       ) : null}
 
       {leaguesState.status === 'ready' ? (
         <>
-          <IconLabel icon="globe" type="subtitle">Island-wide league</IconLabel>
-          <StandardLeagueSection format={format} leagues={leagues} />
-
-          <IconLabel icon="building.2.fill" type="subtitle">Open League city</IconLabel>
-          <View style={styles.wrapRow}>
-            {CITIES.map((c) => (
-              <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
-            ))}
+          <View style={styles.section}>
+            <SectionHeader title="Island-wide league" />
+            <StandardLeagueSection format={format} leagues={leagues} />
           </View>
-          <OpenLeagueSection
-            format={format}
-            city={city}
-            leagues={leagues}
-            reloadLeagues={leaguesState.reload}
-          />
+
+          <View style={styles.section}>
+            <SectionHeader title="Open League city" />
+            <View style={styles.wrapRow}>
+              {CITIES.map((c) => (
+                <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
+              ))}
+            </View>
+            <OpenLeagueSection
+              format={format}
+              city={city}
+              leagues={leagues}
+              reloadLeagues={leaguesState.reload}
+            />
+          </View>
         </>
       ) : null}
 
-      <IconLabel icon="list.clipboard.fill" type="subtitle">Your fixtures</IconLabel>
-      <FixturesSection />
+      <View style={styles.section}>
+        <SectionHeader title="Your fixtures" />
+        <FixturesSection />
+      </View>
     </ScrollView>
   );
 }
@@ -700,110 +745,22 @@ export default function LeaguesRoute() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  fixtureRow: {
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-  },
-  matchmakingLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  matchmakingLinkText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: FuttyColors.stone900,
-  },
-  section: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  joinRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  joinRowLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  joinRowActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  premiumNoteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  divisionCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  table: {
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
+  flex: { flex: 1 },
+  content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  section: { gap: space.sm },
+  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  iconRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   tableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 3,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    gap: space.xs,
   },
-  tableTeam: {
-    flex: 1,
-    fontSize: 12,
-  },
-  tableHeaderLabel: {
-    fontSize: 10,
-    opacity: 0.6,
-    textTransform: 'uppercase',
-  },
-  tableStat: {
-    width: 22,
-    textAlign: 'center',
-    fontSize: 11,
-  },
-  tablePts: {
-    fontWeight: '700',
-  },
-  tableStatHeader: {
-    width: 22,
-    textAlign: 'center',
-    fontSize: 9,
-    opacity: 0.6,
-    textTransform: 'uppercase',
-  },
+  tableRowDivider: { borderTopWidth: hairline, borderTopColor: colors.border },
+  tableRowMine: { backgroundColor: colors.brandSoft },
+  tableTeam: { flex: 1 },
+  tableStat: { width: space.xl, textAlign: 'right' },
+  tablePts: { fontFamily: type.title.fontFamily },
 });
