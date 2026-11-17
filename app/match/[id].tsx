@@ -7,6 +7,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MatchResultPanel } from '@/components/match/result-panel';
+import { PostMatchOffers } from '@/components/offers/post-match-offers';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -63,6 +64,7 @@ export default function MatchScreen() {
             onChanged={reload}
           />
         </Card>
+        {match.submission || match.match.status === 'confirmed' ? <PostMatchOffers matchId={match.match.id} /> : null}
       </View>
     );
   }

@@ -328,6 +328,7 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
                 onScored();
               }}
               onOpen={() => openMatch(match.match.id)}
+              onScored={() => openMatch(match.match.id)}
             />
           ))}
           {readyToScore.map((match) => (
