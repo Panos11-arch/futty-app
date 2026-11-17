@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 
 import HomeScreen from '@/app/(tabs)/index';
 import { mockResultMatch } from '@/lib/match/mock';
+import { type Owed, type OwedDebt, type OwedPayment, paymentSentence } from '@/lib/use-owed';
 
 type HookState = { status: string; [key: string]: unknown };
 const mockReloads = {
@@ -26,6 +27,12 @@ let mockUnscored: { id: string; venue_id: string; booking_day: string; start_tim
 let mockFriendlies: Record<string, unknown>[] = [];
 let mockLinks: { bookings: Map<string, string>; friendlies: Map<string, string> } = { bookings: new Map(), friendlies: new Map() };
 let mockOpenMatches: unknown[] = [];
+const nothingOwed: Owed = { blocked: false, debt_cents: 0, debts: [], payments: [] };
+let mockOwedState: { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Owed } = {
+  status: 'ready',
+  data: nothingOwed,
+};
+const mockReloadOwed = jest.fn();
 
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
@@ -71,6 +78,11 @@ jest.mock('@/lib/match/use-match-result', () => ({
   }),
 }));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
+// Only the hook is faked: the banner's words come from the real helpers.
+jest.mock('@/lib/use-owed', () => ({
+  ...jest.requireActual('@/lib/use-owed'),
+  useOwed: () => ({ state: mockOwedState, reload: mockReloadOwed }),
+}));
 
 const booking = {
   id: 'b1',
@@ -173,24 +185,6 @@ describe('Home', () => {
     expect(mockReloads.bookings).toHaveBeenCalled();
   });
 
-  it('shows nothing in the owed slot by default', async () => {
-    await render(<HomeScreen />);
-    expect(screen.queryByTestId('owed-banner')).toBeNull();
-  });
-
-  it('shows the owed banner at the top when one is passed in', async () => {
-    const onPay = jest.fn();
-    await render(
-      <HomeScreen
-        owedBanner={{ tone: 'danger', title: 'You owe €6.80', message: 'For Nuevo Campo.', action: { label: 'Pay what I owe', onPress: onPay } }}
-      />,
-    );
-    expect(screen.getByTestId('owed-banner')).toBeTruthy();
-    expect(screen.getByText('You owe €6.80')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
-    expect(onPay).toHaveBeenCalled();
-  });
-
   it('has the two quick actions', async () => {
     mockBookings = { status: 'ready', bookings: [booking] };
     await render(<HomeScreen />);
@@ -221,6 +215,123 @@ describe('Home', () => {
     mockPosts = { status: 'error', message: 'offline' };
     await render(<HomeScreen />);
     expect(screen.getByText('Could not load games looking for players.')).toBeTruthy();
+  });
+});
+
+describe('Home owed banner (contract 6)', () => {
+  const debt = (over: Partial<OwedDebt> = {}): OwedDebt => ({
+    debt_id: 'd1',
+    owed_to: 'venue',
+    venue_id: 'v1',
+    venue_name: 'Nuevo Campo',
+    booking_id: 'b1',
+    amount_cents: 600,
+    reason: 'cash_unpaid',
+    created_at: '2026-11-14T20:00:00.000Z',
+    ...over,
+  });
+  const payment = (over: Partial<OwedPayment> = {}): OwedPayment => ({
+    kind: 'card_failed',
+    booking_id: 'b1',
+    share_id: null,
+    venue_name: 'English School',
+    booking_day: '2026-11-20',
+    start_time: '19:00:00',
+    amount_cents: 6000,
+    ...over,
+  });
+  const owes = (data: Partial<Owed>) => {
+    mockOwedState = { status: 'ready', data: { ...nothingOwed, ...data } };
+  };
+
+  beforeEach(() => {
+    mockBookings = { status: 'ready', bookings: [] };
+    // No venue rows, so a venue name on screen can only be the banner's.
+    mockVenues = { status: 'ready', venues: [] };
+    mockPosts = { status: 'ready', posts: [] };
+    mockOwedState = { status: 'ready', data: nothingOwed };
+    jest.mocked(router.push).mockClear();
+  });
+
+  afterAll(() => {
+    mockOwedState = { status: 'ready', data: nothingOwed };
+  });
+
+  it('one debt: the server amount, to the cent, and its venue', async () => {
+    owes({ blocked: true, debt_cents: 600, debts: [debt()] });
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('owed-banner')).toBeTruthy();
+    expect(screen.getByText('You owe €6.00. Pay it before booking.')).toBeTruthy();
+    expect(screen.getByText('Nuevo Campo')).toBeTruthy();
+  });
+
+  it("several debts: the server's total, never a sum the app makes", async () => {
+    // The items deliberately don't add up to debt_cents: Home must show the
+    // server's total as it is.
+    owes({
+      blocked: true,
+      debt_cents: 1360,
+      debts: [debt({ amount_cents: 500 }), debt({ debt_id: 'd2', owed_to: 'futty', venue_id: null, venue_name: null, amount_cents: 700 })],
+    });
+    await render(<HomeScreen />);
+    expect(screen.getByText('You owe €13.60. Pay it before booking.')).toBeTruthy();
+    expect(screen.queryByText('€12.00', { exact: false })).toBeNull();
+    // Owed to two places: no single venue to name.
+    expect(screen.queryByText('Futty')).toBeNull();
+  });
+
+  it('several debts to the same venue name it once', async () => {
+    owes({ blocked: true, debt_cents: 1360, debts: [debt({ amount_cents: 680 }), debt({ debt_id: 'd2', amount_cents: 680 })] });
+    await render(<HomeScreen />);
+    expect(screen.getByText('You owe €13.60. Pay it before booking.')).toBeTruthy();
+    expect(screen.getAllByText('Nuevo Campo')).toHaveLength(1);
+  });
+
+  it('a failed guarantee hold: its sentence and venue, not the hold as money owed', async () => {
+    owes({ payments: [payment()] });
+    await render(<HomeScreen />);
+    expect(screen.getByText(paymentSentence('card_failed'))).toBeTruthy();
+    expect(screen.getByText('English School')).toBeTruthy();
+    expect(screen.queryByText('€60.00', { exact: false })).toBeNull();
+  });
+
+  it('an unpaid spot shows its sentence', async () => {
+    owes({ payments: [payment({ kind: 'payment_due', amount_cents: 680 })] });
+    await render(<HomeScreen />);
+    expect(screen.getByText(paymentSentence('payment_due'))).toBeTruthy();
+  });
+
+  it('unticked cash after the match shows its sentence', async () => {
+    owes({ payments: [payment({ kind: 'cash_unpaid', share_id: 's1', amount_cents: 600 })] });
+    await render(<HomeScreen />);
+    expect(screen.getByText(paymentSentence('cash_unpaid'))).toBeTruthy();
+  });
+
+  it('nothing owed: no banner', async () => {
+    await render(<HomeScreen />);
+    expect(screen.queryByTestId('owed-banner')).toBeNull();
+  });
+
+  it('loading: no banner and no skeleton for it', async () => {
+    mockOwedState = { status: 'loading' };
+    await render(<HomeScreen />);
+    expect(screen.queryByTestId('owed-banner')).toBeNull();
+    expect(screen.queryByTestId('owed-banner-skeleton')).toBeNull();
+  });
+
+  it("error: no banner, and the rest of Home still shows", async () => {
+    mockOwedState = { status: 'error', message: 'offline' };
+    await render(<HomeScreen />);
+    expect(screen.queryByTestId('owed-banner')).toBeNull();
+    expect(screen.getByRole('header', { name: 'Home' })).toBeTruthy();
+    expect(screen.getByText('No games booked')).toBeTruthy();
+  });
+
+  it('Pay what I owe opens the pay screen', async () => {
+    owes({ blocked: true, debt_cents: 600, debts: [debt()] });
+    await render(<HomeScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
+    expect(router.push).toHaveBeenCalledWith('/account/payments/owed');
   });
 });
 
