@@ -25,6 +25,7 @@ jest.mock('expo-router', () => ({
 jest.mock('@/lib/match/use-match-result', () => ({
   useResultMatch: () => ({ status: 'ready', match: mockMatch, viewerId: 'viewer', reload: jest.fn() }),
 }));
+jest.mock('@/components/booking/check-in-panel', () => ({ CheckInSection: () => null }));
 // The A4b match page sections have their own tests (tests/match/match-page-screen.test.tsx).
 jest.mock('@/lib/match/use-match-page', () => ({
   useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),

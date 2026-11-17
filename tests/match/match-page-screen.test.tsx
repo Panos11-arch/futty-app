@@ -32,6 +32,10 @@ jest.mock('@/lib/match/use-match-page', () => ({
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
 jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
 jest.mock('@/lib/match/page-api', () => ({ setMatchGoals: jest.fn(), castMotmVote: jest.fn(), setMatchLineup: jest.fn() }));
+jest.mock('@/components/booking/check-in-panel', () => {
+  const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { CheckInSection: ({ matchId }: { matchId: string }) => <Text>{`check-in for ${matchId}`}</Text> };
+});
 jest.mock('@/components/offers/post-match-offers', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { PostMatchOffers: ({ matchId }: { matchId: string }) => <Text>{`offers for ${matchId}`}</Text> };
@@ -72,6 +76,7 @@ describe('Match page: strangers', () => {
     expect(screen.getByTestId('section-lineups')).toBeTruthy();
     expect(screen.queryByTestId('match-result-panel')).toBeNull();
     expect(screen.queryByText(/^offers for/)).toBeNull();
+    expect(screen.queryByText(/^check-in for/)).toBeNull();
     expect(screen.queryByText(/Add .* scorers/)).toBeNull();
     expect(screen.queryByTestId('cast-vote')).toBeNull();
   });
@@ -92,6 +97,7 @@ describe('Match page: members', () => {
     mockResult = { status: 'ready', match: confirmedResult() };
     mockPage = { status: 'ready', page: mockMatchPage() };
     await render(<MatchScreen />);
+    expect(screen.getByText('check-in for m1')).toBeTruthy();
     expect(screen.getByTestId('match-result-panel')).toBeTruthy();
     expect(screen.getByText('offers for m1')).toBeTruthy();
     expect(screen.getByTestId('section-scorers')).toBeTruthy();

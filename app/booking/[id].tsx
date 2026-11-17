@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, Share } from 'react-native';
 
 import { BookingDetailView } from '@/components/booking/booking-detail-view';
+import { CheckInSection } from '@/components/booking/check-in-panel';
 import { SquadNeed } from '@/components/booking/squad-need';
 import { Sheet } from '@/components/ui';
 import { WeatherStrip } from '@/components/venue/weather-strip';
@@ -176,6 +177,7 @@ export default function BookingDetailScreen() {
         onAnswerVenuePlayer={(offerId, accept) => venuePlayerAction(() => answerVenuePlayer(offerId, accept))}
         onRemoveVenuePlayer={(offerId) => venuePlayerAction(() => removeVenuePlayer(offerId))}
         weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
+        checkIn={id ? <CheckInSection bookingId={id} /> : null}
         squadNeed={
           // A Gipedo Pano booking's opposition post is made by the server.
           detail && !detail.gipedo ? (

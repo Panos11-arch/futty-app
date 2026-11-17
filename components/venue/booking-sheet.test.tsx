@@ -19,6 +19,13 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(() => Promise.resolve()), ImpactFeedbackStyle: { Light: 'light' } }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+jest.mock('react-native-qrcode-svg', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return function QRCodeMock() {
+    return React.createElement(View, { testID: 'check-in-qr' });
+  };
+});
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -27,7 +34,11 @@ function actions(overrides: Partial<BookingSheetActions> = {}): BookingSheetActi
   return {
     tickCash: jest.fn(async () => null),
     runCollection: jest.fn(async () => null),
-    checkInCode: jest.fn(async () => ({ code: '9f2c4e1a' })),
+    checkInCode: jest.fn(async () => ({
+      code: '9f2c4e1a',
+      kickoffAt: '2026-11-20T18:00:00+00:00',
+      endsAt: '2026-11-20T19:00:00+00:00',
+    })),
     markCounterPaid: jest.fn(async () => null),
     cancelCounter: jest.fn(async () => null),
     venueQuote: jest.fn(async () => ({ quote: venueQuote() })),
@@ -96,11 +107,20 @@ describe('BookingSheet: app booking roster', () => {
     expect(a.runCollection).toHaveBeenCalledWith('b-app');
   });
 
-  it('shows the check-in code', async () => {
+  it('shows the check-in QR, its code and its window', async () => {
     const a = await open(appRoster());
-    await act(() => fireEvent.press(screen.getByText('Show check-in code')));
+    await act(() => fireEvent.press(screen.getByText('Check-in QR')));
     expect(a.checkInCode).toHaveBeenCalledWith('m1');
-    expect(screen.getByTestId('check-in-code')).toHaveTextContent('9f2c4e1a');
+    expect(screen.getByTestId('check-in-qr')).toBeTruthy();
+    expect(screen.getByTestId('check-in-code')).toHaveTextContent('9f2c 4e1a');
+    expect(screen.getByText('Players can check in from 19:00 to 22:00.')).toBeTruthy();
+  });
+
+  it('words a check-in QR that cannot load', async () => {
+    await open(appRoster(), actions({ checkInCode: jest.fn(async () => ({ error: "You're not staff at this venue." })) }));
+    await act(() => fireEvent.press(screen.getByText('Check-in QR')));
+    expect(screen.queryByTestId('check-in-qr')).toBeNull();
+    expect(screen.getByText("You're not staff at this venue.")).toBeTruthy();
   });
 
   it('venue cancel shows the quote first and cancels on the second tap', async () => {

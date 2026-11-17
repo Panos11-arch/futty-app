@@ -51,6 +51,7 @@ import { WeatherNudgesList } from '@/components/venue/weather-nudges';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import { useAuth } from '@/lib/auth';
+import { loadCheckInQr } from '@/lib/check-in';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
 import { useWeatherNudges } from '@/lib/use-weather';
@@ -70,7 +71,6 @@ import {
   dayTitle,
   describeVenueError,
   describeVenuePlayerError,
-  fetchCheckInCode,
   fetchDayBoard,
   fetchRoster,
   fetchSlotPrice,
@@ -232,10 +232,7 @@ export default function VenueDashboardScreen() {
     runCollection: (bookingId) => bookingWrite(requestCollection(bookingId)),
     markCounterPaid: (bookingId, method) => bookingWrite(markCounterPaid(bookingId, method)),
     cancelCounter: (bookingId) => bookingWrite(cancelCounterBooking(bookingId)),
-    checkInCode: async (matchId) => {
-      const { data, error } = await fetchCheckInCode(matchId);
-      return error || typeof data !== 'string' ? { error: describeVenueError(error?.message ?? '') } : { code: data };
-    },
+    checkInCode: loadCheckInQr,
     venueQuote: async (bookingId) => {
       const { data, error } = await fetchVenueQuote(bookingId);
       return error || !data ? { error: describeVenueError(error?.message ?? '') } : { quote: data as CancellationQuote };

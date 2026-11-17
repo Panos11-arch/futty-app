@@ -26,6 +26,7 @@ jest.mock('@/lib/match/use-match-page', () => ({
   useFormationPresets: () => ({ status: 'loading', reload: jest.fn() }),
 }));
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
+jest.mock('@/components/booking/check-in-panel', () => ({ CheckInSection: () => null }));
 jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
 
 beforeEach(() => mockReload.mockReset());

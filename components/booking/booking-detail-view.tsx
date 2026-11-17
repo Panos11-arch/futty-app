@@ -78,6 +78,9 @@ export type BookingDetailViewProps = {
   /** The weather strip for the game's hours (P11). Shown while the game is
    *  still to come; nothing renders until one is passed in. */
   weather?: ReactNode;
+  /** P6 check-in QR: the game's check-in panel. Shown unless cancelled; it
+   *  hides itself outside the check-in window. */
+  checkIn?: ReactNode;
   /** P6e: the booker accepts or declines a venue's offered player, or
    *  removes an accepted one. Each resolves to an error message, or null. */
   onAnswerVenuePlayer?: (offerId: string, accept: boolean) => Promise<string | null>;
@@ -136,6 +139,7 @@ function BookingDetailReady({
   onGipedoChoose,
   onSwitch,
   weather,
+  checkIn,
   onAnswerVenuePlayer,
   onRemoveVenuePlayer,
   now: nowOverride,
@@ -267,6 +271,8 @@ function BookingDetailReady({
         {countdown ? <ListRow title={countdown} leading={{ icon: 'clock.fill' }} /> : null}
 
         {deadline ? <Banner tone="warning" message={deadline} /> : null}
+
+        {!cancelled && checkIn ? <View testID="booking-check-in">{checkIn}</View> : null}
 
         {live && weather ? <View testID="booking-weather">{weather}</View> : null}
 

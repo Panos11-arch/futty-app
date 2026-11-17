@@ -12,6 +12,7 @@ import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CheckInSection } from '@/components/booking/check-in-panel';
 import { MatchLineup } from '@/components/match/match-lineup';
 import { MatchMotm } from '@/components/match/match-motm';
 import { MatchScorers } from '@/components/match/match-scorers';
@@ -111,6 +112,8 @@ export default function MatchScreen() {
         <Text variant="callout" tone="inkMuted" tabular>
           {[formatMatchWhen(when), venueName].filter(Boolean).join(' · ')}
         </Text>
+        {/* P6 check-in QR: members only; it hides itself outside the window. */}
+        {match ? <CheckInSection matchId={match.match.id} /> : null}
         {match ? (
           <Card>
             <MatchResultPanel
