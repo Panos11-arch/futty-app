@@ -11,7 +11,7 @@ import { router, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import { isVenueNotificationType, markNotificationRead } from '@/lib/notifications';
+import { isVenueNotificationType, isVenuePlayerBookerType, markNotificationRead } from '@/lib/notifications';
 import { playHref } from '@/lib/play-segments';
 
 // A push that arrives while the app is open shows as a banner (and in the
@@ -46,6 +46,8 @@ export function routeForPushData(raw: unknown): Href {
   if (matchId) return { pathname: '/match/[id]', params: { id: matchId } };
 
   const bookingId = stringId(data, 'bookingId');
+  // P6e: the venue's offered player opens the booking, where the booker answers.
+  if (bookingId && isVenuePlayerBookerType(data.type)) return { pathname: '/booking/[id]', params: { id: bookingId } };
   // My Bookings doesn't pick out one booking from the param yet (Panos's screen).
   if (bookingId) return { pathname: '/my-bookings', params: { bookingId } };
 

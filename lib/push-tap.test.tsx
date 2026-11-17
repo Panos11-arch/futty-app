@@ -150,3 +150,21 @@ describe('PushTapHandler', () => {
     });
   });
 });
+
+// P6e: venue-offered players. The booker's open their booking; the staff's
+// open the venue dashboard, like every venue notice.
+describe('routeForPushData: venue players', () => {
+  it.each(['venue_player_offered', 'venue_player_withdrawn'])('%s opens the booking itself', (type) => {
+    expect(routeForPushData({ type, bookingId: 'b1', offerId: 'o1', venueId: 'v1' })).toEqual({
+      pathname: '/booking/[id]',
+      params: { id: 'b1' },
+    });
+  });
+
+  it.each(['venue_player_accepted', 'venue_player_declined', 'venue_player_removed'])(
+    '%s opens the venue dashboard',
+    (type) => {
+      expect(routeForPushData({ type, bookingId: 'b1', offerId: 'o1', venueId: 'v1' })).toBe('/venue-dashboard');
+    },
+  );
+});

@@ -25,11 +25,14 @@ import { SwitchFormat } from '@/components/booking/switch-format';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import {
+  acceptedVenuePlayers,
   countdownLabel,
   cutoffPassed,
   describeQuote,
+  openVenueOffers,
   paymentDeadlineLabel,
   rosterRow,
+  spotsTaken,
   VENUE_NOT_TAKING_PLAYERS,
   type BookingDetailData,
   type ConfirmResult,
@@ -75,6 +78,10 @@ export type BookingDetailViewProps = {
   /** The weather strip for the game's hours (P11). Shown while the game is
    *  still to come; nothing renders until one is passed in. */
   weather?: ReactNode;
+  /** P6e: the booker accepts or declines a venue's offered player, or
+   *  removes an accepted one. Each resolves to an error message, or null. */
+  onAnswerVenuePlayer?: (offerId: string, accept: boolean) => Promise<string | null>;
+  onRemoveVenuePlayer?: (offerId: string) => Promise<string | null>;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -129,6 +136,8 @@ function BookingDetailReady({
   onGipedoChoose,
   onSwitch,
   weather,
+  onAnswerVenuePlayer,
+  onRemoveVenuePlayer,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -212,6 +221,21 @@ function BookingDetailReady({
     }
   }
 
+  // ---- Venue players (P6e) ---------------------------------------------
+  const [venueBusy, setVenueBusy] = useState<string | null>(null);
+  const [venueError, setVenueError] = useState<{ id: string; message: string } | null>(null);
+  const offers = isBooker ? openVenueOffers(detail) : [];
+  const venuePlayers = acceptedVenuePlayers(detail);
+
+  async function venueAction(id: string, key: string, work: (() => Promise<string | null>) | undefined) {
+    if (!work || venueBusy) return;
+    setVenueBusy(key);
+    setVenueError(null);
+    const error = await work();
+    setVenueBusy(null);
+    if (error) setVenueError({ id, message: error });
+  }
+
   const sheetTitle = asking?.scope === 'whole_team' ? 'Cancel the whole team?' : 'Cancel my spot?';
   const confirmLabel = asking?.scope === 'whole_team' ? 'Confirm: cancel the whole team' : 'Confirm: cancel my spot';
   const keepLabel = asking?.scope === 'whole_team' ? 'Keep the booking' : 'Keep my spot';
@@ -259,10 +283,36 @@ function BookingDetailReady({
           <Button label={payLabel} onPress={onPayShare} fullWidth />
         ) : null}
 
+        {offers.map((offer) => (
+          <View key={offer.id} testID={`venue-offer-${offer.id}`} style={styles.section}>
+            <Banner
+              tone="info"
+              title={`The venue offered a player: ${offer.name}`}
+              message={`${offer.name} plays free; the team's amounts don't change.`}
+            />
+            <View style={styles.row}>
+              <Button
+                label={`Accept ${offer.name}`}
+                loading={venueBusy === `accept-${offer.id}`}
+                disabled={venueBusy !== null}
+                onPress={() => venueAction(offer.id!, `accept-${offer.id}`, onAnswerVenuePlayer && (() => onAnswerVenuePlayer(offer.id!, true)))}
+              />
+              <Button
+                label={`Decline ${offer.name}`}
+                variant="secondary"
+                loading={venueBusy === `decline-${offer.id}`}
+                disabled={venueBusy !== null}
+                onPress={() => venueAction(offer.id!, `decline-${offer.id}`, onAnswerVenuePlayer && (() => onAnswerVenuePlayer(offer.id!, false)))}
+              />
+            </View>
+            {venueError && venueError.id === offer.id ? <Banner tone="danger" message={venueError.message} /> : null}
+          </View>
+        ))}
+
         <View style={styles.section}>
           <SectionHeader title="Who's playing" />
           <Text variant="callout" tone="inkMuted" tabular>
-            {`${roster.length} of ${booking.capacity} spots taken`}
+            {`${spotsTaken(detail)} of ${booking.capacity} spots taken`}
           </Text>
           <View style={styles.list}>
             {roster.map((entry) => {
@@ -287,6 +337,29 @@ function BookingDetailReady({
                 />
               );
             })}
+            {venuePlayers.map((player) => (
+              <View key={player.id ?? player.name} testID={`venue-player-${player.id ?? player.name}`}>
+                <ListRow
+                  title={player.name}
+                  subtitle="Venue player · Plays free"
+                  leading={{ avatar: { name: player.name } }}
+                  trailing={
+                    isBooker && live && player.can_remove && player.id ? (
+                      <Button
+                        label={`Remove ${player.name}`}
+                        variant="plain"
+                        loading={venueBusy === `remove-${player.id}`}
+                        disabled={venueBusy !== null}
+                        onPress={() =>
+                          venueAction(player.id!, `remove-${player.id}`, onRemoveVenuePlayer && (() => onRemoveVenuePlayer(player.id!)))
+                        }
+                      />
+                    ) : undefined
+                  }
+                />
+                {player.id && venueError && venueError.id === player.id ? <Banner tone="danger" message={venueError.message} /> : null}
+              </View>
+            ))}
           </View>
         </View>
 
@@ -396,4 +469,5 @@ const styles = StyleSheet.create({
   section: { gap: space.md },
   list: { gap: space.xs },
   trailing: { alignItems: 'flex-end', gap: space.xs },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });

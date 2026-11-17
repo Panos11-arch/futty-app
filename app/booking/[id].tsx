@@ -15,10 +15,13 @@ import { WeatherStrip } from '@/components/venue/weather-strip';
 import { cancelBooking, getCancellationQuote, type CancellationQuote } from '@/lib/booking-actions';
 import {
   addDetailToCalendar,
+  answerVenuePlayer,
   calendarMessage,
   confirmCancellation,
   fetchBookingDetail,
+  removeVenuePlayer,
   shareText,
+  spotsTaken,
   syncDetailInCalendar,
   type ConfirmResult,
   type DetailCancelScope,
@@ -111,6 +114,19 @@ export default function BookingDetailScreen() {
     return null;
   }
 
+  // P6e: the booker answers a venue's offered player, or removes one; the
+  // server tells the venue, and the screen reloads.
+  async function venuePlayerAction(action: () => Promise<string | null>): Promise<string | null> {
+    const error = await action();
+    if (error) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      return error;
+    }
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    reload();
+    return null;
+  }
+
   async function invite(username: string): Promise<string | null> {
     const { error } = await addBookingPlayer(id, username);
     return error ? describeBookingErrorMessage(error.message) : null;
@@ -157,6 +173,8 @@ export default function BookingDetailScreen() {
         onGipedoPullOut={() => gipedoAction(() => pullOutOfGipedo(id))}
         onGipedoChoose={(choice) => gipedoAction(() => chooseNoOpponent(id, choice))}
         onSwitch={switchFormat}
+        onAnswerVenuePlayer={(offerId, accept) => venuePlayerAction(() => answerVenuePlayer(offerId, accept))}
+        onRemoveVenuePlayer={(offerId) => venuePlayerAction(() => removeVenuePlayer(offerId))}
         weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
         squadNeed={
           // A Gipedo Pano booking's opposition post is made by the server.
@@ -167,7 +185,8 @@ export default function BookingDetailScreen() {
                 venueId: detail.venue.id,
                 kickoffAt: detail.booking.kickoff_at,
                 format: detail.booking.format,
-                openSpots: detail.booking.capacity - detail.roster.length,
+                // P6e: an accepted venue player takes a spot.
+                openSpots: detail.booking.capacity - spotsTaken(detail),
               }}
             />
           ) : null

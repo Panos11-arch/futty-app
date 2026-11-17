@@ -17,6 +17,7 @@ import {
   cyprusToday,
   dayTitle,
   describeVenueError,
+  describeVenuePlayerError,
   fetchCheckInCode,
   fetchDayBoard,
   fetchRoster,
@@ -29,6 +30,7 @@ import {
   markCounterPaid,
   gameEnd,
   markLabel,
+  offerVenuePlayer,
   pitchColumn,
   quoteMovesMoney,
   removeBlock,
@@ -38,9 +40,11 @@ import {
   slotIsPast,
   SLOT_STARTS,
   unassignedBookings,
+  venuePlayerStateLabel,
   venueQuoteWords,
   weekdayDates,
   weekdayIndex,
+  withdrawVenuePlayer,
 } from './venue-today';
 import { appBooking, appRoster, dayBoard, phoneBooking, PITCH_1, venueQuote, walkIn } from './venue-today.fixtures';
 
@@ -497,5 +501,50 @@ describe('describeVenueError', () => {
     ['something_new', 'Something went wrong. Try again.'],
   ])('%s', (code, words) => {
     expect(describeVenueError(code)).toBe(words);
+  });
+});
+
+// P6e: venue staff offer a player to a short team (spec 13 "Venue-offered
+// players"; the server is supabase/migrations/20261117153008_pay_venue_player.sql).
+describe('venue players', () => {
+  it('offer sends the booking id and the name only, trimmed', async () => {
+    await offerVenuePlayer('b-app', '  Andreas  ');
+    expect(mockRpc.mock.calls).toEqual([['offer_venue_player', { p_booking_id: 'b-app', p_name: 'Andreas' }]]);
+  });
+
+  it('withdraw sends the offer id only', async () => {
+    await withdrawVenuePlayer('o1');
+    expect(mockRpc.mock.calls).toEqual([['withdraw_venue_player', { p_offer_id: 'o1' }]]);
+  });
+
+  it.each([
+    ['offered', { label: 'Offered, waiting for the booker', tone: 'warning' }],
+    ['accepted', { label: 'Accepted', tone: 'success' }],
+    ['declined', { label: 'Declined by the booker', tone: 'inkMuted' }],
+    ['withdrawn', { label: 'Withdrawn', tone: 'inkMuted' }],
+    ['removed', { label: 'Removed by the booker', tone: 'inkMuted' }],
+    ['lapsed', { label: 'Not answered before kickoff', tone: 'inkMuted' }],
+  ] as const)('names the %s state', (state, label) => {
+    expect(venuePlayerStateLabel(state)).toEqual(label);
+  });
+
+  it.each([
+    ['name_required', 'Enter the player’s name.'],
+    ['name_too_long', 'That name is too long. Use a shorter one.'],
+    ['no_empty_spot', 'Every spot in this game is taken or already offered.'],
+    ['not_each_pays', 'You can offer a player only when each player pays their own share.'],
+    ['booking_not_confirmed', 'The booker hasn’t paid yet, so this game can’t take a player.'],
+    ['counter_booking', 'You can offer a player only to an app booking.'],
+    ['not_an_app_booking', 'You can offer a player only to an app booking.'],
+    ['booking_started', 'This game has already started.'],
+    ['offer_closed', 'The booker didn’t answer before kickoff, so this offer has closed.'],
+    ['offer_not_open', 'This offer was already answered or withdrawn.'],
+    ['offer_not_found', 'This offer is no longer there.'],
+    // Everything else reads as the dashboard's other refusals do.
+    ['booking_cancelled', 'This booking is already cancelled.'],
+    ['not_venue_staff', "You're not staff at this venue."],
+    ['something_new', 'Something went wrong. Try again.'],
+  ])('%s', (code, words) => {
+    expect(describeVenuePlayerError(code)).toBe(words);
   });
 });

@@ -192,6 +192,18 @@ export type BookingDetail = {
   gipedo?: GipedoDetail | null;
   /** 5 v 5 / 6 v 6 switching (P12). */
   switch?: SwitchInfo | null;
+  /** P6e: players the venue offered. The booker gets open and accepted ones
+   *  with their ids and what they can do; another player gets accepted
+   *  names only. */
+  venue_players?: VenuePlayerEntry[];
+};
+
+export type VenuePlayerEntry = {
+  id?: string;
+  name: string;
+  state: 'offered' | 'accepted';
+  can_answer?: boolean;
+  can_remove?: boolean;
 };
 
 // ---- The search choices ------------------------------------------------

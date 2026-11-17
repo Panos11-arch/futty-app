@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { Banner, Button, Sheet, SkeletonText, Text } from '@/components/ui';
+import { Banner, Button, Sheet, SkeletonText, Text, TextField } from '@/components/ui';
 import { CheckInCode } from '@/components/venue/check-in-code';
 import { space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
@@ -21,6 +21,7 @@ import {
   kindLabel,
   quoteMovesMoney,
   rosterStateLabel,
+  venuePlayerStateLabel,
   venueQuoteWords,
   type AppRoster,
   type BoardBooking,
@@ -39,6 +40,9 @@ export type BookingSheetActions = {
   cancelCounter: (bookingId: string) => Promise<string | null>;
   venueQuote: (bookingId: string) => Promise<{ quote: CancellationQuote } | { error: string }>;
   venueCancel: (bookingId: string, quote: string) => Promise<VenueCancelResult>;
+  /** P6e: offer a player by name; withdraw one by his offer id. */
+  offerPlayer: (bookingId: string, name: string) => Promise<string | null>;
+  withdrawPlayer: (offerId: string) => Promise<string | null>;
 };
 
 export type RosterLoad =
@@ -165,6 +169,7 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
           {error}
         </Text>
       ) : null}
+      <VenuePlayers roster={roster} actions={actions} />
       {roster.collection_started ? <Text tone="inkMuted">Collection has run for this game.</Text> : null}
       {roster.can_run_collection ? (
         <Button
@@ -251,6 +256,99 @@ function PlayerRow({
           <Button label={`Confirm ${cash}cash received`} loading={busy} onPress={onConfirm} />
           <Button label="Not yet" variant="plain" disabled={busy} onPress={onBack} />
         </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ---- Players the venue offers (P6e) ----------------------------------------
+
+/** Spec 13 "Venue-offered players": staff offer a name to a short game; the
+ *  booker answers. He plays free and the team's amounts don't change, so
+ *  nothing here shows or sends an amount. */
+function VenuePlayers({ roster, actions }: { roster: AppRoster; actions: BookingSheetActions }) {
+  const [offering, setOffering] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const players = roster.venue_players ?? [];
+  if (players.length === 0 && !roster.can_offer_player) return null;
+
+  const trimmed = name.trim();
+  const who = trimmed || 'The player';
+
+  async function run(key: string, work: () => Promise<string | null>) {
+    setBusy(key);
+    setError(null);
+    const refusal = await work();
+    setBusy(null);
+    if (refusal) setError(refusal);
+    return refusal;
+  }
+
+  async function offer() {
+    const refusal = await run('offer', () => actions.offerPlayer(roster.booking_id, trimmed));
+    if (!refusal) {
+      setOffering(false);
+      setName('');
+    }
+  }
+
+  return (
+    <View style={styles.quote}>
+      <Text variant="headline">Venue players</Text>
+      {players.map((player) => {
+        const { label, tone } = venuePlayerStateLabel(player.state);
+        return (
+          <View key={player.id} testID={`venue-player-${player.id}`} style={styles.player}>
+            <View style={styles.playerLine}>
+              <Text style={styles.flex}>{player.name}</Text>
+              <Text variant="callout" tone={tone}>
+                {label}
+              </Text>
+            </View>
+            {player.can_withdraw ? (
+              <Button
+                label={`Withdraw ${player.name}`}
+                variant="plain"
+                loading={busy === player.id}
+                onPress={() => run(player.id, () => actions.withdrawPlayer(player.id))}
+              />
+            ) : null}
+          </View>
+        );
+      })}
+      {roster.can_offer_player && !offering ? (
+        <Button label="Offer a player" variant="secondary" onPress={() => setOffering(true)} />
+      ) : null}
+      {roster.can_offer_player && offering ? (
+        <>
+          <TextField
+            label="Player's name"
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              setError(null);
+            }}
+            autoCorrect={false}
+            editable={busy !== 'offer'}
+          />
+          <Text tone="inkMuted">{`${who} plays free; the team's amounts don't change.`}</Text>
+          <View style={styles.row}>
+            <Button
+              label={trimmed ? `Offer ${trimmed}` : 'Offer the player'}
+              disabled={!trimmed}
+              loading={busy === 'offer'}
+              onPress={offer}
+            />
+            <Button label="Not now" variant="plain" disabled={busy === 'offer'} onPress={() => setOffering(false)} />
+          </View>
+        </>
+      ) : null}
+      {error ? (
+        <Text tone="danger" accessibilityRole="alert">
+          {error}
+        </Text>
       ) : null}
     </View>
   );
