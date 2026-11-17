@@ -68,6 +68,7 @@ describe('Premium plan', () => {
     await render(<PremiumPlanScreen />);
     expect(screen.queryByText(/FUTTY PREMIUM/)).toBeNull();
     expect(screen.getByText('No service fee on your own spot')).toBeTruthy();
+    expect(screen.queryByText(/badge/i)).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Subscribe' }));
     expect(mockRequestPurchase).toHaveBeenCalledWith({ request: { apple: { sku: PERSONAL_PREMIUM_SKU } }, type: 'subs' });
     expect(mockFetchProducts).toHaveBeenCalledWith({ skus: [PERSONAL_PREMIUM_SKU], type: 'subs' });
