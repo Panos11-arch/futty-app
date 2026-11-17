@@ -16,6 +16,7 @@ import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { formatMatchWhen } from '@/lib/match/format';
 import { describeSquadError } from '@/lib/squad-errors';
 import {
   type BlockNotice,
@@ -27,13 +28,6 @@ import {
 } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 import { useSquadPosts } from '@/lib/use-squad-posts';
-
-function formatWhen(iso: string) {
-  const date = new Date(iso);
-  const day = date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${day} · ${time}`;
-}
 
 /** "Join as Player" — item 5. Joining and authorizing payment used to be two
  *  separate trips (join here, then go authorize on app/booking-payment.tsx
@@ -233,7 +227,7 @@ export default function JoinSquadPostScreen() {
           </Text>
           <Text variant="callout" tone="inkMuted" tabular>
             {post.level ? `${post.level} · ` : ''}
-            {post.venue_city ?? 'Unknown city'} · {formatWhen(post.scheduled_at)}
+            {post.venue_city ?? 'Unknown city'} · {formatMatchWhen(post.scheduled_at)}
           </Text>
         </Card>
 

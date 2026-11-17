@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
+import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import {
   getFixture,
   listFixtureMessages,
@@ -27,9 +28,12 @@ import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 
 /** Standard bubble: surface for the other captain, brandSoft for mine. */
 function MessageBubble({ message, mine }: { message: FixtureMessage; mine: boolean }) {
-  const time = new Date(message.created_at).toLocaleTimeString(undefined, {
+  // Cyprus time, whatever zone the phone is in.
+  const time = new Date(message.created_at).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: CYPRUS_TIME_ZONE,
   });
 
   return (

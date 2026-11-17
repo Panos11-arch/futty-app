@@ -2,7 +2,18 @@ import { runInThisContext } from 'node:vm';
 
 import { renderHook } from '@testing-library/react-native';
 
-import { dateKeyToDate, dayLabel, isToday, nextDays, toDateKey, useDays } from '@/lib/days';
+import {
+  dateKeyAndTimeToDate,
+  dateKeyToDate,
+  dayLabel,
+  dayNumberLabel,
+  isToday,
+  monthLabel,
+  nextDays,
+  toDateKey,
+  useDays,
+  weekdayLabel,
+} from '@/lib/days';
 
 // "Today" is the Cyprus date (Asia/Nicosia), whatever zone the phone is set to.
 // Each test sets the phone's zone, then labels a Cyprus day as the screens do:
@@ -225,5 +236,43 @@ describe('useDays', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+// The day chips and "Mon 3 Aug" labels name the Cyprus date, in en-GB, on any phone.
+describe.each([
+  ['America/New_York', 'winter', '2026-11-20', 'Fri', '20', 'Nov', 'Sat 21 Nov'],
+  ['America/New_York', 'summer', '2027-07-16', 'Fri', '16', 'Jul', 'Sat 17 Jul'],
+  ['Asia/Tokyo', 'winter', '2026-11-20', 'Fri', '20', 'Nov', 'Sat 21 Nov'],
+  ['Asia/Tokyo', 'summer', '2027-07-16', 'Fri', '16', 'Jul', 'Sat 17 Jul'],
+])('day labels, phone on %s in %s', (zone, _season, day, weekday, number, month, tomorrow) => {
+  beforeEach(() => onPhoneIn(zone));
+
+  it('name the Cyprus day', () => {
+    const date = dateKeyToDate(day);
+    expect(weekdayLabel(date)).toBe(weekday);
+    expect(dayNumberLabel(date)).toBe(number);
+    expect(monthLabel(date)).toBe(month);
+    expect(dayLabel(date, new Date('2026-01-01T12:00:00Z'))).toBe(`${weekday} ${number} ${month}`);
+  });
+
+  it('the chips from nextDays name the Cyprus days', () => {
+    // 23:30 in Cyprus: Tokyo is already on the next day, New York still on this one.
+    const now = new Date(day.startsWith('2026') ? '2026-11-20T21:30:00Z' : '2027-07-16T20:30:00Z');
+    const labels = nextDays(2, now).map((date) => dayLabel(date, now));
+    expect(labels).toEqual(['Today', tomorrow]);
+  });
+});
+
+// A Cyprus booking day and start time is one instant, whatever zone the phone is in.
+describe.each([
+  ['America/New_York', 'winter', '2026-11-20', '2026-11-20T21:30:00.000Z'],
+  ['America/New_York', 'summer', '2027-07-16', '2027-07-16T20:30:00.000Z'],
+  ['Asia/Tokyo', 'winter', '2026-11-20', '2026-11-20T21:30:00.000Z'],
+  ['Asia/Tokyo', 'summer', '2027-07-16', '2027-07-16T20:30:00.000Z'],
+])('dateKeyAndTimeToDate, phone on %s in %s', (zone, _season, day, instant) => {
+  it('reads the day and time as Cyprus time', () => {
+    onPhoneIn(zone);
+    expect(dateKeyAndTimeToDate(day, '23:30:00').toISOString()).toBe(instant);
   });
 });

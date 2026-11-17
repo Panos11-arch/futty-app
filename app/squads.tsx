@@ -18,6 +18,7 @@ import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { formatMatchWhen } from '@/lib/match/format';
 import { describeSquadError } from '@/lib/squad-errors';
 import {
   cancelOppositionOffer,
@@ -42,13 +43,6 @@ const VIEW_OPTIONS: { value: View_; label: string }[] = [
   { value: 'players', label: 'Need players' },
   { value: 'opposition', label: 'Need opposition' },
 ];
-
-function formatWhen(iso: string) {
-  const date = new Date(iso);
-  const day = date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `${day} · ${time}`;
-}
 
 /** One labelled fact on a post card — where, when, how many needed, how
  *  many spots are left. Plain canvas tiles: no colour per box. */
@@ -123,7 +117,7 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
       {need ? <Quote text={need} /> : null}
 
       <View style={styles.facts}>
-        <Fact label="When" value={formatWhen(post.scheduled_at)} />
+        <Fact label="When" value={formatMatchWhen(post.scheduled_at)} />
         <Fact label="Needed" value={String(post.players_needed ?? 0)} />
         <Fact
           label={full ? 'Status' : 'Spots left'}
@@ -317,7 +311,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 
       <View style={styles.facts}>
         <Fact label="Where" value={post.venue_name} />
-        <Fact label="When" value={formatWhen(post.scheduled_at)} />
+        <Fact label="When" value={formatMatchWhen(post.scheduled_at)} />
         <Fact
           label="Status"
           value={post.status === 'matched' ? 'Matched' : 'Open'}

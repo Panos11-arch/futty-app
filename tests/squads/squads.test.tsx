@@ -5,6 +5,8 @@ import { router } from 'expo-router';
 
 import SquadsScreen from '@/app/squads';
 
+import { CYPRUS_LATE_KICKOFF, onPhoneIn, restorePhoneZone, ZONES_AND_SEASONS } from '../phone-time-zone';
+
 const params = globalThis as { mockSearchParams?: Record<string, string> };
 let mockPosts: Record<string, unknown>;
 let mockMyTeams: Record<string, unknown>;
@@ -232,5 +234,21 @@ describe('Squads: offer and pay my share (Gipedo Pano hold)', () => {
     await offer();
     await waitFor(() => expect(mockReload).toHaveBeenCalled());
     expect(mockCreateSharePayment).not.toHaveBeenCalled();
+  });
+});
+
+// Every date and time is Cyprus time (Asia/Nicosia), whatever zone the phone is in.
+describe.each(ZONES_AND_SEASONS)('Squads times, phone on %s in %s', (zone, season) => {
+  const kickoff = CYPRUS_LATE_KICKOFF[season];
+  beforeEach(() => onPhoneIn(zone));
+  afterEach(restorePhoneZone);
+
+  it.each([
+    ['need players', { ...playersPost, scheduled_at: kickoff.iso }],
+    ['need opposition', { ...oppositionPost, scheduled_at: kickoff.iso }],
+  ])('%s: the post shows its Cyprus day and kick-off', async (_, post) => {
+    mockPosts = { status: 'ready', posts: [post] };
+    await render(<SquadsScreen />);
+    expect(screen.getByText(`${kickoff.date} · ${kickoff.clock}`)).toBeTruthy();
   });
 });

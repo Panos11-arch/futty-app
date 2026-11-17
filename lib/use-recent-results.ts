@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/lib/auth';
+import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { listFixturesForTeams } from '@/lib/fixtures';
 import { listFriendlyMatchesForTeams } from '@/lib/friendly-matches';
 import { supabase } from '@/lib/supabase';
@@ -13,6 +14,7 @@ export type RecentResult = {
   awayTeamName: string;
   homeScore: number;
   awayScore: number;
+  /** When the match kicked off, as an ISO instant. Show it in Cyprus time. */
   playedAt: string;
 };
 
@@ -103,7 +105,9 @@ export function useRecentResults(limit: number = DEFAULT_MAX_RESULTS) {
         awayTeamName: f.away_team?.name ?? 'Unknown team',
         homeScore: f.home_score as number,
         awayScore: f.away_score as number,
-        playedAt: `${f.scheduled_day}T${f.scheduled_time ?? '00:00:00'}`,
+        // Fixture and booking days and times are Cyprus wall-clock time, so turn
+        // them into the instant here rather than let the phone's zone read them.
+        playedAt: cyprusWallTime(f.scheduled_day as string, f.scheduled_time ?? '00:00:00').toISOString(),
       }));
 
     const bookingResults: RecentResult[] = (bookings ?? []).map((b) => ({
@@ -113,7 +117,7 @@ export function useRecentResults(limit: number = DEFAULT_MAX_RESULTS) {
       awayTeamName: '',
       homeScore: b.result_goals_for as number,
       awayScore: b.result_goals_against as number,
-      playedAt: `${b.booking_day}T${b.start_time}`,
+      playedAt: cyprusWallTime(b.booking_day, b.start_time).toISOString(),
     }));
 
     const results = [...friendlyResults, ...fixtureResults, ...bookingResults]

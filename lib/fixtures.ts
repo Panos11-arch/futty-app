@@ -1,3 +1,4 @@
+import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { dateKeyToDate, dayLabel } from '@/lib/days';
 import { supabase } from '@/lib/supabase';
 
@@ -56,8 +57,8 @@ export function canLogFixtureScore(fixture: Fixture, myCaptainTeamIds: Set<strin
   const matchEnded =
     !!fixture.scheduled_day &&
     !!fixture.scheduled_time &&
-    new Date(`${fixture.scheduled_day}T${fixture.scheduled_time}`).getTime() + FIXTURE_MATCH_DURATION_MS <
-      Date.now();
+    // The fixture's day and time are Cyprus time, not the phone's.
+    cyprusWallTime(fixture.scheduled_day, fixture.scheduled_time).getTime() + FIXTURE_MATCH_DURATION_MS < Date.now();
 
   return isCaptain && fixture.status === 'agreed' && !fixture.score_locked && matchEnded;
 }

@@ -8,15 +8,19 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, hairline, space } from '@/constants/futty-theme';
+import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
+import { formatMatchDate } from '@/lib/match/format';
 import { useRecentResults } from '@/lib/use-recent-results';
 
 // Everything Home/Activity's cards cap at 5 — this is the "full history"
 // page they link out to, so it asks for a much higher ceiling instead.
 const FULL_HISTORY_LIMIT = 200;
 
+/** "Fri 20 Nov 2026", the Cyprus date. */
 function formatResultDate(iso: string) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const year = new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', timeZone: CYPRUS_TIME_ZONE });
+  return `${formatMatchDate(iso)} ${year}`;
 }
 
 export default function MatchesScreen() {
