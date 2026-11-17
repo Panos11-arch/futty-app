@@ -62,72 +62,11 @@ export const shadow = { boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.06)' } as const;
 
 export const hairline = StyleSheet.hairlineWidth;
 
-/**
- * @deprecated Old palette names, kept so screens don't break before they're
- * restyled. Each maps to the nearest new token. Use `colors`. Removed in U8.
- */
-export const FuttyColors = {
-  /** @deprecated use colors.brand */
-  emerald950: colors.brand,
-  /** @deprecated use colors.brand */
-  emerald800: colors.brand,
-  /** @deprecated use colors.brand */
-  emerald700: colors.brand,
-  /** @deprecated use colors.brand */
-  emerald600: colors.brand,
-  /** @deprecated use colors.brandSoft */
-  emerald200: colors.brandSoft,
-  /** @deprecated use colors.warning */
-  amber400: colors.warning,
-  /** @deprecated use colors.danger */
-  rose600: colors.danger,
-  /** @deprecated use colors.inkMuted */
-  sky500: colors.inkMuted,
-  /** @deprecated use colors.canvas */
-  sky100: colors.canvas,
-  /** @deprecated use colors.warning */
-  coral500: colors.warning,
-  /** @deprecated use colors.canvas */
-  coral100: colors.canvas,
-  /** @deprecated use colors.inkMuted */
-  violet500: colors.inkMuted,
-  /** @deprecated use colors.canvas */
-  violet100: colors.canvas,
-  /** @deprecated use colors.canvas */
-  stone50: colors.canvas,
-  /** @deprecated use colors.border */
-  stone200: colors.border,
-  /** @deprecated use colors.inkMuted */
-  stone400: colors.inkMuted,
-  /** @deprecated use colors.inkMuted */
-  stone500: colors.inkMuted,
-  /** @deprecated use colors.ink */
-  stone700: colors.ink,
-  /** @deprecated use colors.ink */
-  stone900: colors.ink,
-  /** @deprecated use colors.surface */
-  white: colors.surface,
-} as const;
-
-/**
- * @deprecated Use the `type` scale. Removed in U8, except the mono families,
- * which stay for codes like the check-in code.
- */
-export const FuttyFonts = {
-  /** @deprecated Archivo Black is gone; use type.display */
-  display: inter.bold,
-  /** @deprecated use type.body */
-  sans: inter.regular,
-  /** @deprecated use type.callout or type.caption */
-  sansMedium: inter.medium,
-  /** @deprecated use type.headline */
-  sansSemiBold: inter.semiBold,
-  /** @deprecated use type.title or type.display */
-  sansBold: inter.bold,
-  /** IBM Plex Mono, for codes only */
-  mono: 'IBMPlexMono_500Medium',
-  /** IBM Plex Mono, for codes only */
-  monoSemiBold: 'IBMPlexMono_600SemiBold',
+/** IBM Plex Mono, loaded in app/_layout.tsx, for codes only (the check-in
+ *  code). Everything else uses the Inter families in `type`. */
+export const mono = {
+  medium: 'IBMPlexMono_500Medium',
+  semiBold: 'IBMPlexMono_600SemiBold',
 } as const;
 
 /** React Navigation theme (native-stack headers, tab bar chrome) from the same tokens. */
