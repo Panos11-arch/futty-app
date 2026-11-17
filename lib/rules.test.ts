@@ -1,6 +1,9 @@
 // P10: spec 13's rules in the app. lib/rules.ts reads them, never invents
 // them; every sentence with a rule's number follows public.app_rules with
 // no code change; with no rules ever loaded, a sentence has no number.
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 import { describeQuote } from '@/lib/booking-detail';
 import { line, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
@@ -188,17 +191,22 @@ describe('Premium', () => {
     expect(personalPremiumPriceLabel(null)).toBe('');
   });
 
-  it('the perks: the window and the service fee from the rules', () => {
+  it('the perks: only the two in spec 13, the window and the service fee, from the rules', () => {
     expect(personalPremiumPerks(SPEC_RULES)).toEqual([
       'Book up to 14 days ahead, not just 7',
       'No service fee on your own spot',
-      'Verified badge on your profile',
     ]);
-    expect(personalPremiumPerks(CHANGED_RULES).slice(0, 2)).toEqual([
+    expect(personalPremiumPerks(CHANGED_RULES)).toEqual([
       'Book up to 5 days ahead, not just 3',
       'A €0.10 service fee on your own spot, not €0.90',
     ]);
-    expect(personalPremiumPerks(null)).toEqual(['Verified badge on your profile']);
-    expect(personalPremiumPerks(SPEC_RULES).join(' ')).not.toMatch(/coming soon/i);
+    expect(personalPremiumPerks(null)).toEqual([]);
+    expect(personalPremiumPerks(SPEC_RULES).join(' ')).not.toMatch(/coming soon|badge/i);
+  });
+
+  it('no screen promises a verified badge: the app shows none anywhere', () => {
+    for (const screen of ['app/(tabs)/index.tsx', 'app/account/how-it-works.tsx', 'app/premium-plan.tsx']) {
+      expect(readFileSync(join(__dirname, '..', screen), 'utf8')).not.toMatch(/verified badge/i);
+    }
   });
 });
