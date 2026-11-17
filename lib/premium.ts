@@ -51,7 +51,8 @@ export function personalPremiumPerks(rules: AppRules | null): string[] {
           : `A ${eurosText(rules.fee_premium_cents)} service fee on your own spot, not ${eurosText(rules.fee_each_pays_cents)}`,
       ]
     : [];
-  return [...fromRules, 'Verified badge on your profile', 'Priority evening slots (coming soon)'];
+  // Only perks that exist: nothing "coming soon" is sold with the subscription (App Review 3.1.2, 2.3.1).
+  return [...fromRules, 'Verified badge on your profile'];
 }
 
 // There is deliberately no client-side setPremium() here anymore.

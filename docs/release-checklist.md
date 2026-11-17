@@ -139,7 +139,7 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 
 - **Payments (3.1.1 and 3.1.5(a)):** pitch bookings are a real-world service used outside the app, so they are paid by card through Stripe; Premium is a digital feature, sold only through in-app purchase. Nothing in the app may link to buying Premium outside the App Store.
 - **Gipedo Pano (5.3):** "the losing team pays for the pitch" could be read as wagering. It's a way of splitting the pitch fee: no prize, nobody receives money from another team. Say so in the notes if asked.
-- **Premium's perks (3.1.2, 2.3.1):** the Premium screen lists "Priority evening slots (coming soon)". Selling a subscription with a feature that doesn't exist yet is a rejection risk: consider removing that line before submitting.
+- **Premium's perks (3.1.2, 2.3.1):** the Premium screen lists only perks that exist ("Priority evening slots (coming soon)" was removed in P7). Keep it that way: no "coming soon" perk on a subscription.
 - **Account deletion (5.1.1(v)):** in the app, for every sign-in method, with the Apple token revoked (section 8).
 - **Sign in with Apple (4.8):** required because Google sign-in is offered; it must be as prominent as Google's button.
 - **Location wording:** the app asks for no location permission, so the App Store description and screenshots mustn't promise "pitches near you" or anything that sounds like location tracking. Directions opens Maps.
