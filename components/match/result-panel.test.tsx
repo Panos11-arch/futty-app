@@ -179,6 +179,39 @@ describe('MatchResultPanel actions', () => {
     expect(await screen.findByText(words)).toBeTruthy();
   });
 
+  // A8: Home opens the match screen (and its post-match offers) once a score is in.
+  it('onScored fires after a submit or an accept the server took, not after a reject', async () => {
+    const onScored = jest.fn();
+    await show({ viewerId: booker, onScored });
+    await fireEvent.changeText(screen.getByLabelText('Bibs'), '5');
+    await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '3');
+    await fireEvent.press(screen.getByText('Submit score'));
+    await waitFor(() => expect(onScored).toHaveBeenCalledTimes(1));
+
+    onScored.mockClear();
+    await show({ viewerId: me, match: mockResultMatch({ submission: {}, mySide: 'b' }), onScored });
+    await fireEvent.press(screen.getByText('Accept'));
+    await waitFor(() => expect(onScored).toHaveBeenCalledTimes(1));
+
+    onScored.mockClear();
+    await show({ viewerId: awayCaptain, match: mockResultMatch({ kind: 'named', submission: {} }), onScored });
+    await fireEvent.press(screen.getByText('Reject'));
+    await fireEvent.press(screen.getByText('Reject score'));
+    await waitFor(() => expect(respond).toHaveBeenCalledWith('m1', false));
+    expect(onScored).not.toHaveBeenCalled();
+  });
+
+  it('onScored does not fire when the server refuses', async () => {
+    submit.mockResolvedValue({ error: { message: 'not_captain' } });
+    const onScored = jest.fn();
+    await show({ viewerId: booker, onScored });
+    await fireEvent.changeText(screen.getByLabelText('Bibs'), '1');
+    await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '0');
+    await fireEvent.press(screen.getByText('Submit score'));
+    expect(await screen.findByText('Only a captain can enter the score.')).toBeTruthy();
+    expect(onScored).not.toHaveBeenCalled();
+  });
+
   it('Submit stays off until both scores are numbers', async () => {
     await show({ viewerId: booker });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '2');

@@ -25,13 +25,15 @@ export type MatchResultPanelProps = {
   onChanged: () => void;
   /** Shown as "Open match" (Home links to the match screen). */
   onOpen?: () => void;
+  /** Called after a submit or accept the server took (A8: Home opens the match screen's offers). */
+  onScored?: () => void;
   /** For tests; defaults to the current time. */
   now?: number;
 };
 
 const SCORE = /^\d{1,2}$/;
 
-export function MatchResultPanel({ match, viewerId, captainTeamIds, onChanged, onOpen, now }: MatchResultPanelProps) {
+export function MatchResultPanel({ match, viewerId, captainTeamIds, onChanged, onOpen, onScored, now }: MatchResultPanelProps) {
   const [sideA, setSideA] = useState('');
   const [sideB, setSideB] = useState('');
   const [busy, setBusy] = useState<'submit' | 'accept' | 'reject' | null>(null);
@@ -58,6 +60,7 @@ export function MatchResultPanel({ match, viewerId, captainTeamIds, onChanged, o
     setSideA('');
     setSideB('');
     onChanged();
+    if (kind !== 'reject') onScored?.();
   }
 
   const submit = () =>

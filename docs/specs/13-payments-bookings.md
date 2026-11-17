@@ -434,6 +434,18 @@ A venue's staff (its owner today) are told about their own venue only, through `
 - **Once each:** every notice and each day's summary is sent once per staff member, however often the job runs. A summary missed at 20:00 is sent at the next run that evening, never after midnight. Nothing from before this feature is sent.
 - **Cyprus time:** every day and time in the text is Cyprus time, never UTC (a 19:00 game in winter reads 19:00).
 
+## Post-match offers (decided 17 November, Dimitris; for Panos and Anghelo to confirm)
+
+Spec 05, "Food and drink after the game". No money moves: the player pays at the counter, so nothing goes in the ledger.
+
+- **Who sees them, and where:** every player in the match (not one who left) sees them on the match screen once a score is in: a result was submitted, or the match is confirmed. A rejected or disputed score counts as entered (decided 17 November, Dimitris): the players are still at the venue. Anyone else who can open the match (a booker or captain who isn't playing, the venue's staff) sees nothing. A void match, or one with no venue, has no offers. On Home, a submit or accept the server took opens the match screen only when it has offers to show; otherwise Home stays as it is. Matches made since A2 only, not the older score forms.
+- **Which offers:** the venue's items that are active and marked as post-match offers, available at that moment in Cyprus time. Their days are ISO weekdays (1 = Monday), and their window runs from `available_from` up to `available_to`. An item with no days or no window is on every day or all day.
+- **How long:** from when a score is in until 2 hours after the match's end, or midnight Cyprus time on the match day, whichever comes first. The match day is the day of kickoff. Codes for that day can't be used after midnight, so no new code is made after it.
+- **Price:** the offer price, with the normal price struck through when both exist and differ; otherwise whichever price there is. Both come from the server.
+- **The code:** tapping an offer shows "Show this at the counter" with a 6-character code, with no 0/O or 1/I. Each player gets one code per offer per match; opening the offer again shows the same code. A code is valid until midnight Cyprus time on the match day. A code issued while the item was available is honoured until then, even after the item's window has closed.
+- **Redeeming:** on the venue dashboard, staff type the code, check what it's for, and confirm. Only staff of that venue can redeem its codes. A code is redeemed once, and never by the player who holds it.
+- **What's recorded:** one view per code (the first time the player opens that offer's code sheet; opening it again adds none), and each redemption (when, and by which staff member), per venue. Codes and redemptions stay when the player's account or the menu item is deleted, so the venue's counts don't drop; such a code can no longer be redeemed.
+
 ## Rules in one place (decided 15 November)
 
 Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.

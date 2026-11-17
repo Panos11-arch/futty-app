@@ -23,6 +23,7 @@ import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
+import { openIfOffers } from '@/lib/post-match-offers';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { viewerRole, type ResultMatch } from '@/lib/match/result';
 import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
@@ -328,6 +329,7 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
                 onScored();
               }}
               onOpen={() => openMatch(match.match.id)}
+              onScored={() => openIfOffers(match.match.id, openMatch)}
             />
           ))}
           {readyToScore.map((match) => (
