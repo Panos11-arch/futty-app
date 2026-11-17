@@ -10,7 +10,10 @@
 // - Block and Flag conditions for the day or a time range;
 // - the 6 v 6 on 5-a-side pitches setting;
 // - below, unchanged from before P6c: adding a house player and recurring
-//   training slots (restyled in P6e).
+//   training slots (restyled in P6e);
+// - at the top, one tap to each other section (P6d): Money, Bookings,
+//   Customers, Debts, Credits and Payouts (Payouts also keeps P4d's row,
+//   with what it is for).
 // The app never computes an amount: it sends ids and choices, and shows the
 // amounts the server returns.
 import { router } from 'expo-router';
@@ -82,6 +85,16 @@ import {
   type Roster,
   type Slot,
 } from '@/lib/venue-today';
+
+// The dashboard's other sections, one tap each (P6d). The dashboard itself is Today.
+const SECTIONS = [
+  { label: 'Money', pathname: '/venue-money' },
+  { label: 'Bookings', pathname: '/venue-bookings' },
+  { label: 'Customers', pathname: '/venue-customers' },
+  { label: 'Debts', pathname: '/venue-debts' },
+  { label: 'Credits', pathname: '/venue-credits' },
+  { label: 'Payouts', pathname: '/venue-payouts' },
+] as const;
 
 type DashboardVenue = { id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
 
@@ -283,6 +296,16 @@ export default function VenueDashboardScreen() {
 
         {venue ? (
           <>
+            <View style={styles.wrapRow} testID="dashboard-sections">
+              {SECTIONS.map((s) => (
+                <Chip
+                  key={s.pathname}
+                  label={s.label}
+                  onPress={() => router.push({ pathname: s.pathname, params: { venueId: venue.id } })}
+                />
+              ))}
+            </View>
+
             <View style={styles.dayRow}>
               <IconButton icon="chevron.left" accessibilityLabel="Previous day" onPress={() => setDay((d) => addDays(d, -1))} />
               <View style={styles.dayTitle}>

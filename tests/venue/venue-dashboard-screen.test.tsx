@@ -54,6 +54,7 @@ jest.mock('@/lib/venue-today', () => ({
   cyprusNow: () => '06:00',
 }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'staff1' } }) }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ status: 'ready', profile: { id: 'staff1', role: mockRole }, reload: jest.fn() }),
 }));
@@ -277,6 +278,30 @@ describe('Venue dashboard: Today', () => {
     await act(() => fireEvent.press(screen.getByLabelText('Next day')));
     expect(rpcCalls('venue_day_board').at(-1)).toMatchObject({ p_day: expect.not.stringMatching(cyprusToday()) });
     expect(screen.getByText('Tomorrow')).toBeTruthy();
+  });
+
+  it.each([
+    ['Money', '/venue-money'],
+    ['Bookings', '/venue-bookings'],
+    ['Customers', '/venue-customers'],
+    ['Debts', '/venue-debts'],
+    ['Credits', '/venue-credits'],
+    ['Payouts', '/venue-payouts'],
+  ])('the %s chip opens %s for this venue', async (label, pathname) => {
+    const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
+    push.mockClear();
+    await open();
+    await fireEvent.press(within(screen.getByTestId('dashboard-sections')).getByText(label));
+    expect(push.mock.calls).toEqual([[{ pathname, params: { venueId: 'v1' } }]]);
+  });
+
+  it('keeps the Payouts row with what it is for (P4d), opening the same screen', async () => {
+    const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
+    push.mockClear();
+    await open();
+    const row = screen.getByText('Stripe setup, payouts and what each booking paid');
+    await fireEvent.press(row);
+    expect(push.mock.calls).toEqual([[{ pathname: '/venue-payouts', params: { venueId: 'v1' } }]]);
   });
 
   it('is only for venue owners', async () => {
