@@ -8,13 +8,15 @@ import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { space } from '@/constants/futty-theme';
+import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { formatFixtureWhen, getFixture } from '@/lib/fixtures';
+import { formatMatchWhen } from '@/lib/match/format';
 import { describePaymentMode } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 
 type CardState =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string; canRetry: boolean }
   | {
       status: 'ready';
       teamAName: string | null;
@@ -25,22 +27,37 @@ type CardState =
       paymentModeLabel: string | null;
     };
 
+/** "Sat 14 Nov · 19:00" in Cyprus time, from a booking's Cyprus day and
+ *  start time (Postgres "HH:MM:SS"), whatever the phone's time zone. */
+function bookingWhenLabel(day: string, time: string): string | null {
+  try {
+    return formatMatchWhen(cyprusWallTime(day, time).toISOString());
+  } catch {
+    return null;
+  }
+}
+
 /** "Match found" — shown for a matched "need opposition" squad post
  *  (kind=squad), an 'agreed' league fixture (kind=league), or a plain
  *  booking (kind=booking, no opponent). Reached from a notification tap
  *  (app/notifications.tsx), right after booking/joining completes, or a
  *  direct link elsewhere; all render through the same PopupModal shell as
- *  every other popup (items 1 & 2). */
+ *  every other popup (items 1 & 2). Times are Cyprus time (Asia/Nicosia),
+ *  whatever the phone's time zone. */
 export default function FixtureConfirmedScreen() {
   const { kind, id } = useLocalSearchParams<{ kind: string; id: string }>();
   const [state, setState] = useState<CardState>({ status: 'loading' });
+  // Bumped by "Try again" to run the same load again.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    const fail = (message: string) => setState({ status: 'error', message, canRetry: true });
 
     async function load() {
       if (!id) {
-        setState({ status: 'error', message: 'Missing booking.' });
+        // Nothing to load, so nothing to retry.
+        setState({ status: 'error', message: 'Missing booking.', canRetry: false });
         return;
       }
 
@@ -48,7 +65,7 @@ export default function FixtureConfirmedScreen() {
         const { data, error } = await getFixture(id);
         if (!active) return;
         if (error || !data) {
-          setState({ status: 'error', message: error?.message ?? 'Fixture not found.' });
+          fail(error?.message ?? 'Fixture not found.');
           return;
         }
         setState({
@@ -73,7 +90,7 @@ export default function FixtureConfirmedScreen() {
         if (!active) return;
 
         if (bookingError || !booking) {
-          setState({ status: 'error', message: bookingError?.message ?? 'Booking not found.' });
+          fail(bookingError?.message ?? 'Booking not found.');
           return;
         }
 
@@ -85,15 +102,13 @@ export default function FixtureConfirmedScreen() {
 
         if (!active) return;
 
-        const when = new Date(`${booking.booking_day}T${booking.start_time}`);
-
         setState({
           status: 'ready',
           teamAName: null,
           teamBName: null,
           bookingFormat: booking.format,
           venueName: venue ? `${venue.name} · ${venue.city}` : null,
-          whenLabel: `${when.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+          whenLabel: bookingWhenLabel(booking.booking_day, booking.start_time),
           paymentModeLabel: null,
         });
         return;
@@ -109,7 +124,7 @@ export default function FixtureConfirmedScreen() {
       if (!active) return;
 
       if (postError || !post || !post.team_id || !post.matched_team_id) {
-        setState({ status: 'error', message: postError?.message ?? 'Fixture not found.' });
+        fail(postError?.message ?? 'Fixture not found.');
         return;
       }
 
@@ -123,7 +138,6 @@ export default function FixtureConfirmedScreen() {
       if (!active) return;
 
       const teamName = (teamId: string) => teams?.find((t) => t.id === teamId)?.name ?? 'Team';
-      const when = new Date(post.scheduled_at);
 
       setState({
         status: 'ready',
@@ -131,7 +145,8 @@ export default function FixtureConfirmedScreen() {
         teamBName: teamName(post.matched_team_id),
         bookingFormat: null,
         venueName: venue ? `${venue.name} · ${venue.city}` : null,
-        whenLabel: `${when.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })} · ${when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`,
+        // scheduled_at is a timestamptz instant; shown in Cyprus time.
+        whenLabel: post.scheduled_at ? formatMatchWhen(post.scheduled_at) : null,
         paymentModeLabel: describePaymentMode(post),
       });
     }
@@ -140,7 +155,12 @@ export default function FixtureConfirmedScreen() {
     return () => {
       active = false;
     };
-  }, [kind, id]);
+  }, [kind, id, attempt]);
+
+  function retry() {
+    setState({ status: 'loading' });
+    setAttempt((n) => n + 1);
+  }
 
   return (
     <PopupModal
@@ -155,7 +175,13 @@ export default function FixtureConfirmedScreen() {
             <SkeletonText lines={3} />
           </View>
         ) : null}
-        {state.status === 'error' ? <Banner tone="danger" message={state.message} /> : null}
+        {state.status === 'error' ? (
+          <Banner
+            tone="danger"
+            message={state.message}
+            action={state.canRetry ? { label: 'Try again', onPress: retry } : undefined}
+          />
+        ) : null}
         {state.status === 'ready' ? (
           <FixtureConfirmedCard
             teamAName={state.teamAName}

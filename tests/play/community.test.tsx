@@ -127,4 +127,16 @@ describe('Community segment', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Follow' }));
     expect(mockFollowToggle).toHaveBeenCalledWith('team', 'tm1');
   });
+
+  it('teams error: "Try again" clears the error and runs listTeams again', async () => {
+    mockContacts = { status: 'ready', matched: [], unmatched: [] };
+    mockListTeams.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    await render(<CommunityContent />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Teams' }));
+    expect(await screen.findByText('Could not load: offline')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText('Tigers');
+    expect(mockListTeams).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Could not load: offline')).toBeNull();
+  });
 });

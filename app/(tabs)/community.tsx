@@ -337,16 +337,35 @@ function TeamsTab() {
   const [error, setError] = useState<string | null>(null);
   const follows = useFollows();
 
+  // Bumped by "Try again" to run the same listTeams() again.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    let active = true;
     listTeams().then(({ data, error: listError }) => {
+      if (!active) return;
       if (listError) setError(listError.message);
       else setTeams(data);
     });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
+
+  function retry() {
+    setError(null);
+    setAttempt((n) => n + 1);
+  }
 
   return (
     <View style={styles.list}>
-      {error ? <Banner tone="danger" message={`Could not load: ${error}`} /> : null}
+      {error ? (
+        <Banner
+          tone="danger"
+          message={`Could not load: ${error}`}
+          action={{ label: 'Try again', onPress: retry }}
+        />
+      ) : null}
       {!teams && !error ? <RowsSkeleton testID="teams-list-skeleton" /> : null}
       {teams && teams.length === 0 ? <EmptyState icon="person.2.fill" message="No teams registered yet." /> : null}
       {teams?.map((team) => (

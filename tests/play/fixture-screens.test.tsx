@@ -14,9 +14,22 @@ const mockListMessages = jest.fn();
 const mockSendMessage = jest.fn();
 const mockSubmitReport = jest.fn();
 
+// Rows the fake supabase.from(table) returns, set per test.
+const mockTables: Record<string, { data: unknown; error: unknown }> = {};
 jest.mock('@/lib/supabase', () => {
   const channel = { on: () => channel, subscribe: () => channel };
-  return { supabase: { channel: () => channel, removeChannel: jest.fn() } };
+  const from = (table: string) => {
+    const result = () => mockTables[table] ?? { data: null, error: null };
+    const query = {
+      select: () => query,
+      eq: () => query,
+      in: () => query,
+      maybeSingle: () => Promise.resolve(result()),
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
+    };
+    return query;
+  };
+  return { supabase: { channel: () => channel, removeChannel: jest.fn(), from } };
 });
 jest.mock('@/lib/realtime', () => ({ useRealtimeChannelName: (name: string) => name }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
@@ -104,6 +117,117 @@ describe('Fixture confirmed', () => {
     mockGetFixture.mockResolvedValue({ data: null, error: { message: 'gone' } });
     await render(<FixtureConfirmedScreen />);
     expect(await screen.findByText('gone')).toBeTruthy();
+  });
+
+  it('error: "Try again" shows the skeleton and loads the same fixture again', async () => {
+    mockGetFixture.mockResolvedValueOnce({ data: null, error: { message: 'gone' } });
+    mockGetFixture.mockReturnValueOnce(new Promise(() => {}));
+    await render(<FixtureConfirmedScreen />);
+    await screen.findByText('gone');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByTestId('fixture-confirmed-skeleton')).toBeTruthy();
+    expect(screen.queryByText('gone')).toBeNull();
+    expect(mockGetFixture).toHaveBeenCalledTimes(2);
+    expect(mockGetFixture).toHaveBeenLastCalledWith('f1');
+  });
+
+  it('error: "Try again" then shows the fixture', async () => {
+    mockGetFixture.mockResolvedValueOnce({ data: null, error: { message: 'gone' } });
+    mockGetFixture.mockResolvedValueOnce({ data: fixture, error: null });
+    await render(<FixtureConfirmedScreen />);
+    await screen.findByText('gone');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Tigers')).toBeTruthy();
+  });
+
+  it('missing id: no retry, since there is nothing to load', async () => {
+    params.mockSearchParams = { kind: 'league' };
+    await render(<FixtureConfirmedScreen />);
+    expect(await screen.findByText('Missing booking.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(mockGetFixture).not.toHaveBeenCalled();
+  });
+});
+
+// Times on "Match found" are Cyprus time (Asia/Nicosia), whatever zone the
+// phone is set to. Cyprus is UTC+2 in winter and UTC+3 in summer.
+describe.each(['Asia/Nicosia', 'America/New_York', 'Asia/Tokyo'])('Fixture confirmed times, phone on %s', (zone) => {
+  const original = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = zone;
+  });
+  afterAll(() => {
+    process.env.TZ = original;
+  });
+  beforeEach(() => {
+    for (const key of Object.keys(mockTables)) delete mockTables[key];
+    mockTables.venues = { data: { name: 'Arena', city: 'Nicosia' }, error: null };
+  });
+
+  it('matched squad post: the instant shown in Cyprus time (winter, UTC+2)', async () => {
+    params.mockSearchParams = { kind: 'squad', id: 'sp1' };
+    mockTables.squad_posts = {
+      data: {
+        team_id: 'a',
+        matched_team_id: 'b',
+        venue_id: 'v1',
+        scheduled_at: '2026-11-14T17:00:00+00:00',
+        format: '5v5',
+        payment_mode: 'split',
+      },
+      error: null,
+    };
+    mockTables.teams = {
+      data: [
+        { id: 'a', name: 'Tigers' },
+        { id: 'b', name: 'Lions' },
+      ],
+      error: null,
+    };
+    await render(<FixtureConfirmedScreen />);
+    expect(await screen.findByText('Sat 14 Nov · 19:00')).toBeTruthy();
+  });
+
+  it('matched squad post: summer time (UTC+3) and a late kick-off on the right Cyprus day', async () => {
+    params.mockSearchParams = { kind: 'squad', id: 'sp1' };
+    mockTables.squad_posts = {
+      data: {
+        team_id: 'a',
+        matched_team_id: 'b',
+        venue_id: null,
+        scheduled_at: '2026-07-04T20:30:00+00:00',
+        format: '5v5',
+        payment_mode: 'split',
+      },
+      error: null,
+    };
+    mockTables.teams = { data: [], error: null };
+    await render(<FixtureConfirmedScreen />);
+    expect(await screen.findByText('Sat 4 Jul · 23:30')).toBeTruthy();
+  });
+
+  it('plain booking: its Cyprus day and start time, as stored', async () => {
+    params.mockSearchParams = { kind: 'booking', id: 'b1' };
+    mockTables.venue_bookings = {
+      data: { venue_id: 'v1', booking_day: '2026-11-14', start_time: '19:00:00', format: '5v5' },
+      error: null,
+    };
+    await render(<FixtureConfirmedScreen />);
+    expect(await screen.findByText('Sat 14 Nov · 19:00')).toBeTruthy();
+    expect(screen.getByText('Arena · Nicosia')).toBeTruthy();
+  });
+
+  it('plain booking: a booking error retries the same booking', async () => {
+    params.mockSearchParams = { kind: 'booking', id: 'b1' };
+    mockTables.venue_bookings = { data: null, error: { message: 'offline' } };
+    await render(<FixtureConfirmedScreen />);
+    await screen.findByText('offline');
+    mockTables.venue_bookings = {
+      data: { venue_id: 'v1', booking_day: '2026-11-14', start_time: '19:00:00', format: '5v5' },
+      error: null,
+    };
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Sat 14 Nov · 19:00')).toBeTruthy();
   });
 });
 
