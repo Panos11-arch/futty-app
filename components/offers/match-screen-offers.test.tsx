@@ -25,6 +25,12 @@ jest.mock('expo-router', () => ({
 jest.mock('@/lib/match/use-match-result', () => ({
   useResultMatch: () => ({ status: 'ready', match: mockMatch, viewerId: 'viewer', reload: jest.fn() }),
 }));
+// The A4b match page sections have their own tests (tests/match/match-page-screen.test.tsx).
+jest.mock('@/lib/match/use-match-page', () => ({
+  useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),
+  useMatchRoster: () => ({ status: 'loading', reload: jest.fn() }),
+  useFormationPresets: () => ({ status: 'loading', reload: jest.fn() }),
+}));
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => [] }));
 jest.mock('@/components/match/result-panel', () => ({ MatchResultPanel: () => null }));
 jest.mock('react-native-safe-area-context', () => ({
