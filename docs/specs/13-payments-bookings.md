@@ -423,6 +423,18 @@ Staff edit their venue's opening hours, closures, prices and pitches from the da
 - **Told once per change:** a block tells its players once per block. In the same way, players are told once per closure, once per hours change and once per pitch closure. A new closure over the same game tells them again, even after an earlier one was removed. An hours change tells the players of each game it newly puts outside the hours, so saving the same hours again tells nobody. Closing a pitch again after reopening it tells them again.
 - **Pitches:** a pitch that holds a game (past or future; a cancelled game holds none) can't be deleted, only closed. A closed pitch gets no new bookings, alone or combined; games already on it stay on, and every player still in a game on it that hasn't ended is told, with the same message as for a block. Its size and formats can't change while it holds a game that hasn't ended. Its name, surface, indoor or outdoor, description and order can always change. Deleting an unused pitch removes the combinations it was part of. Removing a combination never moves a game already booked.
 
+## Venue photos, amenities and menu (decided 17 November, Dimitris; for Panos to confirm)
+
+Staff edit their venue's photos, amenities and food and drink menu from the dashboard (P6e), only through the server's functions, as for the rest of venue setup.
+
+- **Photo permission:** before the first upload, a staff member confirms once: "These are our photos and Futty may show them in the app." Who confirmed and when are kept. Photos staff upload carry this permission; the sheet's `photo_permission_given` governs imported photos only.
+- **Photos:** at most **10** venue photos, in the order staff set. The first is the cover (Book card, booking detail, Home, venue page). Pitch photos come later. Before uploading, the app resizes each photo to 1600 px on the long edge and saves it as JPEG.
+- **Storage:** the `venue-photos` bucket stays private and takes JPEG, PNG and WebP (what the import uploads) up to 5 MB. Staff files are `<venue id>/photos/<uuid>.jpg` and `<venue id>/items/<uuid>.jpg`. Only the venue's staff can upload into its folders, and a file can't be replaced. Players read a file only while a photo or an item points to it and they can see the venue; once nothing points to it, its staff can delete it.
+- **Amenities:** from the fixed list (parking, changing rooms, showers, lockers, café or bar, floodlights, bibs, ball hire, first aid, Wi-Fi, other), each with an optional note of up to 60 characters. "Other" needs a note.
+- **Menu:** each item has a name (unique at the venue), an optional category and description, and a **price above €0** in cents. A post-match offer may have an offer price, above €0 and **below the price**, and offer text. Days and a time window as for post-match offers. Staff can switch an item off, reorder or delete it; deleting keeps its post-match codes and redemptions.
+- **What players see:** the venue page shows the active items under "Food and drink", by category, then in the staff's order. Post-match offers show as before.
+- **The import:** once staff have edited a venue's photos, its amenities or its menu in the app, a re-import leaves that part alone and still loads the rest. If the sheet then withdraws photo permission, the sheet's own photos are removed and the ones staff uploaded stay.
+
 ## Venue notifications (decided 17 November, Dimitris; for Panos to confirm)
 
 A venue's staff (its owner today) are told about their own venue only, through `send_notification`. Staff can turn each kind off; none is always sent.
