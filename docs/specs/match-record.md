@@ -82,6 +82,55 @@ These rules were missing or ambiguous in the specs and were decided while writin
 6. **Smaller rules.** Scorers and assisters are players on that side who haven't left; guests can score (they never get stats); a null scorer is an own goal or an unknown scorer; an assist needs a scorer and can't be the scorer. The man of the match nominee is a player who checked in (1b.2), on either side, never a guest. A lineup can leave positions empty (the app shows "Need players"); each player fills at most one position.
 7. **A position belongs to a side.** A player who changes side (`choose_match_side`, `set_match_player_side`, the named-game re-sync) or leaves the match (`left_at`) loses their `match_players.position` and is taken out of the lineup; the rest of the lineup stays. A pickup that becomes a named game (decision 1b.1) has its sides rebuilt, so all its lineups and positions are cleared, as in 1e.5. The match page also leaves out any lineup entry whose player isn't on that side.
 
+## 1f. Decisions (17 November, Anghelo, A5a; to confirm with Panos)
+
+Skill level, ratings and competitive matches (05 section 4; 12 section 2, rows 2 and 3). Closes section 10, questions 3 and 4.
+
+1. **Competitive or casual.** A flag on the match, not on the booking: `matches.competitive` stays null until a captain chooses, and `matches.is_competitive = coalesce(competitive, kind = 'named')`.
+   - By default, named games are competitive and pickups are casual.
+   - A pickup that becomes a named game (decision 1b.1) turns competitive, unless a captain already chose.
+   - Any captain of either side (the booker on side a, or a team captain) changes it with `set_match_competitive`, while the match is `scheduled` and before `kickoff_at`. Passing null goes back to the default.
+   - Only confirmed, competitive matches that aren't forfeits move levels. Disputed, `no_result` and `void` matches never do.
+2. **Starting level.** The app calls `set_starting_level` once with the five sign-up answers. The level is 1.0 plus these points, capped to 1.0–6.0 and rounded to 0.1. It starts provisional, with 0% reliability.
+
+   | Question | Answers and points |
+   | --- | --- |
+   | How long you've played | `under_1` 0 · `1_3` 0.3 · `3_10` 0.6 · `over_10` 0.8 |
+   | Highest level you played at | `kickabout` 0 · `amateur` 0.7 (school or amateur league) · `semi_pro` 1.5 · `professional` 2.2 |
+   | How often you play now | `rarely` 0 · `monthly` 0.2 · `weekly` 0.5 · `several_weekly` 0.7 |
+   | Position | `gk`, `def`, `mid` or `fwd`; stored, adds nothing |
+   | How you rate yourself, 1–10 | (rating − 1) / 9 × 1.5 |
+
+   A player who never answered gets a default 3.0 (provisional) the first time they count in a competitive match. They can still answer the questions until they have played one competitive match; after that the answers are refused (`level_already_set`).
+3. **The update after a match.** Every player who checked in (decision 1b.2) moves after a confirmed competitive match:
+   - Expected result: E = 1 / (1 + 10^((opponents' average − own side's average) / 2)). The averages are the checked-in players' levels before the match. A side 1.0 level weaker expects 0.24.
+   - Actual result: S = 1 for a win, 0.5 for a draw, 0 for a loss.
+   - K = 0.40 for a player's first 10 competitive matches, then 0.20.
+   - Move = K × (S − E) × (1 − reliability / 200).
+   - Reliability = min(100, 5 × competitive matches), so it reaches 100% after 20 matches. At 100% a move is half its size.
+   - A level is provisional until 5 competitive matches.
+   - Then the ratings nudge it (decision 4). The level is clamped to 1.0–7.0 and stored with two decimals; the app shows one.
+   - Worked examples: a first match between even sides moves the winners +0.20 and the losers −0.20. In a first match, a 2.0 side beating a 3.0 side moves +0.30 (an upset); the 3.0 side beating the 2.0 side moves +0.10.
+   - `match_jobs_tick` runs the update once the ratings window (`confirmed_at + 24 hours`) and the check-in window (`result_deadline_at`) have both closed. It runs once per match (`matches.levels_applied_at`), oldest confirmation first.
+   - Matches already settled when A5a shipped never move levels.
+4. **Ratings.**
+   - Only players who checked in can rate, and only players who checked in can be rated (never a guest or someone who left). Teammates and opponents can both be rated.
+   - The score is 1–10. You can't rate yourself, and you rate each player once.
+   - The match must be confirmed and not a forfeit. Ratings close 24 hours after `confirmed_at` (closes question 3).
+   - A player's match rating needs 3 or more ratings. With 6 or more, one highest and one lowest are dropped.
+   - A rater counts 0.25 only when they rated at least 3 players in that match and gave every one of them the same score. Giving the same score to some players while varying others is normal and keeps a weight of 1.
+   - The rating nudges the level by 0.1 × (rating − 5.5) / 4.5, so never more than 0.1 either way.
+   - Ratings in casual matches are kept and shown, but move nothing.
+   - The match page shows each player's rating (one decimal, with 3 or more ratings) once the ratings window closes. Individual ratings are never shown: a rater sees only their own.
+   - A rating uses the rater's check-in, so `venue_unmark_arrived` refuses it (`check_in_used`), as it does for a man-of-the-match vote.
+5. **Balance teams** (`balance_match_teams`). The booker of a pickup can split it into two sides whose average levels are closest.
+   - Who is split: players holding a spot or checked in, who haven't left. Guests stay where they are.
+   - The sides differ in size by one at most, and the booker stays on side a.
+   - A player with no level counts as 3.0, and nothing is written to `player_levels`.
+   - Every split is tried for 16 players or fewer. Above that, players are dealt out greedily, then the best swaps are made.
+   - It is locked as for `set_match_player_side` (`sides_locked`).
+6. **XP is replaced by the level.** New matches never award or take XP. The app shows the level instead: one decimal, a "provisional" tag until 5 competitive matches, and the reliability %. `profiles.xp` and `teams.xp` stay, because legacy screens and the old 3-attempt score functions (which still take 20 XP for repeated disputes on old matches) read them. They are dropped once nothing reads them.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
@@ -90,7 +139,7 @@ These rules were missing or ambiguous in the specs and were decided while writin
   - **Result:** `result_deadline_at = ends_at + 24 hours`.
   - **Scorers:** captains add their own side's scorers for 24 hours after the result is confirmed (05 section 3; A4).
   - **Man of the match:** voting closes 24 hours after the result is confirmed (05 section 3).
-  - **Ratings:** "within 24 hours" (05 section 4); when that window starts is open (section 10).
+  - **Ratings:** until 24 hours after the result is confirmed (`confirmed_at + 24 hours`, decision 1f.4).
 - "Exactly at the deadline" counts as past it: a deadline at 20:00 closes the window at 20:00:00.
 
 ## 3. Match lifecycle
@@ -134,6 +183,9 @@ Every table has RLS enabled. **No table can be written by `anon` or `authenticat
 | `forfeit_reason` | text null | `pulled_out` or `no_show`; set exactly when `forfeit_side` is set |
 | `confirmed_at` | timestamptz null | When the status became `confirmed` |
 | `confirmed_via` | text null | `agreed` (the other side accepted), `deadline` (stood at the deadline) or `forfeit` |
+| `competitive` | boolean null | Set by a captain before kickoff; null = the default (decision 1f.1) |
+| `is_competitive` | boolean, generated | `coalesce(competitive, kind = 'named')`: only these matches move levels |
+| `levels_applied_at` | timestamptz null | When the level update handled the match (decision 1f.3) |
 | `created_at`, `updated_at` | timestamptz | |
 
 RLS: **select** for match members, the booker, captains of either named team, and staff of the venue. Players outside the match see confirmed matches only through the views in section 6 (form, recent matches, match page).
@@ -217,11 +269,12 @@ A side's goals must add up to its confirmed score (05 section 2). RLS: select fo
 
 Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody can select other people's votes. The result is shown through `get_match_page`, once voting closes (decision 1e.3).
 
-### 4.8 `match_ratings` and `player_levels` (outline for A5)
+### 4.8 `match_ratings` and `player_levels` (A5a, decision 1f)
 
-- `match_ratings`: `match_id`, `rater_profile_id`, `rated_player_id`, `score` (1–10), `created_at`; unique per rater and rated player. Only checked-in players, not yourself, within the ratings window. RLS: a rater sees only their own ratings; individual ratings are never shown (05 section 3).
-- `player_levels`: `profile_id` pk, `level` numeric(2,1) between 1.0 and 7.0, `provisional` boolean, `reliability_pct`, `competitive_matches`, `updated_at`; plus `player_level_history` (`profile_id`, `match_id`, `before`, `after`, `reason`). Read by everyone; written only by service_role.
-- The maths (Elo constants, reliability, rating weighting) is A5's (section 10).
+- `match_ratings`: `match_id`, `rater_profile_id`, `rated_player_id` (→ `match_players.id`), `score` (1–10), `created_at`; primary key (`match_id`, `rater_profile_id`, `rated_player_id`). Written only through `rate_match_player`. RLS: a rater selects only their own ratings; individual ratings are never shown (05 section 3).
+- `player_levels`: `profile_id` pk, `level` numeric(4,2) between 1.00 and 7.00 (shown with one decimal), `provisional`, `reliability_pct` (0–100), `competitive_matches`, `source` (`questionnaire` or `default`), `updated_at`. Readable by everyone signed in; written only by `set_starting_level` and `apply_match_levels`.
+- `player_level_history`: `id`, `profile_id`, `match_id` (null only for `start`), `reason` (`start`, `result` or `ratings`), `level_before`, `level_after`, `created_at`; unique (`profile_id`, `match_id`, `reason`). Readable by everyone signed in (the level trend in A7).
+- `player_level_answers`: `profile_id` pk, `years_played`, `highest_level`, `play_frequency`, `position`, `self_rating`, `created_at`. Readable only by its owner.
 
 ### 4.9 `match_lineups` (outline for A4)
 
@@ -293,9 +346,22 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test). Answer
 | `check_in_to_match(p_match_id uuid, p_code text)` returns void | authenticated | The caller is a player of the match (`not_in_match`); the code matches (`invalid_code`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `ends_at + 1 hour` (`check_in_closed`, decision 1a.4). Idempotent |
 | `captain_mark_attendance(p_match_id uuid, p_profile_ids uuid[])` returns void | authenticated | The caller is a captain (`not_captain`); every profile is a player on the captain's side (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`) |
 | `venue_mark_arrived(p_match_id uuid, p_profile_id uuid)` returns void | authenticated, staff of the match's venue only (`not_venue_staff`) | P6e. The player holds a spot (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`). Writes method `venue`. Idempotent: an existing check-in is kept |
-| `venue_unmark_arrived(p_match_id uuid, p_profile_id uuid)` returns void | authenticated, staff of the match's venue only | P6e. The same checks. Removes only a `venue` row (`not_venue_check_in`, `not_checked_in`). Refused once the player has voted for man of the match (`check_in_used`); A5 adds ratings to this check when it creates `match_ratings` |
+| `venue_unmark_arrived(p_match_id uuid, p_profile_id uuid)` returns void | authenticated, staff of the match's venue only | P6e. The same checks. Removes only a `venue` row (`not_venue_check_in`, `not_checked_in`). Refused once the player has voted for man of the match or rated a player in the match (`check_in_used`; ratings added by A5a) |
 | `choose_match_side(p_match_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is a player of the match (`not_in_match`); `a` or `b`, and the booker stays on `a` (`invalid_side`, decision 3); no result submitted yet and the match is `scheduled` or `played` (`sides_locked`) |
 | `set_match_player_side(p_match_id uuid, p_player_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is the booker (`not_booker`); the player row is in the match (`not_in_match`); `a`, `b` or null, and the booker stays on `a` (`invalid_side`); `sides_locked` as above |
+
+### 5.5 Levels, ratings, balance teams (A5a, decision 1f)
+
+| Function | Caller | What it does |
+| --- | --- | --- |
+| `set_starting_level(p_years text, p_highest text, p_frequency text, p_position text, p_self_rating integer)` returns jsonb `{level, provisional, reliabilityPct, competitiveMatches}` | authenticated | The starting level from the five answers (1f.2). Refused when the caller already answered, or has a default level and a competitive match (`level_already_set`); an unknown answer gives `invalid_answer` |
+| `set_match_competitive(p_match_id uuid, p_competitive boolean)` returns void | authenticated | Any captain (`not_captain`), while `scheduled` and before kickoff (`competitive_locked`); null = back to the default |
+| `rate_match_player(p_match_id uuid, p_player_id uuid, p_score integer)` returns void | authenticated | `match_not_found`; the rater checked in (`not_checked_in`); confirmed and not a forfeit (`match_not_confirmed`); before `confirmed_at + 24 hours` (`rating_closed`); not their own row (`cannot_rate_self`); the rated row is a profile who checked in and hasn't left (`player_not_eligible`); 1–10 (`invalid_score`); once per player (`already_rated`) |
+| `get_match_ratings(p_match_id uuid)` returns jsonb | authenticated, as `get_match_page` (`match_not_found`) | `ratingsOpen`, `ratingsCloseAt`, `players [{playerId, profileId, rating, count}]` (3 or more ratings, one decimal, only once the window has closed) and `myRatings [{playerId, score}]` (the caller's own) |
+| `balance_match_teams(p_match_id uuid)` returns jsonb `{sideA, sideB: {players, average}}` | authenticated, the booker of a pickup (`not_pickup`, `not_booker`, `sides_locked`) | Decision 1f.5. Writes `match_players.side` |
+| `apply_match_levels(p_match_id uuid, p_now timestamptz default now())` returns text | service_role | The update for one match (1f.3): `applied`, `skipped` (settled but moves nothing), `not_yet` or `already` |
+| `match_levels_tick(p_now timestamptz default now())` returns integer | service_role | Runs `apply_match_levels` for every confirmed match whose windows have closed. `match_jobs_tick` calls it and returns its count as `levels` |
+| `match_rating_for(p_match_id uuid, p_player_id uuid)` returns jsonb `{rating, count}`; `match_rater_weight`; `match_level_start` | service_role | Helpers for the rules above |
 
 ## 6. The contracts
 
@@ -413,7 +479,8 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 
 - **Form guide** (A3): the last 5 `confirmed` matches a player played in (any team or pickup), or a named team played as that team, newest first: W, D or L. A forfeit shows as **"L (forfeit)"** for the side that forfeited (05 section 3).
 - **Stats** (A7): built from confirmed matches only. A forfeit counts as a loss for the side that forfeited.
-- **Skill level** (A5): only confirmed, competitive matches move levels; **forfeits never move levels**, and `disputed`, `no_result` and `void` matches never count.
+- **Skill level** (A5): only confirmed, competitive matches move levels; **forfeits never move levels**, and `disputed`, `no_result` and `void` matches never count. The rules and constants are decision 1f.
+- **XP** (A5a, decision 1f.6): replaced by the level. New matches never change XP; the app shows the level (one decimal), a "provisional" tag and the reliability % where it showed XP.
 - Guests never get stats (05 section 2).
 - **Only checked-in players count** (decision 1b.2, 11 November): a player counts in form (A3), man of the match (A4), ratings and levels (A5) and stats (A7) only with a `match_attendance` row for the match. Being in `match_players` isn't enough, because a named game's side `b` lists the whole opponent team. Exceptions (decision 1b.3): a confirmed forfeit counts for every spot holder on both sides, and team form counts every confirmed match the team played.
 - **Words on screen** (A1b; Anghelo, 11 November, to confirm with Panos): a forfeit shows "Forfeit" in place of the score, with "<team> pulled out" or "<team> didn't show". `disputed` shows "Disputed · not in stats" (not "won't count": a disputed Gipedo Pano game still splits the money 50/50, 13), `no_result` "No result entered", `played` "Waiting for the result", and `void` "Cancelled" (the word "void" is never shown, 17). The app's typed shapes for sections 4 and 6.2 are in `lib/match/types.ts`; they change whenever this document does.
@@ -457,8 +524,8 @@ Each one is decided with Panos before the prompt that needs it, and written into
    - whether a forfeit counts as a win in the winner's stats;
    - what happens to the match when a Gipedo Pano team pulls out more than 6 hours before kickoff (13 takes €1 per player; is the match `void`?).
 2. ~~Check-in window~~: decided 10 November (decision 1a.4).
-3. **Ratings window:** "within 24 hours" (05 section 4) of the match end or of confirmation.
-4. **Skill level maths** (A5): Elo constants, the size of moves in the first 10 matches, reliability %, and down-weighting raters who give everyone the same score.
+3. ~~Ratings window~~: decided 17 November, 24 hours from `confirmed_at` (decision 1f.4).
+4. ~~Skill level maths~~: decided 17 November (decision 1f), to confirm with Panos.
 5. ~~Formation presets~~: decided 12 November (decision 1e.4).
 6. ~~Quiet hours defaults~~: decided 10 November, none (decision 1a.6).
 7. ~~A disputed match's goals~~: decided 12 November, no (decision 1e.2).
