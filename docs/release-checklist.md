@@ -104,6 +104,7 @@ Their migrations go out in section 1b's single push; the checks and the other st
   supabase functions deploy stripe-webhook --no-verify-jwt
   ```
 - [ ] Cron: `run-payouts` every 5 minutes and `reconcile-money` daily at 04:00. The exact `cron.schedule` SQL is at the top of each function's `index.ts`.
+- [ ] Cron (P6e venue notifications): `select cron.schedule('venue-notifications', '*/5 * * * *', $$ select public.venue_notifications_tick() $$);` Plain SQL, no Edge Function and no secret. It sends new-booking, cancellation and short-game notices, and the 20:00 Cyprus daily summary; running it more often never sends twice.
 
 ## 3. This PR (P7)
 
