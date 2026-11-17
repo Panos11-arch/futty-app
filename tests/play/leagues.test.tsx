@@ -150,6 +150,40 @@ describe('Leagues segment', () => {
     expect(router.push).toHaveBeenCalledWith('/upcoming-fixtures');
   });
 
+  it('highlights only the user’s own team: 3 teams, the user is in one', async () => {
+    mockStandings.L1 = { status: 'ready', rows: [row('mine', 'Tigers', 3), row('other', 'Lions', 1), row('third', 'Bears', 2)] };
+    mockMyTeams = { status: 'ready', teams: [{ team: { id: 'mine', name: 'Tigers' }, role: 'player' }] };
+    await render(<LeaguesContent />);
+    await waitFor(() => expect(screen.getByText('Nicosia Open')).toBeTruthy());
+    const mine = screen.getAllByTestId('standings-row-mine');
+    expect(mine).toHaveLength(1);
+    expect(background('standings-row-mine')).toEqual([colors.brandSoft]);
+    expect(mine[0]).toHaveTextContent(/Tigers/);
+    expect(background('standings-row')).toEqual([undefined, undefined]);
+  });
+
+  it('highlights nothing when the user has no team in the league, in either table', async () => {
+    mockStandings.L1 = { status: 'ready', rows: [row('mine', 'Tigers', 3), row('other', 'Lions', 1), row('third', 'Bears', 2)] };
+    // 'mine' is registered in the Nicosia Open too (the league_teams mock), but it isn't the user's team.
+    mockStandings.L2 = { status: 'ready', rows: [row('mine', 'Tigers', 0)] };
+    mockMyTeams = { status: 'ready', teams: [{ team: { id: 'elsewhere', name: 'Wolves' }, role: 'captain' }] };
+    await render(<LeaguesContent />);
+    await waitFor(() => expect(screen.getByText('Nicosia Open')).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByTestId('standings-row')).toHaveLength(4));
+    expect(screen.queryAllByTestId('standings-row-mine')).toHaveLength(0);
+  });
+
+  it.each([
+    ['loading', { status: 'loading' }],
+    ['failed', { status: 'error', message: 'offline' }],
+  ])('highlights nothing while the user’s teams are %s', async (_label, state) => {
+    mockMyTeams = state;
+    await render(<LeaguesContent />);
+    await waitFor(() => expect(screen.getByText('Nicosia Open')).toBeTruthy());
+    expect(screen.getAllByTestId('standings-row')).toHaveLength(2);
+    expect(screen.queryAllByTestId('standings-row-mine')).toHaveLength(0);
+  });
+
   it('creates a team with the same arguments', async () => {
     mockCreateTeam.mockResolvedValue({ data: null, error: { message: 'x', code: 'P0001' } });
     await render(<LeaguesContent />);

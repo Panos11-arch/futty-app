@@ -1,10 +1,12 @@
 import {
+  alwaysSentForViewer,
   clearQuietHours,
   getMyQuietHours,
   groupSwitchableTypes,
   notificationLabel,
   quietHoursCrossMidnight,
   quietHoursError,
+  sectionsForViewer,
   setNotificationEnabled,
   setQuietHours,
 } from '@/lib/notifications';
@@ -101,5 +103,49 @@ describe('groupSwitchableTypes', () => {
   it('names an unknown type in words', () => {
     expect(notificationLabel('brand_new_thing')).toBe('Brand new thing');
     expect(notificationLabel('match_reminder_2h')).toBe('2 hours before a game');
+  });
+});
+
+describe('venue notification types', () => {
+  const venueRows = [
+    { type: 'venue_new_booking', always_sent: false },
+    { type: 'venue_booking_cancelled', always_sent: false },
+    { type: 'venue_short_game', always_sent: false },
+    { type: 'venue_daily_summary', always_sent: false },
+  ];
+
+  it('go under Venue, not Other', () => {
+    const sections = groupSwitchableTypes([{ type: 'squad_post', always_sent: false }, ...venueRows]);
+    expect(sections).toEqual([
+      { key: 'community', title: 'Community', types: ['squad_post'] },
+      {
+        key: 'venue',
+        title: 'Venue',
+        types: ['venue_new_booking', 'venue_booking_cancelled', 'venue_short_game', 'venue_daily_summary'],
+      },
+    ]);
+  });
+
+  it.each([
+    ['venue_new_booking', 'A new booking at your venue'],
+    ['venue_booking_cancelled', 'A booking at your venue is cancelled'],
+    ['venue_short_game', 'A game at your venue is short of players'],
+    ['venue_daily_summary', 'Tomorrow’s summary, at 20:00'],
+  ])('%s has a plain-word label', (type, label) => {
+    expect(notificationLabel(type)).toBe(label);
+  });
+
+  it('only venue staff see the Venue group', () => {
+    const sections = groupSwitchableTypes([{ type: 'squad_post', always_sent: false }, ...venueRows]);
+    expect(sectionsForViewer(sections, false).map((s) => s.key)).toEqual(['community']);
+    expect(sectionsForViewer(sections, true).map((s) => s.key)).toEqual(['community', 'venue']);
+  });
+
+  it('a venue type the server makes always-sent is still hidden from non-staff', () => {
+    expect(alwaysSentForViewer(['debt_created', 'venue_daily_summary'], false)).toEqual(['debt_created']);
+    expect(alwaysSentForViewer(['debt_created', 'venue_daily_summary'], true)).toEqual([
+      'debt_created',
+      'venue_daily_summary',
+    ]);
   });
 });

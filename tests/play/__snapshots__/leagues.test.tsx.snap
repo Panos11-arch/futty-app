@@ -2492,12 +2492,10 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                   "borderTopColor": "#E4E7EB",
                   "borderTopWidth": 0.5,
                 },
-                {
-                  "backgroundColor": "#E7F1EC",
-                },
+                false,
               ]
             }
-            testID="standings-row-mine"
+            testID="standings-row"
           >
             <Text
               numberOfLines={1}
@@ -2748,12 +2746,10 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                   "borderTopColor": "#E4E7EB",
                   "borderTopWidth": 0.5,
                 },
-                {
-                  "backgroundColor": "#E7F1EC",
-                },
+                false,
               ]
             }
-            testID="standings-row-mine"
+            testID="standings-row"
           >
             <Text
               numberOfLines={1}

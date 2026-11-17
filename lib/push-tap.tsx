@@ -11,7 +11,7 @@ import { router, type Href } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import { markNotificationRead } from '@/lib/notifications';
+import { isVenueNotificationType, markNotificationRead } from '@/lib/notifications';
 import { playHref } from '@/lib/play-segments';
 
 // A push that arrives while the app is open shows as a banner (and in the
@@ -32,10 +32,15 @@ function stringId(data: Record<string, unknown>, key: string): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
-/** Where a push's data opens: its match, booking, squad post or team, in
- *  that order; anything else opens the notifications list. */
+/** Where a push's data opens: a venue staff notice opens the venue dashboard
+ *  (checked first, so staff never land on My Bookings); otherwise its match,
+ *  booking, squad post or team, in that order; anything else opens the
+ *  notifications list. */
 export function routeForPushData(raw: unknown): Href {
   const data = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+
+  // The dashboard has no route for a given day or booking yet; it opens on today.
+  if (isVenueNotificationType(data.type)) return '/venue-dashboard';
 
   const matchId = stringId(data, 'matchId');
   if (matchId) return { pathname: '/match/[id]', params: { id: matchId } };

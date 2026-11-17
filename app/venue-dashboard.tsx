@@ -44,6 +44,7 @@ import { DayCalendar } from '@/components/venue/day-calendar';
 import { DayMarks } from '@/components/venue/day-marks';
 import { MarkSheet, type MarkMode } from '@/components/venue/mark-sheet';
 import { NeedPlayersSection } from '@/components/venue/need-players-section';
+import { OfferRedeemSection } from '@/components/venue/offer-redeem-section';
 import { TrainingSlotsSection } from '@/components/venue/training-slots-section';
 import { WalkInSheet } from '@/components/venue/walk-in-sheet';
 import { WeatherNudgesList } from '@/components/venue/weather-nudges';
@@ -451,6 +452,10 @@ export default function VenueDashboardScreen() {
             </View>
 
             {ready ? <NeedPlayersSection bookings={ready.bookings} /> : null}
+
+            <View style={styles.divider}>
+              <OfferRedeemSection venueId={venue.id} />
+            </View>
 
             {user ? (
               <View style={styles.divider}>

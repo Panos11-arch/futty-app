@@ -7,7 +7,7 @@ import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-car
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
 import { MatchResultPanel } from '@/components/match/result-panel';
-import { Banner, type BannerProps } from '@/components/ui/banner';
+import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -23,6 +23,7 @@ import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
+import { openIfOffers } from '@/lib/post-match-offers';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { viewerRole, type ResultMatch } from '@/lib/match/result';
 import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
@@ -30,6 +31,7 @@ import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
 import { useNotifications } from '@/lib/use-notifications';
+import { debtBlockMessage, type Owed, owedBannerMessage, owedToName, useOwed, useReloadOnReturn } from '@/lib/use-owed';
 import { useProfile } from '@/lib/use-profile';
 import { useRecentResults } from '@/lib/use-recent-results';
 import { useSquadPosts } from '@/lib/use-squad-posts';
@@ -328,6 +330,7 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
                 onScored();
               }}
               onOpen={() => openMatch(match.match.id)}
+              onScored={() => openIfOffers(match.match.id, openMatch)}
             />
           ))}
           {readyToScore.map((match) => (
@@ -523,7 +526,7 @@ function PremiumSection() {
     <Card padded={false}>
       <ListRow
         title={isPremium ? "You're on Premium" : 'Go Futty Premium'}
-        subtitle={isPremium ? 'Manage your plan' : 'Book further ahead and get the verified badge'}
+        subtitle={isPremium ? 'Manage your plan' : 'Book further ahead, no fee on your own spot'}
         leading={{ icon: 'star.fill' }}
         chevron
         onPress={() => router.push('/account/premium')}
@@ -569,14 +572,44 @@ export function HomeHeader() {
   );
 }
 
-export type HomeScreenProps = {
-  /** Anything owed (debt or a failed payment). Expo Router passes no props,
-   *  so this slot stays empty in the app. TODO after P5: fill it from
-   *  useOwed() in lib/use-owed.ts. Tests pass it to check the layout. */
-  owedBanner?: BannerProps | null;
-};
+const openPayOwed = () => router.push('/account/payments/owed');
 
-export default function HomeScreen({ owedBanner }: HomeScreenProps = {}) {
+/** Who the banner's money is owed to, picked from my_owed's own fields: the
+ *  one venue (or Futty) every debt is owed to, else none; without a debt,
+ *  the venue of the payment the sentence is about. */
+function owedBannerTitle(owed: Owed): string | undefined {
+  if (debtBlockMessage(owed)) {
+    const names = new Set(owed.debts.map(owedToName));
+    return names.size === 1 ? [...names][0] : undefined;
+  }
+  return owed.payments[0]?.venue_name;
+}
+
+/** Anything owed (debt, a failed guarantee, an unpaid spot, unticked cash),
+ *  as one banner in Book's words (contract 6). Loading or an error shows
+ *  nothing: Home is never blocked by it. Checks again on return, e.g. from
+ *  "Pay what I owe". */
+function OwedBanner() {
+  const owed = useOwed();
+  useReloadOnReturn(owed.reload);
+
+  if (owed.state.status !== 'ready') return null;
+  const message = owedBannerMessage(owed.state.data);
+  if (!message) return null;
+
+  return (
+    <View testID="owed-banner">
+      <Banner
+        tone="danger"
+        title={owedBannerTitle(owed.state.data)}
+        message={message}
+        action={{ label: 'Pay what I owe', onPress: openPayOwed }}
+      />
+    </View>
+  );
+}
+
+export default function HomeScreen() {
   const recentResults = useRecentResults();
 
   // Refetch whenever Home regains focus (e.g. back from Book or from
@@ -596,11 +629,7 @@ export default function HomeScreen({ owedBanner }: HomeScreenProps = {}) {
       </SafeAreaView>
 
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        {owedBanner ? (
-          <View testID="owed-banner">
-            <Banner {...owedBanner} />
-          </View>
-        ) : null}
+        <OwedBanner />
         <NextGameSection />
         <QuickActions />
         <LogScoreSection onScored={recentResults.reload} />

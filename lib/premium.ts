@@ -40,10 +40,11 @@ export function personalPremiumPriceLabel(rules: AppRules | null, livePrice?: st
 }
 
 /** What Personal Premium gives, from the rules: the booking window and the
- *  service fee on the player's own spot (spec 13). Without rules yet, only
- *  the perks that have no number. */
+ *  service fee on the player's own spot (spec 13), and nothing else. Without
+ *  rules yet, none: both perks carry a number from the rules. */
 export function personalPremiumPerks(rules: AppRules | null): string[] {
-  const fromRules = rules
+  // Only perks that exist: nothing "coming soon" is sold with the subscription (App Review 3.1.2, 2.3.1).
+  return rules
     ? [
         `Book up to ${daysText(rules.window_premium_days)} ahead, not just ${rules.window_standard_days}`,
         rules.fee_premium_cents === 0
@@ -51,8 +52,6 @@ export function personalPremiumPerks(rules: AppRules | null): string[] {
           : `A ${eurosText(rules.fee_premium_cents)} service fee on your own spot, not ${eurosText(rules.fee_each_pays_cents)}`,
       ]
     : [];
-  // Only perks that exist: nothing "coming soon" is sold with the subscription (App Review 3.1.2, 2.3.1).
-  return [...fromRules, 'Verified badge on your profile'];
 }
 
 // There is deliberately no client-side setPremium() here anymore.

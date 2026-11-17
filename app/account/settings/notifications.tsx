@@ -13,9 +13,11 @@ import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import {
   ALWAYS_SENT_REASON,
+  alwaysSentForViewer,
   notificationLabel,
   quietHoursCrossMidnight,
   quietHoursError,
+  sectionsForViewer,
   type QuietHours,
 } from '@/lib/notifications';
 import { preferences } from '@/lib/preferences';
@@ -238,6 +240,11 @@ function QuietHoursSection({
  *  sent, comes from the server. */
 export default function NotificationSettingsScreen() {
   const s = useNotificationSettings();
+  const profile = useProfile();
+  // Venue staff, decided as Profile decides whether to show the Venue dashboard entry.
+  const isVenueStaff = profile.status === 'ready' && profile.profile.role === 'venue_owner';
+  const sections = s.status === 'ready' ? sectionsForViewer(s.sections, isVenueStaff) : [];
+  const alwaysSent = s.status === 'ready' ? alwaysSentForViewer(s.alwaysSent, isVenueStaff) : [];
   const [writeError, setWriteError] = useState<string | null>(null);
 
   async function toggle(type: string, enabled: boolean) {
@@ -268,7 +275,7 @@ export default function NotificationSettingsScreen() {
         {s.status === 'ready' ? (
           <>
             {writeError ? <Banner tone="danger" message={writeError} /> : null}
-            {s.sections.map((section) => (
+            {sections.map((section) => (
               <View key={section.key} style={styles.section}>
                 <SectionHeader title={section.title} />
                 <Card padded={false}>
@@ -294,14 +301,14 @@ export default function NotificationSettingsScreen() {
               </View>
             ))}
 
-            {s.alwaysSent.length > 0 ? (
+            {alwaysSent.length > 0 ? (
               <View style={styles.section}>
                 <SectionHeader title="Always sent" />
                 <Text variant="callout" tone="inkMuted">
                   {ALWAYS_SENT_REASON}
                 </Text>
                 <Card padded={false}>
-                  {s.alwaysSent.map((type) => (
+                  {alwaysSent.map((type) => (
                     <ListRow key={type} testID={`notification-${type}`} title={notificationLabel(type)} />
                   ))}
                 </Card>
