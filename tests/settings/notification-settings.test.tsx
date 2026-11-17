@@ -7,10 +7,13 @@ let mockTypes: { type: string; always_sent: boolean }[];
 let mockSettings: { type: string; enabled: boolean }[];
 let mockQuiet: { starts_local: string; ends_local: string } | null;
 let mockFailTypes = false;
+let mockRole: 'player' | 'venue_owner' = 'player';
 const mockWrites: unknown[][] = [];
 
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
-jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'ready', profile: { id: 'me' } }) }));
+jest.mock('@/lib/use-profile', () => ({
+  useProfile: () => ({ status: 'ready', profile: { id: 'me', role: mockRole } }),
+}));
 jest.mock('@/lib/preferences', () => ({
   preferences: { isPushNotificationsEnabled: () => true, setPushNotificationsEnabled: jest.fn() },
 }));
@@ -86,7 +89,12 @@ beforeEach(() => {
     { type: 'squad_post', always_sent: false },
     { type: 'debt_created', always_sent: true },
     { type: 'booking_cancelled', always_sent: true },
+    { type: 'venue_new_booking', always_sent: false },
+    { type: 'venue_booking_cancelled', always_sent: false },
+    { type: 'venue_short_game', always_sent: false },
+    { type: 'venue_daily_summary', always_sent: false },
   ];
+  mockRole = 'player';
   mockSettings = [];
   mockQuiet = null;
   mockFailTypes = false;
@@ -111,6 +119,30 @@ describe('Notification settings', () => {
     expect(screen.getByText('Teams you follow')).toBeTruthy();
     expect(screen.getByText('Community')).toBeTruthy();
     expect(screen.getByTestId('switch-match_reminder_2h').props.value).toBe(true);
+  });
+
+  it('a player who isn’t venue staff never sees the Venue group or venue types', async () => {
+    await renderReady();
+    expect(screen.queryByText('Venue')).toBeNull();
+    expect(screen.queryByTestId('notification-venue_new_booking')).toBeNull();
+    expect(screen.queryByTestId('notification-venue_daily_summary')).toBeNull();
+    expect(screen.queryByText('Other')).toBeNull();
+  });
+
+  it('venue staff see the Venue group with its four types in plain words', async () => {
+    mockRole = 'venue_owner';
+    await renderReady();
+    expect(screen.getByText('Venue')).toBeTruthy();
+    for (const label of [
+      'A new booking at your venue',
+      'A booking at your venue is cancelled',
+      'A game at your venue is short of players',
+      'Tomorrow’s summary, at 20:00',
+    ]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    expect(screen.getByTestId('switch-venue_short_game').props.value).toBe(true);
+    expect(screen.queryByText('Other')).toBeNull();
   });
 
   it('always-sent types are listed with the reason and have no switch', async () => {

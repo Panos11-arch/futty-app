@@ -11,7 +11,24 @@ export type NotificationType =
   | 'booking_invite'
   | 'match_result_submitted'
   | 'match_result_confirmed'
-  | 'match_result_disputed';
+  | 'match_result_disputed'
+  | 'venue_new_booking'
+  | 'venue_booking_cancelled'
+  | 'venue_short_game'
+  | 'venue_daily_summary';
+
+/** Sent to venue staff only (venue_notifications_tick, PR #99). They open the
+ *  venue dashboard, never My Bookings, and only staff see them in settings. */
+export const VENUE_NOTIFICATION_TYPES = [
+  'venue_new_booking',
+  'venue_booking_cancelled',
+  'venue_short_game',
+  'venue_daily_summary',
+] as const;
+
+export function isVenueNotificationType(type: unknown): boolean {
+  return typeof type === 'string' && (VENUE_NOTIFICATION_TYPES as readonly string[]).includes(type);
+}
 
 export type AppNotification = {
   id: string;
@@ -48,7 +65,7 @@ export async function markAllNotificationsRead(ids: string[]) {
 // straight to notification_settings and notification_quiet_hours, whose RLS
 // allows a player their own rows only and refuses an always-sent type.
 
-export type NotificationGroupKey = 'games' | 'follows' | 'community';
+export type NotificationGroupKey = 'games' | 'follows' | 'community' | 'venue';
 
 /** Decision 1d.1: the switchable types, grouped. A type the server adds later lands in "Other". */
 export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; types: string[] }[] = [
@@ -74,6 +91,7 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
     types: ['followed_team_match', 'followed_team_result', 'followed_team_opponent_wanted'],
   },
   { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite'] },
+  { key: 'venue', title: 'Venue', types: [...VENUE_NOTIFICATION_TYPES] },
 ];
 
 /** Decision 1d.2: one reason for every always-sent type. */
@@ -111,6 +129,10 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   venue_condition_warning: 'Pitch condition warnings',
   gipedo_result_needed: 'A result is needed for a payout',
   guarantee_charged: 'Money taken from your hold',
+  venue_new_booking: 'A new booking at your venue',
+  venue_booking_cancelled: 'A booking at your venue is cancelled',
+  venue_short_game: 'A game at your venue is short of players',
+  venue_daily_summary: 'Tomorrow’s summary, at 20:00',
 };
 
 /** A type's words on screen; an unknown type shows its name in words rather than nothing. */
@@ -137,6 +159,16 @@ export function groupSwitchableTypes(rows: NotificationTypeRow[]): NotificationS
   const other = rows.filter((r) => !r.always_sent && !grouped.has(r.type)).map((r) => r.type);
   if (other.length > 0) sections.push({ key: 'other', title: 'Other', types: other });
   return sections;
+}
+
+/** Venue types are for venue staff only: everyone else never sees them. */
+export function sectionsForViewer(sections: NotificationSection[], isVenueStaff: boolean): NotificationSection[] {
+  return isVenueStaff ? sections : sections.filter((s) => s.key !== 'venue');
+}
+
+/** The always-sent list with venue types left out for anyone who isn't staff. */
+export function alwaysSentForViewer(types: string[], isVenueStaff: boolean): string[] {
+  return isVenueStaff ? types : types.filter((t) => !isVenueNotificationType(t));
 }
 
 export async function getNotificationTypes() {

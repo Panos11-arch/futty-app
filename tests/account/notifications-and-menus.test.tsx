@@ -31,7 +31,10 @@ jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/use-notifications', () => ({
   useNotifications: () => ({ ...mockNotifications, reload: mockNotificationsReload }),
 }));
-jest.mock('@/lib/notifications', () => ({ markNotificationRead: (...args: unknown[]) => mockMarkRead(...args) }));
+jest.mock('@/lib/notifications', () => ({
+  ...jest.requireActual('@/lib/notifications'),
+  markNotificationRead: (...args: unknown[]) => mockMarkRead(...args),
+}));
 jest.mock('@/lib/invites', () => ({
   acceptInvite: (...args: unknown[]) => mockAccept(...args),
   declineInvite: (...args: unknown[]) => mockDecline(...args),
@@ -129,6 +132,21 @@ describe('Notifications', () => {
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/my-bookings'));
     expect(mockMarkRead).toHaveBeenCalledWith('n1');
   });
+
+  it.each(['venue_new_booking', 'venue_booking_cancelled', 'venue_short_game', 'venue_daily_summary'])(
+    'a %s row opens the venue dashboard, not My Bookings',
+    async (type) => {
+      mockNotifications = {
+        status: 'ready',
+        notifications: [note('v1', '2026-11-17T09:00:00Z', { type, data: { venueId: 'venue-1', bookingId: 'b1' } })],
+      };
+      await render(<NotificationsScreen />);
+      await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title v1. Body v1' }));
+      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/venue-dashboard'));
+      expect(router.push).not.toHaveBeenCalledWith(expect.objectContaining({ pathname: '/my-bookings' }));
+      expect(router.push).not.toHaveBeenCalledWith('/my-bookings');
+    }
+  );
 
   it('accepting a game invite answers it and goes on to pay, as before', async () => {
     mockAccept.mockResolvedValue({ error: null });
