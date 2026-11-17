@@ -88,8 +88,12 @@ export function AddPlayerRow({
         editable={!busy}
         onSubmitEditing={submit}
         returnKeyType="done"
-        error={error ?? undefined}
       />
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
       {invited ? (
         <Text variant="callout" tone="inkMuted">
           Invite sent to {invited} — they join once they accept.

@@ -929,7 +929,7 @@ exports[`Community segment populated: avatar, name, one row of actions, same cal
               }
             >
               <View
-                accessibilityLabel="Ann Lee"
+                accessibilityLabel="Ann Lee, @ann"
                 accessibilityRole="button"
                 accessibilityState={
                   {

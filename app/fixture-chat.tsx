@@ -180,8 +180,12 @@ export default function FixtureChatScreen() {
                   onChangeText={setReportReason}
                   placeholder="What's wrong with this chat?"
                   multiline
-                  error={reportError ?? undefined}
                 />
+                {reportError ? (
+                  <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+                    {reportError}
+                  </Text>
+                ) : null}
                 <View style={styles.buttonRow}>
                   <Button
                     label="Send report"

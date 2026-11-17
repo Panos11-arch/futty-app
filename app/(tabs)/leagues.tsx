@@ -75,7 +75,7 @@ export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[
           Team
         </Text>
         {STAT_COLUMNS.map((label) => (
-          <Text key={label} variant="caption" tone="inkMuted" style={styles.tableStat}>
+          <Text key={label} variant="caption" tone="inkMuted" numberOfLines={1} style={styles.tableStat}>
             {label}
           </Text>
         ))}
@@ -102,11 +102,11 @@ export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[
               {row.team_name}
             </Text>
             {values.map((value, i) => (
-              <Text key={STAT_COLUMNS[i]} variant="callout" tabular style={styles.tableStat}>
+              <Text key={STAT_COLUMNS[i]} variant="callout" tabular numberOfLines={1} style={styles.tableStat}>
                 {String(value)}
               </Text>
             ))}
-            <Text variant="callout" tabular style={[styles.tableStat, styles.tablePts]}>
+            <Text variant="callout" tabular numberOfLines={1} style={[styles.tableStat, styles.tablePts]}>
               {String(pts)}
             </Text>
           </View>
@@ -761,6 +761,6 @@ const styles = StyleSheet.create({
   tableRowDivider: { borderTopWidth: hairline, borderTopColor: colors.border },
   tableRowMine: { backgroundColor: colors.brandSoft },
   tableTeam: { flex: 1 },
-  tableStat: { width: space.xl, textAlign: 'right' },
+  tableStat: { minWidth: space.xxl, textAlign: 'right' },
   tablePts: { fontFamily: type.title.fontFamily },
 });

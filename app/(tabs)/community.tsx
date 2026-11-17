@@ -62,7 +62,7 @@ function PersonRow({
         {onPress ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={name}
+            accessibilityLabel={subtitle ? `${name}, ${subtitle}` : name}
             onPress={onPress}
             style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
             {main}
@@ -155,8 +155,12 @@ function ContactModerationPanel({ playerId, blocks }: { playerId: string; blocks
           onChangeText={setReason}
           placeholder="Why are you reporting this player?"
           multiline
-          error={error ?? undefined}
         />
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
         <View style={styles.buttonRow}>
           <Button label="Send report" onPress={sendReport} disabled={!reason.trim()} loading={busy} />
           <Button label="Cancel" variant="secondary" onPress={() => setReporting(false)} disabled={busy} />

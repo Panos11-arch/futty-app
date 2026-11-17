@@ -30,6 +30,8 @@ describe.each(files)('%s uses tokens only', (file) => {
   it('has no rgb() colour', () => expect(text.match(/rgba?\(/g)).toBeNull());
   it('has no numeric fontSize', () => expect(text.match(/fontSize\s*:\s*\d/g)).toBeNull());
   it('has no numeric borderRadius', () => expect(text.match(/[rR]adius\s*:\s*\d/g)).toBeNull());
+  it('has no fontWeight (weights come from the Inter families)', () => expect(text.match(/fontWeight/g)).toBeNull());
+  it('has no shadow styles', () => expect(text.match(/shadow[A-Z]|boxShadow|elevation\s*:\s*\d/g)).toBeNull());
   it('has no emoji', () => expect(text.match(/\p{Extended_Pictographic}/gu)).toBeNull());
   it('uses no deprecated tokens or old themed text', () => {
     expect(text.match(/FuttyColors|FuttyFonts|ThemedText|ThemedView|useThemeColor|IconLabel/g)).toBeNull();

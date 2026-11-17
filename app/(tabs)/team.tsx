@@ -119,6 +119,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
   const [showRoster, setShowRoster] = useState(false);
 
   const loadRoster = useCallback(() => {
+    setError(null);
     getTeamRoster(team.id).then(({ data, error: rosterError }) => {
       if (rosterError) setError(rosterError.message);
       else setRoster(data);

@@ -7,7 +7,7 @@ import { ProfileCard } from '@/app/(tabs)/profile';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { Banner } from '@/components/ui/banner';
 import { SkeletonText } from '@/components/ui/skeleton';
-import { space } from '@/constants/futty-theme';
+import { colors, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { getPublicProfile, publicProfileAsProfile, type PublicProfile } from '@/lib/use-profile';
 
@@ -48,7 +48,7 @@ export default function PlayerProfileScreen() {
   }, [profileId, attempt]);
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         {state.status === 'loading' ? (
           <View testID="player-profile-skeleton">
@@ -70,6 +70,7 @@ export default function PlayerProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
   flex: {
     flex: 1,
   },

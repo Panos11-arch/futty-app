@@ -83,7 +83,7 @@ describe('Community segment', () => {
     expect(screen.getByText('Invite to Futty (1)')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Following' })).toBeTruthy();
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Ann Lee' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ann Lee, @ann' }));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/player-profile', params: { profileId: 'p-ann' } });
 
     await fireEvent.press(screen.getByRole('button', { name: 'Follow' }));
@@ -122,7 +122,7 @@ describe('Community segment', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Teams' }));
     await screen.findByText('Tigers');
     expect(mockListTeams).toHaveBeenCalledTimes(1);
-    await fireEvent.press(screen.getByRole('button', { name: 'Tigers' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Tigers, Paphos' }));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/team-profile', params: { teamId: 'tm1' } });
     await fireEvent.press(screen.getByRole('button', { name: 'Follow' }));
     expect(mockFollowToggle).toHaveBeenCalledWith('team', 'tm1');

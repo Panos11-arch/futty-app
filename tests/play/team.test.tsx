@@ -44,6 +44,11 @@ jest.mock('@/lib/teams', () => ({
 }));
 jest.mock('@/lib/invite', () => ({ shareTeamInvite: jest.fn() }));
 
+const originalOS = Platform.OS;
+afterEach(() => {
+  Platform.OS = originalOS;
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetRoster.mockResolvedValue({ data: [{ profile_id: 'a', username: 'cap', role: 'captain' }], error: null });
@@ -121,5 +126,18 @@ describe('Teams segment', () => {
       pathname: '/premium-plan',
       params: { plan: 'team-9-a-side', teamId: 't1' },
     });
+  });
+});
+
+describe('Teams segment roster retry', () => {
+  it('clears the error when Try again loads the roster', async () => {
+    mockTeams = { status: 'ready', teams: [{ team, role: 'player' }] };
+    mockGetRoster.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    await render(<TeamContent />);
+    await screen.findByText('Could not load roster: offline');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByRole('button', { name: 'View team' });
+    expect(screen.queryByText('Could not load roster: offline')).toBeNull();
+    expect(mockGetRoster).toHaveBeenCalledTimes(2);
   });
 });
