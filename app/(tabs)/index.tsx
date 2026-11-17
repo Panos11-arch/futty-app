@@ -526,7 +526,7 @@ function PremiumSection() {
     <Card padded={false}>
       <ListRow
         title={isPremium ? "You're on Premium" : 'Go Futty Premium'}
-        subtitle={isPremium ? 'Manage your plan' : 'Book further ahead and get the verified badge'}
+        subtitle={isPremium ? 'Manage your plan' : 'Book further ahead, no fee on your own spot'}
         leading={{ icon: 'star.fill' }}
         chevron
         onPress={() => router.push('/account/premium')}
