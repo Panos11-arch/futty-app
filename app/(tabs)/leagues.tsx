@@ -62,7 +62,8 @@ function Note({ children }: { children: string }) {
   );
 }
 
-/** A league table. Rows whose team is in `highlightTeamIds` sit on brandSoft. */
+/** A league table. Rows whose team is in `highlightTeamIds` (the user's own
+ *  teams) sit on brandSoft. */
 export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[]; highlightTeamIds: Set<string> }) {
   if (rows.length === 0) {
     return <Note>No teams registered yet.</Note>;
@@ -498,7 +499,15 @@ function FixturesSection() {
   );
 }
 
-function StandardLeagueSection({ format, leagues }: { format: string; leagues: League[] }) {
+function StandardLeagueSection({
+  format,
+  leagues,
+  myTeamIds,
+}: {
+  format: string;
+  leagues: League[];
+  myTeamIds: Set<string>;
+}) {
   const league = leagues.find((l) => l.format === format && l.scope === 'Island-wide');
   const standings = useLeagueStandings(league?.id ?? '');
 
@@ -520,7 +529,7 @@ function StandardLeagueSection({ format, leagues }: { format: string; leagues: L
         />
       ) : null}
       {standings.status === 'ready' ? (
-        <StandingsTable rows={standings.rows} highlightTeamIds={registeredTeamIds} />
+        <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
       ) : null}
 
       <JoinLeagueControl
@@ -543,11 +552,13 @@ function OpenLeagueSection({
   city,
   leagues,
   reloadLeagues,
+  myTeamIds,
 }: {
   format: string;
   city: string;
   leagues: League[];
   reloadLeagues: () => void;
+  myTeamIds: Set<string>;
 }) {
   const hub = leagues.find((l) => l.format === format && l.scope === city && !l.parent_league_id);
   const standings = useLeagueStandings(hub?.id ?? '');
@@ -600,17 +611,17 @@ function OpenLeagueSection({
       </Text>
 
       {hub.stage !== 'divisions' && standings.status === 'ready' ? (
-        <StandingsTable rows={standings.rows} highlightTeamIds={treeTeamIds} />
+        <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
       ) : null}
 
       {hub.stage === 'divisions' ? (
         <>
           {divisions.map((division) => (
-            <DivisionCard key={division.id} division={division} highlightTeamIds={treeTeamIds} />
+            <DivisionCard key={division.id} division={division} highlightTeamIds={myTeamIds} />
           ))}
           <Text variant="headline">Waiting pool</Text>
           {standings.status === 'ready' ? (
-            <StandingsTable rows={standings.rows} highlightTeamIds={treeTeamIds} />
+            <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
           ) : null}
         </>
       ) : null}
@@ -673,6 +684,10 @@ export function LeaguesContent() {
   const [city, setCity] = useState(CITIES[0]);
 
   const leagues = leaguesState.status === 'ready' ? leaguesState.leagues : [];
+  // Table rows are highlighted only for the user's own teams (Anghelo, #93);
+  // nothing while those are loading or failed to load.
+  const myTeams = useMyTeams();
+  const myTeamIds = new Set(myTeams.status === 'ready' ? myTeams.teams.map(({ team }) => team.id) : []);
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
@@ -711,7 +726,7 @@ export function LeaguesContent() {
         <>
           <View style={styles.section}>
             <SectionHeader title="Island-wide league" />
-            <StandardLeagueSection format={format} leagues={leagues} />
+            <StandardLeagueSection format={format} leagues={leagues} myTeamIds={myTeamIds} />
           </View>
 
           <View style={styles.section}>
@@ -726,6 +741,7 @@ export function LeaguesContent() {
               city={city}
               leagues={leagues}
               reloadLeagues={leaguesState.reload}
+              myTeamIds={myTeamIds}
             />
           </View>
         </>
