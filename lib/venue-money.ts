@@ -186,6 +186,12 @@ export function fetchRevenueExport(venueId: string, period: Period, day: string)
   return supabase.rpc('venue_revenue_export', { p_venue_id: venueId, p_period: period, p_day: day });
 }
 
+/** The payouts CSV's one call: the payouts sent in the period (Cyprus
+ *  dates), each payout's total and the total sent and reversed. */
+export function fetchPayoutsExport(venueId: string, period: Period, day: string) {
+  return supabase.rpc('venue_payouts_export', { p_venue_id: venueId, p_period: period, p_day: day });
+}
+
 export type BookingsQuery = {
   venueId: string;
   from: string;

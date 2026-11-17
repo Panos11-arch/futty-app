@@ -4,7 +4,9 @@
 // beside the venue's, the totals, and the walk-ins charged at a price other
 // than the venue's. Every amount is a field venue_revenue returned, shown as
 // it came: the screen adds nothing up. "Export CSV" calls
-// venue_revenue_export once and shares the file (lib/revenue-export.ts).
+// venue_revenue_export once and shares the file; "Export payouts CSV" does
+// the same with venue_payouts_export, for the payouts sent in the same period
+// (lib/revenue-export.ts).
 import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -24,7 +26,7 @@ import { space } from '@/constants/futty-theme';
 import { useLoad } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
 import type { RevenueTotals } from '@/lib/money/revenue-csv';
-import { exportRevenueCsv } from '@/lib/revenue-export';
+import { exportPayoutsCsv, exportRevenueCsv } from '@/lib/revenue-export';
 import {
   canStepForward,
   describeMoneyError,
@@ -101,6 +103,7 @@ export function MoneyView({ venueId }: { venueId: string }) {
   const [period, setPeriod] = useState<Period>('day');
   const [day, setDay] = useState(today);
   const [exporting, setExporting] = useState(false);
+  const [exportingPayouts, setExportingPayouts] = useState(false);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'warning'; message: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -134,6 +137,14 @@ export function MoneyView({ venueId }: { venueId: string }) {
     } else if (result.status === 'error') {
       setNotice({ tone: 'danger', message: result.message });
     }
+  }
+
+  async function exportPayouts() {
+    setExportingPayouts(true);
+    setNotice(null);
+    const result = await exportPayoutsCsv(venueId, period, day);
+    setExportingPayouts(false);
+    if (result.status === 'error') setNotice({ tone: 'danger', message: result.message });
   }
 
   const title = ready ? periodLabel(period, ready.from, ready.to, today) : periodLabel(period, day, day, today);
@@ -179,6 +190,19 @@ export function MoneyView({ venueId }: { venueId: string }) {
             loading={exporting}
             disabled={exporting}
             onPress={exportCsv}
+            fullWidth
+          />
+
+          <Text variant="callout" tone="inkMuted">
+            Stripe pays your bank on its own schedule, so one bank deposit can hold several transfers. Your Stripe
+            dashboard shows which.
+          </Text>
+          <Button
+            label="Export payouts CSV"
+            variant="secondary"
+            loading={exportingPayouts}
+            disabled={exportingPayouts}
+            onPress={exportPayouts}
             fullWidth
           />
 
