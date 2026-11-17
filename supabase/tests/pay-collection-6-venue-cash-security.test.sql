@@ -161,7 +161,10 @@ begin
     || 'kickoff_local timestamp without time zone, ends_local timestamp without time zone, '
     || 'settled_at timestamp with time zone',
     format('exactly contract 3''s columns, got %s', v_columns);
-  assert (select count(*) from public.match_result_confirmed) = 0, 'no rows until A2';
+  -- A2 has shipped, so settled matches show here (the local seed has one):
+  -- one row per confirmed, disputed or no_result match, and nothing else.
+  assert (select count(*) from public.match_result_confirmed)
+       = (select count(*) from public.matches where status in ('confirmed', 'disputed', 'no_result')), 'one row per settled match';
   assert has_table_privilege('service_role', 'public.match_result_confirmed', 'select'), 'service_role reads it';
   assert not has_table_privilege('authenticated', 'public.match_result_confirmed', 'select'), 'players don''t';
   assert not has_table_privilege('anon', 'public.match_result_confirmed', 'select'), 'anon doesn''t';
