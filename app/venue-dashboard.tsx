@@ -12,6 +12,8 @@
 //   app_rules threshold at least weather_nudge_hours before kickoff, each
 //   with one tap to flag conditions for it;
 // - the 6 v 6 on 5-a-side pitches setting;
+// - Venue setup (P6e): one tap each to opening hours, closures, prices and
+//   pitches;
 // - below, unchanged from before P6c: adding a house player and recurring
 //   training slots (restyled in P6e);
 // - at the top, one tap to each other section (P6d): Money, Bookings,
@@ -102,7 +104,15 @@ const SECTIONS = [
   { label: 'Payouts', pathname: '/venue-payouts' },
 ] as const;
 
-type DashboardVenue = { id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
+// Venue setup (P6e): one tap to each setup screen, one more to open what to change.
+const SETUP = [
+  { label: 'Opening hours', subtitle: 'Your hours each day of the week', icon: 'clock.fill', pathname: '/venue-hours' },
+  { label: 'Closures', subtitle: 'Days closed to new bookings', icon: 'calendar', pathname: '/venue-closures' },
+  { label: 'Prices', subtitle: 'Per format, with peak and weekend prices', icon: 'creditcard.fill', pathname: '/venue-prices' },
+  { label: 'Pitches', subtitle: 'Add, edit, close and combine pitches', icon: 'sportscourt.fill', pathname: '/venue-pitches' },
+] as const;
+
+type DashboardVenue ={ id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
 
 type BoardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; board: DayBoard };
 
@@ -424,6 +434,20 @@ export default function VenueDashboardScreen() {
                 value={venue.allows_6v6_on_5s ? 'on' : 'off'}
                 onChange={(value) => change6v6(value === 'on')}
               />
+            </View>
+
+            <View style={styles.section} testID="venue-setup">
+              <SectionHeader title="Venue setup" />
+              {SETUP.map((s) => (
+                <ListRow
+                  key={s.pathname}
+                  title={s.label}
+                  subtitle={s.subtitle}
+                  leading={{ icon: s.icon }}
+                  chevron
+                  onPress={() => router.push({ pathname: s.pathname, params: { venueId: venue.id } })}
+                />
+              ))}
             </View>
 
             {ready ? <NeedPlayersSection bookings={ready.bookings} /> : null}

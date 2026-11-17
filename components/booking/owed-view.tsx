@@ -17,7 +17,7 @@ import {
   owedWhen,
   paymentActionLabel,
   paymentAmountCents,
-  paymentSentence,
+  paymentRowSentence,
   type Owed,
   type OwedItem,
   type OwedMessage,
@@ -132,7 +132,7 @@ function OwedSections({ owed, onRetryOwed, onPay, payingKey }: OwedViewProps) {
                     </Text>
                   ) : null}
                 </View>
-                <Text variant="body">{paymentSentence(payment.kind)}</Text>
+                <Text variant="body">{paymentRowSentence(payment)}</Text>
                 {hold ? (
                   <Text variant="caption" tone="inkMuted" tabular>
                     {hold}

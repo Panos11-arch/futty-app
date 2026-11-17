@@ -1,0 +1,1311 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Matchmaking loading 1`] = `
+<View
+  edges={
+    [
+      "top",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_500Medium",
+              "fontSize": 13,
+              "lineHeight": 18,
+            },
+            {
+              "color": "#5B6470",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        Pick a date and pitch — match the other captain's pick to lock it in.
+      </Text>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="matchmaking-skeleton"
+      >
+        <View
+          accessibilityLabel="Loading"
+          accessible={true}
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "100%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "100%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "60%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Matchmaking not a captain 1`] = `
+<View
+  edges={
+    [
+      "top",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_500Medium",
+              "fontSize": 13,
+              "lineHeight": 18,
+            },
+            {
+              "color": "#5B6470",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        Pick a date and pitch — match the other captain's pick to lock it in.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-info.circle.fill"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Captain a team to schedule fixtures.
+        </Text>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Matchmaking nothing to schedule 1`] = `
+<View
+  edges={
+    [
+      "top",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_500Medium",
+              "fontSize": 13,
+              "lineHeight": 18,
+            },
+            {
+              "color": "#5B6470",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        Pick a date and pitch — match the other captain's pick to lock it in.
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Nothing to schedule right now.
+        </Text>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Previous games empty 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "gap": 12,
+        "paddingHorizontal": 16,
+        "paddingVertical": 32,
+      }
+    }
+  >
+    <View
+      testID="empty-state-icon"
+    >
+      <View
+        testID="icon-checkmark.circle.fill"
+      />
+    </View>
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_400Regular",
+            "fontSize": 15,
+            "lineHeight": 20,
+          },
+          {
+            "color": "#5B6470",
+          },
+          false,
+          {
+            "textAlign": "center",
+          },
+        ]
+      }
+    >
+      Nothing left to log — you’re all caught up.
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`Previous games loading 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 12,
+          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+        },
+        {
+          "padding": 16,
+        },
+        undefined,
+      ]
+    }
+    testID="previous-games-skeleton"
+  >
+    <View
+      accessibilityLabel="Loading"
+      accessible={true}
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "100%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "100%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "60%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+    </View>
+  </View>
+</View>
+`;
+
+exports[`Previous games populated: a match opens the match screen, the rest keep the old form 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 12,
+          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+        },
+        false,
+        undefined,
+      ]
+    }
+  >
+    <View
+      accessibilityLabel="Arena"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "flexDirection": "row",
+            "gap": 12,
+            "minHeight": 44,
+            "paddingHorizontal": 16,
+            "paddingVertical": 12,
+          },
+          false,
+        ]
+      }
+    >
+      <View
+        testID="list-row-leading-icon"
+      >
+        <View
+          testID="icon-sportscourt.fill"
+        />
+      </View>
+      <View
+        style={
+          {
+            "flex": 1,
+            "gap": 2,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Arena
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Thu 12 Nov · 19:00 · enter or check the result
+        </Text>
+      </View>
+      <View
+        testID="list-row-chevron"
+      >
+        <View
+          testID="icon-chevron.right"
+        />
+      </View>
+    </View>
+  </View>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 12,
+          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+        },
+        {
+          "padding": 16,
+        },
+        undefined,
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_500Medium",
+              "fontSize": 13,
+              "lineHeight": 18,
+            },
+            {
+              "color": "#0B1215",
+            },
+            {
+              "fontVariant": [
+                "tabular-nums",
+              ],
+            },
+            undefined,
+          ]
+        }
+      >
+        Arena
+         · 
+        Tue 10 Nov
+         · 
+        19:00
+         ·
+         
+        5-a-side
+      </Text>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <TextInput
+          accessibilityLabel="Your goals"
+          keyboardType="number-pad"
+          onChangeText={[Function]}
+          placeholder="0"
+          placeholderTextColor="#5B6470"
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 10,
+                "borderWidth": 1,
+                "color": "#0B1215",
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+                "paddingHorizontal": 8,
+                "textAlign": "center",
+                "width": 48,
+              },
+            ]
+          }
+          value=""
+        />
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          –
+        </Text>
+        <TextInput
+          accessibilityLabel="Their goals"
+          keyboardType="number-pad"
+          onChangeText={[Function]}
+          placeholder="0"
+          placeholderTextColor="#5B6470"
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 10,
+                "borderWidth": 1,
+                "color": "#0B1215",
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+                "paddingHorizontal": 8,
+                "textAlign": "center",
+                "width": 48,
+              },
+            ]
+          }
+          value=""
+        />
+        <View
+          accessibilityLabel="Log result"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": true,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#0E5A3A",
+              },
+              false,
+              false,
+              {
+                "opacity": 0.4,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Log result
+          </Text>
+        </View>
+      </View>
+      <View
+        accessibilityLabel="Cancel booking"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "alignSelf": "flex-start",
+              "borderRadius": 10,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderWidth": 0.5,
+            },
+            false,
+            false,
+            false,
+            false,
+          ]
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Cancel booking
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`Upcoming fixtures empty 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "gap": 12,
+        "paddingHorizontal": 16,
+        "paddingVertical": 32,
+      }
+    }
+  >
+    <View
+      testID="empty-state-icon"
+    >
+      <View
+        testID="icon-calendar"
+      />
+    </View>
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_400Regular",
+            "fontSize": 15,
+            "lineHeight": 20,
+          },
+          {
+            "color": "#5B6470",
+          },
+          false,
+          {
+            "textAlign": "center",
+          },
+        ]
+      }
+    >
+      No upcoming fixtures — these fill in once your team is registered in a league with opponents.
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`Upcoming fixtures loading 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 12,
+          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+        },
+        {
+          "padding": 16,
+        },
+        undefined,
+      ]
+    }
+    testID="upcoming-fixtures-skeleton"
+  >
+    <View
+      accessibilityLabel="Loading"
+      accessible={true}
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "100%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "100%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+            },
+            {
+              "height": 12,
+              "width": "60%",
+            },
+          ]
+        }
+        testID="skeleton-line"
+      />
+    </View>
+  </View>
+</View>
+`;
+
+exports[`Upcoming fixtures populated for a captain: same actions and targets 1`] = `
+<View
+  style={
+    {
+      "gap": 12,
+    }
+  }
+>
+  <View
+    style={
+      [
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderRadius": 12,
+          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+        },
+        {
+          "padding": 16,
+        },
+        {
+          "gap": 8,
+        },
+      ]
+    }
+    testID="fixture-card"
+  >
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_600SemiBold",
+            "fontSize": 17,
+            "lineHeight": 22,
+          },
+          {
+            "color": "#0B1215",
+          },
+          false,
+          undefined,
+        ]
+      }
+    >
+      Tigers
+       vs 
+      Lions
+    </Text>
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_500Medium",
+            "fontSize": 13,
+            "lineHeight": 18,
+          },
+          {
+            "color": "#5B6470",
+          },
+          {
+            "fontVariant": [
+              "tabular-nums",
+            ],
+          },
+          undefined,
+        ]
+      }
+    >
+      Not yet scheduled
+    </Text>
+    <View
+      accessibilityLabel="Go to matchmaking"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": false,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "alignSelf": "flex-start",
+            "borderRadius": 10,
+            "justifyContent": "center",
+            "minHeight": 44,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E4E7EB",
+            "borderWidth": 0.5,
+          },
+          false,
+          false,
+          false,
+          false,
+        ]
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_600SemiBold",
+              "fontSize": 17,
+              "lineHeight": 22,
+            },
+            {
+              "color": "#0B1215",
+            },
+            false,
+            {
+              "textAlign": "center",
+            },
+          ]
+        }
+      >
+        Go to matchmaking
+      </Text>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        accessibilityLabel="Resolve outcome — no agreed date this week"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "alignSelf": "flex-start",
+              "borderRadius": 10,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderWidth": 0.5,
+            },
+            false,
+            false,
+            false,
+            false,
+          ]
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Resolve outcome — no agreed date this week
+        </Text>
+      </View>
+    </View>
+    <View
+      accessibilityLabel="Message the other captain"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": false,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "alignSelf": "flex-start",
+            "borderRadius": 10,
+            "justifyContent": "center",
+            "minHeight": 44,
+            "paddingHorizontal": 16,
+            "paddingVertical": 8,
+          },
+          {
+            "backgroundColor": "transparent",
+          },
+          {
+            "paddingHorizontal": 8,
+          },
+          false,
+          false,
+          false,
+        ]
+      }
+    >
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_600SemiBold",
+              "fontSize": 17,
+              "lineHeight": 22,
+            },
+            {
+              "color": "#0E5A3A",
+            },
+            false,
+            {
+              "textAlign": "center",
+            },
+          ]
+        }
+      >
+        Message the other captain
+      </Text>
+    </View>
+  </View>
+</View>
+`;

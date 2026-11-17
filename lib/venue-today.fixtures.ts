@@ -221,6 +221,8 @@ export function venueQuote(overrides: Partial<CancellationQuote> = {}): Cancella
     ],
     booker_fee: null,
     guarantee_hold_placed: false,
+    // The server's figure: deliberately not anything the lines add up to.
+    venue_stripe_fee_cents: 137,
     quote: 'q-1',
     ...overrides,
   };

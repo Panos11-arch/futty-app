@@ -27,8 +27,9 @@ jest.mock('expo-file-system', () => ({
   },
 }));
 const mockShare = jest.fn((..._args: unknown[]) => Promise.resolve());
+const mockAvailable = jest.fn(() => Promise.resolve(true));
 jest.mock('expo-sharing', () => ({
-  isAvailableAsync: () => Promise.resolve(true),
+  isAvailableAsync: () => mockAvailable(),
   shareAsync: (...args: unknown[]) => mockShare(...args),
 }));
 jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(() => Promise.resolve()), ImpactFeedbackStyle: { Light: 'light' } }));
@@ -43,6 +44,7 @@ beforeEach(() => {
   jest.setSystemTime(new Date('2026-11-17T10:00:00Z'));
   mockRpc.mockClear();
   mockShare.mockClear();
+  mockAvailable.mockClear();
   mockWrites.length = 0;
   mockReplies.venue_revenue = () => ({ data: revenueScreen(), error: null });
   mockReplies.venue_revenue_export = () => ({ data: revenueExport(), error: null });
@@ -169,5 +171,101 @@ describe('MoneyView: Export CSV', () => {
     expect(mockShare).not.toHaveBeenCalled();
     expect(await screen.findByText('Revenue changed since you opened this. Check the new totals and export again.')).toBeTruthy();
     expect(calls('venue_revenue')).toHaveLength(2);
+  });
+});
+
+describe('MoneyView: Export payouts CSV', () => {
+  const payoutsExport = () => ({
+    period: 'month',
+    from: '2026-11-01',
+    to: '2026-11-30',
+    rows: [
+      {
+        payout_id: 'p1', sent_on: '2026-11-01', sent_at: '01:30', stripe_transfer_id: 'tr_1', status: 'sent',
+        booking_id: 'b1', booking_day: '2026-11-03', start_time: '19:00:00', venue_cents: 1800,
+      },
+    ],
+    payouts: [{ payout_id: 'p1', status: 'sent', amount_cents: 1800, rows: 1 }],
+    totals: { sent_cents: 1800, reversed_cents: 0, rows: 1 },
+  });
+
+  beforeEach(() => {
+    mockReplies.venue_payouts_export = () => ({ data: payoutsExport(), error: null });
+  });
+
+  async function exportPayouts() {
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Export payouts CSV' }));
+    });
+  }
+
+  it('says one bank deposit can hold several transfers', async () => {
+    await draw();
+    expect(
+      screen.getByText(
+        'Stripe pays your bank on its own schedule, so one bank deposit can hold several transfers. Your Stripe dashboard shows which.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it("calls venue_payouts_export once for the screen's period and shares the file", async () => {
+    await draw();
+    await fireEvent.press(screen.getByRole('tab', { name: 'Month' }));
+    await screen.findByTestId('revenue-total-venue');
+    await exportPayouts();
+    expect(calls('venue_payouts_export')).toEqual([{ p_venue_id: 'v1', p_period: 'month', p_day: '2026-11-01' }]);
+    expect(mockShare).toHaveBeenCalledTimes(1);
+    expect(mockShare.mock.calls[0][0]).toBe('file:///cache/futty-payouts-2026-11-01-2026-11-30.csv');
+    expect(mockWrites[0]).toContain('2026-11-01,01:30,p1,tr_1,Sent,b1,2026-11-03,19:00,18.00\r\n');
+    expect(mockWrites[0]).toContain('Total sent,,,,,,,,18.00\r\n');
+    expect(calls('venue_revenue_export')).toEqual([]);
+  });
+
+  it("the server's refusal shows as a danger note, nothing shared", async () => {
+    mockReplies.venue_payouts_export = () => ({ data: null, error: { message: 'not_venue_staff' } });
+    await draw();
+    await exportPayouts();
+    expect(await screen.findByText("You're not staff at this venue.")).toBeTruthy();
+    expect(mockShare).not.toHaveBeenCalled();
+  });
+
+  it("totals that aren't the rows: no file, and a note", async () => {
+    mockReplies.venue_payouts_export = () => ({
+      data: { ...payoutsExport(), totals: { sent_cents: 1700, reversed_cents: 0, rows: 1 } },
+      error: null,
+    });
+    await draw();
+    await exportPayouts();
+    expect(await screen.findByText("The export didn't match its totals. Try again.")).toBeTruthy();
+    expect(mockWrites).toEqual([]);
+    expect(mockShare).not.toHaveBeenCalled();
+  });
+
+  it('a phone that cannot share', async () => {
+    mockAvailable.mockResolvedValueOnce(false);
+    await draw();
+    await exportPayouts();
+    expect(await screen.findByText("Sharing isn't available on this phone.")).toBeTruthy();
+    expect(mockShare).not.toHaveBeenCalled();
+  });
+
+  it('the share sheet fails', async () => {
+    mockShare.mockRejectedValueOnce(new Error('dismissed'));
+    await draw();
+    await exportPayouts();
+    expect(await screen.findByText("The file couldn't be shared. Try again.")).toBeTruthy();
+  });
+
+  it('the button waits while the file is made', async () => {
+    let answer: (reply: Reply) => void = () => {};
+    await draw();
+    mockRpc.mockImplementationOnce(() => new Promise<Reply>((resolve) => (answer = resolve)));
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Export payouts CSV' }));
+    });
+    expect(screen.getByRole('button', { name: 'Export payouts CSV' })).toBeDisabled();
+    await act(async () => answer({ data: payoutsExport(), error: null }));
+    expect(screen.getByRole('button', { name: 'Export payouts CSV' })).not.toBeDisabled();
+    expect(mockShare).toHaveBeenCalledTimes(1);
   });
 });

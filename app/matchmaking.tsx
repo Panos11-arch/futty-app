@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListRow } from '@/components/ui/list-row';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
 import { WizardModal } from '@/components/wizard-modal';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { dayLabel, toDateKey, useDays } from '@/lib/days';
 import {
   FIXTURE_SCHEDULING_WINDOW_DAYS,
@@ -58,7 +61,6 @@ function ScheduleWizard({
   // A venue that isn't live never appears in the booking flow (spec 13).
   const venuesState = useVenues({ liveOnly: true });
   const schedulingDays = useDays(FIXTURE_SCHEDULING_WINDOW_DAYS + 1);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   const [step, setStep] = useState<WizardStep>('date');
   const [dateKey, setDateKey] = useState(toDateKey(schedulingDays[0]));
@@ -119,26 +121,29 @@ function ScheduleWizard({
       onContinue={goNext}
       continueDisabled={!canAdvance()}
       continueBusy={busy}>
-      <ThemedText type="title" style={styles.stepTitle}>
-        {meta.title}
-      </ThemedText>
-      <ThemedText style={styles.stepSubtitle}>{meta.subtitle}</ThemedText>
+      <View style={styles.stepHeader}>
+        <Text variant="title" accessibilityRole="header">
+          {meta.title}
+        </Text>
+        <Text variant="callout" tone="inkMuted">
+          {meta.subtitle}
+        </Text>
+      </View>
 
       {theirLatest && step === 'date' ? (
-        <ThemedView style={[styles.theirProposalCard, { borderColor: border }]}>
-          <ThemedText style={styles.theirProposalText}>
+        <View style={styles.theirProposal}>
+          <Text variant="callout" tabular>
             They proposed {theirLatest.proposed_day} at {theirLatest.proposed_time.slice(0, 5)},{' '}
             {theirLatest.venue?.name ?? 'a pitch'}.
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
+          </Text>
+          <Button
+            label="Agree to this instead"
+            fullWidth
             onPress={() =>
               propose(theirLatest.proposed_day, theirLatest.proposed_time.slice(0, 5), theirLatest.venue_id)
             }
-            style={styles.agreeButton}>
-            <ThemedText style={styles.agreeButtonText}>Agree to this instead</ThemedText>
-          </Pressable>
-        </ThemedView>
+          />
+        </View>
       ) : null}
 
       {step === 'date' ? (
@@ -162,9 +167,13 @@ function ScheduleWizard({
 
       {step === 'venue' ? (
         <View style={styles.wrapRow}>
-          {venuesState.status === 'loading' ? <ActivityIndicator /> : null}
+          {venuesState.status === 'loading' ? <SkeletonText lines={2} /> : null}
           {venuesState.status === 'error' ? (
-            <ThemedText style={styles.note}>Could not load pitches: {venuesState.message}</ThemedText>
+            <Banner
+              tone="danger"
+              message={`Could not load pitches: ${venuesState.message}`}
+              action={{ label: 'Try again', onPress: venuesState.reload }}
+            />
           ) : null}
           {venuesState.status === 'ready'
             ? venuesState.venues.map((venue) => (
@@ -180,7 +189,11 @@ function ScheduleWizard({
         </View>
       ) : null}
 
-      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </WizardModal>
   );
 }
@@ -194,7 +207,6 @@ function FixtureRow({
   myCaptainTeamIds: Set<string>;
   onChanged: () => void;
 }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const [proposals, setProposals] = useState<FixtureProposal[] | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -210,25 +222,28 @@ function FixtureRow({
   const opponent = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team : fixture.home_team;
   const theirTeamId = myCaptainTeamIds.has(fixture.home_team_id) ? fixture.away_team_id : fixture.home_team_id;
   const theirLatest = proposals?.find((p) => p.proposed_by_team_id === theirTeamId) ?? null;
+  const title = `vs ${opponent?.name ?? 'Unknown team'}`;
 
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => setWizardOpen(true)}
-        style={[styles.row, { borderColor: border }]}>
-        <View style={styles.rowText}>
-          <ThemedText type="defaultSemiBold">vs {opponent?.name ?? 'Unknown team'}</ThemedText>
-          <ThemedText style={styles.note}>
-            {theirLatest
+      <Card padded={false}>
+        <ListRow
+          title={title}
+          subtitle={
+            theirLatest
               ? `They proposed ${theirLatest.proposed_day} at ${theirLatest.proposed_time.slice(0, 5)}`
-              : 'Not scheduled yet'}
-          </ThemedText>
-        </View>
-        <ThemedText type="link" style={styles.scheduleLink}>
-          Schedule
-        </ThemedText>
-      </Pressable>
+              : 'Not scheduled yet'
+          }
+          accessibilityLabel={`${title}. Schedule`}
+          trailing={
+            <Text variant="callout" tone="brand">
+              Schedule
+            </Text>
+          }
+          chevron
+          onPress={() => setWizardOpen(true)}
+        />
+      </Card>
 
       {wizardOpen ? (
         <ScheduleWizard
@@ -257,27 +272,31 @@ export default function MatchmakingScreen() {
       : [];
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <IconLabel icon="calendar" style={styles.intro} iconColor={FuttyColors.emerald950} iconSize={14}>
+        <Text variant="callout" tone="inkMuted">
           Pick a date and pitch — match the other captain&apos;s pick to lock it in.
-        </IconLabel>
+        </Text>
 
-        {fixtures.status === 'loading' ? <ActivityIndicator /> : null}
+        {fixtures.status === 'loading' ? (
+          <Card testID="matchmaking-skeleton">
+            <SkeletonText lines={3} />
+          </Card>
+        ) : null}
         {fixtures.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load fixtures: {fixtures.message}</ThemedText>
+          <Banner
+            tone="danger"
+            message={`Could not load fixtures: ${fixtures.message}`}
+            action={{ label: 'Try again', onPress: fixtures.reload }}
+          />
         ) : null}
 
         {fixtures.status === 'ready' && myCaptainTeamIds.size === 0 ? (
-          <IconLabel icon="info.circle.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            Captain a team to schedule fixtures.
-          </IconLabel>
+          <EmptyState icon="info.circle.fill" message="Captain a team to schedule fixtures." />
         ) : null}
 
         {fixtures.status === 'ready' && myCaptainTeamIds.size > 0 && actionable.length === 0 ? (
-          <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            Nothing to schedule right now.
-          </IconLabel>
+          <EmptyState icon="calendar" message="Nothing to schedule right now." />
         ) : null}
 
         {actionable.map((fixture) => (
@@ -294,76 +313,17 @@ export default function MatchmakingScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  stepHeader: { gap: space.xs, marginBottom: space.lg },
+  theirProposal: {
+    borderWidth: hairline,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    padding: space.md,
+    gap: space.sm,
+    marginBottom: space.lg,
   },
-  content: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  intro: {
-    fontSize: 13,
-    opacity: 0.7,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: FuttyColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 14,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-  scheduleLink: {
-    fontSize: 13,
-  },
-  stepTitle: {
-    fontSize: 26,
-  },
-  stepSubtitle: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 16,
-  },
-  theirProposalCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  theirProposalText: {
-    fontSize: 13,
-  },
-  agreeButton: {
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.emerald950,
-  },
-  agreeButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: FuttyColors.white,
-  },
-  errorText: {
-    fontSize: 13,
-    color: FuttyColors.rose600,
-    marginTop: 12,
-  },
+  error: { marginTop: space.md },
 });

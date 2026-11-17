@@ -1,0 +1,498 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PopupModal renders title, body and footer; Close and Back call their handlers 1`] = `
+<Modal
+  animationType="slide"
+  onRequestClose={[MockFunction]}
+  visible={true}
+>
+  <View
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        {
+          "backgroundColor": "#F4F5F7",
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "paddingBottom": 0,
+            "paddingTop": 0,
+          },
+        ]
+      }
+    >
+      <View
+        style={
+          [
+            {
+              "alignItems": "center",
+              "elevation": 10,
+              "flexDirection": "row",
+              "gap": 8,
+              "justifyContent": "space-between",
+              "minHeight": 56,
+              "paddingHorizontal": 8,
+              "paddingVertical": 4,
+              "zIndex": 10,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderBottomColor": "#E4E7EB",
+              "borderBottomWidth": 0.5,
+            },
+          ]
+        }
+      >
+        <View>
+          <View
+            accessibilityLabel="Back"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "minWidth": 44,
+                },
+                false,
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-chevron.left"
+            />
+          </View>
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Select country
+        </Text>
+        <View>
+          <View
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "minWidth": 44,
+                },
+                false,
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-xmark"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <Text>
+          Body
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "paddingHorizontal": 16,
+              "paddingTop": 16,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderTopColor": "#E4E7EB",
+              "borderTopWidth": 0.5,
+            },
+            {
+              "paddingBottom": 24,
+            },
+          ]
+        }
+      >
+        <Text>
+          Footer
+        </Text>
+      </View>
+    </View>
+  </View>
+</Modal>
+`;
+
+exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 1`] = `
+<Modal
+  animationType="slide"
+  onRequestClose={[MockFunction]}
+  visible={true}
+>
+  <View
+    style={
+      {
+        "backgroundColor": "#F4F5F7",
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "paddingBottom": 0,
+            "paddingTop": 0,
+          },
+        ]
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+            "paddingHorizontal": 8,
+            "paddingVertical": 4,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 999,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "minWidth": 44,
+              },
+              false,
+              false,
+            ]
+          }
+        >
+          <View
+            testID="icon-chevron.left"
+          />
+        </View>
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          vs Lions
+        </Text>
+        <View
+          style={
+            {
+              "height": 44,
+              "width": 44,
+            }
+          }
+        />
+      </View>
+      <View
+        style={
+          {
+            "paddingBottom": 12,
+            "paddingHorizontal": 16,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+              },
+              undefined,
+            ]
+          }
+          testID="wizard-step"
+        >
+          Step 
+          2
+           of 
+          3
+           · 
+          Time
+        </Text>
+      </View>
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "flexGrow": 1,
+            "paddingBottom": 16,
+            "paddingHorizontal": 16,
+          }
+        }
+        keyboardShouldPersistTaps="handled"
+      >
+        <View>
+          <View
+            collapsable={false}
+            style={
+              {
+                "transform": [
+                  {
+                    "translateX": 0,
+                  },
+                ],
+              }
+            }
+          >
+            <Text>
+              Step body
+            </Text>
+          </View>
+        </View>
+      </RCTScrollView>
+      <View
+        style={
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderTopColor": "#E4E7EB",
+            "borderTopWidth": 0.5,
+            "gap": 8,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Continue"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#0E5A3A",
+              },
+              false,
+              {
+                "alignSelf": "stretch",
+              },
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Continue
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+</Modal>
+`;

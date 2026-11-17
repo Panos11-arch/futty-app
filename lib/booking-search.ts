@@ -178,7 +178,13 @@ export type BookingDetail = {
     fee_cents: number;
     cash_cents: number;
     free_until: string | null;
+    /** Paying this share in cash now, as the server would plan it: the
+     *  pitch part in cash and the fee by card. Null unless cash_allowed. */
+    cash: { cash_cents: number; card_cents: number } | null;
   } | null;
+  /** Whether the caller may pay their own share in cash now (the server's
+   *  cash rules: each-pays modes only, never in debt, before collection). */
+  cash_allowed: boolean;
   roster: RosterEntry[];
   next_cutoff: NextCutoff;
   can_cancel: { my_spot: boolean; whole_team: boolean };

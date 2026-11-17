@@ -14,9 +14,62 @@ Decided 16 November: there is no hidden test venue and no pre-made booking for A
   ```
 - [ ] Nothing below starts until both are there.
 
+## 1b. Production deploy: the migrations
+
+Production last had migrations pushed before the P5b / P8 / P6 / P13 work, so one `supabase db push` now applies everything merged since. P13 (#64, #73) has no migrations.
+
+**What production hasn't got, by PR (22 files, in file order within each PR):**
+
+- **#60, P5a + P5b:** `20261112220000_pay_quote_guarantee_held`
+- **#67, P6a:** `20261113220547_pay_dashboard_ledger`, `20261113220553_pay_dashboard_counter`, `20261113220558_pay_dashboard_conditions`, `20261113220603_pay_dashboard_reads`, `20261113223420_pay_dashboard_guards`
+- **#72, P6b + P6c:** `20261113235757_pay_dashboard_debt_cash` (runs the backfill, below), `20261113235802_pay_dashboard_revenue`, `20261113235806_pay_dashboard_people`
+- **#75, P5c + P8:** `20261113115749_pay_gipedo_mode`, `20261113115752_pay_gipedo_opposition`, `20261113115755_pay_gipedo_settle`, `20261113130016_pay_gipedo_review_fixes`, `20261113185144_pay_gipedo_followups`, `20261115170000_pay_gipedo_dashboard_merge`
+- **#77, P10:** `20261115190000_pay_app_rules`
+- **#79, P12:** `20261116124400_pay_switching`, `20261116134544_pay_cash_top_ups`
+- **#81, P4d:** `20261116144007_pay_payouts_tables`, `20261116144010_pay_payouts_functions`, `20261116151505_pay_payouts_live`
+- **#85, P7:** `20261116194830_pay_release`
+
+Note: **P8's migrations are dated 13 November 11:57–18:51, before P6a's (13 November 22:05 onwards)**, although P8 was merged a day later. So in file order the first five P8 files run before P6a's. Not yet merged, so not in this list: P6d (#84), P11 (#83), A8 (#86). If any of them merges before the push, its migrations are added too.
+
+**Before pushing: the P6b backfill.** `20261113235757_pay_dashboard_debt_cash` writes one `debt_cash_received` ledger row for every debt a venue has already marked settled. In the SQL editor, count them first:
+
+```sql
+select count(*) as debts, coalesce(sum(amount_cents), 0) as total_cents
+from public.venue_debts
+where owed_to = 'venue' and settled_by = 'venue' and settled_at is not null;
+```
+
+- [ ] Note the two numbers. After the push, this must give the same count:
+  ```sql
+  select count(*) from public.money_ledger
+  where kind = 'debt_cash_received' and reason = 'debt_settled_at_venue';
+  ```
+
+**The push:**
+
+- [ ] `supabase db push --dry-run`. It lists what it would apply, without applying anything. Check it is exactly the list above, and nothing else.
+  - If instead it stops with "Found local migration files to be inserted before the last migration on remote database", that is the P8 dating above: production already has a migration dated later than P8's. Run `supabase db push --dry-run --include-all` and check that list instead.
+- [ ] `supabase db push --include-all`. Without `--include-all` the CLI refuses any migration dated before the newest one production already has, which is P8's case. With it, every missing file is applied, in file order. If nothing is out of order it changes nothing.
+- [ ] Run the backfill check above.
+
+**After pushing: switch on the old `settle-gipedo-pano` schedule.** It settles Gipedo Pano bookings chosen on the squad post before P8 (spec 13). New bookings settle inside `run-payment-jobs` and don't need it. It has no schedule in production yet.
+
+- [ ] `supabase functions list`: if `settle-gipedo-pano` isn't there, `supabase functions deploy settle-gipedo-pano --no-verify-jwt`. It uses the existing `CRON_SECRET` and `STRIPE_SECRET_KEY`.
+- [ ] Open `supabase/legacy/settle-gipedo-pano-cron.sql`, paste it into the SQL editor, replace `<CRON_SECRET>` with production's `CRON_SECRET`, and run it. Never commit the filled-in copy. It schedules `settle-gipedo-pano-payments` every 10 minutes and is safe to run again.
+- [ ] Check it is on:
+  ```sql
+  select jobname, schedule, active from cron.job where jobname = 'settle-gipedo-pano-payments';
+  ```
+- [ ] After 10 minutes, check it ran:
+  ```sql
+  select status, return_message, start_time from cron.job_run_details
+  where jobid = (select jobid from cron.job where jobname = 'settle-gipedo-pano-payments')
+  order by start_time desc limit 3;
+  ```
+
 ## 2. Production steps from PRs #77 to #81, in order
 
-Apply each migration with `supabase db push` (it applies the ones production hasn't got, in file order), or one at a time in the SQL editor in this order.
+Their migrations go out in section 1b's single push; the checks and the other steps stay here.
 
 **#77, P10 server (`app_rules`)**
 - [ ] Migration `20261115190000_pay_app_rules.sql`.
@@ -51,6 +104,7 @@ Apply each migration with `supabase db push` (it applies the ones production has
   supabase functions deploy stripe-webhook --no-verify-jwt
   ```
 - [ ] Cron: `run-payouts` every 5 minutes and `reconcile-money` daily at 04:00. The exact `cron.schedule` SQL is at the top of each function's `index.ts`.
+- [ ] Cron (P6e venue notifications): `select cron.schedule('venue-notifications', '*/5 * * * *', $$ select public.venue_notifications_tick() $$);` Plain SQL, no Edge Function and no secret. It sends new-booking, cancellation and short-game notices, and the 20:00 Cyprus daily summary; running it more often never sends twice.
 
 ## 3. This PR (P7)
 

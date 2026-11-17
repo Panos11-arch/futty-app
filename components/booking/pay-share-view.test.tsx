@@ -29,7 +29,9 @@ function props(data: Partial<PayShareData> = {}, overrides: Partial<PayShareView
   };
 }
 
-const isDisabled = (name: string | RegExp) => screen.getByRole('button', { name }).props.accessibilityState?.disabled === true;
+const CASH_CHIP = 'Pay the pitch in cash at the venue';
+
+const isDisabled =(name: string | RegExp) => screen.getByRole('button', { name }).props.accessibilityState?.disabled === true;
 
 describe('PayShareView', () => {
   it('shows the player’s own share exactly as the server sent it (680 → €6.80)', async () => {
@@ -50,12 +52,67 @@ describe('PayShareView', () => {
     expect(screen.getByRole('button', { name: 'Pay €0.80' })).toBeTruthy();
   });
 
-  it('card only: the app offers no cash choice, even in an each-pays booking', async () => {
-    const p = props({ detail: detailFixture({ booking: { payment_mode: 'each_pays_own_spot' } }) });
+  it('no cash choice when the server says cash isn’t allowed, even in an each-pays booking', async () => {
+    const p = props({ detail: detailFixture({ booking: { payment_mode: 'each_pays_own_spot' }, cash_allowed: false }) });
     await render(<PayShareView {...p} />);
-    expect(screen.queryByRole('button', { name: /cash/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: CASH_CHIP })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Pay €6.80' }));
     expect(p.onPay).toHaveBeenCalledWith({ method: 'card', acceptNonRefundable: false, useCredit: false });
+  });
+
+  describe('cash, when the server allows it', () => {
+    // Odd amounts, so the test fails if the app works anything out itself.
+    const cashDetail = () => detailFixture({ cash_allowed: true, me: { cash: { cash_cents: 567, card_cents: 79 } } });
+
+    it('offers cash and shows the server’s cash amounts (567 → €5.67 cash, 79 → €0.79 by card)', async () => {
+      const p = props({ detail: cashDetail() });
+      await render(<PayShareView {...p} />);
+      expect(screen.getByRole('button', { name: 'Pay €6.80' })).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: CASH_CHIP }));
+      expect(screen.getByText('You pay the €0.79 service fee by card now and €5.67 in cash at the venue.')).toBeTruthy();
+      expect(screen.getAllByText('By card now').length).toBeGreaterThan(0);
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €0.79' }));
+      expect(p.onPay).toHaveBeenCalledWith({ method: 'cash', acceptNonRefundable: false, useCredit: false });
+    });
+
+    it('turning cash off goes back to the card amount', async () => {
+      const p = props({ detail: cashDetail() });
+      await render(<PayShareView {...p} />);
+      await fireEvent.press(screen.getByRole('button', { name: CASH_CHIP }));
+      await fireEvent.press(screen.getByRole('button', { name: CASH_CHIP }));
+      expect(screen.queryByText(/in cash at the venue\.$/)).toBeNull();
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €6.80' }));
+      expect(p.onPay).toHaveBeenCalledWith({ method: 'card', acceptNonRefundable: false, useCredit: false });
+    });
+
+    it('nothing to pay by card: the card is only saved', async () => {
+      const p = props({ detail: detailFixture({ cash_allowed: true, me: { cash: { cash_cents: 600, card_cents: 0 } } }) });
+      await render(<PayShareView {...p} />);
+      await fireEvent.press(screen.getByRole('button', { name: CASH_CHIP }));
+      expect(screen.getByText('You pay €6.00 in cash at the venue.')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Save my card' }));
+      expect(p.onPay).toHaveBeenCalledWith({ method: 'cash', acceptNonRefundable: false, useCredit: false });
+    });
+
+    it('no cash choice for a player who owes money', async () => {
+      await render(<PayShareView {...props({ detail: cashDetail(), blocked: true })} />);
+      expect(screen.queryByRole('button', { name: CASH_CHIP })).toBeNull();
+    });
+
+    it('no cash choice without the server’s cash amounts', async () => {
+      await render(<PayShareView {...props({ detail: detailFixture({ cash_allowed: true, me: { cash: null } }) })} />);
+      expect(screen.queryByRole('button', { name: CASH_CHIP })).toBeNull();
+    });
+
+    it('a share already chosen as cash shows no choice', async () => {
+      const detail = detailFixture({
+        cash_allowed: true,
+        me: { payment_method: 'cash', amount_cents: 80, cash_cents: 600, cash: { cash_cents: 600, card_cents: 80 } },
+      });
+      await render(<PayShareView {...props({ detail })} />);
+      expect(screen.queryByRole('button', { name: CASH_CHIP })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Pay €0.80' })).toBeTruthy();
+    });
   });
 
   it('a player who owes money (my_owed blocked) sees the debt line and can’t pay', async () => {
