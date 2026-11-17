@@ -15,13 +15,19 @@
 
 ## Ownership
 
-From 15 November the remaining prompts are split three ways (docs/specs/14-claude-code-prompts.md, "Split from 15 November"): Panos runs P10, P12, P4d and P7; Dimitris runs P11, the P6 check-in QR, A8, U4, U5 and U7; Anghelo runs A4b, A5, A6, A7, U8 and the Home owed banner. Whoever runs a prompt works in the files that prompt names, even when the Ownership table below gives them to someone else, and asks that owner for a quick OK on the PR. Stacked PRs: never merge a PR into another branch; retarget it to master first. Only Panos changes production.
+From 15 November the remaining prompts are split three ways (docs/specs/14-claude-code-prompts.md, "Split from 15 November"):
 
-| Area | Panos (and Dimitris) | Anghelo |
+- **Panos**: P10, P12, P4d and P7, plus production (deploys, `supabase db push`, Edge Functions, schedules, Stripe webhook events, Apple and Google sign-in setup, development builds, App Store).
+- **Dimitris**: the P5 screens, the P6 venue dashboard (including P6d and the payouts CSV), P8, P11, P13, A8, the P6 check-in QR, U4, U7 and U5.
+- **Anghelo**: his A and U prompts (A4b, A5, A6, A7, U8) and the Home owed banner.
+
+Only Panos changes production. Whoever runs a prompt works in the files that prompt names, even when the Ownership table below gives them to someone else, and asks that owner for a quick OK on the PR. Stacked PRs: never merge a PR into another branch; retarget it to master first.
+
+| Area | Panos and Dimitris | Anghelo |
 | :---- | :---- | :---- |
 | Screens | `book.tsx`, `booking-payment.tsx`, `my-bookings.tsx`, `venue-dashboard.tsx`, `squads.tsx`, `join-squad-post.tsx`, `app/account/payments/`, `app/account/settings/`, `premium*`, venue pages | `app/(tabs)/*.tsx` except `_layout` (Home, team, leagues, profile, community), `fixture-*.tsx`, `previous-games.tsx`, `upcoming-fixtures.tsx`, `team-profile.tsx`, `player-profile.tsx`, `matchmaking.tsx`, `notifications.tsx`, match and stats screens |
 | `lib/` | `booking*`, `payments.ts`, `service-fee.ts`, `wallet-pay.ts`, `account.ts`, `squads.ts`, `use-venues.ts`, `use-day-bookings.ts`, `use-my-bookings.ts`, `use-squad-posts.ts`, `premium.ts`, `rules.ts`, `use-owed.ts`, `lib/money/` | `fixtures.ts`, `leagues.ts`, `teams.ts`, `use-recent-results.ts`, `xp-tier.ts`, `notifications.ts`, `push-notifications.ts`, `community.ts`, `use-follows.ts`, `lib/match/`, `lib/stats/`, `lib/calendar/` |
-| Components | `components/booking/` (U3 creates `next-game-card.tsx` as a placeholder; P5 owns it after that), `components/venue/` | `components/match/`, `components/stats/` |
+| Components | `components/booking/` (U3 creates `next-game-card.tsx` as a placeholder; Dimitris owns it after that, as part of the P5 screens), `components/venue/` | `components/match/`, `components/stats/` |
 | Edge Functions | payment, Stripe, Apple, cancellation, account, venue functions, `futty-ai-chat` | `notify-*`, reminder, WhatsApp and team-of-the-week jobs |
 | Database | venues, pitches, bookings, payments, squad posts, profiles security, app rules, menu items | matches, match players, attendance, goals, votes, ratings, levels, stats, notifications, calendar |
 | Release and CI | `app.json`, `eas.json`, `.github/`, builds, App Store | — |
