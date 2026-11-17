@@ -11,6 +11,7 @@ import { Linking, Platform, Share } from 'react-native';
 import { BookingDetailView } from '@/components/booking/booking-detail-view';
 import { SquadNeed } from '@/components/booking/squad-need';
 import { Sheet } from '@/components/ui';
+import { WeatherStrip } from '@/components/venue/weather-strip';
 import { cancelBooking, getCancellationQuote, type CancellationQuote } from '@/lib/booking-actions';
 import {
   addDetailToCalendar,
@@ -32,6 +33,7 @@ import { isBookingInCalendar, removeBookingFromCalendar } from '@/lib/calendar';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { appleMapsUrl, googleMapsUrl } from '@/lib/venue-page';
 import { useRules } from '@/lib/use-rules';
+import { useGameWeather } from '@/lib/use-weather';
 
 export default function BookingDetailScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10): loads them
@@ -45,6 +47,11 @@ export default function BookingDetailScreen() {
   const [inCalendar, setInCalendar] = useState(() => (id ? isBookingInCalendar(id) : false));
   const [choosingMaps, setChoosingMaps] = useState(false);
   const detail = state.status === 'ready' ? state.data : null;
+  // P11: the forecast for the game's hours.
+  const weather = useGameWeather(
+    detail?.venue.id,
+    detail ? { day: detail.booking.booking_day, start: detail.booking.start_time, end: detail.booking.end_time } : null,
+  );
 
   // Keep the calendar event in line with the booking (lib/calendar asks the
   // booking screens to): updated when it changes, removed once cancelled.
@@ -150,6 +157,7 @@ export default function BookingDetailScreen() {
         onGipedoPullOut={() => gipedoAction(() => pullOutOfGipedo(id))}
         onGipedoChoose={(choice) => gipedoAction(() => chooseNoOpponent(id, choice))}
         onSwitch={switchFormat}
+        weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
         squadNeed={
           // A Gipedo Pano booking's opposition post is made by the server.
           detail && !detail.gipedo ? (

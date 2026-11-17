@@ -4,6 +4,7 @@
 // Takes the page state as props so every state can be tested; the screen
 // (app/venue/[id].tsx) loads it.
 import { Image } from 'expo-image';
+import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import {
@@ -30,9 +31,11 @@ export type VenuePageViewProps = {
   onRetry: () => void;
   onDirections: () => void;
   onBook: () => void;
+  /** The weather strip (P11), for the time chosen on Book; nothing without one. */
+  weather?: ReactNode;
 };
 
-export function VenuePageView({ state, onRetry, onDirections, onBook }: VenuePageViewProps) {
+export function VenuePageView({ state, onRetry, onDirections, onBook, weather }: VenuePageViewProps) {
   if (state.status === 'loading') return <VenuePageSkeleton />;
   if (state.status === 'not_found') {
     return (
@@ -151,8 +154,8 @@ export function VenuePageView({ state, onRetry, onDirections, onBook }: VenuePag
           </Card>
         </View>
 
-        {/* P11 puts the forecast here (05 Product section 14). */}
-        <View testID="weather-strip-slot" />
+        {/* The forecast (P11; 05 Product section 14). */}
+        <View testID="weather-strip-slot">{weather}</View>
 
         {data.offers.length > 0 ? (
           <View style={styles.section}>

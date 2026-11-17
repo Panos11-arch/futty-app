@@ -187,7 +187,7 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 ## 14. Weather for players (added 7 November)
 
 - A forecast (rain, wind, temperature for the match hours) on the venue page, checkout and each upcoming game, from Apple WeatherKit through Futty's server.
-- When conditions look bad (rain chance 60% or more or heavy rain, wind 40 km/h or more, thunderstorms, 38°C or hotter), a banner says "Heavy rain forecast. The venue may cancel this booking." It warns only; it never promises a cancellation.
+- When conditions look bad (rain chance 60% or more or heavy rain, wind 40 km/h or more, thunderstorms, 38°C or hotter), a banner names the reason ("Heavy rain forecast.", "Strong wind forecast.", "Thunderstorms forecast." or "Extreme heat forecast.", several on one line if several are met) followed by "The venue may cancel this booking." (decided 16 November; wording in 13). It warns only; it never promises a cancellation.
 - Built in 14 Claude Code Prompts, P11. Full rules in 13.
 
 ## 15. Short games and 6 v 6 (added 7 November)

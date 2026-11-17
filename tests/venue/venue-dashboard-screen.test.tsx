@@ -5,6 +5,7 @@ import VenueDashboardScreen from '@/app/venue-dashboard';
 import { loadWithFile } from '@/components/ui/test-utils';
 import { cyprusToday } from '@/lib/venue-today';
 import { appRoster, counterRoster, dayBoard, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
+import { ATTRIBUTION, CALM_FORECAST } from '@/lib/weather.fixtures';
 
 // The venue dashboard's Today screen (app/venue-dashboard.tsx, P6c): the day
 // calendar per pitch from venue_day_board, the blocks and flags on it, and
@@ -78,6 +79,7 @@ beforeEach(() => {
   mockRpc.mockReset();
   for (const key of Object.keys(mockRpcHandlers)) delete mockRpcHandlers[key];
   invoke().mockClear();
+  invoke().mockImplementation(async () => ({ data: { cancelled: true }, error: null }));
   mockRole = 'venue_owner';
   for (const key of Object.keys(mockTables)) delete mockTables[key];
   mockTables.venues = [{ id: 'v1', name: 'Nuevo Campo', base_pitches: 2, allows_6v6_on_5s: false }];
@@ -169,7 +171,7 @@ describe('Venue dashboard: Today', () => {
     const cancel = await screen.findByText('Cancel booking');
     await act(() => fireEvent.press(cancel));
     expect(rpcCalls('cancellation_quote')).toEqual([{ p_booking_id: 'b-app', p_scope: 'venue' }]);
-    expect(invoke()).not.toHaveBeenCalled();
+    expect(invoke().mock.calls.filter((c) => c[0] === 'cancel-booking')).toEqual([]);
     expect(screen.getByText('Petros: nothing was taken.')).toBeTruthy();
     await act(() => fireEvent.press(screen.getByText('Cancel booking and refund players')));
     expect(invoke()).toHaveBeenCalledWith('cancel-booking', { body: { bookingId: 'b-app', scope: 'venue', quote: 'q-1' } });
@@ -183,7 +185,7 @@ describe('Venue dashboard: Today', () => {
     await act(() => fireEvent.press(cancel));
     expect(screen.getByText("You're not staff at this venue.")).toBeTruthy();
     expect(screen.queryByText('Cancel booking and refund players')).toBeNull();
-    expect(invoke()).not.toHaveBeenCalled();
+    expect(invoke().mock.calls.filter((c) => c[0] === 'cancel-booking')).toEqual([]);
   });
 
   it('tapping a blocked slot offers to remove that block', async () => {
@@ -314,5 +316,61 @@ describe('Venue dashboard: Today', () => {
     mockRpcData.venue_day_board = dayBoard({ day: cyprusToday(), bookings: [walkIn({ contact_name: 'Maria' })] });
     await render(<VenueDashboardScreen />);
     expect(await screen.findByTestId('booking-b-walk')).toHaveTextContent(/Maria/);
+  });
+});
+
+describe('Venue dashboard: weather nudge (P11)', () => {
+  const day = '2026-11-21';
+  const badSlot = {
+    booking_id: 'b-rain',
+    day,
+    start: '18:00',
+    end: '19:00',
+    pitch_ids: ['p1'],
+    forecast: { ...CALM_FORECAST, heavy_rain: true, warnings: ['heavy_rain'] },
+  };
+  const answerWeather = (slots: unknown[]) =>
+    invoke().mockImplementation(async (name: string) =>
+      name === 'venue-weather'
+        ? { data: { attribution: slots.length ? ATTRIBUTION : null, slots }, error: null }
+        : { data: { cancelled: true }, error: null },
+    );
+
+  it('a bad forecast for a booked game 12h+ ahead: shown, and one tap flags that game on its pitch', async () => {
+    answerWeather([badSlot]);
+    await open();
+    expect(invoke()).toHaveBeenCalledWith('venue-weather', { body: { venue_id: 'v1', nudges: true } });
+    const row = await screen.findByTestId('weather-nudge-b-rain');
+    expect(row).toHaveTextContent(/18:00–19:00/);
+    expect(row).toHaveTextContent(/Heavy rain/);
+    await act(() => fireEvent.press(within(row).getByText('Flag conditions')));
+    expect(rpcCalls('flag_conditions')).toEqual([
+      { p_venue_id: 'v1', p_day: day, p_start: '18:00', p_end: '19:00', p_pitch_id: 'p1', p_note: null },
+    ]);
+    // Asked again, so a flagged game drops out.
+    expect(invoke().mock.calls.filter((c) => c[0] === 'venue-weather')).toHaveLength(2);
+  });
+
+  it('a game played on two pitches is flagged on both', async () => {
+    answerWeather([{ ...badSlot, pitch_ids: ['p1', 'p2'] }]);
+    await open();
+    const row = await screen.findByTestId('weather-nudge-b-rain');
+    await act(() => fireEvent.press(within(row).getByText('Flag conditions')));
+    expect(rpcCalls('flag_conditions').map((a) => (a as { p_pitch_id: string }).p_pitch_id)).toEqual(['p1', 'p2']);
+  });
+
+  it('review fix: a game with no pitch is never flagged venue-wide from the nudge', async () => {
+    answerWeather([{ ...badSlot, pitch_ids: [] }]);
+    await open();
+    const row = await screen.findByTestId('weather-nudge-b-rain');
+    await act(() => fireEvent.press(within(row).getByText('Flag conditions')));
+    expect(rpcCalls('flag_conditions')).toEqual([]);
+    expect(screen.getByText(/no pitch assigned/)).toBeTruthy();
+  });
+
+  it('no bad forecast (good slots are never returned): no nudge', async () => {
+    answerWeather([]);
+    await open();
+    expect(screen.queryByText('Bad forecast for a booked game')).toBeNull();
   });
 });

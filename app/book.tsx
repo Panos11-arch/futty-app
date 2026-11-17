@@ -71,7 +71,14 @@ export default function BookScreen() {
       results={query ? results.state : null}
       onQueryChange={setQuery}
       onChoose={choose}
-      onVenueInfo={(id) => router.push({ pathname: '/venue/[id]', params: { id } })}
+      onVenueInfo={(id) => {
+        // With a time chosen, the venue page shows that time's forecast (P11).
+        const end = query ? endTime(query.start, query.minutes) : null;
+        router.push({
+          pathname: '/venue/[id]',
+          params: query && end ? { id, day: query.day, start: query.start, end } : { id },
+        });
+      }}
       onRetryOptions={() => {
         options.reload();
         venuePage.reload();

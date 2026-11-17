@@ -303,3 +303,16 @@ describe('CheckoutView: Gipedo Pano (P8)', () => {
     expect(screen.queryByText(/Use my €50.00 credit/)).toBeNull();
   });
 });
+
+describe('CheckoutView: weather (P11)', () => {
+  it('shows the weather strip it is given', async () => {
+    const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
+    await render(<CheckoutView {...props(quoteFixture(), { weather: <Text>Forecast here</Text> })} />);
+    expect(within(screen.getByTestId('checkout-weather')).getByText('Forecast here')).toBeTruthy();
+  });
+
+  it('nothing until one is given', async () => {
+    await render(<CheckoutView {...props()} />);
+    expect(screen.queryByTestId('checkout-weather')).toBeNull();
+  });
+});

@@ -297,7 +297,13 @@ Players see the forecast for their match. Venues can warn about bad conditions o
 
 ### Forecast for players
 - Shown on the venue page, on the booking screen and on each upcoming game: rain, wind and temperature for the match hours.
-- When conditions look bad, a banner appears: **"Heavy rain forecast. The venue may cancel this booking."** It only warns and never promises a cancellation.
+- When conditions look bad, a banner names the reason and then says **"The venue may cancel this booking."** It only warns and never promises a cancellation. The reasons (decided 16 November):
+  - rain chance or heavy rain: **"Heavy rain forecast."**
+  - wind: **"Strong wind forecast."**
+  - thunderstorms: **"Thunderstorms forecast."**
+  - heat: **"Extreme heat forecast."**
+
+  When several are met, all their reasons appear on one line, in that order and each once, e.g. "Strong wind forecast. Extreme heat forecast. The venue may cancel this booking."
 - **Data: Apple WeatherKit**, called from Futty's server so it works on Android too.
   - Futty's Apple Developer membership already includes 500,000 free calls a month.
   - Each venue's forecast is fetched at most once an hour and cached.
