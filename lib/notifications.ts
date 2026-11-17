@@ -15,7 +15,12 @@ export type NotificationType =
   | 'venue_new_booking'
   | 'venue_booking_cancelled'
   | 'venue_short_game'
-  | 'venue_daily_summary';
+  | 'venue_daily_summary'
+  | 'venue_player_offered'
+  | 'venue_player_withdrawn'
+  | 'venue_player_accepted'
+  | 'venue_player_declined'
+  | 'venue_player_removed';
 
 /** Sent to venue staff only (venue_notifications_tick, PR #99). They open the
  *  venue dashboard, never My Bookings, and only staff see them in settings. */
@@ -24,7 +29,19 @@ export const VENUE_NOTIFICATION_TYPES = [
   'venue_booking_cancelled',
   'venue_short_game',
   'venue_daily_summary',
+  // P6e: the booker answered or removed the venue's offered player.
+  'venue_player_accepted',
+  'venue_player_declined',
+  'venue_player_removed',
 ] as const;
+
+/** P6e: sent to the booker about the venue's offered player. They open the
+ *  booking, where the booker answers. */
+export const VENUE_PLAYER_BOOKER_TYPES = ['venue_player_offered', 'venue_player_withdrawn'] as const;
+
+export function isVenuePlayerBookerType(type: unknown): boolean {
+  return typeof type === 'string' && (VENUE_PLAYER_BOOKER_TYPES as readonly string[]).includes(type);
+}
 
 export function isVenueNotificationType(type: unknown): boolean {
   return typeof type === 'string' && (VENUE_NOTIFICATION_TYPES as readonly string[]).includes(type);
@@ -83,6 +100,7 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
       'fixture_agreed',
       'fixture_message',
       'booking_invite',
+      ...VENUE_PLAYER_BOOKER_TYPES,
     ],
   },
   {
@@ -133,6 +151,11 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   venue_booking_cancelled: 'A booking at your venue is cancelled',
   venue_short_game: 'A game at your venue is short of players',
   venue_daily_summary: 'Tomorrow’s summary, at 20:00',
+  venue_player_offered: 'A venue offers your game a player',
+  venue_player_withdrawn: 'A venue withdraws its player',
+  venue_player_accepted: 'A booker accepts your player',
+  venue_player_declined: 'A booker declines your player',
+  venue_player_removed: 'A booker removes your player',
 };
 
 /** A type's words on screen; an unknown type shows its name in words rather than nothing. */

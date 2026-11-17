@@ -148,6 +148,29 @@ describe('Notifications', () => {
     }
   );
 
+  it.each(['venue_player_offered', 'venue_player_withdrawn'])('a %s row opens the booking', async (type) => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('p1', '2026-11-17T09:00:00Z', { type, data: { venueId: 'venue-1', bookingId: 'b1', offerId: 'o1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title p1. Body p1' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } }));
+  });
+
+  it.each(['venue_player_accepted', 'venue_player_declined', 'venue_player_removed'])(
+    'a %s row opens the venue dashboard',
+    async (type) => {
+      mockNotifications = {
+        status: 'ready',
+        notifications: [note('s1', '2026-11-17T09:00:00Z', { type, data: { venueId: 'venue-1', bookingId: 'b1', offerId: 'o1' } })],
+      };
+      await render(<NotificationsScreen />);
+      await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title s1. Body s1' }));
+      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/venue-dashboard'));
+    }
+  );
+
   it('accepting a game invite answers it and goes on to pay, as before', async () => {
     mockAccept.mockResolvedValue({ error: null });
     mockInviteStatuses = new Map([['inv1', 'pending']]);

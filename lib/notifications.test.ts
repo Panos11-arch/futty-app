@@ -149,3 +149,41 @@ describe('venue notification types', () => {
     ]);
   });
 });
+
+// P6e: venue-offered players (supabase/migrations/20261117153008_pay_venue_player.sql).
+// The staff's three go under Venue, for staff only; the booker's two under
+// Your games.
+describe('venue player notification types', () => {
+  const rows = [
+    'venue_player_offered',
+    'venue_player_withdrawn',
+    'venue_player_accepted',
+    'venue_player_declined',
+    'venue_player_removed',
+  ].map((type) => ({ type, always_sent: false }));
+
+  it('staff types under Venue, the booker’s under Your games, none under Other', () => {
+    expect(groupSwitchableTypes(rows)).toEqual([
+      { key: 'games', title: 'Your games', types: ['venue_player_offered', 'venue_player_withdrawn'] },
+      {
+        key: 'venue',
+        title: 'Venue',
+        types: ['venue_player_accepted', 'venue_player_declined', 'venue_player_removed'],
+      },
+    ]);
+  });
+
+  it('a booker who isn’t venue staff sees only theirs', () => {
+    expect(sectionsForViewer(groupSwitchableTypes(rows), false).map((s) => s.key)).toEqual(['games']);
+  });
+
+  it.each([
+    ['venue_player_offered', 'A venue offers your game a player'],
+    ['venue_player_withdrawn', 'A venue withdraws its player'],
+    ['venue_player_accepted', 'A booker accepts your player'],
+    ['venue_player_declined', 'A booker declines your player'],
+    ['venue_player_removed', 'A booker removes your player'],
+  ])('%s has a plain-word label', (type, label) => {
+    expect(notificationLabel(type)).toBe(label);
+  });
+});

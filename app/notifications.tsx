@@ -17,6 +17,7 @@ import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
 import {
   isVenueNotificationType,
+  isVenuePlayerBookerType,
   markNotificationRead,
   type AppNotification,
   type NotificationType,
@@ -41,6 +42,11 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   venue_booking_cancelled: 'exclamationmark.triangle.fill',
   venue_short_game: 'person.2.fill',
   venue_daily_summary: 'list.clipboard.fill',
+  venue_player_offered: 'person.crop.circle.badge.plus',
+  venue_player_withdrawn: 'person.2.fill',
+  venue_player_accepted: 'person.crop.circle.badge.plus',
+  venue_player_declined: 'person.2.fill',
+  venue_player_removed: 'person.2.fill',
 };
 
 function inviteIdOf(notification: AppNotification) {
@@ -83,6 +89,12 @@ async function openNotification(notification: AppNotification) {
   // A venue staff notice opens the venue dashboard, as its push does. Checked
   // before anything else: these carry a bookingId but aren't the staff's own.
   if (isVenueNotificationType(notification.type)) {
+    router.push(routeForPushData({ ...data, type: notification.type }));
+    return;
+  }
+
+  // P6e: the venue's offered player opens the booking, as its push does.
+  if (isVenuePlayerBookerType(notification.type)) {
     router.push(routeForPushData({ ...data, type: notification.type }));
     return;
   }

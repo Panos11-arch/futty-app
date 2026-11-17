@@ -3,7 +3,7 @@ import { Modal } from 'react-native';
 
 import { BookingSheet, type BookingSheetActions } from '@/components/venue/booking-sheet';
 import { loadWithFile } from '@/components/ui/test-utils';
-import { appBooking, appRoster, counterRoster, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
+import { appBooking, appRoster, counterRoster, venuePlayer, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
 import type { Roster } from '@/lib/venue-today';
 
 // A booking's sheet on the venue dashboard (spec 13 "Cash at the venue",
@@ -32,6 +32,8 @@ function actions(overrides: Partial<BookingSheetActions> = {}): BookingSheetActi
     cancelCounter: jest.fn(async () => null),
     venueQuote: jest.fn(async () => ({ quote: venueQuote() })),
     venueCancel: jest.fn(async () => ({ status: 'cancelled' as const })),
+    offerPlayer: jest.fn(async () => null),
+    withdrawPlayer: jest.fn(async () => null),
     ...overrides,
   };
 }
@@ -252,5 +254,79 @@ describe('BookingSheet: loading and errors', () => {
     expect(screen.getByText("You're not staff at this venue.")).toBeTruthy();
     fireEvent.press(screen.getByText('Try again'));
     expect(onRetry).toHaveBeenCalled();
+  });
+});
+
+// P6e: staff offer a player to a short team (spec 13 "Venue-offered players").
+// The roster's venue_players and can_offer_player are the server's; the app
+// sends the booking id and the name, or the offer id, only.
+describe('BookingSheet: venue players', () => {
+  it('lists the players the venue offered, with their state', async () => {
+    await open(
+      appRoster({
+        venue_players: [
+          venuePlayer({ id: 'o1', name: 'Andreas', state: 'accepted' }),
+          venuePlayer({ id: 'o2', name: 'Bambos', state: 'offered' }),
+          venuePlayer({ id: 'o3', name: 'Christos', state: 'lapsed', can_withdraw: false }),
+        ],
+      }),
+    );
+    expect(screen.getByText('Venue players')).toBeTruthy();
+    expect(screen.getByTestId('venue-player-o1')).toHaveTextContent(/Andreas.*Accepted/);
+    expect(screen.getByTestId('venue-player-o2')).toHaveTextContent(/Bambos.*Offered, waiting for the booker/);
+    expect(screen.getByTestId('venue-player-o3')).toHaveTextContent(/Christos.*Not answered before kickoff/);
+    expect(screen.queryByRole('button', { name: 'Withdraw Christos' })).toBeNull();
+  });
+
+  it('withdraws a player with his offer id only', async () => {
+    const a = await open(appRoster({ venue_players: [venuePlayer({ id: 'o1', name: 'Andreas', state: 'accepted' })] }));
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Withdraw Andreas' })));
+    expect(a.withdrawPlayer).toHaveBeenCalledWith('o1');
+  });
+
+  it('shows no venue players section when there is nothing to show or do', async () => {
+    await open(appRoster());
+    expect(screen.queryByText('Venue players')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Offer a player' })).toBeNull();
+  });
+
+  it('offers a player by name: the booking id and the name only', async () => {
+    const a = await open(appRoster({ can_offer_player: true }));
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer a player' })));
+    expect(screen.getByText("The player plays free; the team's amounts don't change.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Offer the player' })).toBeDisabled();
+
+    await act(() => fireEvent.changeText(screen.getByLabelText("Player's name"), 'Andreas'));
+    expect(screen.getByText("Andreas plays free; the team's amounts don't change.")).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer Andreas' })));
+    expect(a.offerPlayer).toHaveBeenCalledWith('b-app', 'Andreas');
+    // Done: the form closes.
+    expect(screen.queryByLabelText("Player's name")).toBeNull();
+  });
+
+  it('keeps the form and shows the refusal when the server says no', async () => {
+    const a = actions({ offerPlayer: jest.fn(async () => 'Every spot in this game is taken or already offered.') });
+    await open(appRoster({ can_offer_player: true }), a);
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer a player' })));
+    await act(() => fireEvent.changeText(screen.getByLabelText("Player's name"), 'Andreas'));
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer Andreas' })));
+    expect(screen.getByText('Every spot in this game is taken or already offered.')).toBeTruthy();
+    expect(screen.getByLabelText("Player's name")).toBeTruthy();
+  });
+
+  it('can step back from the offer', async () => {
+    const a = await open(appRoster({ can_offer_player: true }));
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer a player' })));
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Not now' })));
+    expect(screen.queryByLabelText("Player's name")).toBeNull();
+    expect(a.offerPlayer).not.toHaveBeenCalled();
+  });
+
+  it('never calls the player "he": every line uses his name', async () => {
+    await open(
+      appRoster({ can_offer_player: true, venue_players: [venuePlayer({ name: 'Andreas', state: 'accepted' })] }),
+    );
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer a player' })));
+    expect(screen.queryByText(/\bhe\b/i)).toBeNull();
   });
 });

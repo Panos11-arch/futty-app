@@ -3,7 +3,15 @@
 // return it (supabase/migrations/*_pay_dashboard_reads.sql,
 // *_pay_dashboard_guards.sql). Amounts are the server's, in cents.
 import type { CancellationLine, CancellationQuote } from '@/lib/booking-actions';
-import type { AppRoster, BoardBooking, BoardPitch, CounterRoster, DayBoard, RosterPlayer } from '@/lib/venue-today';
+import type {
+  AppRoster,
+  BoardBooking,
+  BoardPitch,
+  CounterRoster,
+  DayBoard,
+  RosterPlayer,
+  RosterVenuePlayer,
+} from '@/lib/venue-today';
 
 export const PITCH_1: BoardPitch = { id: 'p1', name: 'Pitch 1', size: '5-a-side', formats: ['5-a-side'], is_open: true };
 export const PITCH_2: BoardPitch = {
@@ -112,6 +120,8 @@ export function appRoster(overrides: Partial<AppRoster> = {}): AppRoster {
     match_id: 'm1',
     collection_started: false,
     can_run_collection: false,
+    venue_players: [],
+    can_offer_player: false,
     players: [
       player({ share_id: 's1', profile_id: 'u1', name: 'Nikos Georgiou', is_booker: true, checked_in: true }),
       player({
@@ -224,6 +234,19 @@ export function venueQuote(overrides: Partial<CancellationQuote> = {}): Cancella
     // The server's figure: deliberately not anything the lines add up to.
     venue_stripe_fee_cents: 137,
     quote: 'q-1',
+    ...overrides,
+  };
+}
+
+/** A player the venue offered, as venue_booking_roster lists it for staff. */
+export function venuePlayer(overrides: Partial<RosterVenuePlayer> = {}): RosterVenuePlayer {
+  return {
+    id: 'o1',
+    name: 'Andreas',
+    state: 'offered',
+    offered_at: '2026-11-16T10:00:00+00:00',
+    answered_at: null,
+    can_withdraw: true,
     ...overrides,
   };
 }

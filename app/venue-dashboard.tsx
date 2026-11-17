@@ -69,6 +69,7 @@ import {
   cyprusToday,
   dayTitle,
   describeVenueError,
+  describeVenuePlayerError,
   fetchCheckInCode,
   fetchDayBoard,
   fetchRoster,
@@ -81,11 +82,13 @@ import {
   markCashReceived,
   markCounterPaid,
   markLabel,
+  offerVenuePlayer,
   removeBlock,
   requestCollection,
   setAllows6v6,
   slotIsPast,
   unassignedBookings,
+  withdrawVenuePlayer,
   type BoardBlock,
   type BoardBooking,
   type BoardFlag,
@@ -242,7 +245,20 @@ export default function VenueDashboardScreen() {
       if (result.status === 'cancelled') reloadBoard();
       return result;
     },
+    // P6e: offer or withdraw a venue player, in the offer's own words.
+    offerPlayer: (bookingId, name) => venuePlayerWrite(offerVenuePlayer(bookingId, name)),
+    withdrawPlayer: (offerId) => venuePlayerWrite(withdrawVenuePlayer(offerId)),
   };
+
+  async function venuePlayerWrite(result: Result): Promise<string | null> {
+    const { error } = await result;
+    if (error) return describeVenuePlayerError(error.message);
+    if (opened) {
+      loadRoster(opened.id);
+      reloadBoard();
+    }
+    return null;
+  }
 
   async function loadPrice(slot: Slot): Promise<{ cents: number | null } | { error: string }> {
     const { data, error } = await fetchSlotPrice(slot);

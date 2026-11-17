@@ -95,6 +95,19 @@ type RosterBase = {
   note: string | null;
 };
 
+/** A player the venue offered (P6e, spec 13 "Venue-offered players"). An
+ *  offer still unanswered at kickoff reads as lapsed (the server says so). */
+export type VenuePlayerState = 'offered' | 'accepted' | 'declined' | 'withdrawn' | 'removed' | 'lapsed';
+
+export type RosterVenuePlayer = {
+  id: string;
+  name: string;
+  state: VenuePlayerState;
+  offered_at: string;
+  answered_at: string | null;
+  can_withdraw: boolean;
+};
+
 export type AppRoster = RosterBase & {
   kind: 'app';
   payment_mode: string | null;
@@ -102,6 +115,10 @@ export type AppRoster = RosterBase & {
   match_id: string | null;
   collection_started: boolean;
   can_run_collection: boolean;
+  /** P6e: every player the venue offered to this game. */
+  venue_players: RosterVenuePlayer[];
+  /** P6e: whether staff can offer one now (the server's own checks). */
+  can_offer_player: boolean;
   players: RosterPlayer[];
 };
 
@@ -165,6 +182,17 @@ export function markCashReceived(shareId: string) {
 /** Runs collection now instead of 2 hours after the game. */
 export function requestCollection(bookingId: string) {
   return supabase.rpc('request_collection', { p_booking_id: bookingId });
+}
+
+/** P6e: offers a player by name to a short app game. He plays free: the
+ *  team's top-up covers his spot, so nothing about money is sent. */
+export function offerVenuePlayer(bookingId: string, name: string) {
+  return supabase.rpc('offer_venue_player', { p_booking_id: bookingId, p_name: name.trim() });
+}
+
+/** P6e: withdraws an offered or accepted player; the booker is told. */
+export function withdrawVenuePlayer(offerId: string) {
+  return supabase.rpc('withdraw_venue_player', { p_offer_id: offerId });
 }
 
 export type CounterBookingInput = Slot & {
@@ -407,6 +435,27 @@ export function rosterStateLabel(state: RosterState): {
   }
 }
 
+/** A venue player's state, in words for staff. */
+export function venuePlayerStateLabel(state: VenuePlayerState): {
+  label: string;
+  tone: 'success' | 'warning' | 'inkMuted';
+} {
+  switch (state) {
+    case 'offered':
+      return { label: 'Offered, waiting for the booker', tone: 'warning' };
+    case 'accepted':
+      return { label: 'Accepted', tone: 'success' };
+    case 'declined':
+      return { label: 'Declined by the booker', tone: 'inkMuted' };
+    case 'withdrawn':
+      return { label: 'Withdrawn', tone: 'inkMuted' };
+    case 'removed':
+      return { label: 'Removed by the booker', tone: 'inkMuted' };
+    case 'lapsed':
+      return { label: 'Not answered before kickoff', tone: 'inkMuted' };
+  }
+}
+
 type Mark = { pitch_id: string | null; starts_at: string | null; ends_at: string | null };
 
 /** 'All pitches · All day', 'Pitch 1 · 19:00–20:30'. */
@@ -556,6 +605,36 @@ export function venueQuoteWords(quote: CancellationQuote, roster: AppRoster): st
 }
 
 // ---- Errors --------------------------------------------------------------
+
+/** P6e: offer_venue_player's and withdraw_venue_player's refusals; anything
+ *  else reads as the dashboard's other refusals do. */
+export function describeVenuePlayerError(code: string): string {
+  switch (code) {
+    case 'name_required':
+      return 'Enter the player’s name.';
+    case 'name_too_long':
+      return 'That name is too long. Use a shorter one.';
+    case 'no_empty_spot':
+      return 'Every spot in this game is taken or already offered.';
+    case 'not_each_pays':
+      return 'You can offer a player only when each player pays their own share.';
+    case 'booking_not_confirmed':
+      return 'The booker hasn’t paid yet, so this game can’t take a player.';
+    case 'counter_booking':
+    case 'not_an_app_booking':
+      return 'You can offer a player only to an app booking.';
+    case 'booking_started':
+      return 'This game has already started.';
+    case 'offer_closed':
+      return 'The booker didn’t answer before kickoff, so this offer has closed.';
+    case 'offer_not_open':
+      return 'This offer was already answered or withdrawn.';
+    case 'offer_not_found':
+      return 'This offer is no longer there.';
+    default:
+      return describeVenueError(code);
+  }
+}
 
 /** The server's refusal, in words staff can act on. */
 export function describeVenueError(code: string): string {

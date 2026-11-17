@@ -8,7 +8,14 @@ import type { Status } from '@/components/ui/status-pill';
 import type { CancellationLine, CancellationQuote, CancelResult, CancelScope } from '@/lib/booking-actions';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { rosterWordsForGipedo } from '@/lib/booking-gipedo';
-import { rosterName, slotLabel, type BookingDetail, type RosterEntry, type RosterState } from '@/lib/booking-search';
+import {
+  rosterName,
+  slotLabel,
+  type BookingDetail,
+  type RosterEntry,
+  type RosterState,
+  type VenuePlayerEntry,
+} from '@/lib/booking-search';
 import {
   addBookingToCalendar,
   syncBookingInCalendar,
@@ -78,6 +85,57 @@ export function rosterRow(entry: RosterEntry, callerIsBooker: boolean, gipedo = 
     pill: state.pill,
     amount,
   };
+}
+
+// ---- Players the venue offers (P6e) -------------------------------------
+// Spec 13 "Venue-offered players": the booker accepts or declines; an
+// accepted venue player takes a spot and plays free, so he has no amount.
+
+/** The offers the booker can still answer. */
+export function openVenueOffers(detail: BookingDetail): VenuePlayerEntry[] {
+  return (detail.venue_players ?? []).filter((p) => p.state === 'offered' && p.can_answer && p.id);
+}
+
+/** Venue players in the game. */
+export function acceptedVenuePlayers(detail: BookingDetail): VenuePlayerEntry[] {
+  return (detail.venue_players ?? []).filter((p) => p.state === 'accepted');
+}
+
+/** Spots taken: the players in the roster and the accepted venue players. */
+export function spotsTaken(detail: BookingDetail): number {
+  return detail.roster.length + acceptedVenuePlayers(detail).length;
+}
+
+/** The booker accepts or declines; null when done, or the refusal in words. */
+export async function answerVenuePlayer(offerId: string, accept: boolean): Promise<string | null> {
+  const { error } = await supabase.rpc('answer_venue_player', { p_offer_id: offerId, p_accept: accept });
+  return error ? describeVenuePlayerAnswerError(error.message) : null;
+}
+
+/** The booker removes an accepted venue player; null when done. */
+export async function removeVenuePlayer(offerId: string): Promise<string | null> {
+  const { error } = await supabase.rpc('remove_venue_player', { p_offer_id: offerId });
+  return error ? describeVenuePlayerAnswerError(error.message) : null;
+}
+
+/** answer_venue_player's and remove_venue_player's refusals. */
+export function describeVenuePlayerAnswerError(code: string): string {
+  switch (code) {
+    case 'no_empty_spot':
+      return 'Every spot is taken now, so there’s no room for a venue player.';
+    case 'offer_closed':
+      return 'Kickoff has passed, so this offer has closed.';
+    case 'offer_not_open':
+      return 'This offer was already answered, or the venue withdrew it.';
+    case 'offer_not_found':
+      return 'This offer is no longer there.';
+    case 'booking_started':
+      return 'This game has already started.';
+    case 'booking_cancelled':
+      return 'This booking was cancelled.';
+    default:
+      return describeBookingErrorMessage(code);
+  }
 }
 
 // ---- The cancellation countdown ----------------------------------------

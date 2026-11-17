@@ -375,3 +375,66 @@ describe("BookingDetailView: a venue that isn't taking new players (P7)", () => 
     expect(screen.getByText('Invite a player')).toBeTruthy();
   });
 });
+
+// P6e: the venue offers a player (spec 13 "Venue-offered players"). The
+// booker answers from a banner; an accepted venue player is in the roster,
+// tagged and with no amount; only the booker can remove him.
+describe('BookingDetailView: venue players', () => {
+  const offered = { id: 'o1', name: 'Kostas', state: 'offered' as const, can_answer: true, can_remove: false };
+  const accepted = { id: 'o2', name: 'Loizos', state: 'accepted' as const, can_answer: false, can_remove: true };
+
+  it('the booker sees the offer by name and accepts it with its id', async () => {
+    const p = props(bookerDetail({ venue_players: [offered] }), { onAnswerVenuePlayer: jest.fn(async () => null) });
+    await render(<BookingDetailView {...p} />);
+    expect(screen.getByText('The venue offered a player: Kostas')).toBeTruthy();
+    expect(screen.getByText("Kostas plays free; the team's amounts don't change.")).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Accept Kostas' })));
+    expect(p.onAnswerVenuePlayer).toHaveBeenCalledWith('o1', true);
+  });
+
+  it('the booker can decline it', async () => {
+    const p = props(bookerDetail({ venue_players: [offered] }), { onAnswerVenuePlayer: jest.fn(async () => null) });
+    await render(<BookingDetailView {...p} />);
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Decline Kostas' })));
+    expect(p.onAnswerVenuePlayer).toHaveBeenCalledWith('o1', false);
+  });
+
+  it('shows a refusal under the offer', async () => {
+    const p = props(bookerDetail({ venue_players: [offered] }), {
+      onAnswerVenuePlayer: jest.fn(async () => 'Every spot is taken now, so there’s no room for a venue player.'),
+    });
+    await render(<BookingDetailView {...p} />);
+    await act(() => fireEvent.press(screen.getByRole('button', { name: 'Accept Kostas' })));
+    expect(screen.getByText('Every spot is taken now, so there’s no room for a venue player.')).toBeTruthy();
+  });
+
+  it('an accepted venue player is in the roster, tagged, with no amount, and takes a spot', async () => {
+    const p = props(bookerDetail({ venue_players: [accepted] }), { onRemoveVenuePlayer: jest.fn(async () => null) });
+    await render(<BookingDetailView {...p} />);
+    const row = screen.getByTestId('venue-player-o2');
+    expect(row).toHaveTextContent(/Loizos.*Venue player · Plays free/);
+    expect(row).not.toHaveTextContent(/€/);
+    expect(screen.getByText('5 of 12 spots taken')).toBeTruthy();
+    await act(() => fireEvent.press(within(row).getByRole('button', { name: 'Remove Loizos' })));
+    expect(p.onRemoveVenuePlayer).toHaveBeenCalledWith('o2');
+  });
+
+  it('another player sees the accepted venue player only: no offer, no Remove', async () => {
+    const p = props(playerDetail({ venue_players: [{ name: 'Loizos', state: 'accepted' }] }));
+    await render(<BookingDetailView {...p} />);
+    expect(screen.getByText('Loizos')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Remove Loizos' })).toBeNull();
+    expect(screen.queryByText(/The venue offered a player/)).toBeNull();
+  });
+
+  it('no venue players: nothing extra', async () => {
+    await render(<BookingDetailView {...props(bookerDetail())} />);
+    expect(screen.queryByText(/venue offered/i)).toBeNull();
+    expect(screen.getByText('4 of 12 spots taken')).toBeTruthy();
+  });
+
+  it('never calls the player "he": every line uses his name', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ venue_players: [offered, accepted] }))} />);
+    expect(screen.queryByText(/\bhe\b/i)).toBeNull();
+  });
+});

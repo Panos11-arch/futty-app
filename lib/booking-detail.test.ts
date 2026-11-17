@@ -1,4 +1,5 @@
 import {
+  acceptedVenuePlayers,
   addDetailToCalendar,
   calendarBookingFrom,
   calendarMessage,
@@ -8,9 +9,12 @@ import {
   cutoffPassed,
   cyprusTimeLabel,
   describeQuote,
+  describeVenuePlayerAnswerError,
+  openVenueOffers,
   paymentDeadlineLabel,
   rosterRow,
   shareText,
+  spotsTaken,
   syncDetailInCalendar,
   type BookingDetailData,
   type CancelDeps,
@@ -477,5 +481,40 @@ describe('Gipedo Pano (P8)', () => {
       next_cutoff: { kind: 'refunds_stop', at: at(600) },
     });
     expect(countdownLabel(detail, now)).toBeNull();
+  });
+});
+
+// P6e: a venue's offered players on the booking (spec 13 "Venue-offered
+// players"). The server decides who sees what and what can be done.
+describe('venue players', () => {
+  const kostas = { id: 'o1', name: 'Kostas', state: 'offered' as const, can_answer: true, can_remove: false };
+  const loizos = { id: 'o2', name: 'Loizos', state: 'accepted' as const, can_answer: false, can_remove: true };
+
+  it('the open offers are the ones the booker can answer', () => {
+    expect(openVenueOffers(bookerDetail({ venue_players: [kostas, loizos] }))).toEqual([kostas]);
+    expect(openVenueOffers(bookerDetail({ venue_players: [{ ...kostas, can_answer: false }] }))).toEqual([]);
+    expect(openVenueOffers(bookerDetail())).toEqual([]);
+  });
+
+  it('accepted venue players, as the booker or another player sees them', () => {
+    expect(acceptedVenuePlayers(bookerDetail({ venue_players: [kostas, loizos] }))).toEqual([loizos]);
+    const seenByPlayer = { name: 'Loizos', state: 'accepted' as const };
+    expect(acceptedVenuePlayers(playerDetail({ venue_players: [seenByPlayer] }))).toEqual([seenByPlayer]);
+  });
+
+  it('an accepted venue player takes a spot', () => {
+    expect(spotsTaken(bookerDetail())).toBe(4);
+    expect(spotsTaken(bookerDetail({ venue_players: [kostas, loizos] }))).toBe(5);
+  });
+
+  it.each([
+    ['no_empty_spot', 'Every spot is taken now, so there’s no room for a venue player.'],
+    ['offer_closed', 'Kickoff has passed, so this offer has closed.'],
+    ['offer_not_open', 'This offer was already answered, or the venue withdrew it.'],
+    ['offer_not_found', 'This offer is no longer there.'],
+    ['booking_started', 'This game has already started.'],
+    ['booking_cancelled', 'This booking was cancelled.'],
+  ])('%s in words', (code, words) => {
+    expect(describeVenuePlayerAnswerError(code)).toBe(words);
   });
 });
