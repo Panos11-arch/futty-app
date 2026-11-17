@@ -31,7 +31,9 @@ declare
 begin
   perform tests.set_claims('postgres', p_user);
   v := public.booking_detail_modes(p_booking)
-       || jsonb_build_object('switch', public.booking_switch_info(p_booking, p_user), 'gipedo', null);
+       || jsonb_build_object('switch', public.booking_switch_info(p_booking, p_user), 'gipedo', null,
+                             -- P6e: no venue offers in these games.
+                             'venue_players', '[]'::jsonb);
   perform tests.act_as_postgres();
   return v;
 end;
