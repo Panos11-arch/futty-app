@@ -1,5 +1,24 @@
 import { type AppRules, daysText, eurosText } from '@/lib/rules';
 import { supabase } from '@/lib/supabase';
+import { isPremiumFormat } from '@/lib/teams';
+
+/** Team Premium is switched off for the first App Store release (P7,
+ *  decided 17 November): nothing offers it, and the leagues that need it
+ *  (9-a-side, 11-a-side) say they're coming soon instead of selling it. A
+ *  team that already has it keeps its league place. The server's checks
+ *  (verify-team-purchase, league registration) are unchanged. */
+export const TEAM_PREMIUM_ENABLED = false;
+
+/** Whether a team can register for a league of this format in the app. */
+export function leagueFormatOpen(format: string, teamPremiumEnabled: boolean = TEAM_PREMIUM_ENABLED): boolean {
+  return teamPremiumEnabled || !isPremiumFormat(format);
+}
+
+/** The plan a /premium-plan link may open: a Team Premium link opens
+ *  Personal Premium while Team Premium is off. */
+export function openablePlan<P extends string>(plan: P, teamPremiumEnabled: boolean = TEAM_PREMIUM_ENABLED): P | 'personal' {
+  return !teamPremiumEnabled && plan.startsWith('team-') ? 'personal' : plan;
+}
 
 // Premium's booking window, price and service fee are spec 13's rules
 // (public.app_rules, P10): read them through lib/rules.ts, never copy them
@@ -32,7 +51,8 @@ export function personalPremiumPerks(rules: AppRules | null): string[] {
           : `A ${eurosText(rules.fee_premium_cents)} service fee on your own spot, not ${eurosText(rules.fee_each_pays_cents)}`,
       ]
     : [];
-  return [...fromRules, 'Verified badge on your profile', 'Priority evening slots (coming soon)'];
+  // Only perks that exist: nothing "coming soon" is sold with the subscription (App Review 3.1.2, 2.3.1).
+  return [...fromRules, 'Verified badge on your profile'];
 }
 
 // There is deliberately no client-side setPremium() here anymore.

@@ -98,8 +98,7 @@ PERSONAL PREMIUM
 - Cancel via Settings > Apple ID > Subscriptions on the device (the app links there) — access continues until the paid period ends.
 
 TEAM PREMIUM
-- A one-time purchase per team, required only to register that team for 9-a-side (€45) or 11-a-side (€59) leagues. 5-a-side and 7-a-side leagues don't need it.
-- If refunded, the team loses access to that format and forfeits any remaining fixtures in an in-progress season (past results stay on the table).
+- Team Premium is not on sale yet. 9-a-side and 11-a-side leagues are coming soon; 5-a-side and 7-a-side leagues are open to every team.
 
 LEAGUES
 - Joining a league auto-generates a round-robin fixture list against every other team in it.

@@ -23,6 +23,7 @@ import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
+import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { viewerRole, type ResultMatch } from '@/lib/match/result';
 import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
@@ -527,13 +528,16 @@ function PremiumSection() {
         chevron
         onPress={() => router.push('/account/premium')}
       />
-      <ListRow
-        title="Team Premium"
-        subtitle="Unlock 9-a-side and 11-a-side leagues for your team"
-        leading={{ icon: 'shield.fill' }}
-        chevron
-        onPress={() => router.push('/team')}
-      />
+      {/* Team Premium is off for the release (lib/premium.ts). */}
+      {TEAM_PREMIUM_ENABLED ? (
+        <ListRow
+          title="Team Premium"
+          subtitle="Unlock 9-a-side and 11-a-side leagues for your team"
+          leading={{ icon: 'shield.fill' }}
+          chevron
+          onPress={() => router.push('/team')}
+        />
+      ) : null}
     </Card>
   );
 }

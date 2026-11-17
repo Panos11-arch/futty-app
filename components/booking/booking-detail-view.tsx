@@ -30,6 +30,7 @@ import {
   describeQuote,
   paymentDeadlineLabel,
   rosterRow,
+  VENUE_NOT_TAKING_PLAYERS,
   type BookingDetailData,
   type ConfirmResult,
   type DetailCancelScope,
@@ -283,7 +284,15 @@ function BookingDetailReady({
           </View>
         </View>
 
-        {isBooker && live ? (
+        {isBooker && live && detail.venueTakingPlayers === false ? (
+          <View style={styles.section}>
+            <Text variant="body" tone="inkMuted">
+              {VENUE_NOT_TAKING_PLAYERS}
+            </Text>
+          </View>
+        ) : null}
+
+        {isBooker && live && detail.venueTakingPlayers !== false ? (
           <View style={styles.section}>
             <SectionHeader title="Invite a player" />
             <TextField

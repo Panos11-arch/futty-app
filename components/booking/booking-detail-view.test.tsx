@@ -332,3 +332,25 @@ describe('BookingDetailView: switching 5 v 5 / 6 v 6 (P12)', () => {
     expect(onSwitch).toHaveBeenCalledWith(5);
   });
 });
+
+describe("BookingDetailView: a venue that isn't taking new players (P7)", () => {
+  it('not live (from the server): one line instead of Invite a player', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: false }))} />);
+    expect(screen.getByText("This venue isn't taking new players on Futty right now.")).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Invite' })).toBeNull();
+    expect(screen.queryByText('Invite a player')).toBeNull();
+    expect(screen.queryByText('Squad need panel')).toBeNull();
+  });
+
+  it('live: the invite is there, and no line', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: true }))} />);
+    expect(screen.getByText('Invite a player')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Invite' })).toBeTruthy();
+    expect(screen.queryByText("This venue isn't taking new players on Futty right now.")).toBeNull();
+  });
+
+  it("not known: the invite stays (the server still decides)", async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: null }))} />);
+    expect(screen.getByText('Invite a player')).toBeTruthy();
+  });
+});

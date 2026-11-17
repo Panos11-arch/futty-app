@@ -193,12 +193,12 @@ describe('Premium', () => {
       'Book up to 14 days ahead, not just 7',
       'No service fee on your own spot',
       'Verified badge on your profile',
-      'Priority evening slots (coming soon)',
     ]);
     expect(personalPremiumPerks(CHANGED_RULES).slice(0, 2)).toEqual([
       'Book up to 5 days ahead, not just 3',
       'A €0.10 service fee on your own spot, not €0.90',
     ]);
-    expect(personalPremiumPerks(null)).toEqual(['Verified badge on your profile', 'Priority evening slots (coming soon)']);
+    expect(personalPremiumPerks(null)).toEqual(['Verified badge on your profile']);
+    expect(personalPremiumPerks(SPEC_RULES).join(' ')).not.toMatch(/coming soon/i);
   });
 });
