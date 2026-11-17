@@ -89,6 +89,27 @@ describe('CustomerView: a player', () => {
     expect(left).not.toHaveTextContent(/received|, paid|pending/);
   });
 
+  // P6e no-shows (spec 13 "No-shows"): the count is the server's, not the
+  // number of tagged bookings.
+  it("shows the player's no-shows here as the server counted them", async () => {
+    await render(<CustomerView venueId="v1" kind="player" id="u1" />);
+    expect(await screen.findByTestId('customer-no-shows')).toHaveTextContent('No-shows here: 3');
+  });
+
+  it('shows "No-shows here: 0" for a player who always showed', async () => {
+    mockReply = { data: playerDetail({ no_show_count: 0 } as never), error: null };
+    await render(<CustomerView venueId="v1" kind="player" id="u1" />);
+    expect(await screen.findByTestId('customer-no-shows')).toHaveTextContent('No-shows here: 0');
+  });
+
+  it('tags each booking they didn’t show for, and only those', async () => {
+    await render(<CustomerView venueId="v1" kind="player" id="u1" />);
+    expect(await screen.findByTestId('customer-booking-b6')).toHaveTextContent(/No-show/);
+    for (const id of ['b1', 'b2', 'b5']) {
+      expect(screen.getByTestId(`customer-booking-${id}`)).not.toHaveTextContent(/No-show/);
+    }
+  });
+
   it('settling is on the Debts list only', async () => {
     await render(<CustomerView venueId="v1" kind="player" id="u1" />);
     await screen.findByText('Andreas');
@@ -116,5 +137,13 @@ describe('CustomerView: a walk-in or phone contact', () => {
     await screen.findByText('Maria Georgiou');
     expect(screen.getByText('+35799000001')).toBeTruthy();
     expect(screen.getByTestId('customer-booking-cb1')).toHaveTextContent(/Walk-in · your price €60\.00 · charged €50\.00/);
+  });
+
+  it('has no no-show record: a walk-in has no check-in', async () => {
+    mockReply = { data: contactDetail(), error: null };
+    await render(<CustomerView venueId="v1" kind="contact" id="c1" />);
+    await screen.findByText('Maria Georgiou');
+    expect(screen.queryByTestId('customer-no-shows')).toBeNull();
+    expect(screen.queryByText(/No-show/)).toBeNull();
   });
 });

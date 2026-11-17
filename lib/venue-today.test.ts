@@ -7,6 +7,7 @@ import {
   addBlock,
   addCounterBooking,
   addDays,
+  attendanceLabel,
   bookingSummary,
   bookingTitle,
   cancelCounterBooking,
@@ -16,6 +17,7 @@ import {
   cyprusNow,
   cyprusToday,
   dayTitle,
+  describeAttendanceError,
   describeVenueError,
   describeVenuePlayerError,
   fetchCheckInCode,
@@ -26,10 +28,12 @@ import {
   flagConditions,
   halfHourAfter,
   kindLabel,
+  markArrived,
   markCashReceived,
   markCounterPaid,
   gameEnd,
   markLabel,
+  noShowsCaption,
   offerVenuePlayer,
   pitchColumn,
   quoteMovesMoney,
@@ -40,6 +44,7 @@ import {
   slotIsPast,
   SLOT_STARTS,
   unassignedBookings,
+  unmarkArrived,
   venuePlayerStateLabel,
   venueQuoteWords,
   weekdayDates,
@@ -546,5 +551,57 @@ describe('venue players', () => {
     ['something_new', 'Something went wrong. Try again.'],
   ])('%s', (code, words) => {
     expect(describeVenuePlayerError(code)).toBe(words);
+  });
+});
+
+// P6e no-shows (spec 13 "No-shows"; the server is
+// supabase/migrations/20261117180513_match_no_shows.sql): staff tick a spot
+// holder who came but didn't scan, and undo only their own tick.
+describe('no-shows', () => {
+  it('mark arrived sends the match id and the player id only', async () => {
+    await markArrived('m1', 'u2');
+    expect(mockRpc.mock.calls).toEqual([['venue_mark_arrived', { p_match_id: 'm1', p_profile_id: 'u2' }]]);
+  });
+
+  it('undo arrived sends the match id and the player id only', async () => {
+    await unmarkArrived('m1', 'u2');
+    expect(mockRpc.mock.calls).toEqual([['venue_unmark_arrived', { p_match_id: 'm1', p_profile_id: 'u2' }]]);
+  });
+
+  it.each([
+    ['checked_in', 'qr', { label: 'Checked in', tone: 'success' }],
+    ['checked_in', 'captain', { label: 'Checked in', tone: 'success' }],
+    ['checked_in', 'venue', { label: 'Ticked by venue', tone: 'success' }],
+    ['not_yet', null, { label: 'Not checked in yet', tone: 'inkMuted' }],
+    ['missing', null, { label: "Didn't check in", tone: 'warning' }],
+    ['no_show', null, { label: 'No-show', tone: 'danger' }],
+  ] as const)('names %s (%s)', (attendance, method, label) => {
+    expect(attendanceLabel(attendance, method)).toEqual(label);
+  });
+
+  it('shows nothing with no match (or a void one): the server sends null', () => {
+    expect(attendanceLabel(null, null)).toBeNull();
+  });
+
+  it.each([
+    [0, null],
+    [1, '1 no-show here'],
+    [3, '3 no-shows here'],
+  ])('captions %s no-shows', (count, words) => {
+    expect(noShowsCaption(count)).toBe(words);
+  });
+
+  it.each([
+    ['check_in_used', "They've already voted, so this can't be undone."],
+    ['check_in_closed', 'Check-in for this game is closed.'],
+    ['not_in_match', "This player doesn't hold a spot in this game."],
+    ['not_checked_in', "This player isn't checked in."],
+    ['not_venue_check_in', 'They checked in themselves or their captain ticked them, so this can’t be undone here.'],
+    ['match_not_found', 'This game is no longer there.'],
+    // Everything else reads as the dashboard's other refusals do.
+    ['not_venue_staff', "You're not staff at this venue."],
+    ['something_new', 'Something went wrong. Try again.'],
+  ])('%s', (code, words) => {
+    expect(describeAttendanceError(code)).toBe(words);
   });
 });

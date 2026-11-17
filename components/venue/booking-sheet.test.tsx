@@ -1,9 +1,17 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Modal } from 'react-native';
 
 import { BookingSheet, type BookingSheetActions } from '@/components/venue/booking-sheet';
 import { loadWithFile } from '@/components/ui/test-utils';
-import { appBooking, appRoster, counterRoster, venuePlayer, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
+import {
+  appBooking,
+  appRoster,
+  counterRoster,
+  rosterPlayer,
+  venuePlayer,
+  venueQuote,
+  walkIn,
+} from '@/lib/venue-today.fixtures';
 import type { Roster } from '@/lib/venue-today';
 
 // A booking's sheet on the venue dashboard (spec 13 "Cash at the venue",
@@ -45,6 +53,8 @@ function actions(overrides: Partial<BookingSheetActions> = {}): BookingSheetActi
     venueCancel: jest.fn(async () => ({ status: 'cancelled' as const })),
     offerPlayer: jest.fn(async () => null),
     withdrawPlayer: jest.fn(async () => null),
+    markArrived: jest.fn(async () => null),
+    unmarkArrived: jest.fn(async () => null),
     ...overrides,
   };
 }
@@ -348,5 +358,93 @@ describe('BookingSheet: venue players', () => {
     );
     await act(() => fireEvent.press(screen.getByRole('button', { name: 'Offer a player' })));
     expect(screen.queryByText(/\bhe\b/i)).toBeNull();
+  });
+});
+
+// P6e no-shows (spec 13 "No-shows"): each player's attendance as the server
+// named it, their final no-shows at this venue, and staff's tick for a spot
+// holder who came but didn't scan. What staff can do is the server's
+// can_mark_arrived and can_unmark_arrived; the app sends the match id and the
+// player's id only.
+describe('BookingSheet: attendance and no-shows', () => {
+  const players = [
+    rosterPlayer({ share_id: 'a1', profile_id: 'u1', name: 'Andreas', attendance: 'checked_in', check_in_method: 'qr' }),
+    rosterPlayer({ share_id: 'a2', profile_id: 'u2', name: 'Bambos', attendance: 'checked_in', check_in_method: 'captain' }),
+    rosterPlayer({
+      share_id: 'a3',
+      profile_id: 'u3',
+      name: 'Christos',
+      attendance: 'checked_in',
+      check_in_method: 'venue',
+      can_unmark_arrived: true,
+    }),
+    rosterPlayer({ share_id: 'a4', profile_id: 'u4', name: 'Demos', attendance: 'not_yet', can_mark_arrived: true }),
+    rosterPlayer({ share_id: 'a5', profile_id: 'u5', name: 'Eleni', attendance: 'missing', can_mark_arrived: true }),
+    rosterPlayer({ share_id: 'a6', profile_id: 'u6', name: 'Fotis', attendance: 'no_show', no_show_count: 2 }),
+  ];
+
+  it("shows each player's attendance in words", async () => {
+    await open(appRoster({ players }));
+    expect(screen.getByTestId('player-a1')).toHaveTextContent(/Andreas.*Checked in/);
+    expect(screen.getByTestId('player-a2')).toHaveTextContent(/Bambos.*Checked in/);
+    expect(screen.getByTestId('player-a3')).toHaveTextContent(/Christos.*Ticked by venue/);
+    expect(screen.getByTestId('player-a4')).toHaveTextContent(/Demos.*Not checked in yet/);
+    expect(screen.getByTestId('player-a5')).toHaveTextContent(/Eleni.*Didn't check in/);
+    expect(screen.getByTestId('player-a6')).toHaveTextContent(/Fotis.*No-show/);
+  });
+
+  it('shows no attendance when the game has no match yet', async () => {
+    await open(
+      appRoster({ match_id: null, players: [rosterPlayer({ share_id: 'a1', name: 'Andreas', attendance: null })] }),
+    );
+    expect(screen.getByTestId('player-a1')).not.toHaveTextContent(/check|No-show|Ticked/i);
+  });
+
+  it("captions a player's no-shows at this venue only when there are some", async () => {
+    await open(appRoster({ players }));
+    expect(screen.getByTestId('player-a6')).toHaveTextContent(/2 no-shows here/);
+    expect(screen.getByTestId('player-a1')).not.toHaveTextContent(/no-show/);
+  });
+
+  it('says "1 no-show here" for one', async () => {
+    await open(appRoster({ players: [rosterPlayer({ share_id: 'a1', no_show_count: 1 })] }));
+    expect(screen.getByTestId('player-a1')).toHaveTextContent(/1 no-show here/);
+  });
+
+  /** A button in one player's row. */
+  const inRow = (shareId: string, name: string) =>
+    within(screen.getByTestId(`player-${shareId}`)).queryByRole('button', { name });
+
+  it('marks a player arrived in one tap, with the match id and their id only', async () => {
+    const a = await open(appRoster({ players }));
+    await act(() => fireEvent.press(inRow('a4', 'Mark arrived')!));
+    expect(a.markArrived).toHaveBeenCalledWith('m1', 'u4');
+    expect(a.markArrived).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers "Mark arrived" only where the server says staff can', async () => {
+    await open(appRoster({ players }));
+    expect(inRow('a4', 'Mark arrived')).toBeTruthy();
+    expect(inRow('a5', 'Mark arrived')).toBeTruthy();
+    for (const shareId of ['a1', 'a2', 'a3', 'a6']) {
+      expect(inRow(shareId, 'Mark arrived')).toBeNull();
+    }
+  });
+
+  it('offers "Undo arrived" only for a venue tick', async () => {
+    const a = await open(appRoster({ players }));
+    for (const shareId of ['a1', 'a2', 'a4', 'a5', 'a6']) {
+      expect(inRow(shareId, 'Undo arrived')).toBeNull();
+    }
+    await act(() => fireEvent.press(inRow('a3', 'Undo arrived')!));
+    expect(a.unmarkArrived).toHaveBeenCalledWith('m1', 'u3');
+  });
+
+  it("shows the server's refusal in words, in that player's row", async () => {
+    const a = actions({ unmarkArrived: jest.fn(async () => "They've already voted, so this can't be undone.") });
+    await open(appRoster({ players }), a);
+    await act(() => fireEvent.press(inRow('a3', 'Undo arrived')!));
+    expect(screen.getByTestId('player-a3')).toHaveTextContent(/They've already voted, so this can't be undone\./);
+    expect(screen.getByTestId('player-a4')).not.toHaveTextContent(/voted/);
   });
 });

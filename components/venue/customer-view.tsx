@@ -2,8 +2,10 @@
 // dashboard", Customers). A player: their name, the debt and credit at this
 // venue as venue_customer returned them, every booking here with its status,
 // their debts here (open and settled, read only: settling is on the Debts
-// list) and their credits with expiry. Never their email or phone. A walk-in
-// or phone contact: the name and phone staff entered and their bookings.
+// list), their credits with expiry, and their no-shows here (P6e: the
+// server's count and a tag on each booking they didn't show for). Never their
+// email or phone, and never another venue's no-shows. A walk-in or phone
+// contact: the name and phone staff entered and their bookings.
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -19,6 +21,7 @@ import {
   describeMoneyError,
   fetchCustomer,
   formatDay,
+  noShowsLine,
   shareStatusLabel,
   type ContactBooking,
   type CustomerCredit,
@@ -95,6 +98,9 @@ function Detail({ c }: { c: CustomerDetail }) {
             <Figure label="Owes your venue" cents={c.debt_cents} testID="customer-debt" />
             <Figure label="Credit at your venue" cents={c.credit_cents} testID="customer-credit" />
           </View>
+          <Text variant="callout" tone={c.no_show_count > 0 ? 'warning' : 'inkMuted'} testID="customer-no-shows">
+            {noShowsLine(c.no_show_count)}
+          </Text>
         </Card>
       )}
 
@@ -106,7 +112,18 @@ function Detail({ c }: { c: CustomerDetail }) {
             <ListRow
               title={when(b)}
               subtitle={c.kind === 'player' ? playerShare(b as PlayerBooking) : contactBooking(b as ContactBooking)}
-              trailing={<BookingStatusMark status={b.booking_status} />}
+              trailing={
+                c.kind === 'player' && (b as PlayerBooking).no_show ? (
+                  <View style={styles.trailing}>
+                    <Text variant="caption" tone="danger">
+                      No-show
+                    </Text>
+                    <BookingStatusMark status={b.booking_status} />
+                  </View>
+                ) : (
+                  <BookingStatusMark status={b.booking_status} />
+                )
+              }
             />
           </View>
         ))}
@@ -174,5 +191,6 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
   figures: { flexDirection: 'row', gap: space.md },
   figure: { flex: 1, gap: space.xs },
+  trailing: { alignItems: 'flex-end', gap: space.xs },
   section: { gap: space.sm, marginTop: space.xl },
 });
