@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Profile avatar, name, level badge, stat tiles in tabular figures, then grouped rows 1`] = `
+exports[`Profile avatar, name, level, stat tiles in tabular figures, then grouped rows 1`] = `
 <View
   edges={
     [
@@ -181,72 +181,13 @@ exports[`Profile avatar, name, level badge, stat tiles in tabular figures, then 
               @
               ann
             </Text>
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                }
-              }
-            >
-              <View
-                style={
-                  {
-                    "borderColor": "#E4E7EB",
-                    "borderRadius": 999,
-                    "borderWidth": 0.5,
-                    "paddingHorizontal": 8,
-                    "paddingVertical": 2,
-                  }
-                }
-                testID="level-badge"
-              >
-                <Text
-                  style={
-                    [
-                      {
-                        "fontFamily": "Inter_500Medium",
-                        "fontSize": 12,
-                        "lineHeight": 16,
-                      },
-                      {
-                        "color": "#0B1215",
-                      },
-                      false,
-                      undefined,
-                    ]
-                  }
-                >
-                  Beginner
-                </Text>
-              </View>
-              <Text
-                style={
-                  [
-                    {
-                      "fontFamily": "Inter_500Medium",
-                      "fontSize": 13,
-                      "lineHeight": 18,
-                    },
-                    {
-                      "color": "#5B6470",
-                    },
-                    false,
-                    undefined,
-                  ]
-                }
-              >
-                Striker
-              </Text>
-            </View>
             <Text
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -256,8 +197,7 @@ exports[`Profile avatar, name, level badge, stat tiles in tabular figures, then 
                 ]
               }
             >
-              Silver
-               tier · personal level
+              Striker
             </Text>
           </View>
           <View
@@ -488,98 +428,115 @@ exports[`Profile avatar, name, level badge, stat tiles in tabular figures, then 
               "gap": 4,
             }
           }
+          testID="player-level"
         >
           <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 8,
-                "justifyContent": "space-between",
-              }
-            }
-          >
-            <Text
-              style={
-                [
-                  {
-                    "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
-                  },
-                  {
-                    "color": "#5B6470",
-                  },
-                  {
-                    "fontVariant": [
-                      "tabular-nums",
-                    ],
-                  },
-                  undefined,
-                ]
-              }
-            >
-              120
-               XP 
-              → Gold
-            </Text>
-            <Text
-              style={
-                [
-                  {
-                    "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
-                  },
-                  {
-                    "color": "#5B6470",
-                  },
-                  {
-                    "fontVariant": [
-                      "tabular-nums",
-                    ],
-                  },
-                  undefined,
-                ]
-              }
-            >
-              130 XP to go
-            </Text>
-          </View>
-          <View
-            accessibilityLabel="XP to the next tier"
-            accessibilityRole="progressbar"
-            accessibilityValue={
-              {
-                "max": 100,
-                "min": 0,
-                "now": 48,
-              }
-            }
+            accessibilityLabel="Level 3.5, provisional, reliability 15%"
             accessible={true}
             style={
               {
-                "backgroundColor": "#E4E7EB",
-                "borderRadius": 999,
-                "height": 8,
-                "overflow": "hidden",
+                "alignItems": "center",
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "gap": 8,
               }
             }
           >
-            <View
+            <Text
               style={
                 [
                   {
-                    "backgroundColor": "#5B6470",
-                    "borderRadius": 999,
-                    "height": "100%",
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
                   },
                   {
-                    "width": "48%",
+                    "color": "#5B6470",
                   },
+                  false,
+                  undefined,
                 ]
               }
-            />
+            >
+              Level
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_700Bold",
+                    "fontSize": 22,
+                    "lineHeight": 28,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+              testID="player-level-value"
+            >
+              3.5
+            </Text>
+            <View
+              style={
+                {
+                  "borderColor": "#E4E7EB",
+                  "borderRadius": 999,
+                  "borderWidth": 0.5,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 2,
+                }
+              }
+              testID="player-level-provisional"
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Provisional
+              </Text>
+            </View>
           </View>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 12,
+                  "lineHeight": 16,
+                },
+                {
+                  "color": "#5B6470",
+                },
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                },
+                undefined,
+              ]
+            }
+          >
+            Reliability 15%
+          </Text>
         </View>
       </View>
       <View

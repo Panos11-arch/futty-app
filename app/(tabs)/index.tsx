@@ -26,6 +26,7 @@ import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
 import { openIfOffers } from '@/lib/post-match-offers';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { viewerRole, type ResultMatch } from '@/lib/match/result';
+import { useStartingLevelOffer } from '@/lib/match/use-levels';
 import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
@@ -611,6 +612,8 @@ function OwedBanner() {
 
 export default function HomeScreen() {
   const recentResults = useRecentResults();
+  // A5b: the five starting-level questions, once per device, after sign-up.
+  useStartingLevelOffer();
 
   // Refetch whenever Home regains focus (e.g. back from Book or from
   // app/previous-games.tsx). LogScoreSection also reloads it the instant a

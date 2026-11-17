@@ -7,14 +7,22 @@
 // Members of the match see it at any time; everyone signed in once it is
 // confirmed (the server decides; "Match not found" otherwise). The result
 // panel and the post-match offers are for members only, as before.
+//
+// A5b (decision 1f): competitive or casual (members; a captain switches it
+// before kickoff), balance teams (a pickup's booker, before sides lock) and
+// player ratings (after confirmation; ratings show only as the server
+// returns them).
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CheckInSection } from '@/components/booking/check-in-panel';
+import { BalanceTeams } from '@/components/match/balance-teams';
+import { MatchCompetitive } from '@/components/match/match-competitive';
 import { MatchLineup } from '@/components/match/match-lineup';
 import { MatchMotm } from '@/components/match/match-motm';
+import { MatchRatingsPanel } from '@/components/match/match-ratings';
 import { MatchScorers } from '@/components/match/match-scorers';
 import { MatchPageSection } from '@/components/match/page-section';
 import { MatchResultPanel } from '@/components/match/result-panel';
@@ -26,8 +34,11 @@ import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
 import { formatMatchWhen } from '@/lib/match/format';
+import { canBalanceTeams } from '@/lib/match/levels';
 import { lineupEditable, playedMatch, sideOf, writerSides, type MatchPage } from '@/lib/match/page';
 import { useFormationPresets, useMatchPage, useMatchRoster } from '@/lib/match/use-match-page';
+import { captainSideOf } from '@/lib/match/result';
+import { useMatchRatings } from '@/lib/match/use-levels';
 import { useResultMatch } from '@/lib/match/use-match-result';
 import { scoreEntered } from '@/lib/post-match-offers';
 import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
@@ -54,12 +65,21 @@ export default function MatchScreen() {
   const roster = useMatchRoster(matchId, member);
   const pageData = page.status === 'ready' ? page.page : null;
   const now = Date.now();
+  const ratings = useMatchRatings(matchId, pageData !== null && playedMatch(pageData));
   const presets = useFormationPresets(member && pageData && lineupEditable(pageData, now) ? pageData.playersPerSide : null);
 
   const { reload } = result;
   const { reload: reloadPage } = page;
   const { reload: reloadRoster } = roster;
+  const { reload: reloadRatings } = ratings;
   const reloadAll = useCallback(() => {
+    reload();
+    reloadPage();
+    reloadRoster();
+    reloadRatings();
+  }, [reload, reloadPage, reloadRoster, reloadRatings]);
+  /** After balancing: the sides changed in the match, the page and the squad. */
+  const reloadSides = useCallback(() => {
     reload();
     reloadPage();
     reloadRoster();
@@ -106,6 +126,7 @@ export default function MatchScreen() {
     // Sections wait for the page; once it is here, scorers and the vote exist only for a played match.
     const showPlayed = sectionStatus !== 'ready' || (pageData !== null && playedMatch(pageData));
     const score = !match && pageData ? pageScore(pageData) : null;
+    const rated = pageData !== null && playedMatch(pageData);
 
     content = (
       <View style={styles.stack}>
@@ -129,6 +150,25 @@ export default function MatchScreen() {
               {score}
             </Text>
           </Card>
+        ) : null}
+        {match ? (
+          <MatchPageSection title="Competitive or casual" status="ready" onRetry={reload} testID="section-competitive">
+            <MatchCompetitive
+              match={match}
+              captainSide={captainSideOf(match, result.viewerId, captainTeamIds)}
+              onChanged={reload}
+              now={now}
+            />
+          </MatchPageSection>
+        ) : null}
+        {match && canBalanceTeams(match, result.viewerId) ? (
+          <MatchPageSection title="Balance teams" status="ready" onRetry={reload} testID="section-balance">
+            <BalanceTeams
+              matchId={match.match.id}
+              labels={{ a: match.sides.a.label, b: match.sides.b.label }}
+              onBalanced={reloadSides}
+            />
+          </MatchPageSection>
         ) : null}
         {sectionStatus === 'ready' && !pageData ? null : (
           <>
@@ -156,6 +196,26 @@ export default function MatchScreen() {
                     viewerId={result.viewerId}
                     onVoted={reloadPage}
                     now={now}
+                  />
+                ) : null}
+              </MatchPageSection>
+            ) : null}
+            {rated ? (
+              <MatchPageSection
+                title="Player ratings"
+                status={ratings.status}
+                onRetry={reloadRatings}
+                errorMessage="Could not load the ratings."
+                testID="section-ratings">
+                {ratings.status === 'ready' ? (
+                  <MatchRatingsPanel
+                    matchId={pageData!.matchId}
+                    ratings={ratings.ratings}
+                    names={ratings.names}
+                    roster={rosterState}
+                    onRetryRoster={reloadRoster}
+                    viewerId={result.viewerId}
+                    onRated={reloadRatings}
                   />
                 ) : null}
               </MatchPageSection>

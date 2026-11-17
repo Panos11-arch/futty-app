@@ -4,6 +4,7 @@ import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
+import { PlayerLevelSummary } from '@/components/match/player-level';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
@@ -11,39 +12,14 @@ import { Card } from '@/components/ui/card';
 import { IconButton } from '@/components/ui/icon-button';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { colors, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { type Profile, useProfile } from '@/lib/use-profile';
 
-// XP tiers, ported from the prototype's LEVEL_TIERS.
-const LEVEL_TIERS = [
-  { name: 'Bronze', min: 0 },
-  { name: 'Silver', min: 100 },
-  { name: 'Gold', min: 250 },
-  { name: 'Platinum', min: 500 },
-];
-
-function tierFor(xp: number) {
-  return [...LEVEL_TIERS].reverse().find((t) => xp >= t.min) ?? LEVEL_TIERS[0];
-}
-function nextTierFor(xp: number) {
-  return LEVEL_TIERS.find((t) => t.min > xp) ?? null;
-}
-
-// Skill level (Beginner..Elite) is still self-declared-but-not-yet-editable
-// placeholder — there's no profiles.skill_level column. Games/wins/goals/XP
-// below are real now (supabase/scores.sql fans confirmed match results out
-// to every player on both rosters).
-const PLACEHOLDER_SKILL_LEVEL = 'Beginner';
-
-/** The player's level as a neutral pill: no colour per level. */
-function LevelBadge({ level }: { level: string }) {
-  return (
-    <View style={styles.badge} testID="level-badge">
-      <Text variant="caption">{level}</Text>
-    </View>
-  );
-}
+// A5b (docs/specs/match-record.md decision 1f.6): the skill level from
+// player_levels replaces the XP bar and tier. Games, wins and goals below are
+// real (supabase/scores.sql fans confirmed match results out to every player
+// on both rosters).
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -60,10 +36,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 
 export function ProfileCard({ profile, editable = true }: { profile: Profile; editable?: boolean }) {
   const name = profile.full_name || profile.username || 'Player';
-  const tier = tierFor(profile.xp);
-  const nextTier = nextTierFor(profile.xp);
   const winRate = profile.played > 0 ? Math.round((profile.won / profile.played) * 100) : 0;
-  const xpProgress = nextTier ? Math.min(100, (profile.xp / nextTier.min) * 100) : 100;
 
   return (
     <Card style={styles.card}>
@@ -76,17 +49,11 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
               @{profile.username}
             </Text>
           ) : null}
-          <View style={styles.identityRow}>
-            <LevelBadge level={PLACEHOLDER_SKILL_LEVEL} />
-            {profile.position ? (
-              <Text variant="callout" tone="inkMuted">
-                {profile.position}
-              </Text>
-            ) : null}
-          </View>
-          <Text variant="caption" tone="inkMuted">
-            {tier.name} tier · personal level
-          </Text>
+          {profile.position ? (
+            <Text variant="callout" tone="inkMuted">
+              {profile.position}
+            </Text>
+          ) : null}
         </View>
         {editable ? (
           <IconButton icon="pencil" accessibilityLabel="Edit profile" onPress={() => router.push('/edit-profile')} />
@@ -99,24 +66,7 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
         <StatTile label="Goals" value={profile.goals} />
       </View>
 
-      <View style={styles.xpSection}>
-        <View style={styles.xpLabels}>
-          <Text variant="caption" tone="inkMuted" tabular>
-            {profile.xp} XP {nextTier ? `→ ${nextTier.name}` : '(max tier)'}
-          </Text>
-          <Text variant="caption" tone="inkMuted" tabular>
-            {nextTier ? `${nextTier.min - profile.xp} XP to go` : 'Top tier'}
-          </Text>
-        </View>
-        <View
-          style={styles.xpTrack}
-          accessible
-          accessibilityRole="progressbar"
-          accessibilityLabel="XP to the next tier"
-          accessibilityValue={{ min: 0, max: 100, now: Math.round(xpProgress) }}>
-          <View style={[styles.xpFill, { width: `${xpProgress}%` }]} />
-        </View>
-      </View>
+      <PlayerLevelSummary profileId={profile.id} own={editable} />
     </Card>
   );
 }
@@ -233,14 +183,6 @@ const styles = StyleSheet.create({
   card: { gap: space.lg },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   identity: { flex: 1, gap: space.xs },
-  identityRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  badge: {
-    borderRadius: radius.pill,
-    borderWidth: hairline,
-    borderColor: colors.border,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.xs / 2,
-  },
   statsRow: { flexDirection: 'row', gap: space.sm },
   statTile: {
     flex: 1,
@@ -249,8 +191,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     backgroundColor: colors.canvas,
   },
-  xpSection: { gap: space.xs },
-  xpLabels: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
-  xpTrack: { height: space.sm, borderRadius: radius.pill, backgroundColor: colors.border, overflow: 'hidden' },
-  xpFill: { height: '100%', borderRadius: radius.pill, backgroundColor: colors.inkMuted },
 });

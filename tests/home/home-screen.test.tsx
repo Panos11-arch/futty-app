@@ -78,6 +78,8 @@ jest.mock('@/lib/match/use-match-result', () => ({
   }),
 }));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
+const mockStartingLevelOffer = jest.fn();
+jest.mock('@/lib/match/use-levels', () => ({ useStartingLevelOffer: () => mockStartingLevelOffer() }));
 // Only the hook is faked: the banner's words come from the real helpers.
 jest.mock('@/lib/use-owed', () => ({
   ...jest.requireActual('@/lib/use-owed'),
@@ -142,6 +144,12 @@ describe('Home', () => {
   it('keeps the header', async () => {
     await render(<HomeScreen />);
     expect(screen.getByRole('header', { name: 'Home' })).toBeTruthy();
+  });
+
+  it('offers the starting-level questions from Home (A5b)', async () => {
+    mockStartingLevelOffer.mockClear();
+    await render(<HomeScreen />);
+    expect(mockStartingLevelOffer).toHaveBeenCalled();
   });
 
   it('shows skeletons while the next game loads', async () => {
