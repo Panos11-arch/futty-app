@@ -87,7 +87,8 @@ export function dayBoard(overrides: Partial<DayBoard> = {}): DayBoard {
   };
 }
 
-function player(overrides: Partial<RosterPlayer>): RosterPlayer {
+/** One player on venue_booking_roster. */
+export function rosterPlayer(overrides: Partial<RosterPlayer> = {}): RosterPlayer {
   return {
     share_id: 's1',
     profile_id: 'u1',
@@ -100,6 +101,11 @@ function player(overrides: Partial<RosterPlayer>): RosterPlayer {
     fee_cents: 80,
     cash_cents: 0,
     checked_in: false,
+    attendance: 'not_yet',
+    check_in_method: null,
+    can_mark_arrived: false,
+    can_unmark_arrived: false,
+    no_show_count: 0,
     ...overrides,
   };
 }
@@ -123,8 +129,16 @@ export function appRoster(overrides: Partial<AppRoster> = {}): AppRoster {
     venue_players: [],
     can_offer_player: false,
     players: [
-      player({ share_id: 's1', profile_id: 'u1', name: 'Nikos Georgiou', is_booker: true, checked_in: true }),
-      player({
+      rosterPlayer({
+        share_id: 's1',
+        profile_id: 'u1',
+        name: 'Nikos Georgiou',
+        is_booker: true,
+        checked_in: true,
+        attendance: 'checked_in',
+        check_in_method: 'qr',
+      }),
+      rosterPlayer({
         share_id: 's2',
         profile_id: 'u2',
         name: 'Eleni',
@@ -133,7 +147,7 @@ export function appRoster(overrides: Partial<AppRoster> = {}): AppRoster {
         amount_cents: 80,
         cash_cents: 600,
       }),
-      player({
+      rosterPlayer({
         share_id: 's3',
         profile_id: 'u3',
         name: 'Marios',
@@ -142,7 +156,7 @@ export function appRoster(overrides: Partial<AppRoster> = {}): AppRoster {
         amount_cents: 80,
         cash_cents: 600,
       }),
-      player({ share_id: 's4', profile_id: 'u4', name: 'Petros', state: 'unpaid' }),
+      rosterPlayer({ share_id: 's4', profile_id: 'u4', name: 'Petros', state: 'unpaid' }),
     ],
     ...overrides,
   };

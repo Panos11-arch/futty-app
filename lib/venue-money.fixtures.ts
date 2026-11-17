@@ -136,28 +136,31 @@ export function playerDetail(overrides: Partial<CustomerDetail> = {}): CustomerD
     name: 'Andreas',
     debt_cents: 4242,
     credit_cents: 888,
+    // P6e: final no-shows at this venue, as the server counted them (not the
+    // number of no_show bookings below).
+    no_show_count: 3,
     bookings: [
       {
         booking_id: 'b1', booking_status: 'confirmed', booking_day: '2026-11-17', start_time: '18:00:00',
         end_time: '19:00:00', format: '5v5', is_booker: true, share_status: 'paid', payment_method: 'card',
-        amount_cents: 680, cash_cents: 0, cash_received: null,
+        amount_cents: 680, cash_cents: 0, cash_received: null, no_show: false,
       },
       {
         booking_id: 'b2', booking_status: 'cancelled', booking_day: '2026-11-10', start_time: '20:00:00',
         end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'credited', payment_method: 'cash',
-        amount_cents: 80, cash_cents: 600, cash_received: false,
+        amount_cents: 80, cash_cents: 600, cash_received: false, no_show: false,
       },
       {
         // Cash, card part not taken yet, cash not ticked.
         booking_id: 'b5', booking_status: 'confirmed', booking_day: '2026-11-20', start_time: '20:00:00',
         end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'authorized', payment_method: 'cash',
-        amount_cents: 80, cash_cents: 600, cash_received: false,
+        amount_cents: 80, cash_cents: 600, cash_received: false, no_show: false,
       },
       {
-        // Cash, card part taken, cash ticked.
+        // Cash, card part taken, cash ticked; they didn't show (P6e).
         booking_id: 'b6', booking_status: 'confirmed', booking_day: '2026-11-12', start_time: '20:00:00',
         end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'paid', payment_method: 'cash',
-        amount_cents: 80, cash_cents: 600, cash_received: true,
+        amount_cents: 80, cash_cents: 600, cash_received: true, no_show: true,
       },
     ],
     debts: [

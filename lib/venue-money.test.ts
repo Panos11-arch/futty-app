@@ -18,6 +18,7 @@ import {
   fetchRevenueExport,
   formatDay,
   MAX_RANGE_DAYS,
+  noShowsLine,
   periodLabel,
   periodStart,
   rangeDays,
@@ -218,6 +219,11 @@ describe('words', () => {
     expect(bookingStatusLabel('pending_payment')).toBe('Waiting for payment');
     expect(debtReasonLabel('cash_unpaid')).toBe('Cash not paid');
     expect(debtReasonLabel('something_new')).toBe('Unpaid');
+  });
+
+  it("a player's no-shows at this venue, as the server counted them (P6e)", () => {
+    expect(noShowsLine(0)).toBe('No-shows here: 0');
+    expect(noShowsLine(2)).toBe('No-shows here: 2');
   });
 
   it('errors', () => {

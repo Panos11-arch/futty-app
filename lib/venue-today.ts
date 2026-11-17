@@ -82,7 +82,23 @@ export type RosterPlayer = {
   fee_cents: number;
   cash_cents: number;
   checked_in: boolean;
+  /** P6e no-shows: the server's attendance (null with no match, or a void one). */
+  attendance: Attendance | null;
+  /** How they checked in, if they did. */
+  check_in_method: CheckInMethod | null;
+  /** Staff can tick them as arrived now (the server's own checks). */
+  can_mark_arrived: boolean;
+  /** Staff can undo their own tick now: never a QR or captain check-in, nor once they voted. */
+  can_unmark_arrived: boolean;
+  /** Their final no-shows at this venue. */
+  no_show_count: number;
 };
+
+/** P6e (spec 13 "No-shows"): not_yet until 1 hour after the end, missing
+ *  until the result deadline, then a final no_show. */
+export type Attendance = 'checked_in' | 'not_yet' | 'missing' | 'no_show';
+
+export type CheckInMethod = 'qr' | 'captain' | 'venue';
 
 type RosterBase = {
   booking_id: string;
@@ -193,6 +209,17 @@ export function offerVenuePlayer(bookingId: string, name: string) {
 /** P6e: withdraws an offered or accepted player; the booker is told. */
 export function withdrawVenuePlayer(offerId: string) {
   return supabase.rpc('withdraw_venue_player', { p_offer_id: offerId });
+}
+
+/** P6e no-shows: staff tick a player who came but didn't scan. Counts as a
+ *  check-in like any other; no money moves. */
+export function markArrived(matchId: string, profileId: string) {
+  return supabase.rpc('venue_mark_arrived', { p_match_id: matchId, p_profile_id: profileId });
+}
+
+/** P6e no-shows: staff undo their own tick (never a QR or captain check-in). */
+export function unmarkArrived(matchId: string, profileId: string) {
+  return supabase.rpc('venue_unmark_arrived', { p_match_id: matchId, p_profile_id: profileId });
 }
 
 export type CounterBookingInput = Slot & {
@@ -456,6 +483,32 @@ export function venuePlayerStateLabel(state: VenuePlayerState): {
   }
 }
 
+/** P6e: a player's attendance, in words for staff (spec 13 "No-shows"). Null
+ *  when the server sends none: no match yet, or a void one. */
+export function attendanceLabel(
+  attendance: Attendance | null,
+  method: CheckInMethod | null,
+): { label: string; tone: 'success' | 'warning' | 'danger' | 'inkMuted' } | null {
+  switch (attendance) {
+    case 'checked_in':
+      return { label: method === 'venue' ? 'Ticked by venue' : 'Checked in', tone: 'success' };
+    case 'not_yet':
+      return { label: 'Not checked in yet', tone: 'inkMuted' };
+    case 'missing':
+      return { label: "Didn't check in", tone: 'warning' };
+    case 'no_show':
+      return { label: 'No-show', tone: 'danger' };
+    default:
+      return null;
+  }
+}
+
+/** P6e: '2 no-shows here' under a player on the roster; nothing for none. */
+export function noShowsCaption(count: number): string | null {
+  if (count <= 0) return null;
+  return `${count} no-show${count === 1 ? '' : 's'} here`;
+}
+
 type Mark = { pitch_id: string | null; starts_at: string | null; ends_at: string | null };
 
 /** 'All pitches · All day', 'Pitch 1 · 19:00–20:30'. */
@@ -631,6 +684,27 @@ export function describeVenuePlayerError(code: string): string {
       return 'This offer was already answered or withdrawn.';
     case 'offer_not_found':
       return 'This offer is no longer there.';
+    default:
+      return describeVenueError(code);
+  }
+}
+
+/** P6e: venue_mark_arrived's and venue_unmark_arrived's refusals; anything
+ *  else reads as the dashboard's other refusals do. */
+export function describeAttendanceError(code: string): string {
+  switch (code) {
+    case 'check_in_used':
+      return "They've already voted, so this can't be undone.";
+    case 'check_in_closed':
+      return 'Check-in for this game is closed.';
+    case 'not_in_match':
+      return "This player doesn't hold a spot in this game.";
+    case 'not_checked_in':
+      return "This player isn't checked in.";
+    case 'not_venue_check_in':
+      return 'They checked in themselves or their captain ticked them, so this can’t be undone here.';
+    case 'match_not_found':
+      return 'This game is no longer there.';
     default:
       return describeVenueError(code);
   }

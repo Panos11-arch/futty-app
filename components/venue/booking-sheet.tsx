@@ -3,7 +3,9 @@
 // - an app game: every player still in it with their payment choice and
 //   state, a tick for cash paid (second tap), run collection early, the
 //   check-in QR, and the venue's cancel (the server's quote first, then a
-//   second tap);
+//   second tap); each player's attendance and no-shows here, and staff's
+//   one-tap "Mark arrived" for a player who came but didn't scan (P6e, spec
+//   13 "No-shows"), undone only for staff's own tick;
 // - a walk-in or phone booking: its customer, the venue's price and what was
 //   charged, marking it paid by cash or card (second tap: it writes the
 //   ledger), and its cancel (second tap).
@@ -18,8 +20,10 @@ import type { CancellationQuote } from '@/lib/booking-actions';
 import type { CheckInQr } from '@/lib/check-in';
 import { formatEuros } from '@/lib/money/format';
 import {
+  attendanceLabel,
   hhmm,
   kindLabel,
+  noShowsCaption,
   quoteMovesMoney,
   rosterStateLabel,
   venuePlayerStateLabel,
@@ -45,6 +49,9 @@ export type BookingSheetActions = {
   /** P6e: offer a player by name; withdraw one by his offer id. */
   offerPlayer: (bookingId: string, name: string) => Promise<string | null>;
   withdrawPlayer: (offerId: string) => Promise<string | null>;
+  /** P6e no-shows: tick a player as arrived, or undo staff's own tick. */
+  markArrived: (matchId: string, profileId: string) => Promise<string | null>;
+  unmarkArrived: (matchId: string, profileId: string) => Promise<string | null>;
 };
 
 export type RosterLoad =
@@ -159,6 +166,8 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
         <PlayerRow
           key={player.share_id}
           player={player}
+          matchId={roster.match_id}
+          actions={actions}
           confirming={confirming === player.share_id}
           busy={busy === `tick-${player.share_id}`}
           onTick={() => setConfirming(player.share_id)}
@@ -219,6 +228,8 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
 
 function PlayerRow({
   player,
+  matchId,
+  actions,
   confirming,
   busy,
   onTick,
@@ -226,14 +237,30 @@ function PlayerRow({
   onBack,
 }: {
   player: RosterPlayer;
+  matchId: string | null;
+  actions: BookingSheetActions;
   confirming: boolean;
   busy: boolean;
   onTick: () => void;
   onConfirm: () => void;
   onBack: () => void;
 }) {
+  const [arriving, setArriving] = useState(false);
+  const [arrivalError, setArrivalError] = useState<string | null>(null);
   const { label, tone } = rosterStateLabel(player.state);
   const cash = player.cash_cents > 0 ? `${formatEuros(player.cash_cents)} ` : '';
+  const attendance = attendanceLabel(player.attendance, player.check_in_method);
+  const noShows = noShowsCaption(player.no_show_count);
+
+  /** One tap: what staff may do is the server's can_mark_arrived and can_unmark_arrived. */
+  async function arrived(undo: boolean) {
+    if (!matchId) return;
+    setArriving(true);
+    setArrivalError(null);
+    const refusal = await (undo ? actions.unmarkArrived : actions.markArrived)(matchId, player.profile_id);
+    setArriving(false);
+    setArrivalError(refusal);
+  }
   return (
     <View testID={`player-${player.share_id}`} style={styles.player}>
       <View style={styles.playerLine}>
@@ -245,9 +272,25 @@ function PlayerRow({
           {label}
         </Text>
       </View>
-      {player.checked_in ? (
+      {attendance ? (
+        <Text variant="caption" tone={attendance.tone}>
+          {attendance.label}
+        </Text>
+      ) : null}
+      {noShows ? (
         <Text variant="caption" tone="inkMuted">
-          Checked in
+          {noShows}
+        </Text>
+      ) : null}
+      {matchId && player.can_mark_arrived ? (
+        <Button label="Mark arrived" variant="secondary" loading={arriving} onPress={() => arrived(false)} />
+      ) : null}
+      {matchId && player.can_unmark_arrived ? (
+        <Button label="Undo arrived" variant="plain" loading={arriving} onPress={() => arrived(true)} />
+      ) : null}
+      {arrivalError ? (
+        <Text tone="danger" accessibilityRole="alert">
+          {arrivalError}
         </Text>
       ) : null}
       {player.state === 'cash' && !confirming ? (

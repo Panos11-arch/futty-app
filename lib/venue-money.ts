@@ -99,6 +99,8 @@ export type PlayerBooking = {
   cash_cents: number | null;
   /** A cash player's cash part: true once the venue has it, false until then; null for a card player or no share. */
   cash_received: boolean | null;
+  /** P6e: a final no-show in this booking's match. */
+  no_show: boolean;
 };
 
 export type ContactBooking = {
@@ -143,6 +145,8 @@ export type CustomerDetail =
       name: string;
       debt_cents: number;
       credit_cents: number;
+      /** P6e: their final no-shows at this venue (never another venue's). */
+      no_show_count: number;
       bookings: PlayerBooking[];
       debts: CustomerDebt[];
       credits: CustomerCredit[];
@@ -427,6 +431,11 @@ export function shareStatusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+/** P6e: a player's final no-shows at this venue, as the server counted them. */
+export function noShowsLine(count: number): string {
+  return `No-shows here: ${count}`;
 }
 
 /** The server's refusal, in words staff can act on. */

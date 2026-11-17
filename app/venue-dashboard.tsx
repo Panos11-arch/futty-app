@@ -69,6 +69,7 @@ import {
   cyprusNow,
   cyprusToday,
   dayTitle,
+  describeAttendanceError,
   describeVenueError,
   describeVenuePlayerError,
   fetchDayBoard,
@@ -79,6 +80,7 @@ import {
   halfHourAfter,
   hhmm,
   kindLabel,
+  markArrived,
   markCashReceived,
   markCounterPaid,
   markLabel,
@@ -88,6 +90,7 @@ import {
   setAllows6v6,
   slotIsPast,
   unassignedBookings,
+  unmarkArrived,
   withdrawVenuePlayer,
   type BoardBlock,
   type BoardBooking,
@@ -245,7 +248,18 @@ export default function VenueDashboardScreen() {
     // P6e: offer or withdraw a venue player, in the offer's own words.
     offerPlayer: (bookingId, name) => venuePlayerWrite(offerVenuePlayer(bookingId, name)),
     withdrawPlayer: (offerId) => venuePlayerWrite(withdrawVenuePlayer(offerId)),
+    // P6e no-shows: tick a player as arrived, or undo staff's own tick.
+    markArrived: (matchId, profileId) => attendanceWrite(markArrived(matchId, profileId)),
+    unmarkArrived: (matchId, profileId) => attendanceWrite(unmarkArrived(matchId, profileId)),
   };
+
+  /** Attendance changes only the roster, not the day board. */
+  async function attendanceWrite(result: Result): Promise<string | null> {
+    const { error } = await result;
+    if (error) return describeAttendanceError(error.message);
+    if (opened) loadRoster(opened.id);
+    return null;
+  }
 
   async function venuePlayerWrite(result: Result): Promise<string | null> {
     const { error } = await result;
