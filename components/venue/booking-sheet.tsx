@@ -2,7 +2,7 @@
 // dashboard"; spec 05 section 12 items 1, 5, 6, 7 and 11a):
 // - an app game: every player still in it with their payment choice and
 //   state, a tick for cash paid (second tap), run collection early, the
-//   check-in code, and the venue's cancel (the server's quote first, then a
+//   check-in QR, and the venue's cancel (the server's quote first, then a
 //   second tap);
 // - a walk-in or phone booking: its customer, the venue's price and what was
 //   charged, marking it paid by cash or card (second tap: it writes the
@@ -15,6 +15,7 @@ import { Banner, Button, Sheet, SkeletonText, Text, TextField } from '@/componen
 import { CheckInCode } from '@/components/venue/check-in-code';
 import { space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
+import type { CheckInQr } from '@/lib/check-in';
 import { formatEuros } from '@/lib/money/format';
 import {
   hhmm,
@@ -35,7 +36,8 @@ import {
 export type BookingSheetActions = {
   tickCash: (shareId: string) => Promise<string | null>;
   runCollection: (bookingId: string) => Promise<string | null>;
-  checkInCode: (matchId: string) => Promise<{ code: string } | { error: string }>;
+  /** The match's check-in code and its times, for the QR and its window. */
+  checkInCode: (matchId: string) => Promise<CheckInQr | { error: string }>;
   markCounterPaid: (bookingId: string, method: 'cash' | 'card') => Promise<string | null>;
   cancelCounter: (bookingId: string) => Promise<string | null>;
   venueQuote: (bookingId: string) => Promise<{ quote: CancellationQuote } | { error: string }>;
@@ -97,7 +99,7 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
   const [confirming, setConfirming] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [code, setCode] = useState<string | null>(null);
+  const [qr, setQr] = useState<CheckInQr | null>(null);
   const [quote, setQuote] = useState<QuoteState>({ status: 'none' });
 
   async function run(key: string, work: () => Promise<string | null>) {
@@ -118,7 +120,7 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
     await run('code', async () => {
       const result = await actions.checkInCode(matchId);
       if ('error' in result) return result.error;
-      setCode(result.code);
+      setQr(result);
       return null;
     });
   }
@@ -180,11 +182,11 @@ function AppGame({ roster, actions }: { roster: AppRoster; actions: BookingSheet
         />
       ) : null}
       {roster.match_id ? (
-        code ? (
-          <CheckInCode code={code} />
+        qr ? (
+          <CheckInCode matchId={roster.match_id} code={qr.code} kickoffAt={qr.kickoffAt} endsAt={qr.endsAt} />
         ) : (
           <Button
-            label="Show check-in code"
+            label="Check-in QR"
             variant="secondary"
             loading={busy === 'code'}
             onPress={() => showCode(roster.match_id!)}
