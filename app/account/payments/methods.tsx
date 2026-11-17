@@ -1,12 +1,15 @@
 import { CustomerSheet } from '@stripe/stripe-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError } from '@/components/auth-form';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { FuttyColors } from '@/constants/futty-theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ICON } from '@/components/ui/foundation';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, space } from '@/constants/futty-theme';
 import { createSetupIntent } from '@/lib/payments';
 
 /** Stripe's own CustomerSheet renders the actual list/add/remove-card UI —
@@ -63,47 +66,42 @@ export default function PaymentMethodsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={styles.content}>
-        <IconLabel icon="creditcard.fill" iconColor={FuttyColors.stone500} style={styles.note}>
-          Saved cards are used to pay your own share of a booking — managed entirely by Stripe.
-        </IconLabel>
+        <View style={styles.noteRow}>
+          <IconSymbol name="creditcard.fill" size={ICON.small} color={colors.inkMuted} />
+          <Text variant="callout" tone="inkMuted" style={styles.flex}>
+            Saved cards are used to pay your own share of a booking — managed entirely by Stripe.
+          </Text>
+        </View>
 
-        {!ready ? <ActivityIndicator style={styles.loading} /> : null}
-
-        {ready ? (
-          <>
-            <ThemedText style={styles.currentLabel}>
-              {selectedLabel ? `Default: ${selectedLabel}` : 'No saved card yet'}
-            </ThemedText>
-            <AuthButton label="Manage payment methods" onPress={openSheet} busy={busy} compact />
-          </>
+        {!ready && !error ? (
+          <Card testID="methods-skeleton">
+            <SkeletonText lines={2} />
+          </Card>
         ) : null}
 
-        {error ? <AuthError>{error}</AuthError> : null}
+        {ready ? (
+          <Card style={styles.card}>
+            <Text variant="headline">{selectedLabel ? `Default: ${selectedLabel}` : 'No saved card yet'}</Text>
+            <Button label="Manage payment methods" onPress={openSheet} loading={busy} />
+          </Card>
+        ) : null}
+
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 14,
-    padding: 16,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.8,
-  },
-  loading: {
-    marginTop: 24,
-  },
-  currentLabel: {
-    fontSize: 14,
-    color: FuttyColors.stone900,
-    fontWeight: '600',
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { gap: space.lg, padding: space.lg },
+  noteRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  card: { gap: space.md },
 });

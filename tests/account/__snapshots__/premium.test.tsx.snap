@@ -1,0 +1,590 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Go Premium list lists Personal Premium with its rules price and opens the same plan page 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        <View
+          testID="plan-personal"
+        >
+          <View
+            accessibilityLabel="Personal Premium"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="list-row-leading-icon"
+            >
+              <View
+                testID="icon-star.fill"
+              />
+            </View>
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Personal Premium
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 13,
+                      "lineHeight": 18,
+                    },
+                    {
+                      "color": "#5B6470",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                €3.99/mo
+              </Text>
+            </View>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Off
+            </Text>
+            <View
+              testID="list-row-chevron"
+            >
+              <View
+                testID="icon-chevron.right"
+              />
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Premium plan shows the price the App Store returns, not a hard-coded one 1`] = `
+<View
+  edges={
+    [
+      "top",
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flexDirection": "row",
+        "justifyContent": "flex-end",
+        "paddingHorizontal": 8,
+      }
+    }
+  >
+    <View
+      accessibilityLabel="Close"
+      accessibilityRole="button"
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": false,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      onBlur={[Function]}
+      onClick={[Function]}
+      onFocus={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "borderRadius": 999,
+            "justifyContent": "center",
+            "minHeight": 44,
+            "minWidth": 44,
+          },
+          false,
+          false,
+        ]
+      }
+    >
+      <View
+        testID="icon-xmark"
+      />
+    </View>
+  </View>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            {
+              "gap": 16,
+            },
+          ]
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_700Bold",
+                "fontSize": 22,
+                "lineHeight": 28,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Personal Premium
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+              },
+              undefined,
+            ]
+          }
+          testID="premium-price"
+        >
+          £2.79/mo
+        </Text>
+        <View
+          style={
+            {
+              "gap": 12,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 12,
+              }
+            }
+          >
+            <View
+              testID="icon-checkmark.circle.fill"
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Book up to 14 days ahead, not just 7
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 12,
+              }
+            }
+          >
+            <View
+              testID="icon-checkmark.circle.fill"
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              No service fee on your own spot
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 12,
+              }
+            }
+          >
+            <View
+              testID="icon-checkmark.circle.fill"
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Verified badge on your profile
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityLabel="Subscribe"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#0E5A3A",
+              },
+              false,
+              {
+                "alignSelf": "stretch",
+              },
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Subscribe
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Restore purchases"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": false,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 10,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                },
+                {
+                  "backgroundColor": "transparent",
+                },
+                {
+                  "paddingHorizontal": 8,
+                },
+                false,
+                false,
+                false,
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  {
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              Restore purchases
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;

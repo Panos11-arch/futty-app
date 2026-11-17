@@ -1,0 +1,1551 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Profile avatar, name, level badge, stat tiles in tabular figures, then grouped rows 1`] = `
+<View
+  edges={
+    [
+      "top",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 24,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          {
+            "gap": 4,
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_700Bold",
+                "fontSize": 28,
+                "lineHeight": 34,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Profile
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          ann@example.com
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            {
+              "gap": 16,
+            },
+          ]
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "flex-start",
+              "flexDirection": "row",
+              "gap": 12,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Ann Lee"
+            accessibilityRole="image"
+            accessible={true}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "overflow": "hidden",
+                },
+                {
+                  "height": 56,
+                  "width": 56,
+                },
+                false,
+              ]
+            }
+          >
+            <Text
+              allowFontScaling={false}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              AL
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "flex": 1,
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Ann Lee
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              @
+              ann
+            </Text>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                }
+              }
+            >
+              <View
+                style={
+                  {
+                    "borderColor": "#E4E7EB",
+                    "borderRadius": 999,
+                    "borderWidth": 0.5,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 2,
+                  }
+                }
+                testID="level-badge"
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_500Medium",
+                        "fontSize": 12,
+                        "lineHeight": 16,
+                      },
+                      {
+                        "color": "#0B1215",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Beginner
+                </Text>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 13,
+                      "lineHeight": 18,
+                    },
+                    {
+                      "color": "#5B6470",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Striker
+              </Text>
+            </View>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Silver
+               tier · personal level
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "minWidth": 44,
+                },
+                false,
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-pencil"
+            />
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "flexDirection": "row",
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Games 10"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flex": 1,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              10
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Games
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Win rate 40%"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flex": 1,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              40%
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Win rate
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Goals 7"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flex": 1,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              7
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Goals
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 8,
+                "justifyContent": "space-between",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              120
+               XP 
+              → Gold
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              130 XP to go
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="XP to the next tier"
+            accessibilityRole="progressbar"
+            accessibilityValue={
+              {
+                "max": 100,
+                "min": 0,
+                "now": 48,
+              }
+            }
+            accessible={true}
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "borderRadius": 999,
+                "height": 8,
+                "overflow": "hidden",
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "backgroundColor": "#5B6470",
+                    "borderRadius": 999,
+                    "height": "100%",
+                  },
+                  {
+                    "width": "48%",
+                  },
+                ]
+              }
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Go Premium, Futty Premium"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-star.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Go Premium
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 13,
+                      "lineHeight": 18,
+                    },
+                    {
+                      "color": "#5B6470",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Futty Premium
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Account & settings"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-gearshape.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Account & settings
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Sign out"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-rectangle.portrait.and.arrow.right"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#B42318",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Sign out
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Transactions renders the server’s amounts unchanged, right-aligned and tabular, with a StatusPill 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        <View
+          style={
+            {
+              "gap": 4,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            }
+          }
+          testID="transaction"
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Arena
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              €6.80
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              2026-11-20
+               · 
+              19:00
+               · 
+              5-a-side
+            </Text>
+            <View
+              accessibilityLabel="Paid"
+              accessible={true}
+              style={
+                {
+                  "alignSelf": "flex-start",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 2,
+                }
+              }
+              testID="status-pill"
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#1F7A45",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Paid
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#E4E7EB",
+              "height": 0.5,
+              "marginLeft": 16,
+            }
+          }
+        />
+        <View
+          style={
+            {
+              "gap": 4,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            }
+          }
+          testID="transaction"
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Arena
+               (your booking)
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              €12.34
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              2026-11-20
+               · 
+              19:00
+               · 
+              5-a-side
+            </Text>
+            <View
+              accessibilityLabel="Pending"
+              accessible={true}
+              style={
+                {
+                  "alignSelf": "flex-start",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 2,
+                }
+              }
+              testID="status-pill"
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#8A5C00",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Pending
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Finish payment"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": false,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 10,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                },
+                {
+                  "backgroundColor": "transparent",
+                },
+                {
+                  "paddingHorizontal": 8,
+                },
+                false,
+                false,
+                false,
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  {
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              Finish payment
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#E4E7EB",
+              "height": 0.5,
+              "marginLeft": 16,
+            }
+          }
+        />
+        <View
+          style={
+            {
+              "gap": 4,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            }
+          }
+          testID="transaction"
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Arena
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              €0.05
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              2026-11-20
+               · 
+              19:00
+               · 
+              5-a-side
+            </Text>
+            <View
+              accessibilityLabel="Refunded"
+              accessible={true}
+              style={
+                {
+                  "alignSelf": "flex-start",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 2,
+                }
+              }
+              testID="status-pill"
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#5B6470",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Refunded
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#E4E7EB",
+              "height": 0.5,
+              "marginLeft": 16,
+            }
+          }
+        />
+        <View
+          style={
+            {
+              "gap": 4,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            }
+          }
+          testID="transaction"
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Arena
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              €1000.00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              2026-11-20
+               · 
+              19:00
+               · 
+              5-a-side
+               · Cancelled
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;

@@ -1,15 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError } from '@/components/auth-form';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
 import { markNotificationRead, type AppNotification, type NotificationType } from '@/lib/notifications';
 import { routeForPushData } from '@/lib/push-tap';
@@ -46,6 +50,19 @@ function timeAgo(iso: string) {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
+}
+
+const cyprusDay = new Intl.DateTimeFormat('en-CA', { timeZone: CYPRUS_TIME_ZONE });
+
+/** Splits the list (kept in the server's order) into Today and Earlier, by
+ *  the Cyprus calendar day, whatever the phone's time zone. */
+export function groupByDay<T extends { created_at: string }>(items: T[], now: Date = new Date()) {
+  const today = cyprusDay.format(now);
+  const groups = [
+    { title: 'Today', items: items.filter((n) => cyprusDay.format(new Date(n.created_at)) === today) },
+    { title: 'Earlier', items: items.filter((n) => cyprusDay.format(new Date(n.created_at)) !== today) },
+  ];
+  return groups.filter((g) => g.items.length > 0);
 }
 
 /** Where tapping a notification goes, per the `data` payload each trigger in
@@ -111,7 +128,11 @@ function InviteActions({
 
   if (!inviteId || !status) return null;
   if (status !== 'pending') {
-    return <ThemedText style={styles.rowText}>{status === 'accepted' ? 'Accepted' : 'Declined'}</ThemedText>;
+    return (
+      <Text variant="callout" tone="inkMuted">
+        {status === 'accepted' ? 'Accepted' : 'Declined'}
+      </Text>
+    );
   }
 
   async function answer(choice: 'accept' | 'decline') {
@@ -136,17 +157,25 @@ function InviteActions({
   return (
     <View style={styles.inviteActions}>
       <View style={styles.inviteButtons}>
-        <AuthButton label="Accept" compact busy={busy === 'accept'} disabled={!!busy} onPress={() => answer('accept')} />
-        <AuthButton
+        <Button
+          label="Accept"
+          loading={busy === 'accept'}
+          disabled={!!busy}
+          onPress={() => answer('accept')}
+        />
+        <Button
           label="Decline"
-          compact
           variant="secondary"
-          busy={busy === 'decline'}
+          loading={busy === 'decline'}
           disabled={!!busy}
           onPress={() => answer('decline')}
         />
       </View>
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -162,7 +191,6 @@ function NotificationRow({
   onOpened: () => void;
   onInviteAnswered: (status: InviteStatus) => void;
 }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const unread = !notification.read_at;
 
   async function press() {
@@ -172,26 +200,28 @@ function NotificationRow({
   }
 
   return (
-    <Pressable accessibilityRole="button" onPress={press}>
-      <ThemedView style={[styles.row, { borderColor: border }, unread && styles.rowUnread]}>
-        <View style={[styles.iconCircle, unread && styles.iconCircleUnread]}>
-          <IconSymbol
-            name={ICON_BY_TYPE[notification.type]}
-            size={16}
-            color={unread ? FuttyColors.white : FuttyColors.stone500}
-          />
-        </View>
+    <View style={styles.row}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${unread ? 'Unread. ' : ''}${notification.title}. ${notification.body}`}
+        onPress={press}
+        style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
+        <IconSymbol name={ICON_BY_TYPE[notification.type]} size={ICON.small} color={colors.inkMuted} />
         <View style={styles.rowBody}>
-          <ThemedText type="defaultSemiBold" style={styles.rowTitle}>
-            {notification.title}
-          </ThemedText>
-          <ThemedText style={styles.rowText}>{notification.body}</ThemedText>
-          <InviteActions notification={notification} status={inviteStatus} onAnswered={onInviteAnswered} />
-          <ThemedText style={styles.rowTime}>{timeAgo(notification.created_at)}</ThemedText>
+          <Text variant={unread ? 'headline' : 'body'}>{notification.title}</Text>
+          <Text variant="callout" tone="inkMuted">
+            {notification.body}
+          </Text>
+          <Text variant="caption" tone="inkMuted" tabular>
+            {timeAgo(notification.created_at)}
+          </Text>
         </View>
-        {unread ? <View style={styles.unreadDot} /> : null}
-      </ThemedView>
-    </Pressable>
+        {unread ? <View testID="notification-unread-dot" style={styles.unreadDot} /> : null}
+      </Pressable>
+      <View style={styles.actions}>
+        <InviteActions notification={notification} status={inviteStatus} onAnswered={onInviteAnswered} />
+      </View>
+    </View>
   );
 }
 
@@ -220,29 +250,47 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {notifications.status === 'loading' ? <ActivityIndicator /> : null}
+        {notifications.status === 'loading' ? (
+          <Card testID="notifications-skeleton">
+            <SkeletonText lines={4} />
+          </Card>
+        ) : null}
         {notifications.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load notifications: {notifications.message}</ThemedText>
+          <Banner
+            tone="danger"
+            message={`Could not load notifications: ${notifications.message}`}
+            action={{ label: 'Try again', onPress: notifications.reload }}
+          />
         ) : null}
         {notifications.status === 'ready' && notifications.notifications.length === 0 ? (
-          <IconLabel icon="bell.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            Nothing yet — messages, squad updates and freed-up slots will show up here.
-          </IconLabel>
+          <EmptyState
+            icon="bell.fill"
+            message="Nothing yet — messages, squad updates and freed-up slots will show up here."
+          />
         ) : null}
         {notifications.status === 'ready'
-          ? notifications.notifications.map((notification) => (
-              <NotificationRow
-                key={notification.id}
-                notification={notification}
-                inviteStatus={invites.get(inviteIdOf(notification) ?? '')}
-                onOpened={notifications.reload}
-                onInviteAnswered={(status) => {
-                  const id = inviteIdOf(notification);
-                  if (id) setInvites((current) => new Map(current).set(id, status));
-                }}
-              />
+          ? groupByDay(notifications.notifications).map((group) => (
+              <View key={group.title} style={styles.group}>
+                <SectionHeader title={group.title} />
+                <Card padded={false}>
+                  {group.items.map((notification, i) => (
+                    <Fragment key={notification.id}>
+                      {i > 0 ? <View style={styles.divider} /> : null}
+                      <NotificationRow
+                        notification={notification}
+                        inviteStatus={invites.get(inviteIdOf(notification) ?? '')}
+                        onOpened={notifications.reload}
+                        onInviteAnswered={(status) => {
+                          const id = inviteIdOf(notification);
+                          if (id) setInvites((current) => new Map(current).set(id, status));
+                        }}
+                      />
+                    </Fragment>
+                  ))}
+                </Card>
+              </View>
             ))
           : null}
       </ScrollView>
@@ -251,73 +299,30 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  row: {
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
+  group: { gap: space.sm },
+  row: { backgroundColor: colors.surface },
+  rowMain: {
+    minHeight: MIN_TOUCH,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 12,
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.md,
   },
-  rowUnread: {
-    borderColor: FuttyColors.emerald600,
-  },
-  iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: FuttyColors.stone50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  iconCircleUnread: {
-    backgroundColor: FuttyColors.emerald950,
-  },
-  rowBody: {
-    flex: 1,
-    gap: 2,
-  },
-  rowTitle: {
-    fontSize: 14,
-    color: FuttyColors.stone900,
-  },
-  rowText: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 13,
-    color: FuttyColors.stone500,
-  },
-  rowTime: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 11,
-    color: FuttyColors.stone400,
-    marginTop: 2,
-  },
-  inviteActions: {
-    gap: 6,
-    marginTop: 8,
-  },
-  inviteButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  pressed: { backgroundColor: colors.canvas },
+  rowBody: { flex: 1, gap: 2 },
+  actions: { paddingLeft: space.lg + ICON.small + space.md, paddingRight: space.lg },
+  inviteActions: { gap: space.sm, paddingBottom: space.md },
+  inviteButtons: { flexDirection: 'row', gap: space.sm },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: FuttyColors.emerald600,
-    marginTop: 4,
+    width: space.sm,
+    height: space.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.danger,
+    marginTop: space.sm - space.xs / 2,
   },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

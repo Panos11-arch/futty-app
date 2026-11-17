@@ -1,11 +1,13 @@
-import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
+import { Fragment } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Banner } from '@/components/ui/banner';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, space } from '@/constants/futty-theme';
 import { useRecentResults } from '@/lib/use-recent-results';
 
 // Everything Home/Activity's cards cap at 5 — this is the "full history"
@@ -19,63 +21,53 @@ function formatResultDate(iso: string) {
 
 export default function MatchesScreen() {
   const results = useRecentResults(FULL_HISTORY_LIMIT);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {results.status === 'loading' ? <ActivityIndicator /> : null}
-        {results.status === 'error' ? <ThemedText style={styles.note}>Could not load: {results.message}</ThemedText> : null}
-        {results.status === 'ready' && results.results.length === 0 ? (
-          <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            No matches logged yet.
-          </IconLabel>
+        {results.status === 'loading' ? (
+          <Card testID="matches-skeleton">
+            <SkeletonText lines={4} />
+          </Card>
         ) : null}
-        {results.status === 'ready'
-          ? results.results.map((result) => (
-              <ThemedView key={result.key} style={[styles.card, { borderColor: border }]}>
-                <ThemedText type="defaultSemiBold" style={styles.teams}>
-                  {result.kind === 'booking'
-                    ? `You ${result.homeScore}–${result.awayScore}`
-                    : `${result.homeTeamName} ${result.homeScore}–${result.awayScore} ${result.awayTeamName}`}
-                </ThemedText>
-                <ThemedText style={styles.meta}>
-                  {result.kind === 'league' ? 'League' : result.kind === 'friendly' ? 'Friendly' : 'Pickup game'} ·{' '}
-                  {formatResultDate(result.playedAt)}
-                </ThemedText>
-              </ThemedView>
-            ))
-          : null}
+        {results.status === 'error' ? (
+          <Banner
+            tone="danger"
+            message={`Could not load: ${results.message}`}
+            action={{ label: 'Try again', onPress: results.reload }}
+          />
+        ) : null}
+        {results.status === 'ready' && results.results.length === 0 ? (
+          <EmptyState icon="sportscourt.fill" message="No matches logged yet." />
+        ) : null}
+        {results.status === 'ready' && results.results.length > 0 ? (
+          <Card padded={false}>
+            {results.results.map((result, i) => (
+              <Fragment key={result.key}>
+                {i > 0 ? <View style={styles.divider} /> : null}
+                <View style={styles.row}>
+                  <Text variant="body" tabular>
+                    {result.kind === 'booking'
+                      ? `You ${result.homeScore}–${result.awayScore}`
+                      : `${result.homeTeamName} ${result.homeScore}–${result.awayScore} ${result.awayTeamName}`}
+                  </Text>
+                  <Text variant="callout" tone="inkMuted">
+                    {result.kind === 'league' ? 'League' : result.kind === 'friendly' ? 'Friendly' : 'Pickup game'} ·{' '}
+                    {formatResultDate(result.playedAt)}
+                  </Text>
+                </View>
+              </Fragment>
+            ))}
+          </Card>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 2,
-  },
-  teams: {
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 14,
-  },
-  meta: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  row: { gap: 2, paddingHorizontal: space.lg, paddingVertical: space.md },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

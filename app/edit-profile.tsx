@@ -1,15 +1,18 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
-import { Chip } from '@/components/chip';
+import { AuthField } from '@/components/auth-form';
 import { PhoneField } from '@/components/phone-field';
-import { ThemedText } from '@/components/themed-text';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { MIN_TOUCH } from '@/components/ui/foundation';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
 import { toDateKey } from '@/lib/days';
@@ -57,7 +60,9 @@ type FormState = {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={styles.field}>
-      <ThemedText style={styles.label}>{label}</ThemedText>
+      <Text variant="callout" tone="inkMuted">
+        {label}
+      </Text>
       {children}
     </View>
   );
@@ -119,7 +124,6 @@ const DEFAULT_DOB = new Date(2000, 0, 1);
  *  the same tap. */
 function DateOfBirthField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const [showIOSPicker, setShowIOSPicker] = useState(false);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const dateValue = value ? new Date(value) : DEFAULT_DOB;
   const maximumDate = new Date(); // can't be born in the future
 
@@ -140,11 +144,11 @@ function DateOfBirthField({ value, onChange }: { value: string; onChange: (next:
 
   return (
     <View>
-      <Pressable accessibilityRole="button" onPress={open}>
-        <View style={[styles.input, styles.dateInput, { borderColor: border }]} pointerEvents="none">
-          <ThemedText style={value ? undefined : styles.datePlaceholder}>
+      <Pressable accessibilityRole="button" accessibilityLabel={value ? `Date of birth ${value}` : 'Select date of birth'} onPress={open}>
+        <View style={styles.dateInput} pointerEvents="none">
+          <Text variant="body" tone={value ? 'ink' : 'inkMuted'} tabular>
             {value || 'Select date of birth'}
-          </ThemedText>
+          </Text>
         </View>
       </Pressable>
       {Platform.OS === 'ios' && showIOSPicker ? (
@@ -195,9 +199,11 @@ export default function EditProfileScreen() {
 
   if (profile.status !== 'ready' || !form) {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.loading}>
-          <ActivityIndicator />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.content}>
+          <Card testID="edit-profile-skeleton">
+            <SkeletonText lines={6} />
+          </Card>
         </View>
       </SafeAreaView>
     );
@@ -260,7 +266,7 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.row}>
           <Field label="Username">
@@ -283,12 +289,19 @@ export default function EditProfileScreen() {
             onChangeCountry={(c) => set('phoneCountry', c)}
             onChangeNational={(v) => set('phoneNational', v)}
           />
-          {phoneError ? <AuthError>{phoneError}</AuthError> : null}
+          {phoneError ? (
+            <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+              {phoneError}
+            </Text>
+          ) : null}
         </Field>
 
         <View style={styles.toggleRow}>
-          <ThemedText style={styles.toggleLabel}>Show my number to other players</ThemedText>
+          <Text variant="body" style={styles.flex}>
+            Show my number to other players
+          </Text>
           <Switch
+            accessibilityLabel="Show my number to other players"
             value={form.showPhonePublicly}
             onValueChange={(v) => set('showPhonePublicly', v)}
           />
@@ -343,70 +356,34 @@ export default function EditProfileScreen() {
           />
         </Field>
 
-        {error ? <AuthError>{error}</AuthError> : null}
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
 
-        <AuthButton label="Save changes" onPress={save} busy={busy} />
+        <Button label="Save changes" fullWidth onPress={save} loading={busy} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    gap: 16,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  field: {
-    flex: 1,
-    gap: 6,
-  },
-  label: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
+  row: { flexDirection: 'row', gap: space.md },
+  field: { flex: 1, gap: space.sm },
+  pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   dateInput: {
     justifyContent: 'center',
-    minHeight: 48,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.md,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    backgroundColor: colors.surface,
   },
-  datePlaceholder: {
-    opacity: 0.5,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  toggleLabel: {
-    flex: 1,
-    fontSize: 13,
-  },
-  textarea: {
-    minHeight: 72,
-    textAlignVertical: 'top',
-  },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  textarea: { minHeight: space.xxl * 2 + space.sm, textAlignVertical: 'top' },
 });

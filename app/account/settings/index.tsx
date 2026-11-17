@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthError } from '@/components/auth-form';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { deleteMyAccount } from '@/lib/account';
 import { useAuth } from '@/lib/auth';
+import { Text } from '@/components/ui/text';
+import { colors, space } from '@/constants/futty-theme';
 
 export default function SettingsScreen() {
   const { signOut } = useAuth();
@@ -55,7 +56,11 @@ export default function SettingsScreen() {
           />
         </MenuSection>
         {deleting ? <ActivityIndicator /> : null}
-        {error ? <AuthError>{error}</AuthError> : null}
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -64,9 +69,10 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: colors.canvas,
   },
   content: {
-    gap: 16,
-    padding: 16,
+    gap: space.xl,
+    padding: space.lg,
   },
 });

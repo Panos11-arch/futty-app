@@ -1,0 +1,1803 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Account menu grouped rows in sentence case, same targets 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 24,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Go Premium"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-crown.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Go Premium
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Share profile"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-square.and.arrow.up"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Share profile
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Your account
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-pencil"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Edit profile
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="My bookings"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-sportscourt.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                My bookings
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Your activity"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-flag.checkered"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Your activity
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Your payments"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-creditcard.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Your payments
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-gearshape.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Settings
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Venue owner
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Venue dashboard"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-building.columns.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Venue dashboard
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Support
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Help"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-questionmark.circle.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Help
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="How Futty works"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-info.circle.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                How Futty works
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Legal information
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 12,
+              "borderWidth": 0.5,
+              "overflow": "hidden",
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Terms of use"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-doc.text.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Terms of use
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+          <View
+            style={
+              {
+                "backgroundColor": "#E4E7EB",
+                "height": 0.5,
+                "marginLeft": 48,
+              }
+            }
+          />
+          <View
+            accessibilityLabel="Privacy policy"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 12,
+                },
+                false,
+              ]
+            }
+          >
+            <View
+              testID="icon-lock.shield.fill"
+            />
+            <View
+              style={
+                {
+                  "flex": 1,
+                  "gap": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_400Regular",
+                      "fontSize": 15,
+                      "lineHeight": 20,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Privacy policy
+              </Text>
+            </View>
+            <View
+              testID="icon-chevron.right"
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "marginTop": 16,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 12,
+                "borderWidth": 0.5,
+                "overflow": "hidden",
+              }
+            }
+          >
+            <View
+              accessibilityLabel="Log out"
+              accessibilityRole="button"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": undefined,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "minHeight": 44,
+                    "paddingHorizontal": 16,
+                    "paddingVertical": 12,
+                  },
+                  false,
+                ]
+              }
+            >
+              <View
+                testID="icon-rectangle.portrait.and.arrow.right"
+              />
+              <View
+                style={
+                  {
+                    "flex": 1,
+                    "gap": 2,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_400Regular",
+                        "fontSize": 15,
+                        "lineHeight": 20,
+                      },
+                      {
+                        "color": "#B42318",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Log out
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap marks read and opens the same place 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 24,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Today
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 12,
+                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+              }
+            }
+          >
+            <View
+              accessibilityLabel="Unread. Title n1. Body n1"
+              accessibilityRole="button"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": undefined,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "flex-start",
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "minHeight": 44,
+                    "paddingBottom": 12,
+                    "paddingHorizontal": 16,
+                    "paddingTop": 12,
+                  },
+                  false,
+                ]
+              }
+            >
+              <View
+                testID="icon-exclamationmark.triangle.fill"
+              />
+              <View
+                style={
+                  {
+                    "flex": 1,
+                    "gap": 2,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_600SemiBold",
+                        "fontSize": 17,
+                        "lineHeight": 22,
+                      },
+                      {
+                        "color": "#0B1215",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Title n1
+                </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_500Medium",
+                        "fontSize": 13,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5B6470",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Body n1
+                </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_500Medium",
+                        "fontSize": 12,
+                        "lineHeight": 16,
+                      },
+                      {
+                        "color": "#5B6470",
+                      },
+                      {
+                        "fontVariant": [
+                          "tabular-nums",
+                        ],
+                      },
+                      undefined,
+                    ]
+                  }
+                >
+                  1h ago
+                </Text>
+              </View>
+              <View
+                style={
+                  {
+                    "backgroundColor": "#B42318",
+                    "borderRadius": 999,
+                    "height": 8,
+                    "marginTop": 6,
+                    "width": 8,
+                  }
+                }
+                testID="notification-unread-dot"
+              />
+            </View>
+            <View
+              style={
+                {
+                  "paddingLeft": 48,
+                  "paddingRight": 16,
+                }
+              }
+            />
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Earlier
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 12,
+                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+              }
+            }
+          >
+            <View
+              accessibilityLabel="Title n2. Body n2"
+              accessibilityRole="button"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": undefined,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "flex-start",
+                    "flexDirection": "row",
+                    "gap": 12,
+                    "minHeight": 44,
+                    "paddingBottom": 12,
+                    "paddingHorizontal": 16,
+                    "paddingTop": 12,
+                  },
+                  false,
+                ]
+              }
+            >
+              <View
+                testID="icon-exclamationmark.triangle.fill"
+              />
+              <View
+                style={
+                  {
+                    "flex": 1,
+                    "gap": 2,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_400Regular",
+                        "fontSize": 15,
+                        "lineHeight": 20,
+                      },
+                      {
+                        "color": "#0B1215",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Title n2
+                </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_500Medium",
+                        "fontSize": 13,
+                        "lineHeight": 18,
+                      },
+                      {
+                        "color": "#5B6470",
+                      },
+                      false,
+                      undefined,
+                    ]
+                  }
+                >
+                  Body n2
+                </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontFamily": "Inter_500Medium",
+                        "fontSize": 12,
+                        "lineHeight": 16,
+                      },
+                      {
+                        "color": "#5B6470",
+                      },
+                      {
+                        "fontVariant": [
+                          "tabular-nums",
+                        ],
+                      },
+                      undefined,
+                    ]
+                  }
+                >
+                  5d ago
+                </Text>
+              </View>
+            </View>
+            <View
+              style={
+                {
+                  "paddingLeft": 48,
+                  "paddingRight": 16,
+                }
+              }
+            />
+          </View>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;

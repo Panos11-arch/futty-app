@@ -3,21 +3,26 @@ import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
+import { Button } from '@/components/ui/button';
+import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 
 /** Shared layout for the plain-text screens under the account menu's Support
- *  and Legal Information sections (Help, How Futty Works, Terms of Use,
- *  Privacy Policy) — native views rather than a WebView loading docs/*.html,
+ *  and Legal information sections (Help, How Futty works, Terms of use,
+ *  Privacy policy) — native views rather than a WebView loading docs/*.html,
  *  so these read in the app's own type/spacing instead of a plain browser
  *  page, and don't need react-native-webview added as a new dependency. */
 export function DocScreen({ updated, children }: PropsWithChildren<{ updated?: string }>) {
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {updated ? <ThemedText style={styles.updated}>Last updated: {updated}</ThemedText> : null}
+        {updated ? (
+          <Text variant="caption" tone="inkMuted">
+            Last updated: {updated}
+          </Text>
+        ) : null}
         {children}
       </ScrollView>
     </SafeAreaView>
@@ -25,31 +30,31 @@ export function DocScreen({ updated, children }: PropsWithChildren<{ updated?: s
 }
 
 export function DocHeading({ children }: PropsWithChildren) {
-  return <ThemedText style={styles.heading}>{children}</ThemedText>;
+  return (
+    <Text variant="headline" accessibilityRole="header" style={styles.heading}>
+      {children}
+    </Text>
+  );
 }
 
 export function DocParagraph({ children }: PropsWithChildren) {
-  return <ThemedText style={styles.paragraph}>{children}</ThemedText>;
+  return <Text variant="body">{children}</Text>;
 }
 
 export function DocBullet({ children }: PropsWithChildren) {
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
-      <ThemedText style={styles.bulletText}>{children}</ThemedText>
+      <Text variant="body" style={styles.flex}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 export function DocEmailLink({ email, subject }: { email: string; subject?: string }) {
   const url = `mailto:${email}${subject ? `?subject=${encodeURIComponent(subject)}` : ''}`;
-  return (
-    <Pressable accessibilityRole="button" onPress={() => Linking.openURL(url)}>
-      <IconLabel icon="envelope.fill" type="link" iconColor={FuttyColors.emerald700}>
-        {email}
-      </IconLabel>
-    </Pressable>
-  );
+  return <Button label={email} variant="plain" onPress={() => Linking.openURL(url)} />;
 }
 
 /** Tap-to-expand question, matching the <details>/<summary> pairs in the old
@@ -57,86 +62,48 @@ export function DocEmailLink({ email, subject }: { email: string; subject?: stri
 export function DocFAQ({ question, children }: PropsWithChildren<{ question: string }>) {
   const [open, setOpen] = useState(false);
   return (
-    <Pressable accessibilityRole="button" onPress={() => setOpen((v) => !v)} style={styles.faqCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={question}
+      accessibilityState={{ expanded: open }}
+      onPress={() => setOpen((v) => !v)}
+      style={styles.faqCard}>
       <View style={styles.faqQuestionRow}>
-        <ThemedText type="defaultSemiBold" style={styles.faqQuestion}>
+        <Text variant="headline" style={styles.flex}>
           {question}
-        </ThemedText>
-        <IconSymbol name={open ? 'chevron.down' : 'chevron.right'} size={16} color={FuttyColors.stone500} />
+        </Text>
+        <IconSymbol name={open ? 'chevron.down' : 'chevron.right'} size={ICON.small} color={colors.inkMuted} />
       </View>
-      {open ? <ThemedText style={styles.faqAnswer}>{children}</ThemedText> : null}
+      {open ? (
+        <Text variant="body" tone="inkMuted">
+          {children}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  updated: {
-    fontSize: 12,
-    color: FuttyColors.stone400,
-    marginBottom: 4,
-  },
-  heading: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 16,
-    color: FuttyColors.stone900,
-    marginTop: 8,
-  },
-  paragraph: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.stone700,
-    lineHeight: 20,
-  },
-  bulletRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 8,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  heading: { marginTop: space.sm },
+  bulletRow: { flexDirection: 'row', gap: space.sm, paddingRight: space.sm },
   bulletDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: FuttyColors.emerald700,
-    marginTop: 8,
-  },
-  bulletText: {
-    flex: 1,
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.stone700,
-    lineHeight: 20,
+    width: space.xs + 1,
+    height: space.xs + 1,
+    borderRadius: radius.pill,
+    backgroundColor: colors.inkMuted,
+    marginTop: space.sm,
   },
   faqCard: {
-    backgroundColor: FuttyColors.white,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    borderRadius: 12,
-    padding: 14,
-    gap: 8,
+    minHeight: MIN_TOUCH,
+    backgroundColor: colors.surface,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    padding: space.lg,
+    gap: space.sm,
   },
-  faqQuestionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  faqQuestion: {
-    flex: 1,
-    fontSize: 14,
-    color: FuttyColors.stone900,
-  },
-  faqAnswer: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 13,
-    color: FuttyColors.stone500,
-    lineHeight: 19,
-  },
+  faqQuestionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
 });

@@ -1,33 +1,26 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
+import { MenuRow, MenuSection } from '@/components/menu-row';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
-import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Banner } from '@/components/ui/banner';
+import { Card } from '@/components/ui/card';
+import { IconButton } from '@/components/ui/icon-button';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import { type Profile, useProfile } from '@/lib/use-profile';
 
-// Self-declared level (Beginner..Elite) shown as a badge on the card, ported
-// from the prototype's SKILL_LEVELS map — reuses the existing palette rather
-// than adding new colors.
-const SKILL_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
-  Beginner: { bg: FuttyColors.stone200, text: FuttyColors.stone700 },
-  Casual: { bg: FuttyColors.emerald200, text: FuttyColors.emerald800 },
-  Intermediate: { bg: FuttyColors.emerald600, text: FuttyColors.white },
-  Advanced: { bg: FuttyColors.amber400, text: FuttyColors.stone900 },
-  Elite: { bg: FuttyColors.rose600, text: FuttyColors.white },
-};
-
 // XP tiers, ported from the prototype's LEVEL_TIERS.
 const LEVEL_TIERS = [
-  { name: 'Bronze', min: 0, color: FuttyColors.stone500 },
-  { name: 'Silver', min: 100, color: FuttyColors.stone400 },
-  { name: 'Gold', min: 250, color: FuttyColors.amber400 },
-  { name: 'Platinum', min: 500, color: FuttyColors.rose600 },
+  { name: 'Bronze', min: 0 },
+  { name: 'Silver', min: 100 },
+  { name: 'Gold', min: 250 },
+  { name: 'Platinum', min: 500 },
 ];
 
 function tierFor(xp: number) {
@@ -43,66 +36,64 @@ function nextTierFor(xp: number) {
 // to every player on both rosters).
 const PLACEHOLDER_SKILL_LEVEL = 'Beginner';
 
-function SkillBadge({ level }: { level: string }) {
-  const colors = SKILL_BADGE_COLORS[level] ?? SKILL_BADGE_COLORS.Beginner;
+/** The player's level as a neutral pill: no colour per level. */
+function LevelBadge({ level }: { level: string }) {
   return (
-    <View style={[styles.skillBadge, { backgroundColor: colors.bg }]}>
-      <ThemedText style={[styles.skillBadgeText, { color: colors.text }]}>{level}</ThemedText>
+    <View style={styles.badge} testID="level-badge">
+      <Text variant="caption">{level}</Text>
     </View>
   );
 }
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <View style={styles.statTile}>
-      <ThemedText style={styles.statValue}>{value}</ThemedText>
-      <ThemedText style={styles.statLabel}>{label}</ThemedText>
+    <View style={styles.statTile} accessible accessibilityLabel={`${label} ${value}`}>
+      <Text variant="headline" tabular>
+        {String(value)}
+      </Text>
+      <Text variant="caption" tone="inkMuted">
+        {label}
+      </Text>
     </View>
   );
 }
 
 export function ProfileCard({ profile, editable = true }: { profile: Profile; editable?: boolean }) {
   const name = profile.full_name || profile.username || 'Player';
-  const initial = name[0]?.toUpperCase() ?? '?';
   const tier = tierFor(profile.xp);
   const nextTier = nextTierFor(profile.xp);
   const winRate = profile.played > 0 ? Math.round((profile.won / profile.played) * 100) : 0;
   const xpProgress = nextTier ? Math.min(100, (profile.xp / nextTier.min) * 100) : 100;
 
   return (
-    <View style={styles.card}>
+    <Card style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <View style={styles.avatar}>
-            <ThemedText style={styles.avatarText}>{initial}</ThemedText>
-          </View>
-          <View style={styles.identity}>
-            <ThemedText style={styles.name}>{name}</ThemedText>
-            {profile.username && profile.full_name ? (
-              <ThemedText style={styles.username}>@{profile.username}</ThemedText>
+        <Avatar name={name} size={space.xxl * 2 - space.sm} />
+        <View style={styles.identity}>
+          <Text variant="headline">{name}</Text>
+          {profile.username && profile.full_name ? (
+            <Text variant="callout" tone="inkMuted">
+              @{profile.username}
+            </Text>
+          ) : null}
+          <View style={styles.identityRow}>
+            <LevelBadge level={PLACEHOLDER_SKILL_LEVEL} />
+            {profile.position ? (
+              <Text variant="callout" tone="inkMuted">
+                {profile.position}
+              </Text>
             ) : null}
-            <View style={styles.identityRow}>
-              <SkillBadge level={PLACEHOLDER_SKILL_LEVEL} />
-              {profile.position ? (
-                <ThemedText style={styles.position}>{profile.position}</ThemedText>
-              ) : null}
-            </View>
-            <ThemedText style={[styles.tierLine, { color: tier.color }]}>
-              {tier.name} tier · personal level
-            </ThemedText>
           </View>
+          <Text variant="caption" tone="inkMuted">
+            {tier.name} tier · personal level
+          </Text>
         </View>
         {editable ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/edit-profile')}
-            style={styles.editButton}>
-            <IconSymbol name="pencil" size={14} color={FuttyColors.emerald950} />
-          </Pressable>
+          <IconButton icon="pencil" accessibilityLabel="Edit profile" onPress={() => router.push('/edit-profile')} />
         ) : null}
       </View>
 
-      <View style={styles.statsGrid}>
+      <View style={styles.statsRow}>
         <StatTile label="Games" value={profile.played} />
         <StatTile label="Win rate" value={`${winRate}%`} />
         <StatTile label="Goals" value={profile.goals} />
@@ -110,18 +101,23 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
 
       <View style={styles.xpSection}>
         <View style={styles.xpLabels}>
-          <ThemedText style={styles.xpText}>
+          <Text variant="caption" tone="inkMuted" tabular>
             {profile.xp} XP {nextTier ? `→ ${nextTier.name}` : '(max tier)'}
-          </ThemedText>
-          <ThemedText style={styles.xpText}>
+          </Text>
+          <Text variant="caption" tone="inkMuted" tabular>
             {nextTier ? `${nextTier.min - profile.xp} XP to go` : 'Top tier'}
-          </ThemedText>
+          </Text>
         </View>
-        <View style={styles.xpTrack}>
+        <View
+          style={styles.xpTrack}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel="XP to the next tier"
+          accessibilityValue={{ min: 0, max: 100, now: Math.round(xpProgress) }}>
           <View style={[styles.xpFill, { width: `${xpProgress}%` }]} />
         </View>
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -144,7 +140,17 @@ function ProfileStatus() {
 
   switch (profile.status) {
     case 'loading':
-      return <ThemedText>Loading your profile…</ThemedText>;
+      return (
+        <Card testID="profile-skeleton" style={styles.card}>
+          <View style={styles.cardHeader}>
+            <SkeletonBlock width={space.xxl * 2 - space.sm} height={space.xxl * 2 - space.sm} rounded="pill" />
+            <View style={styles.identity}>
+              <SkeletonText lines={3} />
+            </View>
+          </View>
+          <SkeletonBlock width="100%" height={space.xxl * 2} />
+        </Card>
+      );
     case 'ready':
       return (
         <>
@@ -153,55 +159,37 @@ function ProfileStatus() {
           {/* A3b-2b: form, recent matches and "Players you play with most". */}
           <PlayerMatchSections profileId={profile.profile.id} own />
 
-          <View style={styles.card}>
-            <View style={styles.premiumRow}>
-              {profile.profile.is_premium ? (
-                <View style={styles.premiumBadge}>
-                  <IconLabel
-                    icon="star.fill"
-                    style={styles.premiumBadgeText}
-                    iconColor={FuttyColors.emerald950}
-                    iconSize={11}
-                    gap={3}>
-                    Premium
-                  </IconLabel>
-                </View>
-              ) : (
-                <ThemedText style={styles.settingsRowLabel}>Futty Premium</ThemedText>
-              )}
-              <Pressable accessibilityRole="button" onPress={() => router.push('/account/premium')}>
-                <ThemedText type="link">
-                  {profile.profile.is_premium ? 'Manage Premium' : 'Go Premium'}
-                </ThemedText>
-              </Pressable>
-            </View>
-          </View>
-
-          {profile.profile.role === 'venue_owner' ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/venue-dashboard')}
-              style={styles.accountLinkRow}>
-              <IconSymbol name="building.columns.fill" size={16} color={FuttyColors.stone500} />
-              <ThemedText style={styles.accountLinkText}>Venue Dashboard</ThemedText>
-              <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} />
-            </Pressable>
-          ) : null}
-
           {/* App lock and push-notification toggles live under Account >
               Settings now (app/account/settings/*) — Profile stays focused
               on identity/stats, one card, one job. */}
-          <Pressable accessibilityRole="button" onPress={() => router.push('/account')} style={styles.accountLinkRow}>
-            <IconSymbol name="gearshape.fill" size={16} color={FuttyColors.stone500} />
-            <ThemedText style={styles.accountLinkText}>Account & settings</ThemedText>
-            <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} />
-          </Pressable>
+          <MenuSection>
+            <MenuRow
+              icon="star.fill"
+              label={profile.profile.is_premium ? 'Manage Premium' : 'Go Premium'}
+              sublabel={profile.profile.is_premium ? 'Premium' : 'Futty Premium'}
+              onPress={() => router.push('/account/premium')}
+            />
+            {profile.profile.role === 'venue_owner' ? (
+              <MenuRow
+                icon="building.columns.fill"
+                label="Venue dashboard"
+                onPress={() => router.push('/venue-dashboard')}
+              />
+            ) : null}
+            <MenuRow icon="gearshape.fill" label="Account & settings" onPress={() => router.push('/account')} />
+          </MenuSection>
         </>
       );
     case 'missing':
-      return <ThemedText>We couldn&apos;t find your profile — try signing up again.</ThemedText>;
+      return <Banner tone="warning" message="We couldn’t find your profile — try signing up again." />;
     case 'error':
-      return <ThemedText>Couldn&apos;t load your profile: {profile.message}</ThemedText>;
+      return (
+        <Banner
+          tone="danger"
+          message={`Couldn’t load your profile: ${profile.message}`}
+          action={{ label: 'Try again', onPress: profile.reload }}
+        />
+      );
   }
 }
 
@@ -209,209 +197,52 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View>
-          <IconLabel icon="person.fill" type="title" iconSize={26}>Profile</IconLabel>
-          <ThemedText style={styles.signedInAs}>{user?.email}</ThemedText>
+        <View style={styles.header}>
+          <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header">
+            Profile
+          </Text>
+          <Text variant="callout" tone="inkMuted">
+            {user?.email}
+          </Text>
         </View>
 
         <ProfileStatus />
 
-        <Pressable accessibilityRole="button" onPress={signOut} style={styles.signOutRow}>
-          <IconSymbol name="rectangle.portrait.and.arrow.right" size={14} color={FuttyColors.rose600} />
-          <ThemedText style={styles.signOut}>Sign out</ThemedText>
-        </Pressable>
+        <MenuSection>
+          <MenuRow icon="rectangle.portrait.and.arrow.right" label="Sign out" destructive onPress={signOut} />
+        </MenuSection>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
+  header: { gap: space.xs },
+  card: { gap: space.lg },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  identity: { flex: 1, gap: space.xs },
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  badge: {
+    borderRadius: radius.pill,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs / 2,
   },
-  content: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  signedInAs: {
-    fontSize: 12,
-    opacity: 0.6,
-    marginTop: 2,
-  },
-  card: {
-    backgroundColor: FuttyColors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    padding: 16,
-    gap: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  cardHeaderLeft: {
-    flexDirection: 'row',
-    gap: 12,
-    flex: 1,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: FuttyColors.emerald950,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  avatarText: {
-    fontFamily: FuttyFonts.display,
-    fontSize: 18,
-    color: FuttyColors.white,
-  },
-  identity: {
-    gap: 4,
-    flexShrink: 1,
-  },
-  name: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 15,
-    color: FuttyColors.stone900,
-  },
-  username: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  identityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  position: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  tierLine: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 11,
-  },
-  editButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: FuttyColors.stone50,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  skillBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  skillBadgeText: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 11,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  statsRow: { flexDirection: 'row', gap: space.sm },
   statTile: {
     flex: 1,
-    backgroundColor: FuttyColors.stone50,
-    borderRadius: 12,
-    paddingVertical: 10,
     alignItems: 'center',
+    paddingVertical: space.sm,
+    borderRadius: radius.control,
+    backgroundColor: colors.canvas,
   },
-  statValue: {
-    fontFamily: FuttyFonts.monoSemiBold,
-    fontSize: 16,
-    color: FuttyColors.stone900,
-  },
-  statLabel: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 10,
-    color: FuttyColors.stone500,
-    marginTop: 2,
-  },
-  xpSection: {
-    gap: 4,
-  },
-  xpLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  xpText: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 11,
-    color: FuttyColors.stone500,
-  },
-  xpTrack: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: FuttyColors.stone200,
-    overflow: 'hidden',
-  },
-  xpFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: FuttyColors.amber400,
-  },
-  premiumRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  premiumBadge: {
-    backgroundColor: FuttyColors.amber400,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  premiumBadgeText: {
-    color: FuttyColors.stone900,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  settingsRowLabel: {
-    flex: 1,
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 13,
-    color: FuttyColors.stone900,
-  },
-  accountLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: FuttyColors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    padding: 14,
-  },
-  accountLinkText: {
-    flex: 1,
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 13,
-    color: FuttyColors.stone900,
-  },
-  signOutRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-  },
-  signOut: {
-    color: FuttyColors.rose600,
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 14,
-  },
+  xpSection: { gap: space.xs },
+  xpLabels: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
+  xpTrack: { height: space.sm, borderRadius: radius.pill, backgroundColor: colors.border, overflow: 'hidden' },
+  xpFill: { height: '100%', borderRadius: radius.pill, backgroundColor: colors.inkMuted },
 });
