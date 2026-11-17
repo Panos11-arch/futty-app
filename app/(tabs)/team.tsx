@@ -1,15 +1,19 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
-import { AuthButton } from '@/components/auth-form';
-import { Chip } from '@/components/chip';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Avatar } from '@/components/ui/avatar';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ListRow } from '@/components/ui/list-row';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
 import { playHref } from '@/lib/play-segments';
@@ -24,36 +28,15 @@ function roleLabel(role: string) {
   return 'Player';
 }
 
-/** Initials placeholder in place of a real team logo — no image upload
- *  infrastructure (storage bucket, picker) exists in this app yet. */
-function TeamAvatar({ name }: { name: string }) {
-  const tint = useThemeColor({}, 'tint');
-  const onTint = useThemeColor({}, 'background');
-  const initials = name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('');
-
+function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <View style={[styles.avatar, { backgroundColor: tint }]}>
-      <ThemedText style={[styles.avatarText, { color: onTint }]}>{initials || '?'}</ThemedText>
-    </View>
-  );
-}
-
-function StatTile({ label, value, accent }: { label: string; value: string | number; accent?: boolean }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  return (
-    <View
-      style={[
-        styles.statTile,
-        { borderColor: accent ? FuttyColors.amber400 : border },
-        accent && styles.statTileAccent,
-      ]}>
-      <ThemedText type="defaultSemiBold">{value}</ThemedText>
-      <ThemedText style={styles.note}>{label}</ThemedText>
+    <View style={styles.statTile} accessible accessibilityLabel={`${label} ${value}`}>
+      <Text variant="headline" tabular>
+        {String(value)}
+      </Text>
+      <Text variant="caption" tone="inkMuted">
+        {label}
+      </Text>
     </View>
   );
 }
@@ -72,70 +55,71 @@ function TeamPremiumRow({ team, format }: { team: Team; format: PremiumFormat })
   const enabled = hasTeamPremium(team, format);
 
   return (
-    <View style={styles.premiumRow}>
-      <ThemedText style={styles.note}>
-        {format} — €{PREMIUM_FORMAT_PRICES[format]}/season
-      </ThemedText>
-      {enabled ? (
-        <View style={styles.premiumActiveCol}>
-          <IconLabel icon="checkmark.circle.fill" style={styles.note} iconColor={FuttyColors.emerald700} iconSize={12}>
-            Active
-          </IconLabel>
-          {/* Team Premium is a one-time (non-consumable) purchase, so unlike
-              a subscription there's no "cancel" for Apple to manage — the
-              only way it ever comes off is a refund, which only Apple can
-              approve. This just opens their own refund-request flow;
-              apple-server-notifications already reacts correctly once/if
-              Apple grants one (see supabase/team-premium-forfeit.sql). */}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => Linking.openURL('https://reportaproblem.apple.com/')}>
-            <ThemedText style={styles.refundLink}>Request a refund</ThemedText>
-          </Pressable>
-        </View>
-      ) : Platform.OS === 'ios' ? (
-        <AuthButton
-          label="Buy"
-          variant="secondary"
-          onPress={() =>
-            router.push({
-              pathname: '/premium-plan',
-              params: { plan: `team-${format}`, teamId: team.id },
-            })
-          }
-        />
-      ) : (
-        <IconLabel icon="wrench.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-          iOS only for now
-        </IconLabel>
-      )}
-    </View>
+    <ListRow
+      title={`${format} — €${PREMIUM_FORMAT_PRICES[format]}/season`}
+      trailing={
+        enabled ? (
+          <View style={styles.premiumActive}>
+            <Text variant="callout" tone="success">
+              Active
+            </Text>
+            {/* Team Premium is a one-time (non-consumable) purchase, so unlike
+                a subscription there's no "cancel" for Apple to manage — the
+                only way it ever comes off is a refund, which only Apple can
+                approve. This just opens their own refund-request flow;
+                apple-server-notifications already reacts correctly once/if
+                Apple grants one (see supabase/team-premium-forfeit.sql). */}
+            <Button
+              label="Request a refund"
+              variant="plain"
+              onPress={() => Linking.openURL('https://reportaproblem.apple.com/')}
+            />
+          </View>
+        ) : Platform.OS === 'ios' ? (
+          <Button
+            label="Buy"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/premium-plan',
+                params: { plan: `team-${format}`, teamId: team.id },
+              })
+            }
+          />
+        ) : (
+          <Text variant="callout" tone="inkMuted">
+            iOS only for now
+          </Text>
+        )
+      }
+    />
   );
 }
 
 function TeamPremiumSection({ team }: { team: Team }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-
   return (
-    <ThemedView style={[styles.teamCard, { borderColor: border }]}>
-      <IconLabel icon="star.fill" type="defaultSemiBold" iconColor={FuttyColors.amber400}>
-        Team Premium
-      </IconLabel>
-      <ThemedText style={styles.note}>Needed for 9-a-side and 11-a-side leagues.</ThemedText>
-      <TeamPremiumRow team={team} format="9-a-side" />
-      <TeamPremiumRow team={team} format="11-a-side" />
-    </ThemedView>
+    <View style={styles.section}>
+      <SectionHeader title="Team Premium" />
+      <Text variant="callout" tone="inkMuted">
+        Needed for 9-a-side and 11-a-side leagues.
+      </Text>
+      <Card padded={false}>
+        <TeamPremiumRow team={team} format="9-a-side" />
+        <View style={styles.divider} />
+        <TeamPremiumRow team={team} format="11-a-side" />
+      </Card>
+    </View>
   );
 }
 
 function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain: boolean; onTeamChanged: () => void }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const myProfile = useProfile();
   const [roster, setRoster] = useState<RosterMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(false);
 
   const loadRoster = useCallback(() => {
+    setError(null);
     getTeamRoster(team.id).then(({ data, error: rosterError }) => {
       if (rosterError) setError(rosterError.message);
       else setRoster(data);
@@ -164,13 +148,15 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
   }
 
   return (
-    <View style={styles.section}>
-      <ThemedView style={[styles.teamCard, { borderColor: border }]}>
+    <View style={styles.sections}>
+      <Card style={styles.teamCard}>
         <View style={styles.teamHeader}>
-          <TeamAvatar name={team.name} />
-          <View style={styles.teamHeaderText}>
-            <ThemedText type="defaultSemiBold">{team.name}</ThemedText>
-            <ThemedText style={styles.note}>{team.city ?? 'No city set'}</ThemedText>
+          <Avatar name={team.name} size={space.xxl + space.lg} />
+          <View style={styles.flex}>
+            <Text variant="headline">{team.name}</Text>
+            <Text variant="callout" tone="inkMuted">
+              {team.city ?? 'No city set'}
+            </Text>
           </View>
         </View>
 
@@ -180,57 +166,82 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
           <StatTile label="Drawn" value={team.drawn} />
           <StatTile label="Lost" value={team.lost} />
           <StatTile label="Goals" value={team.goals} />
-          <StatTile label="XP" value={team.xp} accent />
+          <StatTile label="XP" value={team.xp} />
           {winRate !== null ? <StatTile label="Win rate" value={`${winRate}%`} /> : null}
         </View>
-      </ThemedView>
+      </Card>
 
       {isCaptain && TEAM_PREMIUM_ENABLED ? <TeamPremiumSection team={team} /> : null}
 
-      <IconLabel icon="person.2.fill" type="subtitle">
-        Roster ({team.roster_size} {team.substitute_slots > 0 ? `+ ${team.substitute_slots} subs` : ''})
-      </IconLabel>
+      <View style={styles.section}>
+        <SectionHeader
+          title={`Roster (${team.roster_size} ${team.substitute_slots > 0 ? `+ ${team.substitute_slots} subs` : ''})`}
+        />
 
-      {error ? <ThemedText style={styles.note}>Could not load roster: {error}</ThemedText> : null}
-      {!roster && !error ? <ActivityIndicator /> : null}
-
-      {isCaptain && roster && (mainRemaining > 0 || subRemaining > 0) ? (
-        <ThemedView style={[styles.teamCard, { borderColor: border }]}>
-          <AddPlayerRow
-            teamId={team.id}
-            teamName={team.name}
-            inviterUsername={inviterUsername}
-            role="player"
-            remaining={mainRemaining}
-            onAdded={memberAdded}
+        {error ? (
+          <Banner
+            tone="danger"
+            message={`Could not load roster: ${error}`}
+            action={{ label: 'Try again', onPress: loadRoster }}
           />
-          <AddPlayerRow
-            teamId={team.id}
-            teamName={team.name}
-            inviterUsername={inviterUsername}
-            role="substitute"
-            remaining={subRemaining}
-            onAdded={memberAdded}
+        ) : null}
+        {!roster && !error ? (
+          <View testID="roster-skeleton">
+            <SkeletonText lines={2} />
+          </View>
+        ) : null}
+
+        {isCaptain && roster && (mainRemaining > 0 || subRemaining > 0) ? (
+          <Card style={styles.section}>
+            <AddPlayerRow
+              teamId={team.id}
+              teamName={team.name}
+              inviterUsername={inviterUsername}
+              role="player"
+              remaining={mainRemaining}
+              onAdded={memberAdded}
+            />
+            <AddPlayerRow
+              teamId={team.id}
+              teamName={team.name}
+              inviterUsername={inviterUsername}
+              role="substitute"
+              remaining={subRemaining}
+              onAdded={memberAdded}
+            />
+          </Card>
+        ) : null}
+
+        {roster ? (
+          <Button
+            label={showRoster ? 'Hide team' : 'View team'}
+            variant="plain"
+            onPress={() => setShowRoster((v) => !v)}
           />
-        </ThemedView>
-      ) : null}
+        ) : null}
 
-      {roster ? (
-        <Pressable accessibilityRole="button" onPress={() => setShowRoster((v) => !v)}>
-          <ThemedText type="link">{showRoster ? 'Hide team' : 'View team'}</ThemedText>
-        </Pressable>
-      ) : null}
-
-      {showRoster && roster ? (
-        <ThemedView style={[styles.rosterCard, { borderColor: border }]}>
-          {roster.map((member) => (
-            <View key={member.profile_id} style={styles.rosterRow}>
-              <ThemedText>{member.username ?? 'unknown'}</ThemedText>
-              <ThemedText style={styles.note}>{roleLabel(member.role)}</ThemedText>
-            </View>
-          ))}
-        </ThemedView>
-      ) : null}
+        {showRoster && roster ? (
+          <Card padded={false}>
+            {roster.map((member, i) => {
+              const name = member.username ?? 'unknown';
+              return (
+                <View key={member.profile_id}>
+                  {i > 0 ? <View style={styles.divider} /> : null}
+                  <ListRow
+                    title={name}
+                    leading={{ avatar: { name } }}
+                    trailing={
+                      <Text variant="caption" tone="inkMuted">
+                        {roleLabel(member.role)}
+                      </Text>
+                    }
+                  />
+                </View>
+              );
+            })}
+          </Card>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -252,21 +263,32 @@ export function TeamContent({ teamId }: { teamId?: string }) {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
-      {myTeams.status === 'loading' ? <ActivityIndicator /> : null}
+      {myTeams.status === 'loading' ? (
+        <Card testID="teams-skeleton" style={styles.teamCard}>
+          <View style={styles.teamHeader}>
+            <SkeletonBlock width={space.xxl + space.lg} height={space.xxl + space.lg} rounded="pill" />
+            <View style={styles.flex}>
+              <SkeletonText lines={2} />
+            </View>
+          </View>
+          <SkeletonBlock width="100%" height={space.xxl * 2} />
+        </Card>
+      ) : null}
 
       {myTeams.status === 'error' ? (
-        <ThemedText style={styles.note}>Could not load your teams: {myTeams.message}</ThemedText>
+        <Banner
+          tone="danger"
+          message={`Could not load your teams: ${myTeams.message}`}
+          action={{ label: 'Try again', onPress: myTeams.reload }}
+        />
       ) : null}
 
       {myTeams.status === 'ready' && teams.length === 0 ? (
-        <View style={styles.section}>
-          <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            You&apos;re not on a team yet.
-          </IconLabel>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/leagues')}>
-            <ThemedText type="link">Register one when you join a league</ThemedText>
-          </Pressable>
-        </View>
+        <EmptyState
+          icon="person.2.fill"
+          message="You’re not on a team yet."
+          action={{ label: 'Register one when you join a league', onPress: () => router.push('/leagues') }}
+        />
       ) : null}
 
       {teams.length > 1 ? (
@@ -300,89 +322,22 @@ export default function TeamRoute() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  section: {
-    gap: 8,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  teamCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-  },
-  teamHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  teamHeaderText: {
-    gap: 2,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  flex: { flex: 1 },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  sections: { gap: space.xl },
+  section: { gap: space.sm },
+  teamCard: { gap: space.lg },
+  teamHeader: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   statTile: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    minWidth: space.xxl * 2,
     alignItems: 'center',
-    minWidth: 68,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.control,
+    backgroundColor: colors.canvas,
   },
-  statTileAccent: {
-    backgroundColor: FuttyColors.amber400 + '1a',
-  },
-  rosterCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-  },
-  rosterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  premiumRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  premiumActiveCol: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  refundLink: {
-    fontSize: 11,
-    color: FuttyColors.emerald700,
-    textDecorationLine: 'underline',
-  },
+  premiumActive: { alignItems: 'flex-end' },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

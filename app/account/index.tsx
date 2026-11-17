@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
 import { useProfile } from '@/lib/use-profile';
+import { colors, space } from '@/constants/futty-theme';
 
 /** The account menu (opened from the person icon in Home's header, separate
  *  from the bell). Deliberately flat: every leaf here is one tap from this
@@ -29,22 +30,22 @@ export default function AccountMenuScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <MenuSection>
           <MenuRow icon="crown.fill" label="Go Premium" onPress={() => router.push('/account/premium')} />
-          <MenuRow icon="square.and.arrow.up" label="Share Profile" onPress={shareProfile} />
+          <MenuRow icon="square.and.arrow.up" label="Share profile" onPress={shareProfile} />
         </MenuSection>
 
-        <MenuSection title="Your Account">
-          <MenuRow icon="pencil" label="Edit Profile" onPress={() => router.push('/edit-profile')} />
-          <MenuRow icon="sportscourt.fill" label="My Bookings" onPress={() => router.push('/my-bookings')} />
-          <MenuRow icon="flag.checkered" label="Your Activity" onPress={() => router.push('/account/activity')} />
-          <MenuRow icon="creditcard.fill" label="Your Payments" onPress={() => router.push('/account/payments')} />
+        <MenuSection title="Your account">
+          <MenuRow icon="pencil" label="Edit profile" onPress={() => router.push('/edit-profile')} />
+          <MenuRow icon="sportscourt.fill" label="My bookings" onPress={() => router.push('/my-bookings')} />
+          <MenuRow icon="flag.checkered" label="Your activity" onPress={() => router.push('/account/activity')} />
+          <MenuRow icon="creditcard.fill" label="Your payments" onPress={() => router.push('/account/payments')} />
           <MenuRow icon="gearshape.fill" label="Settings" onPress={() => router.push('/account/settings')} />
         </MenuSection>
 
         {profile.status === 'ready' && profile.profile.role === 'venue_owner' ? (
-          <MenuSection title="Venue Owner">
+          <MenuSection title="Venue owner">
             <MenuRow
               icon="building.columns.fill"
-              label="Venue Dashboard"
+              label="Venue dashboard"
               onPress={() => router.push('/venue-dashboard')}
             />
           </MenuSection>
@@ -52,17 +53,17 @@ export default function AccountMenuScreen() {
 
         <MenuSection title="Support">
           <MenuRow icon="questionmark.circle.fill" label="Help" onPress={() => router.push('/account/help')} />
-          <MenuRow icon="info.circle.fill" label="How Futty Works" onPress={() => router.push('/account/how-it-works')} />
+          <MenuRow icon="info.circle.fill" label="How Futty works" onPress={() => router.push('/account/how-it-works')} />
         </MenuSection>
 
-        <MenuSection title="Legal Information">
-          <MenuRow icon="doc.text.fill" label="Terms of Use" onPress={() => router.push('/account/terms')} />
-          <MenuRow icon="lock.shield.fill" label="Privacy Policy" onPress={() => router.push('/account/privacy-policy')} />
+        <MenuSection title="Legal information">
+          <MenuRow icon="doc.text.fill" label="Terms of use" onPress={() => router.push('/account/terms')} />
+          <MenuRow icon="lock.shield.fill" label="Privacy policy" onPress={() => router.push('/account/privacy-policy')} />
         </MenuSection>
 
         <View style={styles.logoutSection}>
           <MenuSection>
-            <MenuRow icon="rectangle.portrait.and.arrow.right" label="Log Out" destructive onPress={signOut} />
+            <MenuRow icon="rectangle.portrait.and.arrow.right" label="Log out" destructive onPress={signOut} />
           </MenuSection>
         </View>
       </ScrollView>
@@ -73,13 +74,14 @@ export default function AccountMenuScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: colors.canvas,
   },
   content: {
-    gap: 20,
-    padding: 16,
-    paddingBottom: 48,
+    gap: space.xl,
+    padding: space.lg,
+    paddingBottom: space.xxl,
   },
   logoutSection: {
-    marginTop: 16,
+    marginTop: space.lg,
   },
 });

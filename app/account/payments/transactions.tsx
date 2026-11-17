@@ -1,14 +1,17 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Fragment, useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { StatusPill, type Status } from '@/components/ui/status-pill';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, space } from '@/constants/futty-theme';
+import { formatEuros } from '@/lib/money/format';
 import { supabase } from '@/lib/supabase';
 import { useVenues } from '@/lib/use-venues';
 
@@ -25,10 +28,17 @@ type Transaction = {
   format: string;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  paid: 'Paid',
+/** Each share state as a StatusPill. A state with no pill keeps its words. */
+const STATUS_PILL: Record<string, Status> = {
+  paid: 'paid',
+  pending: 'pending',
+  refunded: 'refunded',
+};
+
+/** Words shown next to the pill, or in place of one (no pill for cancelled). */
+const STATUS_NOTE: Record<string, string> = {
   pending: 'Awaiting payment',
-  refunded: 'Refunded (booking cancelled)',
+  refunded: 'Booking cancelled',
   cancelled: 'Cancelled',
 };
 
@@ -43,10 +53,12 @@ const STATUS_LABEL: Record<string, string> = {
  *  'pending' shares (kickoff passed, display-layer safeguard alongside the
  *  real cancel-unpaid-bookings cleanup) while always returning every paid/
  *  refunded/cancelled share regardless of age — filtering that lives in one
- *  place instead of being re-derived here. */
+ *  place instead of being re-derived here.
+ *
+ *  Amounts are the server's integer cents, formatted only (right-aligned,
+ *  tabular figures). */
 export default function TransactionsScreen() {
   const venuesState = useVenues();
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,91 +76,66 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {!transactions && !error ? <ActivityIndicator /> : null}
-        {error ? <ThemedText style={styles.note}>Could not load: {error}</ThemedText> : null}
-        {transactions && transactions.length === 0 ? (
-          <IconLabel icon="doc.text.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            No booking payments yet.
-          </IconLabel>
+        {!transactions && !error ? (
+          <Card testID="transactions-skeleton">
+            <SkeletonText lines={4} />
+          </Card>
         ) : null}
-        {transactions?.map((tx) => (
-          <ThemedView key={tx.id} style={[styles.card, { borderColor: border }]}>
-            <View style={styles.rowMain}>
-              <ThemedText type="defaultSemiBold" style={styles.venue}>
-                {venueName(tx.venue_id)}
-                {tx.is_booker ? ' (your booking)' : ''}
-              </ThemedText>
-              <ThemedText style={styles.amount}>€{(tx.amount_cents / 100).toFixed(2)}</ThemedText>
-            </View>
-            <ThemedText style={styles.meta}>
-              {tx.booking_day} · {tx.start_time.slice(0, 5)} · {tx.format} · {STATUS_LABEL[tx.status] ?? tx.status}
-            </ThemedText>
+        {error ? <Banner tone="danger" message={`Could not load: ${error}`} /> : null}
+        {transactions && transactions.length === 0 ? (
+          <EmptyState icon="doc.text.fill" message="No booking payments yet." />
+        ) : null}
+        {transactions && transactions.length > 0 ? (
+          <Card padded={false}>
+            {transactions.map((tx, i) => {
+              const pill = STATUS_PILL[tx.status];
+              return (
+                <Fragment key={tx.id}>
+                  {i > 0 ? <View style={styles.divider} /> : null}
+                  <View style={styles.row} testID="transaction">
+                    <View style={styles.rowMain}>
+                      <Text variant="body" style={styles.flex}>
+                        {venueName(tx.venue_id)}
+                        {tx.is_booker ? ' (your booking)' : ''}
+                      </Text>
+                      <Text variant="headline" tabular style={styles.amount}>
+                        {formatEuros(tx.amount_cents)}
+                      </Text>
+                    </View>
+                    <View style={styles.rowMain}>
+                      <Text variant="callout" tone="inkMuted" tabular style={styles.flex}>
+                        {tx.booking_day} · {tx.start_time.slice(0, 5)} · {tx.format}
+                        {STATUS_NOTE[tx.status] ? ` · ${STATUS_NOTE[tx.status]}` : pill ? '' : ` · ${tx.status}`}
+                      </Text>
+                      {pill ? <StatusPill status={pill} /> : null}
+                    </View>
 
-            {tx.status === 'pending' ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/booking-payment', params: { bookingId: tx.booking_id } })}
-                style={styles.finishRow}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <ThemedText type="link" style={styles.finishText}>
-                  Finish payment
-                </ThemedText>
-                <IconSymbol name="arrow.right" size={12} color={FuttyColors.emerald700} />
-              </Pressable>
-            ) : null}
-          </ThemedView>
-        ))}
+                    {tx.status === 'pending' ? (
+                      <Button
+                        label="Finish payment"
+                        variant="plain"
+                        onPress={() => router.push({ pathname: '/booking-payment', params: { bookingId: tx.booking_id } })}
+                      />
+                    ) : null}
+                  </View>
+                </Fragment>
+              );
+            })}
+          </Card>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 2,
-  },
-  rowMain: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  venue: {
-    fontSize: 14,
-  },
-  amount: {
-    fontFamily: FuttyFonts.monoSemiBold,
-    fontSize: 14,
-    color: FuttyColors.stone900,
-  },
-  meta: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  finishRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-    alignSelf: 'flex-start',
-  },
-  finishText: {
-    fontSize: 13,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  row: { gap: space.xs, paddingHorizontal: space.lg, paddingVertical: space.md },
+  rowMain: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  amount: { textAlign: 'right' },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

@@ -1,0 +1,3947 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Leagues segment empty: no league for the format or city 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 24,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 12,
+            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          },
+          false,
+          undefined,
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Matchmaking"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          testID="list-row-leading-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 2,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_400Regular",
+                  "fontSize": 15,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Matchmaking
+          </Text>
+        </View>
+        <View
+          testID="list-row-chevron"
+        >
+          <View
+            testID="icon-chevron.right"
+          />
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Format
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+                "borderColor": "#E7F1EC",
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              5-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              7-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              9-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              11-a-side
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Island-wide league
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-trophy.fill"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          No 5-a-side league found yet.
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Open League city
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+                "borderColor": "#E7F1EC",
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Nicosia
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Limassol
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Larnaca
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Paphos
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-trophy.fill"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          No Nicosia league found yet.
+        </Text>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Your fixtures
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          No upcoming fixtures yet.
+        </Text>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`Leagues segment loading shows a skeleton 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 24,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 12,
+            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          },
+          false,
+          undefined,
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Matchmaking"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          testID="list-row-leading-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 2,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_400Regular",
+                  "fontSize": 15,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Matchmaking
+          </Text>
+        </View>
+        <View
+          testID="list-row-chevron"
+        >
+          <View
+            testID="icon-chevron.right"
+          />
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Format
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+                "borderColor": "#E7F1EC",
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              5-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              7-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              9-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              11-a-side
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 12,
+            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          },
+          {
+            "padding": 16,
+          },
+          undefined,
+        ]
+      }
+      testID="leagues-skeleton"
+    >
+      <View
+        accessibilityLabel="Loading"
+        accessible={true}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "60%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Your fixtures
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          No upcoming fixtures yet.
+        </Text>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;
+
+exports[`Leagues segment populated: tables and the same navigation 1`] = `
+<RCTScrollView
+  contentContainerStyle={
+    {
+      "gap": 24,
+      "padding": 16,
+      "paddingBottom": 32,
+    }
+  }
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <View>
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 12,
+            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          },
+          false,
+          undefined,
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Matchmaking"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#FFFFFF",
+              "flexDirection": "row",
+              "gap": 12,
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 12,
+            },
+            false,
+          ]
+        }
+      >
+        <View
+          testID="list-row-leading-icon"
+        >
+          <View
+            testID="icon-calendar"
+          />
+        </View>
+        <View
+          style={
+            {
+              "flex": 1,
+              "gap": 2,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_400Regular",
+                  "fontSize": 15,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Matchmaking
+          </Text>
+        </View>
+        <View
+          testID="list-row-chevron"
+        >
+          <View
+            testID="icon-chevron.right"
+          />
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Format
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+                "borderColor": "#E7F1EC",
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              5-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              7-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              9-a-side
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              11-a-side
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Island-wide league
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          5-a-side Island League
+        </Text>
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 12,
+                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              },
+              false,
+              undefined,
+            ]
+          }
+          testID="standings-table"
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Team
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              P
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              W
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              D
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              L
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              F
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              A
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              GD
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              Pts
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 8,
+                },
+                {
+                  "borderTopColor": "#E4E7EB",
+                  "borderTopWidth": 0.5,
+                },
+                {
+                  "backgroundColor": "#E7F1EC",
+                },
+              ]
+            }
+            testID="standings-row-mine"
+          >
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Tigers
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              4
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              3
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              1
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              0
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              9
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              11
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              -2
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  [
+                    {
+                      "minWidth": 32,
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontFamily": "Inter_700Bold",
+                    },
+                  ],
+                ]
+              }
+            >
+              10
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 8,
+                },
+                {
+                  "borderTopColor": "#E4E7EB",
+                  "borderTopWidth": 0.5,
+                },
+                {
+                  "backgroundColor": "#E7F1EC",
+                },
+              ]
+            }
+            testID="standings-row-mine"
+          >
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Lions
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              4
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              1
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              1
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              2
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              9
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              11
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  {
+                    "minWidth": 32,
+                    "textAlign": "right",
+                  },
+                ]
+              }
+            >
+              -2
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  [
+                    {
+                      "minWidth": 32,
+                      "textAlign": "right",
+                    },
+                    {
+                      "fontFamily": "Inter_700Bold",
+                    },
+                  ],
+                ]
+              }
+            >
+              4
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Register a new team"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": false,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 10,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                },
+                {
+                  "backgroundColor": "#0E5A3A",
+                },
+                false,
+                false,
+                false,
+                false,
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                  false,
+                  {
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              Register a new team
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "flexDirection": "row",
+              "flexWrap": "wrap",
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": true,
+                "expanded": undefined,
+                "selected": false,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#FFFFFF",
+                  "borderColor": "#E4E7EB",
+                  "borderRadius": 999,
+                  "borderWidth": 0.5,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "paddingHorizontal": 12,
+                  "paddingVertical": 4,
+                },
+                false,
+                {
+                  "opacity": 0.4,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 4,
+                }
+              }
+            >
+              <View
+                testID="icon-lock.fill"
+              />
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 13,
+                      "lineHeight": 18,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                League divisions — coming soon
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Open League city
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "flexDirection": "row",
+            "flexWrap": "wrap",
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+                "borderColor": "#E7F1EC",
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0E5A3A",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Nicosia
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Limassol
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Larnaca
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 999,
+                "borderWidth": 0.5,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 12,
+                "paddingVertical": 4,
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 4,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Paphos
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Nicosia Open
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+              },
+              undefined,
+            ]
+          }
+        >
+          Open for signups
+           · 8 spots
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          No teams registered yet.
+        </Text>
+        <View
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Register a new team"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": false,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "alignSelf": "flex-start",
+                  "borderRadius": 10,
+                  "justifyContent": "center",
+                  "minHeight": 44,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                },
+                {
+                  "backgroundColor": "#0E5A3A",
+                },
+                false,
+                false,
+                false,
+                false,
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#FFFFFF",
+                  },
+                  false,
+                  {
+                    "textAlign": "center",
+                  },
+                ]
+              }
+            >
+              Register a new team
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityLabel="Start season (dev only)"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderColor": "#E4E7EB",
+                "borderWidth": 0.5,
+              },
+              false,
+              false,
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Start season (dev only)
+          </Text>
+        </View>
+      </View>
+    </View>
+    <View
+      style={
+        {
+          "gap": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 12,
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Your fixtures
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 12,
+                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              },
+              {
+                "padding": 16,
+              },
+              {
+                "gap": 8,
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Tigers
+             vs 
+            Lions
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#5B6470",
+                },
+                {
+                  "fontVariant": [
+                    "tabular-nums",
+                  ],
+                },
+                undefined,
+              ]
+            }
+          >
+            Not yet scheduled
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Upcoming fixtures"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "transparent",
+              },
+              {
+                "paddingHorizontal": 8,
+              },
+              false,
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0E5A3A",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Upcoming fixtures
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+</RCTScrollView>
+`;

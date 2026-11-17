@@ -8,9 +8,17 @@
 //   tap a blocked slot to remove its block; past slots (Cyprus time) take
 //   no tap;
 // - Block and Flag conditions for the day or a time range;
+// - the bad-forecast nudge (P11): booked games whose forecast meets an
+//   app_rules threshold at least weather_nudge_hours before kickoff, each
+//   with one tap to flag conditions for it;
 // - the 6 v 6 on 5-a-side pitches setting;
+// - Venue setup (P6e): one tap each to opening hours, closures, prices and
+//   pitches;
 // - below, unchanged from before P6c: adding a house player and recurring
-//   training slots (restyled in P6e).
+//   training slots (restyled in P6e);
+// - at the top, one tap to each other section (P6d): Money, Bookings,
+//   Customers, Debts, Credits and Payouts (Payouts also keeps P4d's row,
+//   with what it is for).
 // The app never computes an amount: it sends ids and choices, and shows the
 // amounts the server returns.
 import { router } from 'expo-router';
@@ -39,11 +47,14 @@ import { NeedPlayersSection } from '@/components/venue/need-players-section';
 import { OfferRedeemSection } from '@/components/venue/offer-redeem-section';
 import { TrainingSlotsSection } from '@/components/venue/training-slots-section';
 import { WalkInSheet } from '@/components/venue/walk-in-sheet';
+import { WeatherNudgesList } from '@/components/venue/weather-nudges';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
+import { useWeatherNudges } from '@/lib/use-weather';
+import type { WeatherNudge } from '@/lib/weather';
 import {
   addBlock,
   addCounterBooking,
@@ -84,7 +95,25 @@ import {
   type Slot,
 } from '@/lib/venue-today';
 
-type DashboardVenue = { id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
+// The dashboard's other sections, one tap each (P6d). The dashboard itself is Today.
+const SECTIONS = [
+  { label: 'Money', pathname: '/venue-money' },
+  { label: 'Bookings', pathname: '/venue-bookings' },
+  { label: 'Customers', pathname: '/venue-customers' },
+  { label: 'Debts', pathname: '/venue-debts' },
+  { label: 'Credits', pathname: '/venue-credits' },
+  { label: 'Payouts', pathname: '/venue-payouts' },
+] as const;
+
+// Venue setup (P6e): one tap to each setup screen, one more to open what to change.
+const SETUP = [
+  { label: 'Opening hours', subtitle: 'Your hours each day of the week', icon: 'clock.fill', pathname: '/venue-hours' },
+  { label: 'Closures', subtitle: 'Days closed to new bookings', icon: 'calendar', pathname: '/venue-closures' },
+  { label: 'Prices', subtitle: 'Per format, with peak and weekend prices', icon: 'creditcard.fill', pathname: '/venue-prices' },
+  { label: 'Pitches', subtitle: 'Add, edit, close and combine pitches', icon: 'sportscourt.fill', pathname: '/venue-pitches' },
+] as const;
+
+type DashboardVenue ={ id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
 
 type BoardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; board: DayBoard };
 
@@ -164,6 +193,8 @@ export default function VenueDashboardScreen() {
   }, [user]);
 
   const venue = venues?.find((v) => v.id === venueId) ?? null;
+  // P11: booked games with a bad forecast, while kickoff is far enough away.
+  const { nudges, reload: reloadNudges } = useWeatherNudges(venueId);
 
   // Only the latest booking opened may fill the sheet: a slow answer for an
   // earlier one is dropped.
@@ -227,6 +258,31 @@ export default function VenueDashboardScreen() {
     else reloadBoard();
   }
 
+  /** P11 nudge: one tap flags conditions for that game's time on its own
+   *  pitch(es), so only players in that game are told. */
+  async function flagNudge(slot: WeatherNudge) {
+    if (!venue) return;
+    // Never venue-wide from here: that would warn players in other games.
+    if (slot.pitch_ids.length === 0) {
+      setNotice('This game has no pitch assigned. Use Flag conditions above to choose the pitches.');
+      return;
+    }
+    setBusy(slot.booking_id);
+    setNotice(null);
+    const pitches = slot.pitch_ids;
+    let refusal: string | null = null;
+    for (const pitchId of pitches) {
+      refusal = await refusalOf(
+        flagConditions({ venueId: venue.id, day: slot.day, start: slot.start, end: slot.end, pitchId, note: null }),
+      );
+      if (refusal) break;
+    }
+    setBusy(null);
+    if (refusal) setNotice(refusal);
+    reloadNudges();
+    reloadBoard();
+  }
+
   async function sheetWrite(result: Result): Promise<string | null> {
     const refusal = await refusalOf(result);
     if (!refusal) reloadBoard();
@@ -284,6 +340,16 @@ export default function VenueDashboardScreen() {
 
         {venue ? (
           <>
+            <View style={styles.wrapRow} testID="dashboard-sections">
+              {SECTIONS.map((s) => (
+                <Chip
+                  key={s.pathname}
+                  label={s.label}
+                  onPress={() => router.push({ pathname: s.pathname, params: { venueId: venue.id } })}
+                />
+              ))}
+            </View>
+
             <View style={styles.dayRow}>
               <IconButton icon="chevron.left" accessibilityLabel="Previous day" onPress={() => setDay((d) => addDays(d, -1))} />
               <View style={styles.dayTitle}>
@@ -310,6 +376,8 @@ export default function VenueDashboardScreen() {
             </View>
 
             {notice ? <Banner tone="danger" message={notice} /> : null}
+
+            <WeatherNudgesList nudges={nudges} today={today} busy={busy} onFlag={flagNudge} />
 
             {board.status === 'loading' ? <SkeletonBlock width="100%" height={space.xxl * 10} /> : null}
             {board.status === 'error' ? (
@@ -367,6 +435,20 @@ export default function VenueDashboardScreen() {
                 value={venue.allows_6v6_on_5s ? 'on' : 'off'}
                 onChange={(value) => change6v6(value === 'on')}
               />
+            </View>
+
+            <View style={styles.section} testID="venue-setup">
+              <SectionHeader title="Venue setup" />
+              {SETUP.map((s) => (
+                <ListRow
+                  key={s.pathname}
+                  title={s.label}
+                  subtitle={s.subtitle}
+                  leading={{ icon: s.icon }}
+                  chevron
+                  onPress={() => router.push({ pathname: s.pathname, params: { venueId: venue.id } })}
+                />
+              ))}
             </View>
 
             {ready ? <NeedPlayersSection bookings={ready.bookings} /> : null}
@@ -445,7 +527,11 @@ export default function VenueDashboardScreen() {
           }
           onClose={() => setMark(null)}
           onBlock={(input) => sheetWrite(addBlock({ venueId: venue.id, day, ...input }, user.id))}
-          onFlag={(input) => sheetWrite(flagConditions({ venueId: venue.id, day, ...input }))}
+          onFlag={async (input) => {
+            const refusal = await sheetWrite(flagConditions({ venueId: venue.id, day, ...input }));
+            if (!refusal) reloadNudges();
+            return refusal;
+          }}
         />
       ) : null}
     </SafeAreaView>

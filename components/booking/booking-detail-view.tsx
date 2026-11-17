@@ -72,6 +72,9 @@ export type BookingDetailViewProps = {
   /** P12: switches 5 v 5 / 6 v 6; resolves to an error message, or null
    *  once switched. */
   onSwitch?: (to: 5 | 6) => Promise<string | null>;
+  /** The weather strip for the game's hours (P11). Shown while the game is
+   *  still to come; nothing renders until one is passed in. */
+  weather?: ReactNode;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -125,6 +128,7 @@ function BookingDetailReady({
   onGipedoPullOut,
   onGipedoChoose,
   onSwitch,
+  weather,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -239,6 +243,8 @@ function BookingDetailReady({
         {countdown ? <ListRow title={countdown} leading={{ icon: 'clock.fill' }} /> : null}
 
         {deadline ? <Banner tone="warning" message={deadline} /> : null}
+
+        {live && weather ? <View testID="booking-weather">{weather}</View> : null}
 
         {gipedo && (gipedo.my_side || gipedo.choice_due || gipedo.settlement) ? (
           <GipedoPanel

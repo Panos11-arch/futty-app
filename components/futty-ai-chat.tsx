@@ -14,9 +14,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PopupModal } from '@/components/popup-modal';
-import { ThemedText } from '@/components/themed-text';
+import { EmptyState } from '@/components/ui/empty-state';
+import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, shadow, space, type } from '@/constants/futty-theme';
 import { sendFuttyAiMessage, type ChatMessage } from '@/lib/futty-ai';
 
 // Approximate react-navigation bottom tab bar height — only mounted on the
@@ -26,6 +28,9 @@ import { sendFuttyAiMessage, type ChatMessage } from '@/lib/futty-ai';
 // it, so useBottomTabBarHeight (which needs that inner context) isn't
 // available.
 const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 50 : 58;
+
+/** Launcher size: a 56 pt round button. */
+const LAUNCHER = MIN_TOUCH + space.md;
 
 export function FuttyAiChat() {
   const [open, setOpen] = useState(false);
@@ -68,6 +73,8 @@ export function FuttyAiChat() {
     setMessages((prev) => [...prev, { role: 'assistant', content: data.reply }]);
   }
 
+  const sendDisabled = !input.trim() || busy;
+
   return (
     <>
       {/* Fixed to the bottom-right corner, above the tab bar on tab screens —
@@ -77,15 +84,14 @@ export function FuttyAiChat() {
         pointerEvents="box-none"
         style={[
           styles.launcherWrap,
-          { bottom: insets.bottom + (onTabScreen ? TAB_BAR_HEIGHT : 0) + 16 },
+          { bottom: insets.bottom + (onTabScreen ? TAB_BAR_HEIGHT : 0) + space.lg },
         ]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open Futty AI"
           onPress={() => setOpen(true)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={({ pressed }) => [styles.launcher, pressed && styles.launcherPressed]}>
-          <IconSymbol name="bubble.left.fill" size={24} color={FuttyColors.white} />
+          <IconSymbol name="bubble.left.fill" size={ICON.regular} color={colors.onBrand} />
         </Pressable>
       </View>
 
@@ -97,35 +103,45 @@ export function FuttyAiChat() {
             // Swiping down over the conversation also closes the keyboard.
             keyboardDismissMode="interactive">
             {messages.length === 0 ? (
-              <View style={styles.emptyRow}>
-                <IconSymbol name="hand.wave.fill" size={14} color={FuttyColors.stone400} />
-                <ThemedText style={styles.emptyNote}>
-                  Ask me anything about Futty — booking a pitch, leagues, XP, Premium, and more.
-                </ThemedText>
-              </View>
+              <EmptyState
+                icon="bubble.left.fill"
+                message="Ask me anything about Futty — booking a pitch, leagues, XP, Premium, and more."
+              />
             ) : null}
-            {messages.map((message, index) => (
-              <View
-                key={index}
-                style={[styles.bubbleRow, message.role === 'user' && styles.bubbleRowMine]}>
-                <View style={[styles.bubble, message.role === 'user' ? styles.bubbleMine : styles.bubbleTheirs]}>
-                  <ThemedText style={[styles.bubbleText, message.role === 'user' && styles.bubbleTextMine]}>
-                    {message.content}
-                  </ThemedText>
+            {messages.map((message, index) => {
+              const mine = message.role === 'user';
+              return (
+                <View key={index} style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
+                  <View
+                    testID={mine ? 'bubble-mine' : 'bubble-theirs'}
+                    style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                    <Text variant="body">{message.content}</Text>
+                  </View>
+                </View>
+              );
+            })}
+            {busy ? (
+              <View style={styles.bubbleRow}>
+                <View style={[styles.bubble, styles.bubbleTheirs]}>
+                  <ActivityIndicator accessibilityLabel="Futty AI is replying" color={colors.inkMuted} />
                 </View>
               </View>
-            ))}
-            {busy ? <ActivityIndicator style={styles.loading} /> : null}
+            ) : null}
           </ScrollView>
 
-          {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+          {error ? (
+            <Text variant="callout" tone="danger" accessibilityLiveRegion="polite" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
 
           <View style={styles.inputRow}>
             <TextInput
               value={input}
               onChangeText={setInput}
               placeholder="Ask Futty AI…"
-              placeholderTextColor={FuttyColors.stone400}
+              placeholderTextColor={colors.inkMuted}
+              accessibilityLabel="Message to Futty AI"
               style={styles.input}
               onSubmitEditing={send}
               returnKeyType="send"
@@ -139,10 +155,11 @@ export function FuttyAiChat() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Send"
+              accessibilityState={{ disabled: sendDisabled }}
               onPress={send}
-              disabled={!input.trim() || busy}
-              style={[styles.sendButton, (!input.trim() || busy) && styles.sendButtonDisabled]}>
-              <IconSymbol name="paperplane.circle.fill" size={30} color={FuttyColors.emerald700} />
+              disabled={sendDisabled}
+              style={[styles.sendButton, sendDisabled && styles.sendButtonDisabled]}>
+              <IconSymbol name="paperplane.circle.fill" size={ICON.regular + space.sm} color={colors.brand} />
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -152,113 +169,58 @@ export function FuttyAiChat() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   launcherWrap: {
     position: 'absolute',
-    right: 16,
+    right: space.lg,
     // zIndex/elevation so the launcher always sits above scrollable screen
     // content instead of getting drawn under it on Android.
     zIndex: 50,
     elevation: 50,
   },
   launcher: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: FuttyColors.emerald950,
+    width: LAUNCHER,
+    height: LAUNCHER,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
+    ...shadow,
   },
-  launcherPressed: {
-    opacity: 0.85,
-  },
-  messages: {
-    padding: 16,
-    gap: 10,
-    flexGrow: 1,
-  },
-  emptyRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginTop: 24,
-    paddingHorizontal: 12,
-  },
-  emptyNote: {
-    flex: 1,
-    fontSize: 13,
-    opacity: 0.6,
-  },
-  loading: {
-    marginTop: 8,
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-  },
-  bubbleRowMine: {
-    justifyContent: 'flex-end',
-  },
+  launcherPressed: { opacity: 0.8 },
+  messages: { padding: space.lg, gap: space.sm, flexGrow: 1 },
+  bubbleRow: { flexDirection: 'row' },
+  bubbleRowMine: { justifyContent: 'flex-end' },
   bubble: {
     maxWidth: '82%',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: radius.card,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
-  bubbleTheirs: {
-    backgroundColor: FuttyColors.white,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleMine: {
-    backgroundColor: FuttyColors.emerald950,
-    borderBottomRightRadius: 4,
-  },
-  bubbleText: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.stone700,
-  },
-  bubbleTextMine: {
-    color: FuttyColors.white,
-  },
-  errorText: {
-    color: FuttyColors.rose600,
-    fontSize: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-  },
+  bubbleTheirs: { backgroundColor: colors.surface, borderWidth: hairline, borderColor: colors.border },
+  bubbleMine: { backgroundColor: colors.brandSoft },
+  error: { paddingHorizontal: space.lg, paddingBottom: space.xs },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
+    gap: space.sm,
+    padding: space.md,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   input: {
+    ...type.body,
     flex: 1,
     maxHeight: 100,
-    fontSize: 15,
-    fontFamily: FuttyFonts.sans,
-    color: FuttyColors.stone700,
-    borderWidth: StyleSheet.hairlineWidth * 2,
-    borderColor: FuttyColors.stone200,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    minHeight: MIN_TOUCH,
+    color: colors.ink,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    borderRadius: radius.control,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
-  sendButton: {
-    paddingBottom: 2,
-  },
-  sendButtonDisabled: {
-    opacity: 0.4,
-  },
+  sendButton: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  sendButtonDisabled: { opacity: DISABLED_OPACITY },
 });

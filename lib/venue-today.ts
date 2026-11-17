@@ -547,8 +547,10 @@ export function venueQuoteWords(quote: CancellationQuote, roster: AppRoster): st
     if ((line.cash_back_cents ?? 0) > 0) parts.push(`Hand back ${formatEuros(line.cash_back_cents!)} cash.`);
     words.push(`${names.get(line.profile_id) ?? 'A player'}: ${parts.length ? parts.join(' ') : 'nothing was taken.'}`);
   }
-  if (quote.lines.some((l) => l.refund_cents > 0)) {
-    words.push("Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.");
+  // The server's figure, as it is; nothing when the venue owes nothing.
+  const stripeFee = quote.venue_stripe_fee_cents ?? 0;
+  if (stripeFee > 0) {
+    words.push(`Stripe's fees on these payments: ${formatEuros(stripeFee)}. This comes off your next payout.`);
   }
   return words;
 }

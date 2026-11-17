@@ -130,11 +130,20 @@ describe('Pay what I owe', () => {
     expect(row.getByText(/Your booking stays on\./)).toBeTruthy();
   });
 
-  it('unticked cash shows the server’s amount and words true in both modes', async () => {
+  it('unticked cash without the booking’s mode shows the server’s amount and neutral words', async () => {
     await render(<OwedView {...props()} />);
     const row = within(screen.getByTestId('payment-cash_unpaid:b4:s4'));
     expect(row.getByText('€6.00')).toBeTruthy();
     expect(row.getByText('Cash for your spot wasn’t ticked as paid. You can pay it by card now.')).toBeTruthy();
+  });
+
+  it.each([
+    ['each_pays_responsible', 'Pay €6.00 by card now, or Andreas will be charged for your spot.'],
+    ['each_pays_own_spot', 'Pay €6.00 by card now, or remain in debt to Nuevo Campo.'],
+  ] as const)('unticked cash in %s uses spec 13’s sentence', async (mode, sentence) => {
+    const cash = { ...owed.payments[1], payment_mode: mode, booker_name: 'Andreas', is_booker: false };
+    await render(<OwedView {...props({ owed: { status: 'ready', data: { ...owed, payments: [cash] } } })} />);
+    expect(within(screen.getByTestId('payment-cash_unpaid:b4:s4')).getByText(sentence)).toBeTruthy();
   });
 
   it('disables every pay button while one is paying', async () => {

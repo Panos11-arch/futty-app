@@ -14,6 +14,7 @@ import {
 } from '@/components/booking/checkout-parts';
 import {
   Banner,
+  Chip,
   EmptyState,
   PriceBreakdown,
   SkeletonBlock,
@@ -77,13 +78,19 @@ function PayShareReady({
   const now = nowOverride ?? clock;
   const [accepted, setAccepted] = useState(false);
 
+  const [cash, setCash] = useState(false);
+
   const { detail, blocked, cancellation } = data;
   const { booking, venue, me } = detail;
   const pending = me?.status === 'pending';
-  // Card only here: choosing cash needs booking_detail to say whether cash is
-  // allowed and what it costs (a server change). A share the server already
-  // records as cash is shown with the server's card and cash amounts.
+  // A share the server already records as cash is shown with the server's
+  // card and cash amounts.
   const alreadyCash = me?.payment_method === 'cash';
+  // Cash only when booking_detail says so, with its amounts (spec 13, "Cash
+  // at the venue"); never for a player who owes money.
+  const cashOption = pending && !alreadyCash && !blocked && detail.cash_allowed ? (me?.cash ?? null) : null;
+  const cashOn = cash && cashOption !== null;
+  const cardNow = cashOn ? cashOption.card_cents : (me?.amount_cents ?? 0);
   const nonRefundable = pending && showNonRefundable(booking, now);
   // my_owed says the player owes money: they can't pay into a booking (spec 13, "Debt").
   const canPay = pending && !blocked && (!nonRefundable || accepted) && !paying;
@@ -110,10 +117,22 @@ function PayShareReady({
 
         {me && pending ? (
           <View style={styles.section}>
+            {cashOption ? (
+              <Chip label="Pay the pitch in cash at the venue" selected={cashOn} onPress={() => setCash((c) => !c)} />
+            ) : null}
             {alreadyCash ? (
               <>
                 <PriceBreakdown lines={[{ label: 'Service fee', cents: me.fee_cents }]} totalCents={me.amount_cents} totalLabel="By card now" />
                 <Text variant="callout">{cashSentence(me.amount_cents, me.cash_cents)}</Text>
+              </>
+            ) : cashOn ? (
+              <>
+                <PriceBreakdown
+                  lines={[{ label: 'Service fee', cents: cashOption.card_cents }]}
+                  totalCents={cashOption.card_cents}
+                  totalLabel="By card now"
+                />
+                <Text variant="callout">{cashSentence(cashOption.card_cents, cashOption.cash_cents)}</Text>
               </>
             ) : (
               <PriceBreakdown
@@ -135,15 +154,15 @@ function PayShareReady({
       </ScrollView>
       {me && pending ? (
         <StickyActionBar
-          totalCents={me.amount_cents}
-          totalLabel={alreadyCash ? 'By card now' : 'Total'}
-          actionLabel={payLabel(me.amount_cents, 'Save my card')}
+          totalCents={cardNow}
+          totalLabel={alreadyCash || cashOn ? 'By card now' : 'Total'}
+          actionLabel={payLabel(cardNow, 'Save my card')}
           loading={paying}
           disabled={!canPay}
           onPress={() => {
             if (!canPay) return;
             onPay({
-              method: alreadyCash ? 'cash' : 'card',
+              method: alreadyCash || cashOn ? 'cash' : 'card',
               acceptNonRefundable: nonRefundable && accepted,
               useCredit: false,
             });

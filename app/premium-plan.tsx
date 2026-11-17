@@ -1,12 +1,17 @@
 import { deepLinkToSubscriptions, ErrorCode, useIAP } from 'expo-iap';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ICON } from '@/components/ui/foundation';
+import { IconButton } from '@/components/ui/icon-button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { Text } from '@/components/ui/text';
+import { colors, space } from '@/constants/futty-theme';
 import { describeFunctionError } from '@/lib/edge-functions';
 import {
   openablePlan,
@@ -46,10 +51,10 @@ const PLAN_COPY: Record<Plan, { title: string; perks: string[] }> = {
   },
 };
 
-/** Full-page activation popup for any of the three plans (item 11) — replaces
- *  the old inline app/premium.tsx layout with a single Playtomic-style
- *  screen: dark background, plan/price prominent, bullets, one subscribe
- *  button. Personal is an auto-renewing subscription; both team plans are
+/** Full-page activation popup for any of the three plans (item 11): one
+ *  Card with the plan, the price (the App Store's live price for Personal,
+ *  via personalPremiumPriceLabel), the perks in plain words and one primary
+ *  button. No badges or decoration (U5, docs/specs/15-design.md). Personal is an auto-renewing subscription; both team plans are
  *  one-time non-consumable purchases — see PLAN_COPY/useIAP config below for
  *  where that split actually matters. */
 export default function PremiumPlanScreen() {
@@ -157,196 +162,87 @@ export default function PremiumPlanScreen() {
   const missingTeam = format && !team;
 
   return (
-    <View style={styles.screen}>
-      {/* Dark backdrop stands in for a real hero photo — this app has no
-          image-asset pipeline for premium marketing art yet; swap
-          styles.backdrop's backgroundColor for an ImageBackground once one
-          exists. */}
-      <View style={styles.backdrop} />
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Close"
-        onPress={() => router.back()}
-        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        style={styles.closeButton}>
-        <IconSymbol name="xmark" size={20} color={FuttyColors.white} />
-      </Pressable>
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <View style={styles.header}>
+        <IconButton icon="xmark" accessibilityLabel="Close" onPress={() => router.back()} />
+      </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.badge}>
-          <IconSymbol name="crown.fill" size={14} color={FuttyColors.amber400} />
-          <ThemedText style={styles.badgeText}>FUTTY PREMIUM</ThemedText>
-        </View>
+        <Card style={styles.card}>
+          <Text variant="title" accessibilityRole="header">
+            {copy.title}
+          </Text>
+          {priceLabel ? (
+            <Text variant="headline" tabular testID="premium-price">
+              {priceLabel}
+            </Text>
+          ) : null}
 
-        <ThemedText style={styles.title}>{copy.title}</ThemedText>
-        {priceLabel ? <ThemedText style={styles.price}>{priceLabel}</ThemedText> : null}
+          <View style={styles.perks}>
+            {copy.perks.map((perk) => (
+              <View key={perk} style={styles.perkRow}>
+                <IconSymbol name="checkmark.circle.fill" size={ICON.small} color={colors.inkMuted} />
+                <Text variant="body" style={styles.flex}>
+                  {perk}
+                </Text>
+              </View>
+            ))}
+          </View>
 
-        <View style={styles.perks}>
-          {copy.perks.map((perk) => (
-            <View key={perk} style={styles.perkRow}>
-              <IconSymbol name="checkmark.circle.fill" size={16} color={FuttyColors.emerald600} />
-              <ThemedText style={styles.perkText}>{perk}</ThemedText>
+          {missingTeam ? (
+            <Banner tone="info" message="You need to be a team’s captain to buy Team Premium for it." />
+          ) : null}
+
+          {error ? (
+            <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
+
+          {!iosAvailable ? (
+            <Text variant="callout" tone="inkMuted">
+              Purchasing is available on iOS only for now.
+            </Text>
+          ) : isActive ? (
+            <Button
+              label={plan === 'personal' ? 'Manage or cancel subscription' : 'Request a refund'}
+              variant="secondary"
+              fullWidth
+              onPress={manage}
+            />
+          ) : (
+            <Button
+              label={plan === 'personal' ? 'Subscribe' : 'Buy Team Premium'}
+              fullWidth
+              onPress={buy}
+              loading={busy}
+              disabled={!connected || !!missingTeam}
+            />
+          )}
+
+          {iosAvailable && plan === 'personal' && !isActive ? (
+            <View style={styles.center}>
+              <Button
+                label="Restore purchases"
+                variant="plain"
+                onPress={() => restorePurchases()}
+                disabled={busy || !connected}
+              />
             </View>
-          ))}
-        </View>
-
-        {missingTeam ? (
-          <IconLabel icon="info.circle.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            You need to be a team&apos;s captain to buy Team Premium for it.
-          </IconLabel>
-        ) : null}
-
-        {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
-
-        {!iosAvailable ? (
-          <IconLabel icon="wrench.fill" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-            Purchasing is available on iOS only for now.
-          </IconLabel>
-        ) : isActive ? (
-          <Pressable accessibilityRole="button" onPress={manage} style={styles.secondaryButton}>
-            <ThemedText style={styles.secondaryButtonText}>
-              {plan === 'personal' ? 'Manage or cancel subscription' : 'Request a refund'}
-            </ThemedText>
-          </Pressable>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={buy}
-            disabled={busy || !connected || !!missingTeam}
-            style={[styles.subscribeButton, (busy || !connected || missingTeam) && styles.subscribeButtonDisabled]}>
-            {busy ? (
-              <ActivityIndicator color={FuttyColors.emerald950} />
-            ) : (
-              <ThemedText style={styles.subscribeButtonText}>
-                {plan === 'personal' ? 'Subscribe' : 'Buy Team Premium'}
-              </ThemedText>
-            )}
-          </Pressable>
-        )}
-
-        {iosAvailable && plan === 'personal' && !isActive ? (
-          <Pressable accessibilityRole="button" onPress={() => restorePurchases()} disabled={busy || !connected}>
-            <ThemedText style={styles.restoreText}>Restore purchases</ThemedText>
-          </Pressable>
-        ) : null}
+          ) : null}
+        </Card>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: FuttyColors.emerald950,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: FuttyColors.emerald950,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    zIndex: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingTop: 120,
-    paddingBottom: 48,
-    gap: 14,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    color: FuttyColors.amber400,
-  },
-  title: {
-    fontFamily: FuttyFonts.display,
-    fontSize: 30,
-    color: FuttyColors.white,
-    marginTop: 4,
-  },
-  price: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 18,
-    color: FuttyColors.emerald200,
-  },
-  perks: {
-    gap: 10,
-    marginTop: 10,
-  },
-  perkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  perkText: {
-    flex: 1,
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.white,
-  },
-  note: {
-    fontSize: 12,
-    color: FuttyColors.emerald200,
-  },
-  error: {
-    fontSize: 13,
-    color: '#fca5a5',
-  },
-  subscribeButton: {
-    marginTop: 12,
-    backgroundColor: FuttyColors.white,
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  subscribeButtonDisabled: {
-    opacity: 0.5,
-  },
-  subscribeButtonText: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 16,
-    color: FuttyColors.stone900,
-  },
-  secondaryButton: {
-    marginTop: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  secondaryButtonText: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 14,
-    color: FuttyColors.white,
-  },
-  restoreText: {
-    marginTop: 8,
-    textAlign: 'center',
-    fontFamily: FuttyFonts.sansMedium,
-    fontSize: 13,
-    color: FuttyColors.emerald200,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: space.sm },
+  content: { flexGrow: 1, justifyContent: 'center', padding: space.lg, paddingBottom: space.xxl },
+  card: { gap: space.lg },
+  perks: { gap: space.md },
+  perkRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  center: { alignItems: 'center' },
 });

@@ -333,6 +333,27 @@ describe('BookingDetailView: switching 5 v 5 / 6 v 6 (P12)', () => {
   });
 });
 
+describe('BookingDetailView: weather (P11)', () => {
+  it('shows the weather strip for a game still to come', async () => {
+    await render(<BookingDetailView {...props(playerDetail(), { weather: <Text>Forecast here</Text> })} />);
+    expect(within(screen.getByTestId('booking-weather')).getByText('Forecast here')).toBeTruthy();
+  });
+
+  it('not for a cancelled game', async () => {
+    const detail = playerDetail();
+    const cancelled = { ...detail, booking: { ...detail.booking, status: 'cancelled' } };
+    await render(<BookingDetailView {...props(cancelled, { weather: <Text>Forecast here</Text> })} />);
+    expect(screen.queryByTestId('booking-weather')).toBeNull();
+  });
+
+  it('not once the game has started', async () => {
+    await render(
+      <BookingDetailView {...props(playerDetail(), { weather: <Text>Forecast here</Text>, now: new Date('2026-11-16T17:30:00Z') })} />,
+    );
+    expect(screen.queryByTestId('booking-weather')).toBeNull();
+  });
+});
+
 describe("BookingDetailView: a venue that isn't taking new players (P7)", () => {
   it('not live (from the server): one line instead of Invite a player', async () => {
     await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: false }))} />);

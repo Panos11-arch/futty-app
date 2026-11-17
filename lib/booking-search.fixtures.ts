@@ -35,7 +35,11 @@ export function quoteFixture(overrides: Partial<BookingQuote> = {}): BookingQuot
 }
 
 export function detailFixture(
-  overrides: { me?: Partial<NonNullable<BookingDetail['me']>> | null; booking?: Partial<BookingDetail['booking']> } = {},
+  overrides: {
+    me?: Partial<NonNullable<BookingDetail['me']>> | null;
+    booking?: Partial<BookingDetail['booking']>;
+    cash_allowed?: boolean;
+  } = {},
 ): BookingDetail {
   const me: BookingDetail['me'] =
     overrides.me === null
@@ -49,6 +53,7 @@ export function detailFixture(
           fee_cents: 80,
           cash_cents: 0,
           free_until: null,
+          cash: null,
           ...overrides.me,
         };
   return {
@@ -81,5 +86,6 @@ export function detailFixture(
     roster: [],
     next_cutoff: { kind: 'refunds_stop', at: '2026-11-16T11:00:00+00:00' },
     can_cancel: { my_spot: me !== null, whole_team: false },
+    cash_allowed: overrides.cash_allowed ?? false,
   };
 }
