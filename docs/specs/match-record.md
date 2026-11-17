@@ -172,10 +172,10 @@ Unique (`match_id`, `profile_id`) where `profile_id` is not null. RLS: select as
 | --- | --- | --- |
 | `match_id`, `profile_id` | uuid | Primary key together |
 | `checked_in_at` | timestamptz | |
-| `method` | text | `qr` (the player scanned the venue's code) or `captain` (ticked by their captain) |
-| `checked_in_by` | uuid | The player themselves, or the captain who ticked them |
+| `method` | text | `qr` (the player scanned the venue's code), `captain` (ticked by their captain) or `venue` (ticked by the venue's staff, P6e) |
+| `checked_in_by` | uuid | The player themselves, or the captain or staff member who ticked them |
 
-Checked-in players are the only ones who can vote for man of the match and rate (05 sections 3 and 4), and the only ones counted in form, stats, ratings, man of the match and levels (decision 1b.2). The venue's no-show record (05 section 10) is the match players without a row here. RLS: select for match members and venue staff.
+Checked-in players are the only ones who can vote for man of the match and rate (05 sections 3 and 4), and the only ones counted in form, stats, ratings, man of the match and levels (decision 1b.2). The venue's no-show record (05 section 10; 13 "No-shows", decided 17 November) is the players holding a spot (`share_id` set, its share still in, `left_at` null) without a row here, final at `result_deadline_at`. RLS: select for match members and venue staff.
 
 ### 4.5 `match_result_submissions`
 
@@ -292,6 +292,8 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test). Answer
 | `get_match_check_in_code(p_match_id uuid)` returns text | authenticated, staff of the match's venue only (`not_venue_staff`) | Returns the per-match code the venue shows as a QR. Generated once per match, stored in `match_check_in_codes` (decision 1a.1) |
 | `check_in_to_match(p_match_id uuid, p_code text)` returns void | authenticated | The caller is a player of the match (`not_in_match`); the code matches (`invalid_code`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `ends_at + 1 hour` (`check_in_closed`, decision 1a.4). Idempotent |
 | `captain_mark_attendance(p_match_id uuid, p_profile_ids uuid[])` returns void | authenticated | The caller is a captain (`not_captain`); every profile is a player on the captain's side (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`) |
+| `venue_mark_arrived(p_match_id uuid, p_profile_id uuid)` returns void | authenticated, staff of the match's venue only (`not_venue_staff`) | P6e. The player holds a spot (`not_in_match`); the match isn't `void` and now is from `kickoff_at − 60 minutes` to before `result_deadline_at` (`check_in_closed`). Writes method `venue`. Idempotent: an existing check-in is kept |
+| `venue_unmark_arrived(p_match_id uuid, p_profile_id uuid)` returns void | authenticated, staff of the match's venue only | P6e. The same checks. Removes only a `venue` row (`not_venue_check_in`, `not_checked_in`). Refused once the player has voted for man of the match (`check_in_used`); A5 adds ratings to this check when it creates `match_ratings` |
 | `choose_match_side(p_match_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is a player of the match (`not_in_match`); `a` or `b`, and the booker stays on `a` (`invalid_side`, decision 3); no result submitted yet and the match is `scheduled` or `played` (`sides_locked`) |
 | `set_match_player_side(p_match_id uuid, p_player_id uuid, p_side text)` returns void | authenticated | Pickup only (`not_pickup`). The caller is the booker (`not_booker`); the player row is in the match (`not_in_match`); `a`, `b` or null, and the booker stays on `a` (`invalid_side`); `sides_locked` as above |
 
@@ -461,5 +463,5 @@ Each one is decided with Panos before the prompt that needs it, and written into
 6. ~~Quiet hours defaults~~: decided 10 November, none (decision 1a.6).
 7. ~~A disputed match's goals~~: decided 12 November, no (decision 1e.2).
 8. **Venue staff accounts.** Venue staff is only the venue's owner (`venues.owner_profile_id`) today. Staff accounts (front desk, manager) come later, and they must also be allowed to get the check-in code (`get_match_check_in_code`) and see the venue's matches.
-9. **The venue's no-show record** (section 4.4) counts match players without a check-in. Since decision 1b.1, side `b` of a named game lists every opponent team member, including substitutes who were never expected to come. Who counts as a no-show in a named game (spot holders only? the opponent's starting players?) is open (11 November).
+9. **The venue's no-show record** (section 4.4) counts match players without a check-in. Since decision 1b.1, side `b` of a named game lists every opponent team member, including substitutes who were never expected to come. Who counts as a no-show in a named game (spot holders only? the opponent's starting players?) is open (11 November). **Decided 17 November (Anghelo):** spot holders only; a squad member without a spot and a venue-offered player never count (section 4.4; 13 "No-shows").
 10. **A pickup player who checked in but never picked a side** gets no form: `formSide` needs `match_players.side`, so a `match_attendance` row with no side counts for nothing. Whether such a player should get the result (and on which side), or be made to pick a side at check-in, is open (11 November).
