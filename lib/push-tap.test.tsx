@@ -6,7 +6,11 @@ import { markNotificationRead } from '@/lib/notifications';
 import { PushTapHandler, resetHandledPushTaps, routeForPushData } from '@/lib/push-tap';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
-jest.mock('@/lib/notifications', () => ({ markNotificationRead: jest.fn(() => Promise.resolve({ error: null })) }));
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+jest.mock('@/lib/notifications', () => ({
+  ...jest.requireActual('@/lib/notifications'),
+  markNotificationRead: jest.fn(() => Promise.resolve({ error: null })),
+}));
 jest.mock('expo-notifications', () => ({
   DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
   setNotificationHandler: jest.fn(),
@@ -53,6 +57,19 @@ describe('routeForPushData', () => {
     // The opposition-matched push carries both.
     expect(routeForPushData({ postId: 'p1', bookingId: 'b1' })).toMatchObject({ pathname: '/my-bookings' });
     expect(routeForPushData({ postId: 'p1', teamId: 't1' })).toMatchObject({ pathname: '/join-squad-post' });
+  });
+
+  it.each([
+    ['venue_new_booking', { bookingId: 'b1' }],
+    ['venue_booking_cancelled', { bookingId: 'b1' }],
+    ['venue_short_game', { bookingId: 'b1', joined: 8, players: 10 }],
+    ['venue_daily_summary', { day: '2026-11-18' }],
+  ])('%s opens the venue dashboard, never My Bookings', (type, extra) => {
+    expect(routeForPushData({ type, venueId: 'v1', ...extra })).toBe('/venue-dashboard');
+  });
+
+  it('the venue type wins over a match id too', () => {
+    expect(routeForPushData({ type: 'venue_new_booking', matchId: 'm1', bookingId: 'b1' })).toBe('/venue-dashboard');
   });
 
   it.each([

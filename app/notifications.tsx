@@ -15,7 +15,12 @@ import { Text } from '@/components/ui/text';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
-import { markNotificationRead, type AppNotification, type NotificationType } from '@/lib/notifications';
+import {
+  isVenueNotificationType,
+  markNotificationRead,
+  type AppNotification,
+  type NotificationType,
+} from '@/lib/notifications';
 import { routeForPushData } from '@/lib/push-tap';
 import { supabase } from '@/lib/supabase';
 import { useNotifications } from '@/lib/use-notifications';
@@ -32,6 +37,10 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   match_result_submitted: 'sportscourt.fill',
   match_result_confirmed: 'sportscourt.fill',
   match_result_disputed: 'sportscourt.fill',
+  venue_new_booking: 'calendar',
+  venue_booking_cancelled: 'exclamationmark.triangle.fill',
+  venue_short_game: 'person.2.fill',
+  venue_daily_summary: 'list.clipboard.fill',
 };
 
 function inviteIdOf(notification: AppNotification) {
@@ -70,6 +79,13 @@ export function groupByDay<T extends { created_at: string }>(items: T[], now: Da
  *  writes. */
 async function openNotification(notification: AppNotification) {
   const data = notification.data as Record<string, unknown>;
+
+  // A venue staff notice opens the venue dashboard, as its push does. Checked
+  // before anything else: these carry a bookingId but aren't the staff's own.
+  if (isVenueNotificationType(notification.type)) {
+    router.push(routeForPushData({ ...data, type: notification.type }));
+    return;
+  }
 
   // A match notification (A2) opens the match screen, as its push does.
   if (typeof data.matchId === 'string') {
