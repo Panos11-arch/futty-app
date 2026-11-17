@@ -1,6 +1,6 @@
 # 14 Futty – Claude Code Prompts
 
-7 November 2026, split updated 9 and 11 November · Panos runs P9 and P5, Dimitris the other remaining P prompts, Anghelo the A and U prompts (and the venue data spreadsheets) · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
+7 November 2026, split updated 9 and 11 November · Panos ran P9 and P5's server part, Dimitris runs the P5 screens and the other remaining P prompts, Anghelo the A and U prompts (and the venue data spreadsheets) · Replaces section 7 of 06 Coding · The UI redesign prompts are in 17
 
 **One prompt = one pull request.** Do them in the order below. A prompt starts only when everything in its "Needs" column is merged. Every prompt names the spec sections it implements and the tests that prove it.
 
