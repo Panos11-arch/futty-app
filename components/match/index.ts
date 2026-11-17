@@ -8,3 +8,8 @@ export { HeadToHead, TeamHeadToHead, type HeadToHeadProps, type HeadToHeadState 
 export { PlayerMatchSections } from './player-match-sections';
 export { RecentMatches, type RecentMatchesState } from './recent-matches';
 export { TeammatesList, type TeammatesState } from './teammates-list';
+export { MatchPageSection, type MatchPageSectionProps } from './page-section';
+export { MatchScorers, type MatchScorersProps, type RosterState } from './match-scorers';
+export { MatchMotm, type MatchMotmProps } from './match-motm';
+export { MatchLineup, type MatchLineupProps } from './match-lineup';
+export { Pitch, type PitchProps } from './pitch';

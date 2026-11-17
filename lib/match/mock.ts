@@ -16,6 +16,7 @@ import type {
   MatchStatus,
   Side,
 } from '@/lib/match/types';
+import type { MatchPage, MatchPagePlayer, RosterPlayer } from '@/lib/match/page';
 import type { ResultMatch } from '@/lib/match/result';
 
 export const TEAM_HOME = 'team-home';
@@ -340,3 +341,82 @@ export function mockResultMatch({
   };
 }
 
+
+// ---------------------------------------------------------------------------
+// The match page (A4b): get_match_page's answer and the squad, for the same
+// pickup game as mockResultMatch (Bibs v Non-bibs, Sat 14 Nov 19:00 Cyprus).
+// Confirmed 2–1 at 21:00 Cyprus; scorers and the vote close 24 hours later.
+
+export const PAGE_CONFIRMED_AT = '2026-11-14T19:00:00.000Z';
+export const PAGE_CLOSES_AT = '2026-11-15T19:00:00.000Z';
+/** While scorers and voting are open. */
+export const PAGE_OPEN = Date.parse('2026-11-15T10:00:00.000Z');
+/** Exactly at the close: counts as past it. */
+export const PAGE_CLOSED = Date.parse(PAGE_CLOSES_AT);
+
+export function mockRoster(): RosterPlayer[] {
+  const row = (id: string, side: Side | null, profileId: string | null, name: string, extra: Partial<RosterPlayer> = {}) => ({
+    id,
+    side,
+    profileId,
+    guestName: null,
+    name,
+    leftAt: null,
+    checkedIn: true,
+    ...extra,
+  });
+  return [
+    row('p-booker', 'a', BOOKER, 'Andreas Booker'),
+    row('p-me', 'a', RESULT_PEOPLE.me, 'Me Player'),
+    row('p-guest', 'a', null, 'Kostas (guest)', { guestName: 'Kostas (guest)', checkedIn: false }),
+    row('p-nikos', 'b', 'nikos', 'Nikos Away'),
+    row('p-maria', 'b', 'maria', 'Maria Away', { checkedIn: false }),
+    row('p-left', 'b', 'left', 'Left Player', { leftAt: RESULT_KICKOFF }),
+    row('p-noside', null, 'noside', 'No Side'),
+  ];
+}
+
+const pagePlayer = (p: RosterPlayer): MatchPagePlayer => ({
+  playerId: p.id,
+  profileId: p.profileId,
+  name: p.name,
+  guestName: p.guestName,
+});
+
+export function mockPagePlayer(id: string): MatchPagePlayer {
+  const p = mockRoster().find((r) => r.id === id);
+  if (!p) throw new Error(`no player ${id}`);
+  return pagePlayer(p);
+}
+
+/** get_match_page for that game; confirmed 2–1 by default, no goals entered yet. */
+export function mockMatchPage(overrides: Partial<MatchPage> = {}): MatchPage {
+  const status = overrides.status ?? 'confirmed';
+  const played = status === 'confirmed' && !overrides.forfeit;
+  const confirmedAt = status === 'confirmed' ? PAGE_CONFIRMED_AT : null;
+  return {
+    matchId: 'm1',
+    status,
+    kind: 'pickup',
+    format: '5-a-side',
+    playersPerSide: 5,
+    kickoffAt: RESULT_KICKOFF,
+    kickoffLocal: '2026-11-14T19:00:00',
+    endsAt: RESULT_ENDS,
+    venue: { id: 'v1', name: 'Nuevo Campo' },
+    sides: [
+      { side: 'a', label: 'Bibs', teamId: null, score: played ? 2 : null },
+      { side: 'b', label: 'Non-bibs', teamId: null, score: played ? 1 : null },
+    ],
+    forfeit: null,
+    confirmedAt,
+    scorersOpenUntil: played ? PAGE_CLOSES_AT : null,
+    motmVotingClosesAt: played ? PAGE_CLOSES_AT : null,
+    motmOpen: played,
+    goals: [],
+    motm: [],
+    myVote: null,
+    lineups: [],
+    ...overrides,
+  };
+}
