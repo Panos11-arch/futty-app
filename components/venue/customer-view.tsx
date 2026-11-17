@@ -21,6 +21,7 @@ import {
   formatDay,
   shareStatusLabel,
   type ContactBooking,
+  type CustomerCredit,
   type CustomerDetail,
   type CustomerKind,
   type PlayerBooking,
@@ -31,14 +32,31 @@ function when(b: { booking_day: string; start_time: string; end_time: string }) 
   return `${formatDay(b.booking_day)} · ${hhmm(b.start_time)}–${hhmm(b.end_time)}`;
 }
 
+/** A share still in the game, whose card and cash parts have a state worth showing. */
+const IN_GAME = ['pending', 'authorized', 'paid'];
+
+/** "Player · €0.80 by card, pending · €6.00 cash, not yet received": the
+ *  amounts and states as the server sent them. A share no longer in the game
+ *  shows its state in words and the amounts alone. */
 function playerShare(b: PlayerBooking): string {
   const role = b.is_booker ? 'Booker' : 'Player';
   if (!b.share_status) return `${role} · ${b.format}`;
-  const paid = [
-    b.amount_cents ? `${formatEuros(b.amount_cents)} by card` : null,
-    b.cash_cents ? `${formatEuros(b.cash_cents)} cash` : null,
-  ].filter(Boolean);
-  return [`${role} · ${shareStatusLabel(b.share_status)}${paid.length ? ` ${paid[0]}` : ''}`, ...paid.slice(1)].join(' · ');
+  const inGame = IN_GAME.includes(b.share_status);
+  const card = b.amount_cents
+    ? `${formatEuros(b.amount_cents)} by card${inGame ? (b.share_status === 'paid' ? ', paid' : ', pending') : ''}`
+    : null;
+  const cash = b.cash_cents
+    ? `${formatEuros(b.cash_cents)} cash${inGame ? (b.cash_received ? ', received' : ', not yet received') : ''}`
+    : null;
+  return [role, inGame ? null : shareStatusLabel(b.share_status), card, cash].filter(Boolean).join(' · ');
+}
+
+/** A credit's state from the server: Expired once its expiry has passed, Used up when spent, else Expires. */
+function creditLine(cr: CustomerCredit): string {
+  const on = formatDay(cyprusDateOf(cr.expires_at));
+  if (cr.expired) return `${formatEuros(cr.remaining_cents)} left of ${formatEuros(cr.amount_cents)} · Expired ${on}`;
+  if (cr.remaining_cents === 0) return `${formatEuros(cr.amount_cents)} · Used up`;
+  return `${formatEuros(cr.remaining_cents)} left of ${formatEuros(cr.amount_cents)} · Expires ${on}`;
 }
 
 function contactBooking(b: ContactBooking): string {
@@ -123,11 +141,7 @@ function Detail({ c }: { c: CustomerDetail }) {
             ) : null}
             {c.credits.map((cr) => (
               <View key={cr.credit_id} testID={`customer-credit-${cr.credit_id}`}>
-                <ListRow
-                  title={`${formatEuros(cr.remaining_cents)} left of ${formatEuros(cr.amount_cents)} · ${
-                    cr.available ? 'expires' : 'expired'
-                  } ${formatDay(cyprusDateOf(cr.expires_at))}`}
-                />
+                <ListRow title={creditLine(cr)} />
               </View>
             ))}
           </View>

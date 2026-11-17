@@ -140,12 +140,24 @@ export function playerDetail(overrides: Partial<CustomerDetail> = {}): CustomerD
       {
         booking_id: 'b1', booking_status: 'confirmed', booking_day: '2026-11-17', start_time: '18:00:00',
         end_time: '19:00:00', format: '5v5', is_booker: true, share_status: 'paid', payment_method: 'card',
-        amount_cents: 680, cash_cents: 0,
+        amount_cents: 680, cash_cents: 0, cash_received: null,
       },
       {
         booking_id: 'b2', booking_status: 'cancelled', booking_day: '2026-11-10', start_time: '20:00:00',
         end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'credited', payment_method: 'cash',
-        amount_cents: 80, cash_cents: 600,
+        amount_cents: 80, cash_cents: 600, cash_received: false,
+      },
+      {
+        // Cash, card part not taken yet, cash not ticked.
+        booking_id: 'b5', booking_status: 'confirmed', booking_day: '2026-11-20', start_time: '20:00:00',
+        end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'authorized', payment_method: 'cash',
+        amount_cents: 80, cash_cents: 600, cash_received: false,
+      },
+      {
+        // Cash, card part taken, cash ticked.
+        booking_id: 'b6', booking_status: 'confirmed', booking_day: '2026-11-12', start_time: '20:00:00',
+        end_time: '21:00:00', format: '5v5', is_booker: false, share_status: 'paid', payment_method: 'cash',
+        amount_cents: 80, cash_cents: 600, cash_received: true,
       },
     ],
     debts: [
@@ -153,8 +165,10 @@ export function playerDetail(overrides: Partial<CustomerDetail> = {}): CustomerD
       { debt_id: 'd2', booking_id: 'b4', amount_cents: 600, reason: 'unpaid_share', created_at: '2026-10-01T20:00:00Z', settled_at: '2026-10-02T09:00:00Z', settled_by: 'staff1' },
     ],
     credits: [
-      { credit_id: 'cr1', amount_cents: 580, remaining_cents: 300, issued_at: '2026-11-01T10:00:00Z', expires_at: '2027-11-01T10:00:00Z', available: true },
-      { credit_id: 'cr2', amount_cents: 500, remaining_cents: 400, issued_at: '2025-10-01T10:00:00Z', expires_at: '2026-10-01T10:00:00Z', available: false },
+      { credit_id: 'cr1', amount_cents: 580, remaining_cents: 300, issued_at: '2026-11-01T10:00:00Z', expires_at: '2027-11-01T10:00:00Z', available: true, expired: false },
+      { credit_id: 'cr2', amount_cents: 500, remaining_cents: 400, issued_at: '2025-10-01T10:00:00Z', expires_at: '2026-10-01T10:00:00Z', available: false, expired: true },
+      // Spent, not expired: available is false here too, but it hasn't expired.
+      { credit_id: 'cr3', amount_cents: 100, remaining_cents: 0, issued_at: '2026-11-02T10:00:00Z', expires_at: '2027-11-02T10:00:00Z', available: false, expired: false },
     ],
     ...leak,
     ...overrides,

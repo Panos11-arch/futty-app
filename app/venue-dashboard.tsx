@@ -12,7 +12,8 @@
 // - below, unchanged from before P6c: adding a house player and recurring
 //   training slots (restyled in P6e);
 // - at the top, one tap to each other section (P6d): Money, Bookings,
-//   Customers, Debts, Credits and Payouts.
+//   Customers, Debts, Credits and Payouts (Payouts also keeps P4d's row,
+//   with what it is for).
 // The app never computes an amount: it sends ids and choices, and shows the
 // amounts the server returns.
 import { router } from 'expo-router';
@@ -95,7 +96,7 @@ const SECTIONS = [
   { label: 'Payouts', pathname: '/venue-payouts' },
 ] as const;
 
-type DashboardVenue ={ id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
+type DashboardVenue = { id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };
 
 type BoardState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; board: DayBoard };
 
@@ -295,7 +296,7 @@ export default function VenueDashboardScreen() {
 
         {venue ? (
           <>
-            <View style={styles.wrapRow}>
+            <View style={styles.wrapRow} testID="dashboard-sections">
               {SECTIONS.map((s) => (
                 <Chip
                   key={s.pathname}
@@ -368,6 +369,14 @@ export default function VenueDashboardScreen() {
                 ) : null}
               </>
             ) : null}
+
+            <ListRow
+              title="Payouts"
+              subtitle="Stripe setup, payouts and what each booking paid"
+              leading={{ icon: 'creditcard.fill' }}
+              chevron
+              onPress={() => router.push({ pathname: '/venue-payouts', params: { venueId: venue.id } })}
+            />
 
             <View style={styles.section}>
               <SectionHeader title="6 v 6 on 5-a-side pitches" />

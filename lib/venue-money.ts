@@ -6,9 +6,7 @@
 // 20261113235806_pay_dashboard_people.sql, 20261113235757_pay_dashboard_debt_cash.sql).
 // This file only sends ids, Cyprus dates and filter choices, and puts what
 // comes back into words. It never adds, subtracts or works out an amount.
-import { useEffect, useState } from 'react';
 
-import { useAuth } from '@/lib/auth';
 import type { RevenueExport, RevenueSource, RevenueSourceTotals, RevenueTotals } from '@/lib/money/revenue-csv';
 import { supabase } from '@/lib/supabase';
 import { addDays, cyprusToday, describeVenueError } from '@/lib/venue-today';
@@ -99,6 +97,8 @@ export type PlayerBooking = {
   payment_method: 'card' | 'cash' | null;
   amount_cents: number | null;
   cash_cents: number | null;
+  /** A cash player's cash part: true once the venue has it, false until then; null for a card player or no share. */
+  cash_received: boolean | null;
 };
 
 export type ContactBooking = {
@@ -131,6 +131,8 @@ export type CustomerCredit = {
   issued_at: string;
   expires_at: string;
   available: boolean;
+  /** Its expiry has passed (the server's clock, not the phone's). */
+  expired: boolean;
 };
 
 /** venue_customer's response. */
@@ -440,28 +442,4 @@ export function describeMoneyError(code: string): string {
     default:
       return describeVenueError(code);
   }
-}
-
-// ---- The venue a dashboard screen is for -----------------------------------
-
-export type OwnedVenue = { id: string; name: string };
-
-/** The venue asked for (the `venueId` route param), if the signed-in owner
- *  owns it; else their first venue; null when they own none. Undefined while
- *  loading. The server checks staff again on every call. */
-export function useOwnedVenue(venueParam: string | undefined): OwnedVenue | null | undefined {
-  const { user } = useAuth();
-  const [venue, setVenue] = useState<OwnedVenue | null | undefined>(undefined);
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from('venues')
-      .select('id, name')
-      .eq('owner_profile_id', user.id)
-      .then(({ data }) => {
-        const owned = (data ?? []) as OwnedVenue[];
-        setVenue(owned.find((v) => v.id === venueParam) ?? owned[0] ?? null);
-      });
-  }, [user, venueParam]);
-  return venue;
 }

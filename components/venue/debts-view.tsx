@@ -4,7 +4,7 @@
 // confirm calls settle_debt, which records the whole debt as paid at the
 // venue and Futty's part as owed by the venue (off its next payout). Every
 // amount is the one venue_debt_list returned.
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -53,17 +53,31 @@ export function DebtsView({ venueId }: { venueId: string }) {
   }, [venueId, includeSettled]);
   const { state, reload } = useLoad(`${venueId}|${show}`, load);
 
+  // Set at once on the confirm tap, so a second tap before React re-renders
+  // the disabled button sends nothing.
+  const settlingRef = useRef(false);
+
   async function confirmSettled() {
-    if (!asking) return;
+    if (!asking || settlingRef.current) return;
+    settlingRef.current = true;
     setSettling(true);
     const { error } = await settleDebt(asking.debt_id);
+    settlingRef.current = false;
     setSettling(false);
     setAsking(null);
-    if (error) setNotice(describeMoneyError(error.message));
-    else {
+    if (error) {
+      setNotice(describeMoneyError(error.message));
+      // Settled or gone meanwhile: the list on screen is out of date.
+      if (error.message === 'debt_settled' || error.message === 'debt_not_found') reload();
+    } else {
       setNotice(null);
       reload();
     }
+  }
+
+  // The sheet can't be closed while settle_debt runs.
+  function closeSheet() {
+    if (!settlingRef.current) setAsking(null);
   }
 
   return (
@@ -121,10 +135,10 @@ export function DebtsView({ venueId }: { venueId: string }) {
 
       <Sheet
         visible={asking !== null}
-        onClose={() => setAsking(null)}
+        onClose={closeSheet}
         title="Mark debt settled"
         primaryAction={{ label: 'Yes, settled', onPress: confirmSettled, loading: settling, disabled: settling }}
-        secondaryAction={{ label: 'Not yet', onPress: () => setAsking(null) }}>
+        secondaryAction={{ label: 'Not yet', disabled: settling }}>
         {asking ? (
           <>
             <Text variant="body">

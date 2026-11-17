@@ -1,37 +1,46 @@
 // The frame for a venue dashboard screen opened from the dashboard (P6d):
-// its title, the canvas background, and the venue it's for (the `venueId`
-// route param, if the signed-in owner owns it). The screen's own view gets
-// the venue's id; the server checks staff again on every call.
-import { Stack, useLocalSearchParams } from 'expo-router';
+// its title with the venue's name, the canvas background, and the venue it's
+// for (the `venueId` route param, only if the signed-in owner owns it; never
+// another of their venues in its place). Signed out goes to sign-in. The
+// screen's own view gets the venue's id; the server checks staff again on
+// every call.
+import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EmptyState, SkeletonBlock } from '@/components/ui';
+import { Banner, EmptyState, SkeletonBlock } from '@/components/ui';
 import { colors, space } from '@/constants/futty-theme';
-import { useOwnedVenue } from '@/lib/venue-money';
+import { useOwnedVenue } from '@/lib/use-owned-venue';
 
 export function VenueScreen({ title, children }: { title: string; children: (venueId: string) => ReactNode }) {
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
-  const venue = useOwnedVenue(venueId);
+  const { state, reload } = useOwnedVenue(venueId);
+
+  if (state.status === 'signed_out') return <Redirect href="/sign-in" />;
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
-      <Stack.Screen options={{ title }} />
-      {venue === undefined ? (
-        <View style={styles.loading}>
+      <Stack.Screen options={{ title: state.status === 'ready' ? `${title} · ${state.venue.name}` : title }} />
+      {state.status === 'loading' ? (
+        <View style={styles.padded}>
           <SkeletonBlock width="100%" height={space.xxl * 8} />
         </View>
       ) : null}
-      {venue === null ? (
-        <EmptyState icon="building.columns.fill" message="No venues are linked to your account yet. Ask Futty to link your venue." />
+      {state.status === 'not_found' ? (
+        <EmptyState icon="building.columns.fill" message="This venue isn’t linked to your account." />
       ) : null}
-      {venue ? children(venue.id) : null}
+      {state.status === 'error' ? (
+        <View style={styles.padded}>
+          <Banner tone="danger" message={state.message} action={{ label: 'Try again', onPress: reload }} />
+        </View>
+      ) : null}
+      {state.status === 'ready' ? children(state.venue.id) : null}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  loading: { padding: space.lg },
+  padded: { padding: space.lg },
 });
