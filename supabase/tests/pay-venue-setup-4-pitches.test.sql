@@ -27,6 +27,9 @@ declare
   v_old public.venue_bookings;
   v_setup jsonb;
   v_pitch jsonb;
+  v_saved public.pitches;
+  v_f uuid;
+  v_on_f public.venue_bookings;
 begin
   select id into v_other_pitch from public.pitches where venue_id = v_other_venue;
   perform tests.set_price(v_venue, '5-a-side', 6000);
@@ -56,6 +59,29 @@ begin
   assert (select name from public.pitches where id = v_a) = 'Pitch 1', 'renamed';
   assert (select surface from public.pitches where id = v_a) = '4G', 'new surface';
   assert (select sort_order from public.pitches where id = v_a) = 3, 'new order';
+  assert (select description from public.pitches where id = v_a) = 'By the café', 'a missing description is kept';
+
+  -- A missing field keeps its saved value, for every field; an empty
+  -- surface or description clears it.
+  perform tests.act_as(v_owner);
+  perform public.save_pitch(v_venue, v_a, null, null, null, null, null, null, null);
+  perform tests.act_as_postgres();
+  select * into v_saved from public.pitches where id = v_a;
+  assert v_saved.name = 'Pitch 1' and v_saved.size = '5-a-side' and v_saved.formats = array['5-a-side']
+         and v_saved.surface = '4G' and v_saved.indoor and v_saved.description = 'By the café'
+         and v_saved.sort_order = 3, format('nothing sent, nothing changed: %s', to_jsonb(v_saved));
+  perform tests.act_as(v_owner);
+  perform public.save_pitch(v_venue, v_a, null, null, null, '', null, ' ', null);
+  perform tests.act_as_postgres();
+  select * into v_saved from public.pitches where id = v_a;
+  assert v_saved.surface is null and v_saved.description is null, 'empty surface and description clear them';
+  assert v_saved.name = 'Pitch 1' and v_saved.indoor and v_saved.sort_order = 3, 'the rest is kept';
+  assert tests.error_as(v_owner, format(
+    $q$select public.save_pitch(%L, %L, ' ', null, null, null, null, null, null)$q$, v_venue, v_a))
+    = 'invalid_pitch', 'an empty name isn''t a name';
+  assert tests.error_as(v_owner, format(
+    $q$select public.save_pitch(%L, null, 'Pitch Z', null, null, null, null, null, null)$q$, v_venue))
+    = 'invalid_pitch', 'a new pitch needs its size and formats';
   assert tests.error_as(v_owner, format(
     $q$select public.save_pitch(%L, %L, 'Pitch 1', '7-a-side', array['7-a-side'], '4G', true, null, 3)$q$, v_venue, v_a))
     = 'pitch_has_future_bookings', 'no size change with a future game';
@@ -77,6 +103,10 @@ begin
   assert tests.error_as(v_booker, format(
     $q$select public.book_slot(%L, %L, '10:00', '11:00', 1, '5-a-side', 5, 'each_pays_own_spot')$q$, v_venue, v_day))
     = 'slot_full', 'no second 5-a-side while B is closed';
+  -- Combined either: the 7-a-side combination of A and B is out while B is closed.
+  assert tests.error_as(v_booker, format(
+    $q$select public.book_slot(%L, %L, '14:00', '15:00', 1, '7-a-side', 5, 'each_pays_own_spot')$q$, v_venue, v_day))
+    = 'slot_full', 'no 7-a-side on a combination with a closed pitch';
   assert (select status from public.venue_bookings where id = v_seven.id) <> 'cancelled', 'the game on B stays on';
   assert exists (select 1 from public.booking_pitches where booking_id = v_seven.id and pitch_id = v_b), 'and keeps B';
   perform tests.act_as(v_owner);
@@ -102,6 +132,23 @@ begin
   assert (select size from public.pitches where id = v_d) = '7-a-side', 'size changes with only a past game';
   assert tests.error_as(v_owner, format($q$select public.delete_pitch(%L)$q$, v_d))
     = 'pitch_has_bookings', 'a pitch with a past game can''t be deleted';
+
+  -- A pitch whose only game was cancelled holds none: it can be deleted.
+  -- (A and B are closed and D is now a 7-a-side pitch, so the game goes on F.)
+  perform tests.act_as(v_owner);
+  v_f := public.save_pitch(v_venue, null, 'Pitch F', '5-a-side', array['5-a-side'], null, false, null, 6);
+  perform tests.act_as(v_second);
+  v_on_f := public.book_slot(v_venue, v_day, '15:00', '16:00', 1, '5-a-side', 5, 'each_pays_own_spot');
+  perform tests.act_as_postgres();
+  assert (select pitch_id from public.booking_pitches where booking_id = v_on_f.id) = v_f, 'booked on F';
+  assert tests.error_as(v_owner, format($q$select public.delete_pitch(%L)$q$, v_f))
+    = 'pitch_has_bookings', 'F holds a game';
+  perform tests.cancel(v_on_f.id, 'whole_team', v_second);
+  assert (select status from public.venue_bookings where id = v_on_f.id) = 'cancelled', 'the game on F is cancelled';
+  perform tests.act_as(v_owner);
+  perform public.delete_pitch(v_f);
+  perform tests.act_as_postgres();
+  assert not exists (select 1 from public.pitches where id = v_f), 'a pitch whose only game was cancelled is deleted';
 
   -- An unused pitch can be deleted, with its combinations.
   perform tests.act_as(v_owner);

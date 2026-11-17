@@ -1,9 +1,9 @@
 -- Venue setup security (docs/specs/13-payments-bookings.md "Venue setup" and
 -- "Server-side checks"): only a venue's own staff can edit its setup, through
 -- the setup functions only. Staff of venue B get nothing done on venue A,
--- even by passing A's row ids with B's venue id; players and signed-out
--- callers are refused; the tables still can't be written directly; the
--- notice helper and its table are Futty's own.
+-- even by passing A's row ids with B's venue id, and learn nothing from A's
+-- ids; players and signed-out callers are refused; the tables still can't be
+-- written directly; the notice and pitch helpers are Futty's own.
 begin;
 
 do $$
@@ -22,6 +22,8 @@ declare
   v_before jsonb;
   v_after jsonb;
   v_call text;
+  v_missing text;
+  v_pair text[];
   v_error text;
 begin
   select id into v_pitch_a from public.pitches where venue_id = v_venue_a order by sort_order limit 1;
@@ -33,25 +35,50 @@ begin
   v_before := public.venue_setup(v_venue_a);
   perform tests.act_as_postgres();
 
-  -- Staff of venue B, and a player, get not_venue_staff on every function.
+  -- Functions given a venue id: staff of venue B, and a player, get
+  -- not_venue_staff.
   foreach v_call in array array[
     format($q$select public.venue_setup(%L)$q$, v_venue_a),
     format($q$select public.set_venue_hours(%L, '[]')$q$, v_venue_a),
     format($q$select public.add_venue_closure(%L, %L, %L, null)$q$, v_venue_a, v_day, v_day),
-    format($q$select public.remove_venue_closure(%L)$q$, v_closure_a),
     format($q$select public.set_price_rule(%L, '5-a-side', 1, null, null, null, null, null, null)$q$, v_venue_a),
     format($q$select public.remove_price_rule(%L, '5-a-side')$q$, v_venue_a),
     format($q$select public.save_pitch(%L, null, 'Sneaky', '5-a-side', array['5-a-side'], null, false, null, 0)$q$, v_venue_a),
     format($q$select public.save_pitch(%L, %L, 'Sneaky', '5-a-side', array['5-a-side'], null, false, null, 0)$q$,
            v_venue_a, v_pitch_a),
-    format($q$select public.set_pitch_open(%L, false)$q$, v_pitch_a),
-    format($q$select public.delete_pitch(%L)$q$, v_pitch_a),
-    format($q$select public.add_pitch_combination(%L, '7-a-side', array[%L, %L]::uuid[])$q$, v_venue_a, v_pitch_a, v_pitch_a2),
-    format($q$select public.remove_pitch_combination(%L)$q$, v_combo_a)
+    format($q$select public.add_pitch_combination(%L, '7-a-side', array[%L, %L]::uuid[])$q$, v_venue_a, v_pitch_a, v_pitch_a2)
   ]
   loop
     v_error := tests.error_as(v_owner_b, v_call);
     assert v_error = 'not_venue_staff', format('venue B staff: %s gave %s', v_call, v_error);
+    v_error := tests.error_as(v_player, v_call);
+    assert v_error = 'not_venue_staff', format('a player: %s gave %s', v_call, v_error);
+    perform tests.act_as_anon();
+    v_error := tests.error_of(v_call);
+    perform tests.act_as_postgres();
+    assert v_error like 'permission denied%', format('signed out: %s gave %s', v_call, v_error);
+  end loop;
+
+  -- Functions given only a row id check staff before the row: a player gets
+  -- not_venue_staff, and staff of venue B get the same answer for A's row
+  -- as for an id that doesn't exist, so A's ids reveal nothing.
+  foreach v_pair slice 1 in array array[
+    array[format($q$select public.remove_venue_closure(%L)$q$, v_closure_a),
+          format($q$select public.remove_venue_closure(%L)$q$, gen_random_uuid())],
+    array[format($q$select public.set_pitch_open(%L, false)$q$, v_pitch_a),
+          format($q$select public.set_pitch_open(%L, false)$q$, gen_random_uuid())],
+    array[format($q$select public.delete_pitch(%L)$q$, v_pitch_a),
+          format($q$select public.delete_pitch(%L)$q$, gen_random_uuid())],
+    array[format($q$select public.remove_pitch_combination(%L)$q$, v_combo_a),
+          format($q$select public.remove_pitch_combination(%L)$q$, gen_random_uuid())]
+  ]
+  loop
+    v_call := v_pair[1];
+    v_missing := v_pair[2];
+    v_error := tests.error_as(v_owner_b, v_call);
+    assert v_error like '%_not_found', format('venue B staff: %s gave %s', v_call, v_error);
+    assert v_error = tests.error_as(v_owner_b, v_missing),
+      format('venue B staff: %s gave %s, unlike a missing id', v_call, v_error);
     v_error := tests.error_as(v_player, v_call);
     assert v_error = 'not_venue_staff', format('a player: %s gave %s', v_call, v_error);
     perform tests.act_as_anon();
@@ -102,11 +129,9 @@ begin
       format('direct: %s gave %s', v_call, v_error);
   end loop;
 
-  -- The notice record and its helper are Futty's own.
+  -- The notice and pitch helpers are Futty's own.
   foreach v_call in array array[
-    'select * from public.venue_closed_notices',
-    'insert into public.venue_closed_notices (booking_id, profile_id) values (gen_random_uuid(), gen_random_uuid())',
-    format($q$select public.notify_closed_new_bookings(%L, array[]::uuid[])$q$, v_venue_a),
+    format($q$select public.notify_closed_new_bookings(%L, array[]::uuid[], '{}'::jsonb)$q$, v_venue_a),
     format($q$select public.pitch_has_bookings(%L, false)$q$, v_pitch_a)
   ]
   loop

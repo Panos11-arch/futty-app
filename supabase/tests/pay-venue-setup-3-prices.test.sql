@@ -106,6 +106,17 @@ begin
   assert tests.error_as(v_owner, format(
     $q$select public.set_price_rule(%L, '5-a-side', 5000, null, -5, null, null, null, null)$q$, v_venue))
     = 'invalid_price', 'a negative weekend price';
+  -- A price is more than €0 (decided 17 November): a €0 price would make
+  -- free games by mistake.
+  assert tests.error_as(v_owner, format(
+    $q$select public.set_price_rule(%L, '5-a-side', 0, null, null, null, null, null, null)$q$, v_venue))
+    = 'invalid_price', 'a €0 price';
+  assert tests.error_as(v_owner, format(
+    $q$select public.set_price_rule(%L, '5-a-side', 5000, 0, null, null, null, null, null)$q$, v_venue))
+    = 'invalid_price', 'a €0 peak price';
+  assert tests.error_as(v_owner, format(
+    $q$select public.set_price_rule(%L, '5-a-side', 5000, null, 0, null, null, null, null)$q$, v_venue))
+    = 'invalid_price', 'a €0 weekend price';
   assert tests.error_as(v_owner, format(
     $q$select public.set_price_rule(%L, 'futsal', 5000, null, null, null, null, null, null)$q$, v_venue))
     = 'invalid_format', 'not a format';

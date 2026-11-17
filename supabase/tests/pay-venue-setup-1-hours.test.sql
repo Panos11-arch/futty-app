@@ -11,6 +11,9 @@ declare
   v_other_owner uuid := tests.create_user('hours-other-owner@futty.test');
   v_booker uuid := tests.create_user('hours-booker@futty.test');
   v_newcomer uuid := tests.create_user('hours-newcomer@futty.test');
+  v_morning_booker uuid := tests.create_user('hours-morning@futty.test');
+  v_morning public.venue_bookings;
+  v_long_week jsonb;
   v_venue uuid := tests.create_venue(p_owner => v_owner, p_pitches => 1);
   v_other_venue uuid := tests.create_venue(p_owner => v_other_owner, p_pitches => 1);
   v_wed date := tests.next_weekday(3);
@@ -33,6 +36,8 @@ begin
   perform tests.pay_ago((tests.player(v_booking.id, 0)).id, 'pi_hours_0', interval '2 hours');
   update public.booking_payment_shares set status = 'cancelled'
   where booking_id = v_booking.id and profile_id = v_left;
+  -- A game the same Wednesday morning, inside the new hours.
+  v_morning := tests.booking_with_players(v_morning_booker, v_venue, 'each_pays_own_spot', 0, v_wed, '10:00', '11:00', 'hours-am');
 
   -- The owner shortens Wednesday to 08:00-18:00, keeps the other days until
   -- midnight (24:00) and closes on Sundays (no row).
@@ -75,6 +80,31 @@ begin
   perform tests.act_as_postgres();
   assert (select count(*) from public.notifications
           where profile_id = v_booker and type = 'venue_closed_new_bookings') = 1, 'told only once';
+  -- The game inside the new hours isn't told.
+  assert not exists (select 1 from public.notifications
+                     where profile_id = v_morning_booker and type = 'venue_closed_new_bookings'),
+    'a game inside the new hours isn''t told';
+
+  -- Each change to the hours is its own notice (decided 17 November): the
+  -- owner opens Wednesday until midnight again (nobody is told), then
+  -- shortens it again, and the players still in the evening game are told
+  -- a second time. The morning game is still inside the hours.
+  v_long_week := jsonb_set(v_week, '{2,closes}', '"24:00"');
+  perform tests.act_as(v_owner);
+  perform public.set_venue_hours(v_venue, v_long_week);
+  perform tests.act_as_postgres();
+  assert (select count(*) from public.notifications
+          where profile_id = v_booker and type = 'venue_closed_new_bookings') = 1, 'longer hours tell nobody';
+  perform tests.act_as(v_owner);
+  perform public.set_venue_hours(v_venue, v_week);
+  perform tests.act_as_postgres();
+  assert (select count(*) from public.notifications
+          where profile_id = v_booker and type = 'venue_closed_new_bookings') = 2, 'a new change tells the booker again';
+  assert (select count(*) from public.notifications
+          where profile_id = v_stayed and type = 'venue_closed_new_bookings') = 2, 'and the player still in';
+  assert not exists (select 1 from public.notifications
+                     where profile_id = v_morning_booker and type = 'venue_closed_new_bookings'),
+    'the morning game still isn''t told';
 
   -- New bookings follow the new hours.
   assert tests.error_as(v_newcomer, format(
