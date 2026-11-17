@@ -389,39 +389,6 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
               No service fee on your own spot
             </Text>
           </View>
-          <View
-            style={
-              {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 12,
-              }
-            }
-          >
-            <View
-              testID="icon-checkmark.circle.fill"
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
-                  },
-                  {
-                    "color": "#0B1215",
-                  },
-                  false,
-                  {
-                    "flex": 1,
-                  },
-                ]
-              }
-            >
-              Verified badge on your profile
-            </Text>
-          </View>
         </View>
         <View
           accessibilityLabel="Subscribe"
