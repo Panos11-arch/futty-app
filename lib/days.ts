@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
+import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
+
 export const DAY_PICKER_LENGTH = 21;
 
 /**
@@ -63,8 +65,30 @@ export function monthLabel(date: Date) {
   return date.toLocaleDateString(undefined, { month: 'short' });
 }
 
-export function isToday(date: Date) {
-  return toDateKey(date) === toDateKey(new Date());
+/**
+ * Whether `date` (a day as toDateKey/dateKeyToDate build it) is today in Cyprus
+ * (Asia/Nicosia), not today on the phone. Booking and fixture days are Cyprus
+ * dates, so a phone still on London, New York or Tokyo time must not move
+ * "Today" to another day.
+ */
+export function isToday(date: Date, now: Date = new Date()) {
+  return toDateKey(date) === cyprusDateKey(now);
+}
+
+const cyprusDate = new Intl.DateTimeFormat('en-GB', {
+  timeZone: CYPRUS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** The Cyprus date (YYYY-MM-DD) at the instant `now`. Same as cyprusToday in
+ *  lib/venue-today.ts, which can't be imported here: it pulls in the Supabase
+ *  client. */
+function cyprusDateKey(now: Date) {
+  const parts: Record<string, string> = {};
+  for (const part of cyprusDate.formatToParts(now)) parts[part.type] = part.value;
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 /** Inverse of toDateKey — parses "YYYY-MM-DD" as a local midnight Date, not UTC. */
@@ -88,6 +112,7 @@ export function dateKeyAndTimeToDate(dateKey: string, time: string) {
   return date;
 }
 
-export function dayLabel(date: Date) {
-  return isToday(date) ? 'Today' : `${weekdayLabel(date)} ${dayNumberLabel(date)} ${monthLabel(date)}`;
+/** "Today" when `date` is today in Cyprus, otherwise "Mon 3 Aug". */
+export function dayLabel(date: Date, now: Date = new Date()) {
+  return isToday(date, now) ? 'Today' : `${weekdayLabel(date)} ${dayNumberLabel(date)} ${monthLabel(date)}`;
 }
