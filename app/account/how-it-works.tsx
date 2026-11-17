@@ -34,8 +34,7 @@ export default function HowFuttyWorksScreen() {
       <DocHeading>4. XP, stats and Premium</DocHeading>
       <DocParagraph>
         Every logged result feeds your profile&apos;s games/goals/win-rate and XP tier. Premium
-        unlocks booking further ahead and a verified badge; Team Premium unlocks the 9- and
-        11-a-side leagues for your team.
+        unlocks booking further ahead and a verified badge.
       </DocParagraph>
     </DocScreen>
   );

@@ -69,13 +69,6 @@ const ALLOWED: { file: string; text: string; why: string }[] = [
     text: "match_reminder_2h: '2 hours before a game'",
     why: 'A match reminder setting (match record, docs/specs/match-record.md), not a spec 13 rule.',
   },
-  {
-    file: 'app/account/terms.tsx',
-    text: 'still unpaid 3 hours before kickoff',
-    why:
-      'Terms of Use text, out of date (spec 13 removed the 3-hour auto-cancel) but legal wording: ' +
-      'spec 13 "Legal check before real money" says the terms are rewritten with legal advice. Remove this entry then.',
-  },
 ];
 
 function hits(pattern: RegExp): string[] {

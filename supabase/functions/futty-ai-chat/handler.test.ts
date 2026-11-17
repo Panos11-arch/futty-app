@@ -287,6 +287,13 @@ Deno.test('the old, wrong facts are gone', () => {
   ok(!prompt.includes('Switching a booking between 5 v 5 and 6 v 6 after booking is coming soon'), 'switching has shipped');
 });
 
+Deno.test('P7: Team Premium is off for the release, so the Futty AI never sells it', () => {
+  const prompt = buildSystemPrompt(SPEC_RULES);
+  ok(prompt.includes('Team Premium is not on sale yet'), 'says it is not on sale');
+  ok(prompt.includes('9-a-side and 11-a-side leagues are coming soon'), 'those leagues are coming soon');
+  for (const price of ['€45', '€59']) ok(!prompt.includes(price), `no Team Premium price ${price}`);
+});
+
 Deno.test("switching's €60 example is an example, never a rule or the cancellation fee", () => {
   const example = 'Example only: on a €60 pitch, €6.00 a player becomes €5.00, so €1.00 each.';
   const sameExample = '(on the same €60 example, €1.00 each)';

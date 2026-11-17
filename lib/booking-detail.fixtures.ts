@@ -31,6 +31,7 @@ export function bookerDetail(overrides: Partial<BookingDetailData> = {}): Bookin
   return {
     ...base,
     cancellation: TERMS,
+    venueTakingPlayers: true,
     is_booker: true,
     roster: [
       entry({ share_id: 's1', profile_id: 'p1', name: 'Dimitris', is_booker: true, is_me: true, state: 'in_app', amount_cents: 580, cash_cents: 0 }),
@@ -53,6 +54,7 @@ export function playerDetail(overrides: Partial<BookingDetailData> = {}): Bookin
   return {
     ...base,
     cancellation: TERMS,
+    venueTakingPlayers: true,
     is_booker: false,
     roster: [
       entry({ share_id: 's1', profile_id: 'p1', name: 'Dimitris', is_booker: true, state: 'in_app' }),

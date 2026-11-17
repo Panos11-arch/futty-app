@@ -20,8 +20,15 @@ import { hoursText, ruleText } from '@/lib/rules';
 import { supabase } from '@/lib/supabase';
 import type { CancellationTerms } from '@/lib/venue-page';
 
-/** A booking's detail, with the cancellation numbers the countdown uses. */
-export type BookingDetailData = BookingDetail & { cancellation: CancellationTerms };
+/** A booking's detail, with the cancellation numbers the countdown uses,
+ *  and whether its venue is taking new players (P7): the server's
+ *  venues.is_live, which a player in the booking may read. False when the
+ *  venue isn't live (the server refuses invites and joins there); null
+ *  when it couldn't be read (the screen then leaves invites as they are,
+ *  and the server still decides). */
+export type BookingDetailData = BookingDetail & { cancellation: CancellationTerms; venueTakingPlayers: boolean | null };
+
+export const VENUE_NOT_TAKING_PLAYERS = "This venue isn't taking new players on Futty right now.";
 
 export async function fetchBookingDetail(bookingId: string): Promise<BookingDetailData> {
   const [detail, terms] = await Promise.all([
@@ -30,7 +37,14 @@ export async function fetchBookingDetail(bookingId: string): Promise<BookingDeta
   ]);
   const error = detail.error ?? terms.error;
   if (error) throw new Error(describeBookingErrorMessage(error.message));
-  return { ...(detail.data as BookingDetail), cancellation: terms.data as CancellationTerms };
+  const data = detail.data as BookingDetail;
+  const venue = await supabase.from('venues').select('is_live').eq('id', data.venue.id).maybeSingle();
+  const live = (venue.data as { is_live?: unknown } | null)?.is_live;
+  return {
+    ...data,
+    cancellation: terms.data as CancellationTerms,
+    venueTakingPlayers: typeof live === 'boolean' ? live : null,
+  };
 }
 
 // ---- Roster -------------------------------------------------------------

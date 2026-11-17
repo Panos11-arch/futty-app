@@ -10,6 +10,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { FuttyColors } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
+import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
 import { playHref } from '@/lib/play-segments';
 import { useMyTeams } from '@/lib/use-my-teams';
@@ -184,7 +185,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
         </View>
       </ThemedView>
 
-      {isCaptain ? <TeamPremiumSection team={team} /> : null}
+      {isCaptain && TEAM_PREMIUM_ENABLED ? <TeamPremiumSection team={team} /> : null}
 
       <IconLabel icon="person.2.fill" type="subtitle">
         Roster ({team.roster_size} {team.substitute_slots > 0 ? `+ ${team.substitute_slots} subs` : ''})

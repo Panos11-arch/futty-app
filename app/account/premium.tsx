@@ -7,7 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
 import { useThemeColor } from '@/hooks/use-theme-color';
-import { personalPremiumPriceLabel } from '@/lib/premium';
+import { personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useRules } from '@/lib/use-rules';
@@ -48,7 +48,7 @@ export default function GoPremiumScreen() {
   const myCaptainedTeam =
     myTeams.status === 'ready' ? myTeams.teams.find((t) => t.role === 'captain')?.team ?? null : null;
 
-  const rows: PlanRow[] = [
+  const allRows: PlanRow[] = [
     {
       plan: 'personal',
       icon: 'star.fill',
@@ -73,6 +73,8 @@ export default function GoPremiumScreen() {
       disabledNote: myCaptainedTeam ? undefined : 'Captain a team to unlock',
     },
   ];
+  // Team Premium is off for the release (lib/premium.ts).
+  const rows = allRows.filter((row) => row.plan === 'personal' || TEAM_PREMIUM_ENABLED);
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
