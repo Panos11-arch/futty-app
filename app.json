@@ -85,6 +85,21 @@
           "enableGooglePay": true
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Futty uses your photos so venue staff can add pitch and menu pictures.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Futty uses the camera to scan the venue's check-in code.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
       "./plugins/withCrashReasonFile"
