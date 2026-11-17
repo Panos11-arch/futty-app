@@ -470,6 +470,23 @@ A venue can offer a player to a team that's short (05 §12, item 11a); the booke
   - the booker sees open and accepted offers;
   - the other players see accepted venue players by name.
 
+## No-shows (decided 17 November, Anghelo and Dimitris; for Panos to confirm)
+
+Spec 05 §10 and §12 item 7: the venue's no-show record. **No money moves:** a no-show still owes their share, as "Short games" says. Nothing here touches shares, the ledger, debts, credit or Stripe.
+
+- **Who is a no-show (Anghelo, 17 November; closes match-record.md question 9):** a player who held a spot in the booking (their share is still in: pending, authorized, paid or covered, and they haven't left the match) and didn't check in (no `match_attendance` row: QR, ticked by their captain or ticked by the venue). An opposing squad member who held no spot never counts. Neither does a venue-offered player, who has no share. A cancelled (void) game has no no-shows.
+- **When it's final:** until 1 hour after the end (QR check-in still open) the player hasn't checked in *yet*. From then until the result deadline (24 hours after the end, when the captain's ticking also closes) they **didn't check in**, and the venue can still tick them. At the deadline they're a final **no-show**. "Exactly at the deadline" counts as past it.
+- **Staff can tick a player who came but didn't scan** ("Mark arrived"), from 60 minutes before kickoff until the result deadline, for players holding a spot only. A venue tick counts as a check-in like any other: form, stats, man of the match and ratings (match-record.md decision 1b.2). A player ticked while man-of-the-match voting is open is told once, as for a captain's tick.
+- **Undo:** staff can undo only a venue tick, in the same window, and never a QR check-in or a captain's tick. An undo is refused once the player has used the check-in: they voted for man of the match (and, from A5, rated a player).
+- **What staff see:**
+  - each player on the booking's roster shows *Checked in*, *Ticked by venue*, *Not checked in yet*, *Didn't check in* or *No-show*;
+  - each player shows how many final no-shows they have at this venue;
+  - a customer's page shows their no-show count at this venue and marks each booking where they didn't show.
+
+  A no-show at one venue is never shown to another venue.
+- **No forfeit:** a whole side not showing isn't recorded as a forfeit here. Who may record a `no_show` forfeit stays open (match-record.md question 10.1), because in Gipedo Pano a forfeit decides who pays. The side that turned up can enter the result, and it stands at the deadline.
+- **No notifications** about no-shows, to players or staff.
+
 ## Rules in one place (decided 15 November)
 
 Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
