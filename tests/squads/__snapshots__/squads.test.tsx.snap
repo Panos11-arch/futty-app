@@ -725,7 +725,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
                   "borderRadius": 999,
                   "borderWidth": 0.5,
                   "paddingHorizontal": 8,
-                  "paddingVertical": 2,
+                  "paddingVertical": 4,
                 }
               }
             >

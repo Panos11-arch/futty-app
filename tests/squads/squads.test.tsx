@@ -14,7 +14,21 @@ const mockLeave = jest.fn();
 const mockOffer = jest.fn();
 const mockCancelOffer = jest.fn();
 
-jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+let mockShare: { id: string } | null = null;
+const mockInvoke = jest.fn();
+const mockCreateSharePayment = jest.fn();
+
+jest.mock('@/lib/supabase', () => {
+  const shareQuery = {
+    select: () => shareQuery,
+    eq: () => shareQuery,
+    maybeSingle: () => Promise.resolve({ data: mockShare, error: null }),
+  };
+  return { supabase: { from: () => shareQuery, functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } } };
+});
+jest.mock('@/lib/booking-shares', () => ({
+  createSharePayment: (...args: unknown[]) => mockCreateSharePayment(...args),
+}));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 jest.mock('@/lib/use-squad-posts', () => ({
   useSquadPosts: (type: string) => {
@@ -150,5 +164,73 @@ describe('Squads', () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: 'op1' } });
     await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(mockCancelOffer).toHaveBeenCalledWith('op1'));
+  });
+});
+
+describe('Squads: offer and pay my share (Gipedo Pano hold)', () => {
+  const g = globalThis as { mockInitPaymentSheet?: jest.Mock; mockPresentPaymentSheet?: jest.Mock };
+
+  beforeEach(() => {
+    params.mockSearchParams = { view: 'opposition' };
+    mockMyTeams = { status: 'ready', teams: [{ role: 'captain', team: { id: 'mine', name: 'Tigers' } }] };
+    mockPosts = { status: 'ready', posts: [{ ...oppositionPost, payment_mode: 'gipedo_pano' }] };
+    mockShare = { id: 'share9' };
+    mockOffer.mockResolvedValue({ error: null });
+    mockCancelOffer.mockResolvedValue({ error: null });
+    mockInvoke.mockResolvedValue({ error: null });
+    mockCreateSharePayment.mockResolvedValue({ data: { clientSecret: 'cs_9' }, error: null });
+    g.mockInitPaymentSheet = jest.fn().mockResolvedValue({ error: null });
+    g.mockPresentPaymentSheet = jest.fn().mockResolvedValue({ error: null });
+  });
+
+  async function offer() {
+    await render(<SquadsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Offer to play them' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Tigers' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Offer and pay my share' }));
+  }
+
+  it('places the hold with the same calls, in order, then tells both rosters', async () => {
+    const { walletPayOptions } = jest.requireActual<typeof import('@/lib/wallet-pay')>('@/lib/wallet-pay');
+    await offer();
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith('notify-opposition-matched', { body: { postId: 'op1', payerProfileId: 'me' } })
+    );
+    expect(mockOffer).toHaveBeenCalledWith('op1', 'mine');
+    expect(mockCreateSharePayment).toHaveBeenCalledWith('share9');
+    expect(g.mockInitPaymentSheet).toHaveBeenCalledWith({
+      merchantDisplayName: 'Futty',
+      ...walletPayOptions,
+      paymentIntentClientSecret: 'cs_9',
+    });
+    const order = [mockOffer, mockCreateSharePayment, g.mockInitPaymentSheet!, g.mockPresentPaymentSheet!, mockInvoke].map(
+      (m) => m.mock.invocationCallOrder[0]
+    );
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(mockCancelOffer).not.toHaveBeenCalled();
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('a cancelled sheet withdraws the offer and shows no error', async () => {
+    g.mockPresentPaymentSheet = jest.fn().mockResolvedValue({ error: { code: 'Canceled', message: 'Canceled' } });
+    await offer();
+    await waitFor(() => expect(mockCancelOffer).toHaveBeenCalledWith('op1'));
+    expect(screen.queryByText('Canceled')).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  it('a failed payment start withdraws the offer and shows why', async () => {
+    mockCreateSharePayment.mockResolvedValue({ data: null, error: null });
+    await offer();
+    await waitFor(() => expect(mockCancelOffer).toHaveBeenCalledWith('op1'));
+    expect(await screen.findByText('Couldn\'t start payment.')).toBeTruthy();
+    expect(g.mockInitPaymentSheet).not.toHaveBeenCalled();
+  });
+
+  it('no share (not a Gipedo Pano booking): nothing to pay, the match is on', async () => {
+    mockShare = null;
+    await offer();
+    await waitFor(() => expect(mockReload).toHaveBeenCalled());
+    expect(mockCreateSharePayment).not.toHaveBeenCalled();
   });
 });

@@ -456,10 +456,10 @@ const styles = StyleSheet.create({
     borderWidth: hairline,
     borderColor: colors.border,
     paddingHorizontal: space.sm,
-    paddingVertical: 2,
+    paddingVertical: space.xs,
   },
   quote: {
-    borderLeftWidth: 2,
+    borderLeftWidth: space.xs / 2,
     borderLeftColor: colors.border,
     paddingLeft: space.md,
     paddingVertical: space.xs,

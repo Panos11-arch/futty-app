@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   quote: {
-    borderLeftWidth: 2,
+    borderLeftWidth: space.xs / 2,
     borderLeftColor: colors.border,
     paddingLeft: space.md,
     paddingVertical: space.xs,

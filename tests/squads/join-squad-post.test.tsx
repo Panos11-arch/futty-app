@@ -159,3 +159,45 @@ describe('Join squad post', () => {
     expect(router.back).not.toHaveBeenCalled();
   });
 });
+
+describe('Join squad post: order, wallet options, double taps, failures', () => {
+  it('calls join, payment start, sheet set-up and sheet in that order, with the wallet options', async () => {
+    const { walletPayOptions } = jest.requireActual<typeof import('@/lib/wallet-pay')>('@/lib/wallet-pay');
+    await render(<JoinSquadPostScreen />);
+    await screen.findByText('€6.80');
+    await fireEvent.press(screen.getByRole('button', { name: 'Join and pay my share' }));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(g.mockInitPaymentSheet).toHaveBeenCalledWith({
+      merchantDisplayName: 'Futty',
+      ...walletPayOptions,
+      paymentIntentClientSecret: 'cs_1',
+    });
+    const order = [mockJoin, mockCreateSharePayment, g.mockInitPaymentSheet!, g.mockPresentPaymentSheet!].map(
+      (m) => m.mock.invocationCallOrder[0]
+    );
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it('a second tap while busy does nothing', async () => {
+    let finishJoin: (v: { error: null }) => void = () => {};
+    mockJoin.mockReturnValue(new Promise((resolve) => (finishJoin = resolve)));
+    await render(<JoinSquadPostScreen />);
+    await screen.findByText('€6.80');
+    const button = screen.getByRole('button', { name: 'Join and pay my share' });
+    await fireEvent.press(button);
+    await fireEvent.press(button);
+    expect(mockJoin).toHaveBeenCalledTimes(1);
+    finishJoin({ error: null });
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+  });
+
+  it('a failed payment start rolls the join back and says why', async () => {
+    mockCreateSharePayment.mockResolvedValue({ data: null, error: null });
+    await render(<JoinSquadPostScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Join and pay my share' }));
+    expect(await screen.findByText('Couldn\'t start payment.')).toBeTruthy();
+    expect(mockLeave).toHaveBeenCalledWith('pp1');
+    expect(mockCancelPending).toHaveBeenCalledWith('b1');
+    expect(g.mockInitPaymentSheet).not.toHaveBeenCalled();
+  });
+});
