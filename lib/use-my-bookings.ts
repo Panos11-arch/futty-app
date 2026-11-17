@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAuth } from '@/lib/auth';
-import { toDateKey } from '@/lib/days';
+import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
+import { cyprusDateKey } from '@/lib/days';
 import { supabase } from '@/lib/supabase';
 
 export type MyBooking = {
@@ -48,7 +49,8 @@ export function useMyBookings() {
       // outright at creation), so it isn't a real game yet and shouldn't
       // show here as if it were, even though the row already exists.
       .eq('status', 'confirmed')
-      .gte('booking_day', toDateKey(new Date()))
+      // Today in Cyprus, not on the phone: booking days are Cyprus dates.
+      .gte('booking_day', cyprusDateKey(new Date()))
       .order('booking_day')
       .order('start_time');
 
@@ -62,9 +64,10 @@ export function useMyBookings() {
     // The day filter above can still include a booking from earlier today
     // whose end time has already passed — otherwise a past booking would
     // sit in bookings[0] forever and "Your next game" would never move on.
-    const now = new Date();
+    // Day and end time are Cyprus time, whatever zone the phone is in.
+    const now = Date.now();
     const upcoming = (data ?? []).filter(
-      (booking) => new Date(`${booking.booking_day}T${booking.end_time}`) > now
+      (booking) => cyprusWallTime(booking.booking_day, booking.end_time).getTime() > now
     );
 
     setState({ status: 'ready', bookings: upcoming });
@@ -113,9 +116,9 @@ export function useMyUnscoredBookings() {
       return;
     }
 
-    const now = new Date();
+    const now = Date.now();
     const ended = (data ?? []).filter(
-      (booking) => new Date(`${booking.booking_day}T${booking.end_time}`) <= now
+      (booking) => cyprusWallTime(booking.booking_day, booking.end_time).getTime() <= now
     );
 
     setState({ status: 'ready', bookings: ended });

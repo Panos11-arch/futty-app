@@ -8,6 +8,8 @@ import FixtureChatScreen from '@/app/fixture-chat';
 import FixtureConfirmedScreen from '@/app/fixture-confirmed';
 import { colors } from '@/constants/futty-theme';
 
+import { CYPRUS_LATE_KICKOFF, onPhoneIn, restorePhoneZone, ZONES_AND_SEASONS } from '../phone-time-zone';
+
 const params = globalThis as { mockSearchParams?: Record<string, string> };
 const mockGetFixture = jest.fn();
 const mockListMessages = jest.fn();
@@ -152,14 +154,9 @@ describe('Fixture confirmed', () => {
 // Times on "Match found" are Cyprus time (Asia/Nicosia), whatever zone the
 // phone is set to. Cyprus is UTC+2 in winter and UTC+3 in summer.
 describe.each(['Asia/Nicosia', 'America/New_York', 'Asia/Tokyo'])('Fixture confirmed times, phone on %s', (zone) => {
-  const original = process.env.TZ;
-  beforeAll(() => {
-    process.env.TZ = zone;
-  });
-  afterAll(() => {
-    process.env.TZ = original;
-  });
+  afterEach(restorePhoneZone);
   beforeEach(() => {
+    onPhoneIn(zone);
     for (const key of Object.keys(mockTables)) delete mockTables[key];
     mockTables.venues = { data: { name: 'Arena', city: 'Nicosia' }, error: null };
   });
@@ -285,5 +282,26 @@ describe('Fixture chat', () => {
         reason: 'rude',
       })
     );
+  });
+});
+
+// Every date and time is Cyprus time (Asia/Nicosia), whatever zone the phone is in.
+describe.each(ZONES_AND_SEASONS)('Fixture chat times, phone on %s in %s', (zone, season) => {
+  const sent = CYPRUS_LATE_KICKOFF[season];
+  beforeEach(() => {
+    onPhoneIn(zone);
+    params.mockSearchParams = { fixtureId: 'f1' };
+    mockGetFixture.mockResolvedValue({ data: fixture, error: null });
+  });
+  afterEach(restorePhoneZone);
+
+  it('each message shows the Cyprus time it was sent', async () => {
+    mockListMessages.mockResolvedValue({
+      data: [{ id: 'm1', message: 'Hi', sender_team_id: 'away', sender_team: { name: 'Lions' }, created_at: sent.iso }],
+      error: null,
+    });
+    await render(<FixtureChatScreen />);
+    await screen.findByText('Hi');
+    expect(screen.getByText(sent.clock)).toBeTruthy();
   });
 });

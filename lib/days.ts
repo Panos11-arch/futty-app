@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 
-import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
+import { CYPRUS_TIME_ZONE, cyprusWallTime } from '@/lib/calendar/cyprus-time';
 
 export const DAY_PICKER_LENGTH = 21;
 
@@ -57,16 +57,32 @@ export function useDays(count: number = DAY_PICKER_LENGTH) {
   return days;
 }
 
+const cyprusWeekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: CYPRUS_TIME_ZONE });
+const cyprusMonth = new Intl.DateTimeFormat('en-GB', { month: 'short', timeZone: CYPRUS_TIME_ZONE });
+
+/**
+ * Noon UTC on the Cyprus date `date` stands for (its toDateKey()). Cyprus is
+ * UTC+2 or +3, so this instant is that same date in Cyprus, and formatting it
+ * in Cyprus time never depends on the phone's zone.
+ */
+function cyprusNoon(date: Date) {
+  const [year, month, day] = toDateKey(date).split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+/** "Fri": the weekday of the Cyprus date `date` stands for. */
 export function weekdayLabel(date: Date) {
-  return date.toLocaleDateString(undefined, { weekday: 'short' });
+  return cyprusWeekday.format(cyprusNoon(date));
 }
 
+/** "20": the day of the month of the Cyprus date `date` stands for. */
 export function dayNumberLabel(date: Date) {
-  return String(date.getDate());
+  return String(Number(toDateKey(date).slice(8)));
 }
 
+/** "Nov": the month of the Cyprus date `date` stands for. */
 export function monthLabel(date: Date) {
-  return date.toLocaleDateString(undefined, { month: 'short' });
+  return cyprusMonth.format(cyprusNoon(date));
 }
 
 /**
@@ -89,7 +105,7 @@ const cyprusDate = new Intl.DateTimeFormat('en-GB', {
 /** The Cyprus date (YYYY-MM-DD) at the instant `now`. Same as cyprusToday in
  *  lib/venue-today.ts, which can't be imported here: it pulls in the Supabase
  *  client. */
-function cyprusDateKey(now: Date) {
+export function cyprusDateKey(now: Date) {
   const parts: Record<string, string> = {};
   for (const part of cyprusDate.formatToParts(now)) parts[part.type] = part.value;
   return `${parts.year}-${parts.month}-${parts.day}`;
@@ -102,18 +118,14 @@ export function dateKeyToDate(key: string) {
 }
 
 /**
- * Combines a toDateKey() day with a Postgres "HH:MM:SS" time into one local
- * Date. Use `.toISOString()` on the result before sending it to a
- * `timestamptz` column/param — a bare "2026-08-01T18:00:00" string has no
- * offset, so Postgres reads it in the database session's timezone (UTC on
- * Supabase) instead of the device's local (Cyprus) time, silently shifting
- * the stored instant by a few hours.
+ * The instant at which it is `dateKey` (a Cyprus "YYYY-MM-DD") `time` (a
+ * Postgres "HH:MM:SS") in Cyprus, whatever zone the phone is in. Use
+ * `.toISOString()` on the result before sending it to a `timestamptz`
+ * column/param — a bare "2026-08-01T18:00:00" string has no offset, so
+ * Postgres would read it in the session's zone (UTC on Supabase).
  */
 export function dateKeyAndTimeToDate(dateKey: string, time: string) {
-  const date = dateKeyToDate(dateKey);
-  const [hours, minutes, seconds] = time.split(':').map(Number);
-  date.setHours(hours, minutes, seconds || 0, 0);
-  return date;
+  return cyprusWallTime(dateKey, time);
 }
 
 /** "Today" when `date` is today in Cyprus, otherwise "Mon 3 Aug". */

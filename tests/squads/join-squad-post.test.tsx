@@ -5,6 +5,8 @@ import { router } from 'expo-router';
 
 import JoinSquadPostScreen from '@/app/join-squad-post';
 
+import { CYPRUS_LATE_KICKOFF, onPhoneIn, restorePhoneZone, ZONES_AND_SEASONS } from '../phone-time-zone';
+
 const g = globalThis as {
   mockSearchParams?: Record<string, string>;
   mockInitPaymentSheet?: jest.Mock;
@@ -199,5 +201,18 @@ describe('Join squad post: order, wallet options, double taps, failures', () => 
     expect(mockLeave).toHaveBeenCalledWith('pp1');
     expect(mockCancelPending).toHaveBeenCalledWith('b1');
     expect(g.mockInitPaymentSheet).not.toHaveBeenCalled();
+  });
+});
+
+// Every date and time is Cyprus time (Asia/Nicosia), whatever zone the phone is in.
+describe.each(ZONES_AND_SEASONS)('Join squad post times, phone on %s in %s', (zone, season) => {
+  const kickoff = CYPRUS_LATE_KICKOFF[season];
+  beforeEach(() => onPhoneIn(zone));
+  afterEach(restorePhoneZone);
+
+  it('shows the Cyprus day and kick-off', async () => {
+    mockPosts = { status: 'ready', posts: [{ ...post, scheduled_at: kickoff.iso }] };
+    await render(<JoinSquadPostScreen />);
+    expect(screen.getByText(`Gold · Nicosia · ${kickoff.date} · ${kickoff.clock}`)).toBeTruthy();
   });
 });

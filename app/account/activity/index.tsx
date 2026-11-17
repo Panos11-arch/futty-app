@@ -11,11 +11,13 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, hairline, space } from '@/constants/futty-theme';
+import { formatMatchDate } from '@/lib/match/format';
 import { useRecentResults } from '@/lib/use-recent-results';
 
+/** "Fri 20 Nov", the Cyprus date. */
 function formatResultDate(iso: string) {
   if (!iso) return '';
-  return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return formatMatchDate(iso);
 }
 
 export default function ActivityScreen() {
