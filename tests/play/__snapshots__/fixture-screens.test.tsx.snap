@@ -1,0 +1,879 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Fixture chat empty 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <View
+    onLayout={[Function]}
+    style={
+      [
+        {
+          "flex": 1,
+        },
+        {
+          "paddingBottom": 0,
+        },
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#FFFFFF",
+          "borderBottomColor": "#E4E7EB",
+          "borderBottomWidth": 0.5,
+          "gap": 8,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 8,
+          }
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "flex": 1,
+              },
+            ]
+          }
+        >
+          Tigers
+           vs 
+          Lions
+        </Text>
+        <View
+          accessibilityLabel="Report this chat"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 999,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "minWidth": 44,
+              },
+              false,
+              false,
+            ]
+          }
+        >
+          <View
+            testID="icon-flag.fill"
+          />
+        </View>
+      </View>
+    </View>
+    <RCTScrollView
+      contentContainerStyle={
+        {
+          "flexGrow": 1,
+          "gap": 8,
+          "justifyContent": "flex-end",
+          "padding": 16,
+        }
+      }
+      keyboardShouldPersistTaps="handled"
+    >
+      <View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "gap": 12,
+              "paddingHorizontal": 16,
+              "paddingVertical": 32,
+            }
+          }
+        >
+          <View
+            testID="empty-state-icon"
+          >
+            <View
+              testID="icon-bubble.left.fill"
+            />
+          </View>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_400Regular",
+                  "fontSize": 15,
+                  "lineHeight": 20,
+                },
+                {
+                  "color": "#5B6470",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            No messages yet — say hello.
+          </Text>
+        </View>
+      </View>
+    </RCTScrollView>
+    <View
+      style={
+        {
+          "alignItems": "flex-end",
+          "backgroundColor": "#FFFFFF",
+          "borderTopColor": "#E4E7EB",
+          "borderTopWidth": 0.5,
+          "flexDirection": "row",
+          "gap": 8,
+          "padding": 12,
+        }
+      }
+    >
+      <TextInput
+        accessibilityLabel="Message"
+        multiline={true}
+        onChangeText={[Function]}
+        onSubmitEditing={[Function]}
+        placeholder="Message the other captain…"
+        placeholderTextColor="#5B6470"
+        returnKeyType="send"
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 10,
+              "borderWidth": 1,
+              "color": "#0B1215",
+              "fontFamily": "Inter_400Regular",
+              "fontSize": 15,
+              "lineHeight": 20,
+              "minHeight": 44,
+              "paddingHorizontal": 12,
+              "paddingVertical": 8,
+            },
+            {
+              "flex": 1,
+              "maxHeight": 100,
+            },
+          ]
+        }
+        value=""
+      />
+      <View
+        accessibilityLabel="Send"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": true,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "alignSelf": "flex-start",
+              "borderRadius": 10,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 8,
+            },
+            {
+              "backgroundColor": "#0E5A3A",
+            },
+            false,
+            false,
+            {
+              "opacity": 0.4,
+            },
+            false,
+          ]
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#FFFFFF",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Send
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch) 1`] = `
+<View
+  testID="popup"
+>
+  <Text>
+    Match found
+  </Text>
+  <View
+    accessibilityLabel="Close"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+  />
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flex": 1,
+        "justifyContent": "center",
+        "padding": 24,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "alignSelf": "stretch",
+          "gap": 16,
+        }
+      }
+      testID="fixture-confirmed-skeleton"
+    >
+      <View
+        accessibilityLabel="Loading"
+        accessible={true}
+        style={
+          [
+            {
+              "backgroundColor": "#E4E7EB",
+            },
+            {
+              "borderRadius": 999,
+              "height": 64,
+              "width": 64,
+            },
+          ]
+        }
+        testID="skeleton-block"
+      />
+      <View
+        accessibilityLabel="Loading"
+        accessible={true}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "60%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+      </View>
+    </View>
+  </View>
+  <View
+    accessibilityLabel="View booking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": false,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "borderRadius": 10,
+          "justifyContent": "center",
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        {
+          "backgroundColor": "#0E5A3A",
+        },
+        false,
+        {
+          "alignSelf": "stretch",
+        },
+        false,
+        false,
+      ]
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_600SemiBold",
+            "fontSize": 17,
+            "lineHeight": 22,
+          },
+          {
+            "color": "#FFFFFF",
+          },
+          false,
+          {
+            "textAlign": "center",
+          },
+        ]
+      }
+    >
+      View booking
+    </Text>
+  </View>
+</View>
+`;
+
+exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
+<View
+  testID="popup"
+>
+  <Text>
+    Match found
+  </Text>
+  <View
+    accessibilityLabel="Close"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": undefined,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+  />
+  <View
+    style={
+      {
+        "alignItems": "center",
+        "flex": 1,
+        "justifyContent": "center",
+        "padding": 24,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "alignSelf": "stretch",
+          "gap": 24,
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 16,
+            "justifyContent": "center",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flex": 1,
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Tigers"
+            accessibilityRole="image"
+            accessible={true}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "overflow": "hidden",
+                },
+                {
+                  "height": 64,
+                  "width": 64,
+                },
+                false,
+              ]
+            }
+          >
+            <Text
+              allowFontScaling={false}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              T
+            </Text>
+          </View>
+          <Text
+            numberOfLines={2}
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Tigers
+          </Text>
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          vs
+        </Text>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flex": 1,
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Lions"
+            accessibilityRole="image"
+            accessible={true}
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#F4F5F7",
+                  "borderRadius": 999,
+                  "justifyContent": "center",
+                  "overflow": "hidden",
+                },
+                {
+                  "height": 64,
+                  "width": 64,
+                },
+                false,
+              ]
+            }
+          >
+            <Text
+              allowFontScaling={false}
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              L
+            </Text>
+          </View>
+          <Text
+            numberOfLines={2}
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Lions
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignSelf": "stretch",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 12,
+            "borderWidth": 0.5,
+            "gap": 12,
+            "padding": 16,
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            testID="icon-mappin.and.ellipse"
+          />
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "flex": 1,
+                },
+              ]
+            }
+          >
+            Arena · Nicosia
+          </Text>
+        </View>
+      </View>
+    </View>
+  </View>
+  <View
+    accessibilityLabel="View booking"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": false,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
+    collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "borderRadius": 10,
+          "justifyContent": "center",
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        {
+          "backgroundColor": "#0E5A3A",
+        },
+        false,
+        {
+          "alignSelf": "stretch",
+        },
+        false,
+        false,
+      ]
+    }
+  >
+    <Text
+      style={
+        [
+          {
+            "fontFamily": "Inter_600SemiBold",
+            "fontSize": 17,
+            "lineHeight": 22,
+          },
+          {
+            "color": "#FFFFFF",
+          },
+          false,
+          {
+            "textAlign": "center",
+          },
+        ]
+      }
+    >
+      View booking
+    </Text>
+  </View>
+</View>
+`;

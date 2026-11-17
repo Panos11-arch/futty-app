@@ -1,13 +1,16 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
+import { AuthField } from '@/components/auth-form';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import { IconButton } from '@/components/ui/icon-button';
+import { SkeletonBlock } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
 import {
   getFixture,
@@ -22,6 +25,7 @@ import { useRealtimeChannelName } from '@/lib/realtime';
 import { supabase } from '@/lib/supabase';
 import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 
+/** Standard bubble: surface for the other captain, brandSoft for mine. */
 function MessageBubble({ message, mine }: { message: FixtureMessage; mine: boolean }) {
   const time = new Date(message.created_at).toLocaleTimeString(undefined, {
     hour: '2-digit',
@@ -30,10 +34,16 @@ function MessageBubble({ message, mine }: { message: FixtureMessage; mine: boole
 
   return (
     <View style={[styles.bubbleRow, mine && styles.bubbleRowMine]}>
-      <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-        {!mine ? <ThemedText style={styles.bubbleSender}>{message.sender_team?.name ?? 'Them'}</ThemedText> : null}
-        <ThemedText style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{message.message}</ThemedText>
-        <ThemedText style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}>{time}</ThemedText>
+      <View testID={mine ? 'bubble-mine' : 'bubble-theirs'} style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+        {!mine ? (
+          <Text variant="caption" tone="inkMuted">
+            {message.sender_team?.name ?? 'Them'}
+          </Text>
+        ) : null}
+        <Text variant="body">{message.message}</Text>
+        <Text variant="caption" tone="inkMuted" tabular style={styles.bubbleTime}>
+          {time}
+        </Text>
       </View>
     </View>
   );
@@ -142,7 +152,7 @@ export default function FixtureChatScreen() {
     : null;
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -150,67 +160,66 @@ export default function FixtureChatScreen() {
         {fixture ? (
           <View style={styles.header}>
             <View style={styles.headerRow}>
-              <ThemedText type="defaultSemiBold">
+              <Text variant="headline" style={styles.flex}>
                 {fixture.home_team?.name ?? 'Unknown team'} vs {fixture.away_team?.name ?? 'Unknown team'}
-              </ThemedText>
-              <Pressable
-                accessibilityRole="button"
+              </Text>
+              <IconButton
+                icon="flag.fill"
+                tone="inkMuted"
+                size="small"
                 accessibilityLabel="Report this chat"
                 onPress={() => setReportOpen((v) => !v)}
-                hitSlop={8}>
-                <IconSymbol name="flag.fill" size={16} color={FuttyColors.stone400} />
-              </Pressable>
+              />
             </View>
 
             {reportOpen ? (
               <View style={styles.reportPanel}>
-                <AuthField
+                <TextField
+                  label="Reason for reporting"
                   value={reportReason}
                   onChangeText={setReportReason}
                   placeholder="What's wrong with this chat?"
                   multiline
                 />
-                {reportError ? <AuthError>{reportError}</AuthError> : null}
-                <View style={styles.reportRow}>
-                  <View style={styles.reportButton}>
-                    <AuthButton
-                      label="Submit report"
-                      onPress={sendChatReport}
-                      disabled={!reportReason.trim()}
-                      busy={reportBusy}
-                    />
-                  </View>
-                  <View style={styles.reportButton}>
-                    <AuthButton
-                      label="Cancel"
-                      variant="secondary"
-                      onPress={() => setReportOpen(false)}
-                      disabled={reportBusy}
-                    />
-                  </View>
+                {reportError ? (
+                  <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+                    {reportError}
+                  </Text>
+                ) : null}
+                <View style={styles.buttonRow}>
+                  <Button
+                    label="Send report"
+                    onPress={sendChatReport}
+                    disabled={!reportReason.trim()}
+                    loading={reportBusy}
+                  />
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    onPress={() => setReportOpen(false)}
+                    disabled={reportBusy}
+                  />
                 </View>
               </View>
             ) : reported ? (
-              <IconLabel icon="exclamationmark.triangle.fill" style={styles.reportedNote} iconColor={FuttyColors.stone500} iconSize={11}>
+              <Text variant="caption" tone="inkMuted">
                 Report submitted — thanks.
-              </IconLabel>
+              </Text>
             ) : null}
           </View>
         ) : null}
 
-        <ScrollView
-          contentContainerStyle={styles.messages}
-          keyboardShouldPersistTaps="handled">
-          {!messages ? <ActivityIndicator style={styles.loading} /> : null}
+        <ScrollView contentContainerStyle={styles.messages} keyboardShouldPersistTaps="handled">
+          {!messages ? (
+            <View testID="chat-skeleton" style={styles.skeleton}>
+              <SkeletonBlock width="60%" height={space.xxl + space.lg} />
+              <View style={styles.bubbleRowMine}>
+                <SkeletonBlock width="50%" height={space.xxl + space.lg} />
+              </View>
+            </View>
+          ) : null}
           {messages && messages.length === 0 ? (
-            <IconLabel
-              icon="bubble.left.fill"
-              style={styles.emptyNote}
-              iconColor={FuttyColors.stone400}
-              iconSize={12}
-              containerStyle={styles.emptyRow}>
-              No messages yet — say hello.
-            </IconLabel>
+            <EmptyState icon="bubble.left.fill" message="No messages yet — say hello." />
           ) : null}
           {messages?.map((message) => (
             <MessageBubble key={message.id} message={message} mine={message.sender_team_id === myTeamId} />
@@ -219,7 +228,9 @@ export default function FixtureChatScreen() {
 
         {error ? (
           <View style={styles.errorRow}>
-            <AuthError>{error}</AuthError>
+            <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+              {error}
+            </Text>
           </View>
         ) : null}
 
@@ -228,12 +239,13 @@ export default function FixtureChatScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Message the other captain…"
+            accessibilityLabel="Message"
             style={styles.input}
             onSubmitEditing={send}
             returnKeyType="send"
             multiline
           />
-          <AuthButton label="Send" onPress={send} disabled={!input.trim()} busy={sending} />
+          <Button label="Send" onPress={send} disabled={!input.trim()} loading={sending} />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -241,114 +253,42 @@ export default function FixtureChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: FuttyColors.stone50,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: FuttyColors.stone200,
-    backgroundColor: FuttyColors.white,
-    gap: 8,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: space.sm,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  reportPanel: {
-    gap: 8,
-  },
-  reportRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  reportButton: {
-    flex: 1,
-  },
-  reportedNote: {
-    fontSize: 11,
-    opacity: 0.7,
-  },
-  messages: {
-    padding: 16,
-    gap: 10,
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-  loading: {
-    marginTop: 24,
-  },
-  emptyRow: {
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  emptyNote: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-  },
-  bubbleRowMine: {
-    justifyContent: 'flex-end',
-  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  reportPanel: { gap: space.sm },
+  buttonRow: { flexDirection: 'row', gap: space.sm },
+  messages: { padding: space.lg, gap: space.sm, flexGrow: 1, justifyContent: 'flex-end' },
+  skeleton: { gap: space.sm },
+  bubbleRow: { flexDirection: 'row' },
+  bubbleRowMine: { flexDirection: 'row', justifyContent: 'flex-end' },
   bubble: {
     maxWidth: '78%',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    borderRadius: radius.card,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
     gap: 2,
   },
-  bubbleTheirs: {
-    backgroundColor: FuttyColors.white,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleMine: {
-    backgroundColor: FuttyColors.emerald950,
-    borderBottomRightRadius: 4,
-  },
-  bubbleSender: {
-    fontFamily: FuttyFonts.sansSemiBold,
-    fontSize: 10,
-    color: FuttyColors.emerald700,
-  },
-  bubbleText: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 14,
-    color: FuttyColors.stone700,
-  },
-  bubbleTextMine: {
-    color: FuttyColors.white,
-  },
-  bubbleTime: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 9,
-    color: FuttyColors.stone400,
-    alignSelf: 'flex-end',
-  },
-  bubbleTimeMine: {
-    color: FuttyColors.emerald200,
-  },
-  errorRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-  },
+  bubbleTheirs: { backgroundColor: colors.surface, borderWidth: hairline, borderColor: colors.border },
+  bubbleMine: { backgroundColor: colors.brandSoft },
+  bubbleTime: { alignSelf: 'flex-end' },
+  errorRow: { paddingHorizontal: space.lg, paddingBottom: space.xs },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
-    backgroundColor: FuttyColors.white,
+    gap: space.sm,
+    padding: space.md,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  input: {
-    flex: 1,
-    maxHeight: 100,
-  },
+  input: { flex: 1, maxHeight: 100 },
 });

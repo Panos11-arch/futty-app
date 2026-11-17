@@ -1,15 +1,20 @@
 import { Redirect, router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AuthButton, AuthError, AuthField } from '@/components/auth-form';
-import { Chip } from '@/components/chip';
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Avatar } from '@/components/ui/avatar';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { MIN_TOUCH } from '@/components/ui/foundation';
+import { IconButton } from '@/components/ui/icon-button';
+import { SectionHeader } from '@/components/ui/section-header';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { colors, hairline, space } from '@/constants/futty-theme';
 import type { MatchedContact, UnmatchedContact } from '@/lib/contacts';
 import { shareContactInvite } from '@/lib/invite';
 import { listTeams, type TeamListing } from '@/lib/community';
@@ -22,13 +27,53 @@ import { useFollows } from '@/lib/use-follows';
 
 type CommunityView = 'contacts' | 'teams';
 
-function Avatar({ initial }: { initial: string }) {
-  const tint = useThemeColor({}, 'tint');
-  const onTint = useThemeColor({}, 'background');
+/** One person or team: avatar, name, a line under it, then one row of
+ *  actions. The name side opens the profile when `onPress` is set. */
+function PersonRow({
+  name,
+  subtitle,
+  onPress,
+  actions,
+  children,
+}: {
+  name: string;
+  subtitle?: string | null;
+  onPress?: () => void;
+  actions: ReactNode;
+  children?: ReactNode;
+}) {
+  const main = (
+    <>
+      <Avatar name={name} />
+      <View style={styles.flex}>
+        <Text variant="headline">{name}</Text>
+        {subtitle ? (
+          <Text variant="callout" tone="inkMuted">
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+
   return (
-    <View style={[styles.avatar, { backgroundColor: tint }]}>
-      <ThemedText style={[styles.avatarText, { color: onTint }]}>{initial}</ThemedText>
-    </View>
+    <Card style={styles.personCard}>
+      <View style={styles.row}>
+        {onPress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={subtitle ? `${name}, ${subtitle}` : name}
+            onPress={onPress}
+            style={({ pressed }) => [styles.rowMain, pressed && styles.pressed]}>
+            {main}
+          </Pressable>
+        ) : (
+          <View style={styles.rowMain}>{main}</View>
+        )}
+        <View style={styles.rowActions}>{actions}</View>
+      </View>
+      {children}
+    </Card>
   );
 }
 
@@ -42,8 +87,6 @@ function FollowButton({
   follows: ReturnType<typeof useFollows>;
 }) {
   const [busy, setBusy] = useState(false);
-  const tint = useThemeColor({}, 'tint');
-  const onTint = useThemeColor({}, 'background');
   const following = follows.isFollowing(targetType, targetId);
 
   async function press() {
@@ -53,20 +96,12 @@ function FollowButton({
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Button
+      label={following ? 'Following' : 'Follow'}
+      variant={following ? 'secondary' : 'primary'}
       onPress={press}
       disabled={busy}
-      style={[
-        styles.followButton,
-        { borderColor: tint },
-        following && { backgroundColor: tint },
-        busy && styles.dimmed,
-      ]}>
-      <ThemedText style={[styles.followButtonText, following && { color: onTint }]}>
-        {following ? 'Following' : 'Follow'}
-      </ThemedText>
-    </Pressable>
+    />
   );
 }
 
@@ -114,25 +149,21 @@ function ContactModerationPanel({ playerId, blocks }: { playerId: string; blocks
   if (reporting) {
     return (
       <View style={styles.moderationPanel}>
-        <AuthField
+        <TextField
+          label="Report this player"
           value={reason}
           onChangeText={setReason}
           placeholder="Why are you reporting this player?"
           multiline
         />
-        {error ? <AuthError>{error}</AuthError> : null}
-        <View style={styles.confirmRow}>
-          <View style={styles.confirmButton}>
-            <AuthButton label="Submit" onPress={sendReport} disabled={!reason.trim()} busy={busy} />
-          </View>
-          <View style={styles.confirmButton}>
-            <AuthButton
-              label="Cancel"
-              variant="secondary"
-              onPress={() => setReporting(false)}
-              disabled={busy}
-            />
-          </View>
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
+        <View style={styles.buttonRow}>
+          <Button label="Send report" onPress={sendReport} disabled={!reason.trim()} loading={busy} />
+          <Button label="Cancel" variant="secondary" onPress={() => setReporting(false)} disabled={busy} />
         </View>
       </View>
     );
@@ -141,23 +172,18 @@ function ContactModerationPanel({ playerId, blocks }: { playerId: string; blocks
   return (
     <View style={styles.moderationPanel}>
       {reported ? (
-        <IconLabel icon="exclamationmark.triangle.fill" style={styles.note} iconColor={FuttyColors.stone500} iconSize={11}>
+        <Text variant="callout" tone="inkMuted">
           Report submitted — thanks.
-        </IconLabel>
+        </Text>
       ) : null}
-      {error ? <AuthError>{error}</AuthError> : null}
-      <View style={styles.confirmRow}>
-        <View style={styles.confirmButton}>
-          <AuthButton
-            label={blocked ? 'Unblock' : 'Block'}
-            variant="secondary"
-            onPress={toggleBlock}
-            busy={busy}
-          />
-        </View>
-        <View style={styles.confirmButton}>
-          <AuthButton label="Report" variant="secondary" onPress={() => setReporting(true)} disabled={busy} />
-        </View>
+      {error ? (
+        <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
+      <View style={styles.buttonRow}>
+        <Button label={blocked ? 'Unblock' : 'Block'} variant="secondary" onPress={toggleBlock} loading={busy} />
+        <Button label="Report" variant="secondary" onPress={() => setReporting(true)} disabled={busy} />
       </View>
     </View>
   );
@@ -167,71 +193,68 @@ function MatchedContactRow({
   contact,
   follows,
   blocks,
-  border,
 }: {
   contact: MatchedContact;
   follows: ReturnType<typeof useFollows>;
   blocks: ReturnType<typeof useBlocks>;
-  border: string;
 }) {
   const [open, setOpen] = useState(false);
   const blocked = blocks.isBlocked(contact.match.profileId);
 
   return (
-    <ThemedView style={[styles.card, { borderColor: border }]}>
-      <View style={styles.row}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push({ pathname: '/player-profile', params: { profileId: contact.match.profileId } })}
-          style={styles.rowMain}>
-          <Avatar initial={contact.name[0]?.toUpperCase() ?? '?'} />
-          <View>
-            <ThemedText type="defaultSemiBold">{contact.name}</ThemedText>
-            {contact.match.username ? (
-              <ThemedText style={styles.note}>@{contact.match.username}</ThemedText>
-            ) : null}
-          </View>
-        </Pressable>
-        <View style={styles.rowActions}>
+    <PersonRow
+      name={contact.name}
+      subtitle={contact.match.username ? `@${contact.match.username}` : null}
+      onPress={() => router.push({ pathname: '/player-profile', params: { profileId: contact.match.profileId } })}
+      actions={
+        <>
           <FollowButton targetType="player" targetId={contact.match.profileId} follows={follows} />
-          <Pressable
-            accessibilityRole="button"
+          <IconButton
+            icon="flag.fill"
+            size="small"
+            tone={blocked ? 'danger' : 'inkMuted'}
             accessibilityLabel="Block or report this player"
             onPress={() => setOpen((v) => !v)}
-            style={styles.flagButton}
-            hitSlop={8}>
-            <IconSymbol name="flag.fill" size={14} color={blocked ? FuttyColors.rose600 : FuttyColors.stone400} />
-          </Pressable>
-        </View>
-      </View>
-
+          />
+        </>
+      }>
       {open ? <ContactModerationPanel playerId={contact.match.profileId} blocks={blocks} /> : null}
-    </ThemedView>
+    </PersonRow>
   );
 }
 
-function UnmatchedContactRow({ contact, border }: { contact: UnmatchedContact; border: string }) {
+function UnmatchedContactRow({ contact }: { contact: UnmatchedContact }) {
   const [sent, setSent] = useState(false);
 
   return (
-    <ThemedView style={[styles.card, { borderColor: border }]}>
-      <View style={styles.row}>
-        <View style={styles.rowMain}>
-          <Avatar initial={contact.name[0]?.toUpperCase() ?? '?'} />
-          <ThemedText type="defaultSemiBold">{contact.name}</ThemedText>
-        </View>
-        <Pressable
-          accessibilityRole="button"
+    <PersonRow
+      name={contact.name}
+      actions={
+        <Button
+          label={sent ? 'Sent' : 'Invite'}
+          variant="secondary"
           onPress={async () => {
             await shareContactInvite(contact.name);
             setSent(true);
           }}
-          style={styles.inviteButton}>
-          <IconSymbol name="square.and.arrow.up" size={12} color={FuttyColors.white} />
-          <ThemedText style={styles.inviteButtonText}>{sent ? 'Sent' : 'Invite'}</ThemedText>
-        </Pressable>
-      </View>
-    </ThemedView>
+        />
+      }
+    />
+  );
+}
+
+function RowsSkeleton({ testID }: { testID: string }) {
+  return (
+    <View testID={testID} style={styles.list}>
+      {[0, 1, 2].map((i) => (
+        <Card key={i} style={styles.row}>
+          <SkeletonBlock width={MIN_TOUCH - space.xs} height={MIN_TOUCH - space.xs} rounded="pill" />
+          <View style={styles.flex}>
+            <SkeletonText lines={2} />
+          </View>
+        </Card>
+      ))}
+    </View>
   );
 }
 
@@ -242,7 +265,6 @@ function ContactsTab() {
   const contacts = useContacts();
   const follows = useFollows();
   const blocks = useBlocks();
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   useEffect(() => {
     contacts.load();
@@ -254,98 +276,108 @@ function ContactsTab() {
 
   if (contacts.status === 'idle' || contacts.status === 'loading') {
     return (
-      <View style={styles.centerPad}>
-        <ActivityIndicator />
-        <ThemedText style={styles.note}>Checking your contacts…</ThemedText>
+      <View style={styles.list}>
+        <Text variant="callout" tone="inkMuted">
+          Checking your contacts…
+        </Text>
+        <RowsSkeleton testID="contacts-skeleton" />
       </View>
     );
   }
 
   if (contacts.status === 'denied') {
     return (
-      <View style={styles.centerPad}>
-        <IconSymbol name="person.2.fill" size={28} color={FuttyColors.stone400} />
-        <ThemedText style={styles.note}>
-          Futty needs contacts access to show which of your contacts are already on the app.
-        </ThemedText>
-        <AuthButton label="Try again" variant="secondary" onPress={contacts.load} />
-      </View>
+      <EmptyState
+        icon="person.2.fill"
+        message="Futty needs contacts access to show which of your contacts are already on the app."
+        action={{ label: 'Try again', onPress: contacts.load }}
+      />
     );
   }
 
   if (contacts.status === 'error') {
-    return <ThemedText style={styles.note}>Could not load contacts: {contacts.message}</ThemedText>;
+    return (
+      <Banner
+        tone="danger"
+        message={`Could not load contacts: ${contacts.message}`}
+        action={{ label: 'Try again', onPress: contacts.load }}
+      />
+    );
   }
 
   return (
-    <>
+    <View style={styles.sections}>
       {contacts.matched.length > 0 ? (
-        <>
-          <ThemedText style={styles.sectionTitle}>On Futty ({contacts.matched.length})</ThemedText>
+        <View style={styles.list}>
+          <SectionHeader title={`On Futty (${contacts.matched.length})`} />
           {contacts.matched.map((contact) => (
-            <MatchedContactRow key={contact.id} contact={contact} follows={follows} blocks={blocks} border={border} />
+            <MatchedContactRow key={contact.id} contact={contact} follows={follows} blocks={blocks} />
           ))}
-        </>
+        </View>
       ) : null}
 
       {contacts.unmatched.length > 0 ? (
-        <>
-          <ThemedText style={styles.sectionTitle}>Invite to Futty ({contacts.unmatched.length})</ThemedText>
+        <View style={styles.list}>
+          <SectionHeader title={`Invite to Futty (${contacts.unmatched.length})`} />
           {contacts.unmatched.map((contact) => (
-            <UnmatchedContactRow key={contact.id} contact={contact} border={border} />
+            <UnmatchedContactRow key={contact.id} contact={contact} />
           ))}
-        </>
+        </View>
       ) : null}
 
       {contacts.matched.length === 0 && contacts.unmatched.length === 0 ? (
-        <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-          No contacts with phone numbers found.
-        </IconLabel>
+        <EmptyState icon="person.2.fill" message="No contacts with phone numbers found." />
       ) : null}
-    </>
+    </View>
   );
 }
 
 function TeamsTab() {
   const [teams, setTeams] = useState<TeamListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const follows = useFollows();
 
+  // Bumped by "Try again" to run the same listTeams() again.
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
+    let active = true;
     listTeams().then(({ data, error: listError }) => {
+      if (!active) return;
       if (listError) setError(listError.message);
       else setTeams(data);
     });
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
+
+  function retry() {
+    setError(null);
+    setAttempt((n) => n + 1);
+  }
 
   return (
-    <>
-      {error ? <ThemedText style={styles.note}>Could not load: {error}</ThemedText> : null}
-      {!teams ? <ActivityIndicator /> : null}
-      {teams && teams.length === 0 ? (
-        <IconLabel icon="magnifyingglass" style={styles.note} iconColor={FuttyColors.stone400} iconSize={12}>
-          No teams registered yet.
-        </IconLabel>
+    <View style={styles.list}>
+      {error ? (
+        <Banner
+          tone="danger"
+          message={`Could not load: ${error}`}
+          action={{ label: 'Try again', onPress: retry }}
+        />
       ) : null}
+      {!teams && !error ? <RowsSkeleton testID="teams-list-skeleton" /> : null}
+      {teams && teams.length === 0 ? <EmptyState icon="person.2.fill" message="No teams registered yet." /> : null}
       {teams?.map((team) => (
-        <ThemedView key={team.id} style={[styles.card, { borderColor: border }]}>
-          <View style={styles.row}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/team-profile', params: { teamId: team.id } })}
-              style={styles.rowMain}>
-              <Avatar initial={team.name[0]?.toUpperCase() ?? '?'} />
-              <View>
-                <ThemedText type="defaultSemiBold">{team.name}</ThemedText>
-                {team.city ? <ThemedText style={styles.note}>{team.city}</ThemedText> : null}
-              </View>
-            </Pressable>
-            <FollowButton targetType="team" targetId={team.id} follows={follows} />
-          </View>
-        </ThemedView>
+        <PersonRow
+          key={team.id}
+          name={team.name}
+          subtitle={team.city}
+          onPress={() => router.push({ pathname: '/team-profile', params: { teamId: team.id } })}
+          actions={<FollowButton targetType="team" targetId={team.id} follows={follows} />}
+        />
       ))}
-    </>
+    </View>
   );
 }
 
@@ -369,9 +401,9 @@ export function CommunityContent() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
-      <View style={styles.wrapRow}>
-        <Chip icon="person.2.fill" label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
-        <Chip icon="shield.fill" label="Teams" selected={view === 'teams'} onPress={selectTeams} />
+      <View style={styles.chipRow}>
+        <Chip label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
+        <Chip label="Teams" selected={view === 'teams'} onPress={selectTeams} />
       </View>
 
       <View style={view === 'contacts' ? undefined : styles.hidden}>
@@ -392,113 +424,22 @@ export default function CommunityRoute() {
 }
 
 const styles = StyleSheet.create({
-  hidden: {
-    display: 'none',
-  },
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 12,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: FuttyColors.stone400,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 8,
-  },
-  centerPad: {
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rowMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rowActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  flagButton: {
-    padding: 4,
-  },
+  hidden: { display: 'none' },
+  flex: { flex: 1 },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  sections: { gap: space.xl },
+  list: { gap: space.md },
+  personCard: { gap: space.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: MIN_TOUCH },
+  rowActions: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  pressed: { opacity: 0.8 },
   moderationPanel: {
-    gap: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
+    gap: space.sm,
+    paddingTop: space.md,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
   },
-  confirmRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  confirmButton: {
-    flex: 1,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  followButton: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  followButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: FuttyColors.emerald700,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  inviteButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: FuttyColors.white,
-  },
-  dimmed: {
-    opacity: 0.5,
-  },
+  buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });

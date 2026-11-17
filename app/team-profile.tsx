@@ -13,7 +13,7 @@ import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { space } from '@/constants/futty-theme';
+import { colors, space } from '@/constants/futty-theme';
 import { useTeamForm } from '@/lib/match/use-profile-matches';
 import { supabase } from '@/lib/supabase';
 import { getTeamRoster, type RosterMember, type Team } from '@/lib/teams';
@@ -95,7 +95,7 @@ export default function TeamProfileScreen() {
   const captainOf = mine.filter(({ role, team }) => role === 'captain' && team.id !== teamId).map(({ team }) => team);
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         {state.status === 'loading' ? (
           <View testID="team-profile-skeleton">
@@ -198,6 +198,7 @@ function HeadToHeadSection({ captainOf, opponent }: { captainOf: Team[]; opponen
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.canvas },
   flex: {
     flex: 1,
   },

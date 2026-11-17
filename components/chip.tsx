@@ -1,15 +1,16 @@
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
 /** Small selectable pill used by the horizontal/wrap filter rows across the
- *  app (day/city/format pickers, etc). */
+ *  app (day/city/format pickers, etc). Looks like components/ui Chip, plus a
+ *  sublabel, a lock and a leading icon, which that one doesn't take. */
 export function Chip({
   label,
   sublabel,
@@ -28,11 +29,8 @@ export function Chip({
   icon?: IconName;
   onPress: () => void;
 }) {
-  const tint = useThemeColor({}, 'tint');
-  const onTint = useThemeColor({}, 'background');
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const textColor = useThemeColor({}, 'text');
-  const iconColor = selected ? onTint : textColor;
+  const tone = selected ? 'brand' : 'ink';
+  const iconColor = selected ? colors.brand : colors.inkMuted;
 
   return (
     <Pressable
@@ -40,21 +38,18 @@ export function Chip({
       accessibilityState={{ selected, disabled: !!disabled }}
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.chip,
-        { borderColor: selected ? tint : border },
-        selected && { backgroundColor: tint },
-        disabled && styles.dimmed,
-      ]}>
-      <View style={styles.chipLabelRow}>
-        {locked ? <IconSymbol name="lock.fill" size={10} color={iconColor} /> : null}
-        {icon && !locked ? <IconSymbol name={icon} size={12} color={iconColor} /> : null}
-        <ThemedText style={[styles.chipLabel, selected && { color: onTint }]}>{label}</ThemedText>
+      style={[styles.chip, selected && styles.selected, disabled && styles.dimmed]}>
+      <View style={styles.labelRow}>
+        {locked ? <IconSymbol name="lock.fill" size={ICON.small} color={iconColor} /> : null}
+        {icon && !locked ? <IconSymbol name={icon} size={ICON.small} color={iconColor} /> : null}
+        <Text variant="callout" tone={tone}>
+          {label}
+        </Text>
       </View>
       {sublabel ? (
-        <ThemedText style={[styles.chipSublabel, selected && { color: onTint }]}>
+        <Text variant="caption" tone={selected ? 'brand' : 'inkMuted'}>
           {sublabel}
-        </ThemedText>
+        </Text>
       ) : null}
     </Pressable>
   );
@@ -62,27 +57,17 @@ export function Chip({
 
 const styles = StyleSheet.create({
   chip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    borderRadius: radius.pill,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
-    minWidth: 64,
+    justifyContent: 'center',
   },
-  chipLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  chipLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  chipSublabel: {
-    fontSize: 11,
-    opacity: 0.7,
-  },
-  dimmed: {
-    opacity: 0.4,
-  },
+  selected: { backgroundColor: colors.brandSoft, borderColor: colors.brandSoft },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  dimmed: { opacity: DISABLED_OPACITY },
 });
