@@ -3,7 +3,7 @@ import './mocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
-import ProfileScreen from '@/app/(tabs)/profile';
+import ProfileScreen, { ProfileCard } from '@/app/(tabs)/profile';
 import TransactionsScreen from '@/app/account/payments/transactions';
 
 let mockRpcResult: { data: unknown; error: { message: string } | null } | null;
@@ -26,6 +26,11 @@ jest.mock('@/lib/use-venues', () => ({
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { email: 'ann@example.com' }, signOut: mockSignOut }) }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ ...mockProfile, reload: mockProfileReload }) }));
 jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
+let mockLevel: Record<string, unknown> = { status: 'loading' };
+jest.mock('@/lib/match/use-levels', () => ({
+  STARTING_LEVEL_ROUTE: '/starting-level',
+  usePlayerLevel: () => ({ ...mockLevel, reload: jest.fn() }),
+}));
 
 const tx = (over: Record<string, unknown>) => ({
   id: 't1',
@@ -129,18 +134,53 @@ describe('Profile', () => {
     expect(screen.getByText(/couldn’t find your profile/)).toBeTruthy();
   });
 
-  it('avatar, name, level badge, stat tiles in tabular figures, then grouped rows', async () => {
+  it('avatar, name, level, stat tiles in tabular figures, then grouped rows', async () => {
     mockProfile = { status: 'ready', profile };
+    mockLevel = {
+      status: 'ready',
+      level: { level: 3.45, provisional: true, reliabilityPct: 15, competitiveMatches: 3, source: 'questionnaire' },
+    };
     const view = await render(<ProfileScreen />);
     expect(view.toJSON()).toMatchSnapshot();
     expect(screen.getByText('Ann Lee')).toBeTruthy();
     expect(screen.getByText('@ann')).toBeTruthy();
-    expect(screen.getByTestId('level-badge')).toBeTruthy();
+    expect(screen.getByTestId('player-level-value')).toHaveTextContent('3.5');
+    expect(screen.getByText('Provisional')).toBeTruthy();
+    expect(screen.getByText('Reliability 15%')).toBeTruthy();
     expect(screen.getByLabelText('Games 10')).toBeTruthy();
     expect(screen.getByLabelText('Win rate 40%')).toBeTruthy();
     expect(screen.getByLabelText('Goals 7')).toBeTruthy();
-    expect(screen.getByText('Silver tier · personal level')).toBeTruthy();
+    // A5b: the level replaces XP and the tier.
+    expect(screen.queryByText(/XP/)).toBeNull();
+    expect(screen.queryByText(/tier/)).toBeNull();
+    expect(screen.queryByLabelText(/XP/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Venue dashboard' })).toBeNull();
+  });
+
+  it('no level yet: says so and offers the starting questions', async () => {
+    mockProfile = { status: 'ready', profile };
+    mockLevel = { status: 'ready', level: null };
+    await render(<ProfileScreen />);
+    expect(screen.getByText('No level yet')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Set your starting level' }));
+    expect(router.push).toHaveBeenLastCalledWith('/starting-level');
+  });
+
+  it("another player's card (player profiles): the level, no XP, no offer to set it", async () => {
+    mockLevel = {
+      status: 'ready',
+      level: { level: 4.2, provisional: false, reliabilityPct: 40, competitiveMatches: 8, source: 'questionnaire' },
+    };
+    const view = await render(<ProfileCard profile={profile as never} editable={false} />);
+    expect(screen.getByTestId('player-level-value')).toHaveTextContent('4.2');
+    expect(screen.queryByText('Provisional')).toBeNull();
+    expect(screen.getByText('Reliability 40%')).toBeTruthy();
+    expect(screen.queryByText(/XP|tier/)).toBeNull();
+
+    mockLevel = { status: 'ready', level: null };
+    await view.rerender(<ProfileCard profile={profile as never} editable={false} />);
+    expect(screen.getByText('No level yet')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Set your starting level' })).toBeNull();
   });
 
   it('keeps the same navigation and sign out', async () => {

@@ -27,6 +27,9 @@ jest.mock('@/lib/match/use-match-result', () => ({
 }));
 jest.mock('@/components/booking/check-in-panel', () => ({ CheckInSection: () => null }));
 // The A4b match page sections have their own tests (tests/match/match-page-screen.test.tsx).
+jest.mock('@/lib/match/use-levels', () => ({
+  useMatchRatings: () => ({ status: 'loading', reload: jest.fn() }),
+}));
 jest.mock('@/lib/match/use-match-page', () => ({
   useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),
   useMatchRoster: () => ({ status: 'loading', reload: jest.fn() }),

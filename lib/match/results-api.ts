@@ -7,7 +7,7 @@ import type { MatchRecord, MatchResultSubmission, MatchSideRecord, Side } from '
 import { supabase } from '@/lib/supabase';
 
 const MATCH_COLUMNS =
-  'id, booking_id, venue_id, friendly_match_id, league_fixture_id, kind, format, players_per_side, kickoff_at, ends_at, status, result_deadline_at, side_a_score, side_b_score, forfeit_side, forfeit_reason, confirmed_at, confirmed_via, created_at, updated_at';
+  'id, booking_id, venue_id, friendly_match_id, league_fixture_id, kind, format, players_per_side, kickoff_at, ends_at, status, result_deadline_at, side_a_score, side_b_score, forfeit_side, forfeit_reason, confirmed_at, confirmed_via, competitive, is_competitive, created_at, updated_at';
 
 const RESULT_SELECT = `${MATCH_COLUMNS},
   match_sides (match_id, side, team_id, label, captain_profile_id),

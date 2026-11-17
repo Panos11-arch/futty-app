@@ -270,6 +270,7 @@ export function mockResultMatch({
   sideBCaptain = kind === 'named' ? AWAY_CAPTAIN : null,
   scores = [null, null],
   forfeit = null,
+  competitive = null,
 }: {
   kind?: MatchKind;
   status?: MatchStatus;
@@ -280,6 +281,7 @@ export function mockResultMatch({
   sideBCaptain?: string | null;
   scores?: [number | null, number | null];
   forfeit?: { side: Side; reason: 'pulled_out' | 'no_show' } | null;
+  competitive?: boolean | null;
 } = {}): ResultMatch {
   const named = kind === 'named';
   return {
@@ -302,6 +304,8 @@ export function mockResultMatch({
       forfeit_reason: forfeit?.reason ?? null,
       confirmed_at: status === 'confirmed' ? RESULT_DEADLINE : null,
       confirmed_via: forfeit ? 'forfeit' : status === 'confirmed' ? 'agreed' : null,
+      competitive,
+      is_competitive: competitive ?? named,
       created_at: RESULT_KICKOFF,
       updated_at: RESULT_KICKOFF,
     },
