@@ -19,6 +19,12 @@ jest.mock('expo-router', () => {
 jest.mock('@/lib/match/use-match-result', () => ({
   useResultMatch: () => ({ ...mockState, viewerId: 'booker', reload: mockReload }),
 }));
+// The match page sections (A4b) are covered in match-page-screen.test.tsx; here the page has nothing to add.
+jest.mock('@/lib/match/use-match-page', () => ({
+  useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),
+  useMatchRoster: () => ({ status: 'loading', reload: jest.fn() }),
+  useFormationPresets: () => ({ status: 'loading', reload: jest.fn() }),
+}));
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
 jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
 
