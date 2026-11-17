@@ -411,7 +411,7 @@ describe('venueQuoteWords', () => {
       'Eleni: €0.80 back, by card refund or as credit at your venue, their choice.',
       'Marios: €0.80 back, by card refund or as credit at your venue, their choice. Hand back €6.00 cash.',
       'Petros: nothing was taken.',
-      "Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.",
+      "Stripe's fees on these payments: €1.37. This comes off your next payout.",
     ]);
   });
 
@@ -436,12 +436,20 @@ describe('venueQuoteWords', () => {
       'The booking is cancelled and its pitches are released. Every player is told.',
       'A player: €6.80 back, by card refund or as credit at your venue, their choice.',
       "The booker's guarantee hold is released.",
-      "Your venue pays Stripe's fee on each card payment refunded or turned into credit. It comes off your next payout.",
+      "Stripe's fees on these payments: €1.37. This comes off your next payout.",
     ]);
   });
 
+  it("shows nothing about Stripe's fees when the server says 0, or says nothing", () => {
+    const zero = venueQuoteWords(venueQuote({ venue_stripe_fee_cents: 0 }), appRoster());
+    expect(zero).toHaveLength(5);
+    expect(zero.some((w) => w.includes('Stripe'))).toBe(false);
+    const missing = venueQuoteWords(venueQuote({ venue_stripe_fee_cents: undefined }), appRoster());
+    expect(missing.some((w) => w.includes('Stripe'))).toBe(false);
+  });
+
   it('a game with nobody paid in it says so', () => {
-    expect(venueQuoteWords(venueQuote({ lines: [] }), appRoster())).toEqual([
+    expect(venueQuoteWords(venueQuote({ lines: [], venue_stripe_fee_cents: 0 }), appRoster())).toEqual([
       'The booking is cancelled and its pitches are released. Every player is told.',
     ]);
   });
