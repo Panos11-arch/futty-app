@@ -979,6 +979,86 @@ as $$
   where venue_id = p_venue and status = 'sent';
 $$;
 
+-- A5a: levels and ratings.
+
+-- p_profile's level row, as if they had answered the questions and played
+-- p_matches competitive matches (reliability and provisional to match).
+create or replace function tests.set_level(p_profile uuid, p_level numeric, p_matches integer default 0)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.player_levels (profile_id, level, provisional, reliability_pct, competitive_matches, source)
+  values (p_profile, p_level, p_matches < 5, least(100, 5 * p_matches), p_matches, 'questionnaire')
+  on conflict (profile_id) do update
+  set level = excluded.level, provisional = excluded.provisional, reliability_pct = excluded.reliability_pct,
+      competitive_matches = excluded.competitive_matches, source = excluded.source;
+$$;
+
+-- p_profile's level (null if they have none).
+create or replace function tests.level_of(p_profile uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select level from public.player_levels where profile_id = p_profile;
+$$;
+
+-- p_rater rates p_rated (a profile) in p_match; the error, or null.
+create or replace function tests.rate(p_rater uuid, p_match uuid, p_rated uuid, p_score integer)
+returns text
+language sql
+as $$
+  select tests.error_as(p_rater, format('select public.rate_match_player(%L, %L, %s)',
+                                        p_match, tests.player_id(p_match, p_rated), p_score));
+$$;
+
+-- Moves every time of p_match back by p_by, as if it was played earlier.
+create or replace function tests.age_match(p_match uuid, p_by interval)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.matches
+  set kickoff_at = kickoff_at - p_by, ends_at = ends_at - p_by, result_deadline_at = result_deadline_at - p_by,
+      confirmed_at = confirmed_at - p_by
+  where id = p_match;
+$$;
+
+-- Runs apply_match_levels for p_match as the job does.
+create or replace function tests.apply_levels(p_match uuid)
+returns text
+language plpgsql
+as $$
+declare
+  v_outcome text;
+begin
+  perform tests.act_as_service_role();
+  v_outcome := public.apply_match_levels(p_match);
+  perform tests.act_as_postgres();
+  return v_outcome;
+end;
+$$;
+
+-- match_rating_for as service_role: {rating, count}.
+create or replace function tests.rating_of(p_match uuid, p_profile uuid)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v jsonb;
+begin
+  perform tests.act_as_service_role();
+  v := public.match_rating_for(p_match, tests.player_id(p_match, p_profile));
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
