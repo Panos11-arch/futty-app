@@ -1,10 +1,13 @@
+import { mockResultMatch } from '@/lib/match/mock';
 import {
   checkOfferCode,
   describeOfferError,
   fetchPostMatchOffers,
   offerPrices,
+  openIfOffers,
   openPostMatchOffer,
   redeemOfferCode,
+  scoreEntered,
 } from '@/lib/post-match-offers';
 
 // A8 (spec 13, "Post-match offers"): the server returns the offers, codes and
@@ -65,5 +68,41 @@ describe('describeOfferError', () => {
 
   it('falls back to a plain message', () => {
     expect(describeOfferError({ message: 'connection reset' })).toBe('Something went wrong. Try again.');
+  });
+});
+
+describe('scoreEntered (the match screen shows offers on the server\'s condition)', () => {
+  it('once a score was submitted, accepted, rejected or the match is confirmed', () => {
+    expect(scoreEntered(mockResultMatch({ submission: {} }))).toBe(true);
+    expect(scoreEntered(mockResultMatch({ submission: { response: 'accepted' }, status: 'confirmed' }))).toBe(true);
+    // Decided 17 November: a rejected score still counts; the players are still at the venue.
+    expect(scoreEntered(mockResultMatch({ submission: { response: 'rejected' }, status: 'disputed' }))).toBe(true);
+    expect(scoreEntered(mockResultMatch({ status: 'confirmed' }))).toBe(true);
+  });
+
+  it('not before a score, for a void match, or without a venue', () => {
+    expect(scoreEntered(mockResultMatch())).toBe(false);
+    expect(scoreEntered(mockResultMatch({ submission: {}, status: 'void' }))).toBe(false);
+    const noVenue = mockResultMatch({ submission: {} });
+    expect(scoreEntered({ ...noVenue, match: { ...noVenue.match, venue_id: null } })).toBe(false);
+  });
+});
+
+describe('openIfOffers (Home, after a submit or accept)', () => {
+  it('opens the match screen when the server returns an offer', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [{ id: 'i1' }], error: null });
+    const open = jest.fn();
+    await openIfOffers('m1', open);
+    expect(mockRpc).toHaveBeenCalledWith('post_match_offers', { p_match_id: 'm1' });
+    expect(open).toHaveBeenCalledWith('m1');
+  });
+
+  it('does nothing when there are none, or the call fails', async () => {
+    const open = jest.fn();
+    mockRpc.mockResolvedValueOnce({ data: [], error: null });
+    await openIfOffers('m1', open);
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'connection reset' } });
+    await openIfOffers('m1', open);
+    expect(open).not.toHaveBeenCalled();
   });
 });

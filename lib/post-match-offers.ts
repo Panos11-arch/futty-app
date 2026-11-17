@@ -4,6 +4,7 @@
 // integer cents, and the app only formats them.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { ResultMatch } from '@/lib/match/result';
 import { formatEuros } from '@/lib/money/format';
 import { supabase } from '@/lib/supabase';
 import { VENUE_PHOTOS_BUCKET } from '@/lib/venue-page';
@@ -34,8 +35,24 @@ export function offerPrices(offer: Pick<PostMatchOffer, 'price_cents' | 'offer_p
   return { now: price !== null ? formatEuros(price) : null, was: null };
 }
 
+/**
+ * Whether a score is in, as public.post_match_offers_open decides it: the
+ * match has a venue, isn't void, and has a submission (even a rejected one;
+ * decided 17 November) or is confirmed. The match screen only asks for
+ * offers then; the server still decides which, and for whom.
+ */
+export function scoreEntered({ match, submission }: Pick<ResultMatch, 'match' | 'submission'>) {
+  return match.venue_id !== null && match.status !== 'void' && (submission !== null || match.status === 'confirmed');
+}
+
 export function fetchPostMatchOffers(matchId: string) {
   return supabase.rpc('post_match_offers', { p_match_id: matchId });
+}
+
+/** Home, after a submit or accept: open the match screen only when it has offers to show. */
+export async function openIfOffers(matchId: string, open: (matchId: string) => void) {
+  const { data, error } = await fetchPostMatchOffers(matchId);
+  if (!error && Array.isArray(data) && data.length > 0) open(matchId);
 }
 
 /** The caller's code for this offer (made the first time); also records a view. */

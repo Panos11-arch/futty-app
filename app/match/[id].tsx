@@ -16,6 +16,7 @@ import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
 import { formatMatchWhen } from '@/lib/match/format';
 import { useResultMatch } from '@/lib/match/use-match-result';
+import { scoreEntered } from '@/lib/post-match-offers';
 import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 
 export default function MatchScreen() {
@@ -64,7 +65,7 @@ export default function MatchScreen() {
             onChanged={reload}
           />
         </Card>
-        {match.submission || match.match.status === 'confirmed' ? <PostMatchOffers matchId={match.match.id} /> : null}
+        {scoreEntered(match) ? <PostMatchOffers matchId={match.match.id} /> : null}
       </View>
     );
   }
