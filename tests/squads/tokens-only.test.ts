@@ -24,8 +24,6 @@ describe.each(files)('%s uses tokens only', (file) => {
   it('has no numeric fontSize', () => expect(text.match(/fontSize\s*:\s*\d/g)).toBeNull());
   it('has no numeric borderRadius', () => expect(text.match(/[rR]adius\s*:\s*\d/g)).toBeNull());
   it('has no fontWeight', () => expect(text.match(/fontWeight/g)).toBeNull());
-  // popup-modal keeps its elevation: it lifts the header above the body for
-  // hit-testing on Android, as before.
   it('has no shadow styles', () => expect(text.match(/shadow[A-Z]|boxShadow/g)).toBeNull());
   it('has no emoji', () => expect(text.match(/\p{Extended_Pictographic}/gu)).toBeNull());
   it('uses no deprecated tokens', () => {

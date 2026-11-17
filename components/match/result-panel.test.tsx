@@ -50,21 +50,21 @@ describe('MatchResultPanel states', () => {
     await show({ viewerId: booker, match: mockResultMatch({ status: 'scheduled' }), now: RESULT_BEFORE_KICKOFF });
     expect(screen.getByText('19:00')).toBeTruthy();
     expect(screen.getByText('The score can be entered from kickoff.')).toBeTruthy();
-    expect(screen.queryByText('Submit score')).toBeNull();
+    expect(screen.queryByText('Log score')).toBeNull();
   });
 
   it('played, for a captain: the form and the deadline in Cyprus time', async () => {
     await show({ viewerId: booker });
     expect(screen.getByText('Waiting for the result')).toBeTruthy();
     expect(screen.getByText(`Enter the score by ${DEADLINE_TEXT}.`)).toBeTruthy();
-    expect(screen.getByText('Submit score')).toBeTruthy();
+    expect(screen.getByText('Log score')).toBeTruthy();
   });
 
   it('played, for a non-captain: no submit button, just the wait', async () => {
     await show({ viewerId: me, match: mockResultMatch({ mySide: 'a' }) });
     expect(screen.getByText('Waiting for the result')).toBeTruthy();
     expect(screen.getByText(`A captain enters the score by ${DEADLINE_TEXT}.`)).toBeTruthy();
-    expect(screen.queryByText('Submit score')).toBeNull();
+    expect(screen.queryByText('Log score')).toBeNull();
     expect(screen.queryByText('Accept')).toBeNull();
   });
 
@@ -88,7 +88,7 @@ describe('MatchResultPanel states', () => {
   it('past the deadline, before the job settles it', async () => {
     await show({ viewerId: booker, now: Date.parse(RESULT_DEADLINE) });
     expect(screen.getByText('The time to enter or answer the result has passed.')).toBeTruthy();
-    expect(screen.queryByText('Submit score')).toBeNull();
+    expect(screen.queryByText('Log score')).toBeNull();
   });
 
   it.each([
@@ -98,7 +98,7 @@ describe('MatchResultPanel states', () => {
   ] as const)('%s shows "%s" and no actions', async (status, words) => {
     await show({ viewerId: booker, match: mockResultMatch({ status, submission: {}, mySide: 'b' }) });
     expect(screen.getByText(words)).toBeTruthy();
-    expect(screen.queryByText('Submit score')).toBeNull();
+    expect(screen.queryByText('Log score')).toBeNull();
     expect(screen.queryByText('Accept')).toBeNull();
   });
 
@@ -122,7 +122,7 @@ describe('MatchResultPanel actions', () => {
     const { onChanged } = await show({ viewerId: booker });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '5');
     await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '3');
-    await fireEvent.press(screen.getByText('Submit score'));
+    await fireEvent.press(screen.getByText('Log score'));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(submit).toHaveBeenCalledWith('m1', 5, 3);
   });
@@ -164,7 +164,7 @@ describe('MatchResultPanel actions', () => {
     const { onChanged } = await show({ viewerId: booker });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '1');
     await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '0');
-    await fireEvent.press(screen.getByText('Submit score'));
+    await fireEvent.press(screen.getByText('Log score'));
     expect(await screen.findByText(words)).toBeTruthy();
     expect(onChanged).toHaveBeenCalledTimes(reloads ? 1 : 0);
   });
@@ -185,7 +185,7 @@ describe('MatchResultPanel actions', () => {
     await show({ viewerId: booker, onScored });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '5');
     await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '3');
-    await fireEvent.press(screen.getByText('Submit score'));
+    await fireEvent.press(screen.getByText('Log score'));
     await waitFor(() => expect(onScored).toHaveBeenCalledTimes(1));
 
     onScored.mockClear();
@@ -207,7 +207,7 @@ describe('MatchResultPanel actions', () => {
     await show({ viewerId: booker, onScored });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '1');
     await fireEvent.changeText(screen.getByLabelText('Non-bibs'), '0');
-    await fireEvent.press(screen.getByText('Submit score'));
+    await fireEvent.press(screen.getByText('Log score'));
     expect(await screen.findByText('Only a captain can enter the score.')).toBeTruthy();
     expect(onScored).not.toHaveBeenCalled();
   });
@@ -216,7 +216,7 @@ describe('MatchResultPanel actions', () => {
     await show({ viewerId: booker });
     await fireEvent.changeText(screen.getByLabelText('Bibs'), '2');
     await fireEvent.changeText(screen.getByLabelText('Non-bibs'), 'x');
-    await fireEvent.press(screen.getByText('Submit score'));
+    await fireEvent.press(screen.getByText('Log score'));
     expect(submit).not.toHaveBeenCalled();
   });
 });

@@ -173,10 +173,10 @@ const styles = StyleSheet.create({
   launcherWrap: {
     position: 'absolute',
     right: space.lg,
-    // zIndex/elevation so the launcher always sits above scrollable screen
-    // content instead of getting drawn under it on Android.
+    // zIndex so the launcher always sits above scrollable screen content
+    // instead of getting drawn under it on Android. Nothing beneath it is
+    // raised either, and the one shadow comes from the theme (U8).
     zIndex: 50,
-    elevation: 50,
   },
   launcher: {
     width: LAUNCHER,
