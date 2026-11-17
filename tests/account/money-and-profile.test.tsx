@@ -157,4 +157,22 @@ describe('Profile', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(mockSignOut).toHaveBeenCalled());
   });
+
+  it.each([
+    ['My bookings', '/my-bookings'],
+    ['Payments', '/account/payments'],
+    ['Help', '/account/help'],
+  ])('the %s row opens %s', async (label, target) => {
+    mockProfile = { status: 'ready', profile };
+    await render(<ProfileScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: label }));
+    expect(router.push).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith(target);
+  });
+
+  it('shows no shortcut rows until the profile has loaded', async () => {
+    mockProfile = { status: 'error', message: 'offline' };
+    await render(<ProfileScreen />);
+    expect(screen.queryByRole('button', { name: 'My bookings' })).toBeNull();
+  });
 });

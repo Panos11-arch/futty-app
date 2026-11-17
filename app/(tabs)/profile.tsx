@@ -162,6 +162,15 @@ function ProfileStatus() {
           {/* App lock and push-notification toggles live under Account >
               Settings now (app/account/settings/*) — Profile stays focused
               on identity/stats, one card, one job. */}
+          {/* Spec 17 U5: My bookings, Payments, Settings and Help rows. Same
+              targets as the Account menu (app/account/index.tsx). */}
+          <MenuSection>
+            <MenuRow icon="sportscourt.fill" label="My bookings" onPress={() => router.push('/my-bookings')} />
+            <MenuRow icon="creditcard.fill" label="Payments" onPress={() => router.push('/account/payments')} />
+            <MenuRow icon="gearshape.fill" label="Account & settings" onPress={() => router.push('/account')} />
+            <MenuRow icon="questionmark.circle.fill" label="Help" onPress={() => router.push('/account/help')} />
+          </MenuSection>
+
           <MenuSection>
             <MenuRow
               icon="star.fill"
@@ -176,7 +185,6 @@ function ProfileStatus() {
                 onPress={() => router.push('/venue-dashboard')}
               />
             ) : null}
-            <MenuRow icon="gearshape.fill" label="Account & settings" onPress={() => router.push('/account')} />
           </MenuSection>
         </>
       );
