@@ -5,12 +5,14 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { CheckoutView } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
+import { WeatherStrip } from '@/components/venue/weather-strip';
 import type { PaymentMode } from '@/lib/booking-actions';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
 import { afterPayment } from '@/lib/booking-navigation';
 import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
 import { useReloadOnReturn } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
+import { useGameWeather } from '@/lib/use-weather';
 
 const openPayOwed = () => router.push('/account/payments/owed');
 
@@ -73,6 +75,8 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // P11: the forecast for the game's hours.
+  const weather = useGameWeather(slot.venueId, { day: slot.day, start: slot.start, end: slot.end });
 
   async function pay({ mode, teamId, pay }: { mode: PaymentMode; teamId?: string; pay: PayOptions }) {
     setPaying(true);
@@ -99,6 +103,7 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
         error={error}
         bookingHeld={bookingId !== null}
         onPayOwed={openPayOwed}
+        weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
       />
     </>
   );

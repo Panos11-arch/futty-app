@@ -7,14 +7,20 @@ import { Linking, Platform } from 'react-native';
 
 import { Sheet } from '@/components/ui';
 import { VenuePageView } from '@/components/venue/venue-page-view';
+import { WeatherStrip } from '@/components/venue/weather-strip';
 import { useVenuePage } from '@/lib/use-venue-page';
+import { useGameWeather } from '@/lib/use-weather';
 import { appleMapsUrl, googleMapsUrl } from '@/lib/venue-page';
 
 export default function VenueScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // From Book, the time the player is looking at (Cyprus day, start, end):
+  // the weather strip shows those hours. Opened any other way there is no
+  // game time, so no strip (TO CONFIRM).
+  const { id, day, start, end } = useLocalSearchParams<{ id: string; day?: string; start?: string; end?: string }>();
   const { state, reload } = useVenuePage(id);
   const [choosingMaps, setChoosingMaps] = useState(false);
   const venue = state.status === 'ready' ? state.data.venue : null;
+  const weather = useGameWeather(venue?.id, day && start && end ? { day, start, end } : null);
 
   const openDirections = () => {
     if (!venue) return;
@@ -31,6 +37,7 @@ export default function VenueScreen() {
         onRetry={reload}
         onDirections={openDirections}
         onBook={() => venue && router.push({ pathname: '/book', params: { venueId: venue.id } })}
+        weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
       />
       <Sheet
         visible={choosingMaps}

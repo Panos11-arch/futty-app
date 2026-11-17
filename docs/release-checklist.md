@@ -57,6 +57,31 @@ Apply each migration with `supabase db push` (it applies the ones production has
 - [ ] Migration `20261116194830_pay_release.sql` (`venues.signed_at`, `release_unlive_unsigned()`, `release_check()`).
 - [ ] `supabase functions deploy futty-ai-chat` (Team Premium is no longer offered in its answers).
 
+## 3a. Weather (P11, PR #83)
+
+Nothing shows a forecast until every step here is done, including the venue coordinates.
+
+- [ ] **Apple Developer → Certificates, Identifiers & Profiles**, create exactly two things:
+  1. **Identifiers → + → Services IDs:** a Services ID for WeatherKit, e.g. `app.futty.weather`. Note the identifier. (Also check the app's App ID has WeatherKit ticked under Capabilities and App Services.)
+  2. **Keys → +:** a new key with **WeatherKit** enabled. Download the `.p8` (Apple lets you download it once; keep it in the password manager, never in the repo) and note its **Key ID**.
+- [ ] **The four Edge Function secrets**, on the production project:
+  ```
+  supabase secrets set \
+    APPLE_TEAM_ID=<Team ID> \
+    WEATHERKIT_KEY_ID=<Key ID of the WeatherKit key> \
+    WEATHERKIT_SERVICE_ID=<the Services ID, e.g. app.futty.weather> \
+    WEATHERKIT_PRIVATE_KEY="$(cat AuthKey_<KeyID>.p8)"
+  ```
+  `APPLE_TEAM_ID` is the same one `delete-account` uses (`docs/p13-provider-setup.md` section 6); if it's already set, `supabase secrets list` shows it and setting it again to the same value does no harm. `WEATHERKIT_PRIVATE_KEY` is the whole `.p8`, BEGIN and END lines included.
+- [ ] Migration `20261117090000_pay_weather.sql` (`venues.latitude/longitude`, `app_rules.weather_nudge_hours`, `weather_cache`, `venue_weather_slots`).
+- [ ] `supabase functions deploy venue-weather`, then `supabase functions deploy futty-ai-chat` (its weather lines).
+- [ ] **Venue coordinates (Panos, by hand).** Every venue starts with `latitude` and `longitude` empty, and the app never sets them. For every signed venue (do this once section 4 has set `signed_at`): open its Google Maps link, right-click the venue's pin and click the numbers at the top of the menu to copy them (`34.6841, 33.0379`: latitude first, then longitude). Then in the SQL editor:
+  ```sql
+  update public.venues set latitude = <latitude>, longitude = <longitude> where id = '<venue id>';
+  ```
+  Both or neither (the database refuses one without the other). Check: `select name from public.venues where signed_at is not null and latitude is null;` returns no rows.
+- [ ] **First live call** (also review item 4 on PR #83, on a dev build): open a signed venue's page from Book for a time in the next few days. Expect the forecast strip with Apple's Weather mark and the Data sources link. Nothing shown: check the `venue-weather` logs; a 401 from Apple means the Key ID, Services ID, Team ID or private key is wrong.
+
 ## 4. Each venue: `signed_at` and `payouts_from`
 
 Both are set only as `service_role` or in the SQL editor; a signed-in session is refused.
