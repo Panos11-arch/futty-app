@@ -1,16 +1,11 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-
-// Generous touch target beyond the button's own 32x32 visual bounds — the
-// object form (not the numeric shorthand) per the item 1/2 fix, so there's
-// no ambiguity about it being applied on every side.
-const HIT_SLOP = { top: 15, bottom: 15, left: 15, right: 15 };
+import { MIN_TOUCH } from '@/components/ui/foundation';
+import { IconButton } from '@/components/ui/icon-button';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 
 /**
  * The one popup/modal shell for the whole app (items 1 & 2) — every full-
@@ -31,6 +26,9 @@ const HIT_SLOP = { top: 15, bottom: 15, left: 15, right: 15 };
  * guarantee it's remeasured against the same SafeAreaProvider context the
  * rest of the app uses. Reading the insets explicitly and applying them as
  * padding sidesteps that entirely.
+ *
+ * Look (U7, docs/specs/15-design.md): surface header with a hairline, a
+ * headline title, 44 pt icon buttons, canvas body.
  */
 export function PopupModal({
   visible,
@@ -52,11 +50,10 @@ export function PopupModal({
   /** Pinned below the scrollable body — e.g. a primary "Find pitches" /
    *  "Next" action, or a chat input row. */
   footer?: ReactNode;
-  /** Full-bleed background (e.g. the pitch graphic behind the booking
-   *  wizard / Fixture Confirmed) rendered behind the header+body+footer. */
+  /** Full-bleed background rendered behind the header+body+footer. */
   backgroundImage?: ReactNode;
-  /** Set when backgroundImage is a dark/busy image — switches header text,
-   *  icons and controls to light-on-dark instead of the default. */
+  /** Set when backgroundImage is a dark/busy image — the title switches to
+   *  light text and the buttons sit on a surface pill so they stay legible. */
   dark?: boolean;
   /** Fixed row between the header and the (possibly-animated/scrolling)
    *  body — e.g. a step-progress indicator that shouldn't move when the
@@ -64,48 +61,33 @@ export function PopupModal({
   subHeader?: ReactNode;
 }>) {
   const insets = useSafeAreaInsets();
-  const lightBorder = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
-  const border = dark ? 'rgba(255,255,255,0.25)' : lightBorder;
-  const iconColor = dark ? FuttyColors.white : FuttyColors.stone700;
-  const buttonBg = dark ? 'rgba(255,255,255,0.18)' : FuttyColors.stone50;
+  const plain = !backgroundImage;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.flex}>
+      <View style={[styles.flex, plain && styles.canvas]}>
         {backgroundImage}
         <View style={[styles.flex, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-          <View style={[styles.header, { borderBottomColor: border }]}>
+          <View style={[styles.header, !dark && styles.headerSurface]}>
             {onBack ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Back"
-                onPress={onBack}
-                hitSlop={HIT_SLOP}
-                style={({ pressed }) => [styles.roundButton, { backgroundColor: buttonBg }, pressed && styles.pressed]}>
-                <IconSymbol name="chevron.left" size={18} color={iconColor} />
-              </Pressable>
+              <View style={dark && styles.onImage}>
+                <IconButton icon="chevron.left" accessibilityLabel="Back" onPress={onBack} />
+              </View>
             ) : (
-              <View style={styles.roundButtonPlaceholder} />
+              <View style={styles.placeholder} />
             )}
 
             {title ? (
-              <ThemedText
-                type="defaultSemiBold"
-                style={[styles.title, dark && styles.titleDark]}>
+              <Text variant="headline" tone={dark ? 'onBrand' : 'ink'} accessibilityRole="header" style={styles.title}>
                 {title}
-              </ThemedText>
+              </Text>
             ) : (
               <View style={styles.title} />
             )}
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-              hitSlop={HIT_SLOP}
-              style={({ pressed }) => [styles.roundButton, { backgroundColor: buttonBg }, pressed && styles.pressed]}>
-              <IconSymbol name="xmark" size={20} color={iconColor} />
-            </Pressable>
+            <View style={dark && styles.onImage}>
+              <IconButton icon="xmark" accessibilityLabel="Close" onPress={onClose} />
+            </View>
           </View>
 
           {subHeader}
@@ -113,7 +95,7 @@ export function PopupModal({
           <View style={styles.body}>{children}</View>
 
           {footer ? (
-            <View style={[styles.footer, { borderTopColor: border, paddingBottom: insets.bottom > 0 ? 16 : 24 }]}>
+            <View style={[styles.footer, !dark && styles.footerSurface, { paddingBottom: insets.bottom > 0 ? space.lg : space.xl }]}>
               {footer}
             </View>
           ) : null}
@@ -124,51 +106,35 @@ export function PopupModal({
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
+  canvas: { backgroundColor: colors.canvas },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 56,
-    borderBottomWidth: 1,
+    gap: space.sm,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
+    minHeight: MIN_TOUCH + space.md,
     // Belt-and-braces: guarantees this row draws and is hit-tested above
     // the body's ScrollView/FlatList, on top of the real (gesture-handler)
     // fix above.
     zIndex: 10,
     elevation: 10,
   },
-  title: {
-    flex: 1,
-    textAlign: 'center',
+  headerSurface: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border,
   },
-  titleDark: {
-    color: FuttyColors.white,
-  },
-  roundButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roundButtonPlaceholder: {
-    width: 36,
-    height: 36,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
-  body: {
-    flex: 1,
-  },
-  footer: {
-    borderTopWidth: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  onImage: { backgroundColor: colors.surface, borderRadius: radius.pill },
+  title: { flex: 1, textAlign: 'center' },
+  placeholder: { width: MIN_TOUCH, height: MIN_TOUCH },
+  body: { flex: 1 },
+  footer: { paddingHorizontal: space.lg, paddingTop: space.lg },
+  footerSurface: {
+    backgroundColor: colors.surface,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
   },
 });

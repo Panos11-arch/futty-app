@@ -1,16 +1,18 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthError } from '@/components/auth-form';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { formatEuros } from '@/lib/money/format';
+import { PriceBreakdown } from '@/components/ui/price-breakdown';
+import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
@@ -35,14 +37,13 @@ function formatWhen(iso: string) {
 
 /** "Join as Player" — item 5. Joining and authorizing payment used to be two
  *  separate trips (join here, then go authorize on app/booking-payment.tsx
- *  later); this combines them into the one "Join & Pay My Share" action the
+ *  later); this combines them into the one "Join and pay my share" action the
  *  reference flow describes. Nothing is actually charged here — see item 6:
  *  this only places an authorization hold, captured later (all shares at
  *  once) once the roster fills, via supabase/functions/stripe-webhook. */
 export default function JoinSquadPostScreen() {
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const posts = useSquadPosts('players');
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [shareCents, setShareCents] = useState<number | null>(null);
@@ -195,9 +196,13 @@ export default function JoinSquadPostScreen() {
 
   if (posts.status === 'loading' || (posts.status === 'ready' && !post)) {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.center}>
-          <ActivityIndicator />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View testID="join-skeleton" style={styles.content}>
+          <Card>
+            <SkeletonText lines={2} />
+          </Card>
+          <SkeletonBlock width="100%" height={space.xxl + space.lg} />
+          <SkeletonBlock width="100%" height={space.xxl * 2} />
         </View>
       </SafeAreaView>
     );
@@ -205,194 +210,103 @@ export default function JoinSquadPostScreen() {
 
   if (!post) {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.center}>
-          <ThemedText style={styles.note}>Could not load this post.</ThemedText>
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.content}>
+          <Banner
+            tone="danger"
+            message="Could not load this post."
+            action={{ label: 'Try again', onPress: posts.reload }}
+          />
         </View>
       </SafeAreaView>
     );
   }
 
+  const need = describePlayerPostNeed(post);
+
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ThemedView style={[styles.card, { borderColor: border }]}>
-          <ThemedText type="defaultSemiBold" style={styles.venue}>
+        <Card style={styles.head}>
+          <Text variant="title" accessibilityRole="header">
             {post.venue_name}
-          </ThemedText>
-          <ThemedText style={styles.note}>
+          </Text>
+          <Text variant="callout" tone="inkMuted" tabular>
             {post.level ? `${post.level} · ` : ''}
             {post.venue_city ?? 'Unknown city'} · {formatWhen(post.scheduled_at)}
-          </ThemedText>
-        </ThemedView>
+          </Text>
+        </Card>
 
-        {blockNotice ? (
-          <View
-            style={styles.blockNotice}
-            accessible
-            accessibilityRole="alert"
-            accessibilityLabel={`${blockNotice.title}. ${blockNotice.body}`}>
-            <IconSymbol name="lock.fill" size={16} color={FuttyColors.stone700} />
-            <View style={styles.blockNoticeText}>
-              <ThemedText type="defaultSemiBold">{blockNotice.title}</ThemedText>
-              <ThemedText>{blockNotice.body}</ThemedText>
-            </View>
-          </View>
-        ) : null}
+        {blockNotice ? <Banner tone="warning" title={blockNotice.title} message={blockNotice.body} /> : null}
 
-        <View style={[styles.openSpotsRow, { borderColor: border }]}>
-          <IconSymbol name="person.2.fill" size={16} color={FuttyColors.stone700} />
-          <ThemedText style={styles.openSpotsText}>
+        <View style={styles.openSpotsRow}>
+          <IconSymbol name="person.2.fill" size={ICON.small} color={colors.inkMuted} />
+          <Text variant="body" tabular>
             {spotsLeft} open spot{spotsLeft === 1 ? '' : 's'}
-          </ThemedText>
+          </Text>
         </View>
 
         {shareCents !== null ? (
-          <View style={styles.shareBox}>
-            <ThemedText style={styles.shareLabel}>Your share</ThemedText>
-            <ThemedText style={styles.shareAmount}>{formatEuros(shareCents)}</ThemedText>
-            {feeCents ? (
-              <ThemedText style={styles.feeBreakdown}>
-                Pitch {formatEuros(shareCents - feeCents)} + service fee {formatEuros(feeCents)}
-              </ThemedText>
-            ) : null}
-          </View>
+          <Card testID="share-price">
+            <PriceBreakdown
+              lines={
+                feeCents
+                  ? [
+                      { label: 'Pitch', cents: shareCents - feeCents },
+                      { label: 'Service fee', cents: feeCents },
+                    ]
+                  : []
+              }
+              totalCents={shareCents}
+              totalLabel="Your share"
+            />
+          </Card>
         ) : null}
 
-        {describePlayerPostNeed(post) ? (
+        {need ? (
           <View style={styles.quote}>
-            <ThemedText style={styles.quoteText}>&ldquo;{describePlayerPostNeed(post)}&rdquo;</ThemedText>
+            <Text variant="callout" tone="inkMuted">
+              &ldquo;{need}&rdquo;
+            </Text>
           </View>
         ) : null}
 
-        <ThemedText style={styles.disclaimer}>
+        <Text variant="callout" tone="inkMuted">
           Your card is only held, not charged — you&apos;re only charged once the match is confirmed with a full
           roster.
-        </ThemedText>
+        </Text>
 
-        {error ? <AuthError>{error}</AuthError> : null}
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={joinAndPay}
-          disabled={busy}
-          style={({ pressed }) => [styles.joinButton, busy && styles.joinButtonDisabled, pressed && !busy && styles.joinButtonPressed]}>
-          <ThemedText style={styles.joinButtonText}>{busy ? 'Please wait…' : 'Join & Pay My Share'}</ThemedText>
-        </Pressable>
+        <Button label="Join and pay my share" fullWidth onPress={joinAndPay} loading={busy} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    gap: 14,
-    padding: 16,
-    paddingBottom: 32,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 4,
-  },
-  venue: {
-    fontSize: 16,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.lg, padding: space.lg, paddingBottom: space.xxl },
+  head: { gap: space.xs },
   openSpotsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  blockNotice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: FuttyColors.amber400,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  blockNoticeText: {
-    flex: 1,
-    gap: 2,
-  },
-  openSpotsText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  shareBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: FuttyColors.emerald200,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  shareLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: FuttyColors.emerald950,
-  },
-  shareAmount: {
-    fontFamily: FuttyFonts.monoSemiBold,
-    fontSize: 18,
-    color: FuttyColors.emerald950,
-  },
-  feeBreakdown: {
-    fontSize: 12,
-    color: FuttyColors.stone500,
+    gap: space.sm,
+    minHeight: space.xxl + space.lg,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.card,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   quote: {
-    borderLeftWidth: 3,
-    borderLeftColor: FuttyColors.amber400,
-    paddingLeft: 12,
-    paddingVertical: 4,
-  },
-  quoteText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    color: FuttyColors.stone700,
-  },
-  disclaimer: {
-    fontSize: 11,
-    color: FuttyColors.stone500,
-  },
-  joinButton: {
-    height: 50,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: FuttyColors.emerald950,
-    marginTop: 4,
-  },
-  joinButtonDisabled: {
-    opacity: 0.5,
-  },
-  joinButtonPressed: {
-    opacity: 0.85,
-  },
-  joinButtonText: {
-    fontFamily: FuttyFonts.sansBold,
-    fontSize: 16,
-    color: FuttyColors.white,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+    paddingLeft: space.md,
+    paddingVertical: space.xs,
   },
 });

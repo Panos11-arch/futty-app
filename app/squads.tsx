@@ -1,16 +1,19 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthButton, AuthError } from '@/components/auth-form';
-import { Chip } from '@/components/chip';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/chip';
+import { EmptyState } from '@/components/ui/empty-state';
+import { SegmentedControl } from '@/components/ui/segmented-control';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text, type TextTone } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { createSharePayment } from '@/lib/booking-shares';
@@ -34,6 +37,12 @@ import { useRules } from '@/lib/use-rules';
 // (supabase/scores.sql).
 const CANCEL_WINDOW_MS = 30 * 60 * 1000;
 
+type View_ = 'players' | 'opposition';
+const VIEW_OPTIONS: { value: View_; label: string }[] = [
+  { value: 'players', label: 'Need players' },
+  { value: 'opposition', label: 'Need opposition' },
+];
+
 function formatWhen(iso: string) {
   const date = new Date(iso);
   const day = date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -41,22 +50,49 @@ function formatWhen(iso: string) {
   return `${day} · ${time}`;
 }
 
-/** One of the small labeled boxes on a post card — where, when, how many
- *  needed, how many spots are left. A different accent tint per box makes
- *  the card easier to scan at a glance. */
-function InfoBox({ label, value, tint }: { label: string; value: string; tint: string }) {
+/** One labelled fact on a post card — where, when, how many needed, how
+ *  many spots are left. Plain canvas tiles: no colour per box. */
+function Fact({ label, value, tone = 'ink' }: { label: string; value: string; tone?: TextTone }) {
   return (
-    <View style={[styles.infoBox, { borderColor: tint, backgroundColor: tint + '14' }]}>
-      <ThemedText type="defaultSemiBold" style={styles.infoBoxValue}>
+    <View style={styles.fact} accessible accessibilityLabel={`${label}: ${value}`}>
+      <Text variant="callout" tone={tone} tabular>
         {value}
-      </ThemedText>
-      <ThemedText style={styles.note}>{label}</ThemedText>
+      </Text>
+      <Text variant="caption" tone="inkMuted">
+        {label}
+      </Text>
     </View>
   );
 }
 
+/** A neutral pill for a team's level or the payment mode. */
+function Tag({ label }: { label: string }) {
+  return (
+    <View style={styles.tag}>
+      <Text variant="caption">{label}</Text>
+    </View>
+  );
+}
+
+function Quote({ text }: { text: string }) {
+  return (
+    <View style={styles.quote}>
+      <Text variant="callout" tone="inkMuted">
+        &ldquo;{text}&rdquo;
+      </Text>
+    </View>
+  );
+}
+
+function ErrorText({ children }: { children: string }) {
+  return (
+    <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+      {children}
+    </Text>
+  );
+}
+
 function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onChanged: () => void }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,27 +108,27 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
     else onChanged();
   }
 
+  const need = describePlayerPostNeed(post);
+
   return (
-    <ThemedView style={[styles.card, { borderColor: border }]}>
-      <ThemedText type="defaultSemiBold">{post.venue_name}</ThemedText>
-      <ThemedText style={styles.note}>
-        {post.venue_city ?? 'Unknown city'} · {post.format}
-        {post.level ? ` · ${post.level}` : ''}
-      </ThemedText>
+    <Card testID="players-post" style={styles.card}>
+      <View style={styles.cardHead}>
+        <Text variant="headline">{post.venue_name}</Text>
+        <Text variant="callout" tone="inkMuted">
+          {post.venue_city ?? 'Unknown city'} · {post.format}
+          {post.level ? ` · ${post.level}` : ''}
+        </Text>
+      </View>
 
-      {describePlayerPostNeed(post) ? (
-        <View style={styles.quote}>
-          <ThemedText style={styles.quoteText}>&ldquo;{describePlayerPostNeed(post)}&rdquo;</ThemedText>
-        </View>
-      ) : null}
+      {need ? <Quote text={need} /> : null}
 
-      <View style={styles.infoRow}>
-        <InfoBox label="When" value={formatWhen(post.scheduled_at)} tint={FuttyColors.sky500} />
-        <InfoBox label="Needed" value={String(post.players_needed ?? 0)} tint={FuttyColors.coral500} />
-        <InfoBox
+      <View style={styles.facts}>
+        <Fact label="When" value={formatWhen(post.scheduled_at)} />
+        <Fact label="Needed" value={String(post.players_needed ?? 0)} />
+        <Fact
           label={full ? 'Status' : 'Spots left'}
           value={full ? 'Full' : String(spotsLeft)}
-          tint={full ? FuttyColors.stone400 : FuttyColors.emerald700}
+          tone={full ? 'inkMuted' : 'ink'}
         />
       </View>
 
@@ -100,37 +136,33 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
         <View style={styles.roster}>
           {post.roster.map((player, index) => (
             <View key={player.profileId ?? `house-${index}`} style={styles.rosterRow}>
-              <ThemedText style={styles.rosterName}>{player.name}</ThemedText>
-              {player.isHousePlayer ? (
-                <View style={[styles.tag, { borderColor: FuttyColors.stone400 }]}>
-                  <ThemedText style={[styles.tagText, { color: FuttyColors.stone500 }]}>Venue staff</ThemedText>
-                </View>
-              ) : (
-                <ThemedText style={styles.rosterTier}>{player.tier}</ThemedText>
-              )}
+              <Text variant="callout" style={styles.flex}>
+                {player.name}
+              </Text>
+              <Text variant="caption" tone="inkMuted">
+                {player.isHousePlayer ? 'Venue staff' : player.tier}
+              </Text>
             </View>
           ))}
         </View>
       ) : null}
 
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
       {post.joined_by_me ? (
-        <AuthButton label="Cancel" variant="secondary" onPress={leave} busy={busy} compact />
+        <Button label="Cancel" variant="secondary" onPress={leave} loading={busy} />
       ) : (
-        <AuthButton
-          label={full ? 'Full' : 'Join & Pay My Share'}
+        <Button
+          label={full ? 'Full' : 'Join and pay my share'}
           onPress={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
           disabled={full}
-          compact
         />
       )}
-    </ThemedView>
+    </Card>
   );
 }
 
 function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; onChanged: () => void }) {
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const { user } = useAuth();
   const myTeams = useMyTeams();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
@@ -171,7 +203,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
 
     if (!post.venue_booking_id || !user) {
       // No real booking behind this post (or, in practice, always signed in
-      // to have gotten this far) — nothing to authorize, the match itself is
+      // to have gotten this far) — nothing to hold, the match itself is
       // already locked in by offer_opposition above.
       setBusy(false);
       setOffering(false);
@@ -265,64 +297,58 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
     else onChanged();
   }
 
+  const need = describeOppositionPostNeed(post);
+
   return (
-    <ThemedView style={[styles.card, { borderColor: border }]}>
-      <View style={styles.teamNameRow}>
-        <ThemedText type="defaultSemiBold">{post.team_name}</ThemedText>
-        {post.team_level ? (
-          <View style={[styles.tag, { borderColor: FuttyColors.amber400 }]}>
-            <ThemedText style={[styles.tagText, { color: FuttyColors.stone700 }]}>{post.team_level}</ThemedText>
-          </View>
-        ) : null}
-        {post.payment_mode === 'gipedo_pano' ? (
-          <View style={[styles.tag, { borderColor: FuttyColors.coral500 }]}>
-            <ThemedText style={[styles.tagText, { color: FuttyColors.coral500 }]}>Gipedo Pano</ThemedText>
-          </View>
-        ) : null}
-      </View>
-      <ThemedText style={styles.note}>
-        {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
-        {post.level ? ` · ${post.level}` : ''}
-      </ThemedText>
-
-      {describeOppositionPostNeed(post) ? (
-        <View style={styles.quote}>
-          <ThemedText style={styles.quoteText}>&ldquo;{describeOppositionPostNeed(post)}&rdquo;</ThemedText>
+    <Card testID="opposition-post" style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={styles.teamNameRow}>
+          <Text variant="headline">{post.team_name}</Text>
+          {post.team_level ? <Tag label={post.team_level} /> : null}
+          {post.payment_mode === 'gipedo_pano' ? <Tag label="Gipedo Pano" /> : null}
         </View>
-      ) : null}
+        <Text variant="callout" tone="inkMuted">
+          {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
+          {post.level ? ` · ${post.level}` : ''}
+        </Text>
+      </View>
 
-      <View style={styles.infoRow}>
-        <InfoBox label="Where" value={post.venue_name} tint={FuttyColors.violet500} />
-        <InfoBox label="When" value={formatWhen(post.scheduled_at)} tint={FuttyColors.sky500} />
-        <InfoBox
+      {need ? <Quote text={need} /> : null}
+
+      <View style={styles.facts}>
+        <Fact label="Where" value={post.venue_name} />
+        <Fact label="When" value={formatWhen(post.scheduled_at)} />
+        <Fact
           label="Status"
           value={post.status === 'matched' ? 'Matched' : 'Open'}
-          tint={post.status === 'matched' ? FuttyColors.emerald700 : FuttyColors.coral500}
+          tone={post.status === 'matched' ? 'success' : 'ink'}
         />
       </View>
 
       {post.status === 'matched' ? (
         <>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: post.id } })}>
-            <ThemedText type="link" style={styles.note}>
-              Matched vs {post.matched_team_name} — view fixture
-            </ThemedText>
-          </Pressable>
-          {error ? <AuthError>{error}</AuthError> : null}
+          <Button
+            label={`Matched vs ${post.matched_team_name} — view fixture`}
+            variant="plain"
+            onPress={() => router.push({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: post.id } })}
+          />
+          {error ? <ErrorText>{error}</ErrorText> : null}
           {isMyMatch ? (
             canCancel ? (
-              <AuthButton label="Cancel" variant="secondary" onPress={cancelMatch} busy={busy} compact />
+              <Button label="Cancel" variant="secondary" onPress={cancelMatch} loading={busy} />
             ) : (
-              <ThemedText style={styles.note}>Too close to kickoff to cancel now.</ThemedText>
+              <Text variant="callout" tone="inkMuted">
+                Too close to kickoff to cancel now.
+              </Text>
             )
           ) : null}
         </>
       ) : offering ? (
         <>
           {captainTeams.length === 0 ? (
-            <ThemedText style={styles.note}>You need to captain a team first.</ThemedText>
+            <Text variant="callout" tone="inkMuted">
+              You need to captain a team first.
+            </Text>
           ) : (
             <View style={styles.wrapRow}>
               {captainTeams.map(({ team }) => (
@@ -339,7 +365,7 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
           {teamId && post.team_id ? (
             <TeamHeadToHead teamId={teamId} opponentTeamId={post.team_id} teamName={captainTeams.find((t) => t.team.id === teamId)?.team.name ?? 'Your team'} opponentName={post.team_name ?? 'Them'} />
           ) : null}
-          <ThemedText style={styles.note}>
+          <Text variant="callout" tone="inkMuted">
             {post.payment_mode === 'gipedo_pano'
               ? 'Gipedo Pano: the losing team pays for the pitch. Offering holds your card for the pitch price plus the service fee, and nothing is taken now. ' +
                 ruleText(
@@ -348,28 +374,19 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
                 ) +
                 "After the match the loser's hold is taken, a draw, a dispute or no result is split 50/50, and the winner's hold is released."
               : 'Split payment: both full rosters share the pitch cost evenly, regardless of the result.'}
-          </ThemedText>
-          {error ? <AuthError>{error}</AuthError> : null}
-          <View style={styles.confirmRow}>
+          </Text>
+          {error ? <ErrorText>{error}</ErrorText> : null}
+          <View style={styles.wrapRow}>
             {captainTeams.length > 0 ? (
-              <View style={styles.confirmButton}>
-                <AuthButton label="Offer & Pay My Share" onPress={submitOffer} disabled={!teamId} busy={busy} />
-              </View>
+              <Button label="Offer and pay my share" onPress={submitOffer} disabled={!teamId} loading={busy} />
             ) : null}
-            <View style={styles.confirmButton}>
-              <AuthButton
-                label="Cancel"
-                variant="secondary"
-                onPress={() => setOffering(false)}
-                disabled={busy}
-              />
-            </View>
+            <Button label="Cancel" variant="secondary" onPress={() => setOffering(false)} disabled={busy} />
           </View>
         </>
       ) : (
-        <AuthButton label="Offer to play them" onPress={() => setOffering(true)} compact />
+        <Button label="Offer to play them" onPress={() => setOffering(true)} />
       )}
-    </ThemedView>
+    </Card>
   );
 }
 
@@ -378,35 +395,28 @@ export default function SquadsScreen() {
   // and re-renders when they arrive.
   useRules();
   const params = useLocalSearchParams<{ view?: string }>();
-  const [view, setView] = useState<'players' | 'opposition'>(
-    params.view === 'opposition' ? 'opposition' : 'players'
-  );
+  const [view, setView] = useState<View_>(params.view === 'opposition' ? 'opposition' : 'players');
   const posts = useSquadPosts(view);
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.wrapRow}>
-          <Chip
-            label="Need players"
-            icon="person.2.fill"
-            selected={view === 'players'}
-            onPress={() => setView('players')}
-          />
-          <Chip
-            label="Need opposition"
-            icon="flag.fill"
-            selected={view === 'opposition'}
-            onPress={() => setView('opposition')}
-          />
-        </View>
+        <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} accessibilityLabel="Posts" />
 
-        {posts.status === 'loading' ? <ActivityIndicator /> : null}
+        {posts.status === 'loading' ? (
+          <Card testID="squads-skeleton">
+            <SkeletonText lines={4} />
+          </Card>
+        ) : null}
         {posts.status === 'error' ? (
-          <ThemedText style={styles.note}>Could not load: {posts.message}</ThemedText>
+          <Banner
+            tone="danger"
+            message={`Could not load: ${posts.message}`}
+            action={{ label: 'Try again', onPress: posts.reload }}
+          />
         ) : null}
         {posts.status === 'ready' && posts.posts.length === 0 ? (
-          <ThemedText style={styles.note}>Nothing open right now — check back soon.</ThemedText>
+          <EmptyState icon="person.2.fill" message="Nothing open right now — check back soon." />
         ) : null}
 
         {posts.status === 'ready'
@@ -424,96 +434,41 @@ export default function SquadsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-    paddingBottom: 48,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  note: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    gap: 8,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  infoBox: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    alignItems: 'center',
-    minWidth: 84,
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1 },
+  content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  card: { gap: space.md },
+  cardHead: { gap: space.xs },
+  teamNameRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm },
+  facts: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  fact: {
     flexGrow: 1,
-  },
-  infoBoxValue: {
-    fontSize: 13,
-  },
-  confirmRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  confirmButton: {
-    flex: 1,
+    minWidth: space.xxl * 2 + space.lg,
+    alignItems: 'center',
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.control,
+    backgroundColor: colors.canvas,
   },
   tag: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '700',
+    borderRadius: radius.pill,
+    borderWidth: hairline,
+    borderColor: colors.border,
+    paddingHorizontal: space.sm,
+    paddingVertical: 2,
   },
   quote: {
-    borderLeftWidth: 3,
-    borderLeftColor: FuttyColors.amber400,
-    paddingLeft: 12,
-    paddingVertical: 4,
-  },
-  quoteText: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    color: FuttyColors.stone700,
-  },
-  teamNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+    paddingLeft: space.md,
+    paddingVertical: space.xs,
   },
   roster: {
-    gap: 4,
-    borderTopWidth: 1,
-    borderTopColor: FuttyColors.stone200,
-    paddingTop: 8,
+    gap: space.xs,
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
+    paddingTop: space.sm,
   },
-  rosterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rosterName: {
-    fontSize: 13,
-  },
-  rosterTier: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: FuttyColors.stone500,
-  },
+  rosterRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

@@ -1,0 +1,1588 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Squads empty 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        accessibilityLabel="Posts"
+        accessibilityRole="tablist"
+        style={
+          {
+            "backgroundColor": "#F4F5F7",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 4,
+            "padding": 4,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Need players"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0E5A3A",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need players
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Need opposition"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need opposition
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "gap": 12,
+            "paddingHorizontal": 16,
+            "paddingVertical": 32,
+          }
+        }
+      >
+        <View
+          testID="empty-state-icon"
+        >
+          <View
+            testID="icon-person.2.fill"
+          />
+        </View>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#5B6470",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Nothing open right now — check back soon.
+        </Text>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Squads loading 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        accessibilityLabel="Posts"
+        accessibilityRole="tablist"
+        style={
+          {
+            "backgroundColor": "#F4F5F7",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 4,
+            "padding": 4,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Need players"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0E5A3A",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need players
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Need opposition"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need opposition
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="squads-skeleton"
+      >
+        <View
+          accessibilityLabel="Loading"
+          accessible={true}
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "100%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "100%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "100%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+          <View
+            style={
+              [
+                {
+                  "backgroundColor": "#E4E7EB",
+                },
+                {
+                  "borderRadius": 999,
+                },
+                {
+                  "height": 12,
+                  "width": "60%",
+                },
+              ]
+            }
+            testID="skeleton-line"
+          />
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Squads need opposition: offer with a chosen team calls the same function 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        accessibilityLabel="Posts"
+        accessibilityRole="tablist"
+        style={
+          {
+            "backgroundColor": "#F4F5F7",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 4,
+            "padding": 4,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Need players"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need players
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Need opposition"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0E5A3A",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need opposition
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            {
+              "gap": 12,
+            },
+          ]
+        }
+        testID="opposition-post"
+      >
+        <View
+          style={
+            {
+              "gap": 4,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Lions
+            </Text>
+            <View
+              style={
+                {
+                  "borderColor": "#E4E7EB",
+                  "borderRadius": 999,
+                  "borderWidth": 0.5,
+                  "paddingHorizontal": 8,
+                  "paddingVertical": 2,
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#0B1215",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                Silver
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#5B6470",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Arena
+             · 
+            Nicosia
+             · 
+            5-a-side
+             · Gold
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "flexDirection": "row",
+              "flexWrap": "wrap",
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="Where: Arena"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              Arena
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Where
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="When: Fri 20 Nov · 20:00"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              Fri 20 Nov · 20:00
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              When
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Status: Open"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              Open
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Status
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityLabel="Offer to play them"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#0E5A3A",
+              },
+              false,
+              false,
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Offer to play them
+          </Text>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
+
+exports[`Squads need players: a Card with venue, time, format, level, spots left, one action 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 12,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        accessibilityLabel="Posts"
+        accessibilityRole="tablist"
+        style={
+          {
+            "backgroundColor": "#F4F5F7",
+            "borderRadius": 10,
+            "flexDirection": "row",
+            "gap": 4,
+            "padding": 4,
+          }
+        }
+      >
+        <View
+          accessibilityLabel="Need players"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": true,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              {
+                "backgroundColor": "#E7F1EC",
+              },
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0E5A3A",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need players
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Need opposition"
+          accessibilityRole="tab"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "borderRadius": 10,
+                "flex": 1,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 8,
+              },
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Need opposition
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            {
+              "gap": 12,
+            },
+          ]
+        }
+        testID="players-post"
+      >
+        <View
+          style={
+            {
+              "gap": 4,
+            }
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Arena
+          </Text>
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_500Medium",
+                  "fontSize": 13,
+                  "lineHeight": 18,
+                },
+                {
+                  "color": "#5B6470",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Nicosia
+             · 
+            5-a-side
+             · Gold
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "flexDirection": "row",
+              "flexWrap": "wrap",
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            accessibilityLabel="When: Fri 20 Nov · 20:00"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              Fri 20 Nov · 20:00
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              When
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Needed: 3"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              3
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Needed
+            </Text>
+          </View>
+          <View
+            accessibilityLabel="Spots left: 2"
+            accessible={true}
+            style={
+              {
+                "alignItems": "center",
+                "backgroundColor": "#F4F5F7",
+                "borderRadius": 10,
+                "flexGrow": 1,
+                "minWidth": 80,
+                "paddingHorizontal": 12,
+                "paddingVertical": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              2
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Spots left
+            </Text>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "borderTopColor": "#E4E7EB",
+              "borderTopWidth": 0.5,
+              "gap": 4,
+              "paddingTop": 8,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 8,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 13,
+                    "lineHeight": 18,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Ann
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_500Medium",
+                    "fontSize": 12,
+                    "lineHeight": 16,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  undefined,
+                ]
+              }
+            >
+              Gold
+            </Text>
+          </View>
+        </View>
+        <View
+          accessibilityLabel="Join and pay my share"
+          accessibilityRole="button"
+          accessibilityState={
+            {
+              "busy": false,
+              "checked": undefined,
+              "disabled": false,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "alignItems": "center",
+                "alignSelf": "flex-start",
+                "borderRadius": 10,
+                "justifyContent": "center",
+                "minHeight": 44,
+                "paddingHorizontal": 16,
+                "paddingVertical": 8,
+              },
+              {
+                "backgroundColor": "#0E5A3A",
+              },
+              false,
+              false,
+              false,
+              false,
+            ]
+          }
+        >
+          <Text
+            style={
+              [
+                {
+                  "fontFamily": "Inter_600SemiBold",
+                  "fontSize": 17,
+                  "lineHeight": 22,
+                },
+                {
+                  "color": "#FFFFFF",
+                },
+                false,
+                {
+                  "textAlign": "center",
+                },
+              ]
+            }
+          >
+            Join and pay my share
+          </Text>
+        </View>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;

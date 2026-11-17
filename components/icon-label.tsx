@@ -2,19 +2,21 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { ThemedText, type ThemedTextProps } from '@/components/themed-text';
+import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
+import { colors, space } from '@/constants/futty-theme';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
 /** Icon + text row — the app-wide replacement for the prototype's
  *  emoji-prefixed labels (section headers, empty states, links). Keeps every
- *  ThemedText type/style prop working as-is, just adds an icon in front. */
+ *  ThemedText type/style prop working as-is, just adds an icon in front.
+ *  Icons are monochrome inkMuted by default, never brand (docs/specs/15-design.md). */
 export function IconLabel({
   icon,
-  iconColor = FuttyColors.emerald950,
-  iconSize = 16,
-  gap = 6,
+  iconColor = colors.inkMuted,
+  iconSize = ICON.small,
+  gap = space.sm,
   containerStyle,
   ...textProps
 }: {
