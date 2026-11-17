@@ -434,6 +434,30 @@ A venue's staff (its owner today) are told about their own venue only, through `
 - **Once each:** every notice and each day's summary is sent once per staff member, however often the job runs. A summary missed at 20:00 is sent at the next run that evening, never after midnight. Nothing from before this feature is sent.
 - **Cyprus time:** every day and time in the text is Cyprus time, never UTC (a 19:00 game in winter reads 19:00).
 
+## Venue-offered players (decided 17 November, Dimitris; for Panos to confirm)
+
+A venue can offer a player to a team that's short (05 §12, item 11a); the booker accepts or declines it ("Booking modes").
+
+- **Who:** staff type the player's name (1 to 40 characters). He has no Futty account, so he isn't notified. He plays in the booking's match as a guest.
+- **Which games:** a confirmed app booking in an each-pays mode (booker responsible or just my spot) with an empty spot, until kickoff. Spots taken are the players still in, the accepted venue players and the offers not yet answered. Not a pay-for-everyone booking, a Gipedo Pano booking, a walk-in or phone booking, or a cancelled one.
+- **The booker answers** from the booking, until kickoff. An offer still unanswered at kickoff lapses. Staff can withdraw an offered or accepted player, and the booker can remove an accepted one, both until kickoff.
+- **He takes a spot:** while he is accepted, app players can join only up to the booking's size minus the accepted venue players. Accepting and joining are checked one at a time, so only one of them gets the last spot.
+- **Who pays: the team's top-up covers his spot, and the venue never charges him. Never both.** He plays free and counts as an empty spot ("Short games"). He has no share, and offering, accepting, withdrawing or removing him moves no money. Example: a €60 5 v 5 with 8 app players and 1 venue player: €60 ÷ 8 = €7.50 each, a **€1.50 top-up** for each of the 8, exactly as without him. The 6-hour warning still says "You're 8 of 10…", with €1.50.
+- **A booking with no match** (its match couldn't be made yet) keeps him with the booking only, and he's shown from there. A match made later doesn't add him.
+- **Notifications:**
+  - **To the booker:**
+    - the offer: "[Venue] offered a player", "[name] for [day] at [time]. [name] plays free; the team's amounts don't change.", with Accept and Decline;
+    - a withdrawal: "[Venue] withdrew [name] from [day] at [time]."
+  - **To staff,** once each:
+    - accepted: "[booker] accepted [name] for [day] at [time]. [name] plays free; the team's amounts don't change.";
+    - declined: "[booker] declined [name] for [day] at [time].";
+    - removed: "[booker] removed [name] from [day] at [time]."
+  - Each kind can be turned off.
+- **Who sees him:**
+  - staff see every offer on the booking's roster;
+  - the booker sees open and accepted offers;
+  - the other players see accepted venue players by name.
+
 ## Rules in one place (decided 15 November)
 
 Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
