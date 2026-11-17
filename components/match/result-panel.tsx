@@ -86,7 +86,7 @@ export function MatchResultPanel({ match, viewerId, captainTeamIds, onChanged, o
             </View>
           </View>
           <Button
-            label="Submit score"
+            label="Log score"
             onPress={submit}
             disabled={!SCORE.test(sideA) || !SCORE.test(sideB)}
             loading={busy === 'submit'}

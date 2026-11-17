@@ -36,7 +36,6 @@ exports[`PopupModal renders title, body and footer; Close and Back call their ha
           [
             {
               "alignItems": "center",
-              "elevation": 10,
               "flexDirection": "row",
               "gap": 8,
               "justifyContent": "space-between",

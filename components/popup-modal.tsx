@@ -118,9 +118,9 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH + space.md,
     // Belt-and-braces: guarantees this row draws and is hit-tested above
     // the body's ScrollView/FlatList, on top of the real (gesture-handler)
-    // fix above.
+    // fix above. zIndex alone orders siblings on Android too; no elevation,
+    // since the body's cards have none (U8: one shadow token only).
     zIndex: 10,
-    elevation: 10,
   },
   headerSurface: {
     backgroundColor: colors.surface,

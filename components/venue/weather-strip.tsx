@@ -13,6 +13,7 @@ import { Image } from 'expo-image';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { Banner, Card, SectionHeader, SkeletonText, Text } from '@/components/ui';
+import { MIN_TOUCH } from '@/components/ui/foundation';
 import { space } from '@/constants/futty-theme';
 import {
   bannerText,
@@ -87,6 +88,7 @@ export function AppleWeatherMark({ attribution }: { attribution: WeatherAttribut
         accessibilityRole="link"
         hitSlop={space.sm}
         onPress={() => Linking.openURL(attribution.legalPageUrl)}
+        style={styles.link}
       >
         <Text variant="caption" tone="brand">
           Data sources
@@ -102,4 +104,6 @@ const styles = StyleSheet.create({
   mark: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md },
   // Apple's mark at a legible size (its artwork is about 5:1).
   logo: { height: space.lg, width: space.lg * 5 },
+  /** The caption link is short; keep its touch target at 44 (15, section 6). */
+  link: { minHeight: MIN_TOUCH, justifyContent: 'center' },
 });

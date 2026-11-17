@@ -9,7 +9,7 @@ const DOWNLOAD_URL = process.env.EXPO_PUBLIC_APP_DOWNLOAD_URL;
  *  whichever the device has installed) with an invite message for someone who
  *  doesn't have the app yet. */
 export async function shareTeamInvite(params: { teamName: string; inviterUsername: string | null }) {
-  const lines = [`Come play for "${params.teamName}" on Futty!`];
+  const lines = [`Come play for "${params.teamName}" on Futty.`];
 
   lines.push(
     DOWNLOAD_URL
@@ -27,7 +27,7 @@ export async function shareTeamInvite(params: { teamName: string; inviterUsernam
 /** Same share sheet, for the Community > Contacts tab's per-contact "Invite"
  *  button — no team context, just "come play on Futty". */
 export async function shareContactInvite(contactName: string) {
-  const lines = [`Hey ${contactName}, join me on Futty!`];
+  const lines = [`Hey ${contactName}, join me on Futty.`];
 
   lines.push(
     DOWNLOAD_URL
