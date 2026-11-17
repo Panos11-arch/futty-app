@@ -1,0 +1,542 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Join squad post loading shows a skeleton 1`] = `
+<View
+  edges={
+    [
+      "top",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "gap": 16,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+    testID="join-skeleton"
+  >
+    <View
+      style={
+        [
+          {
+            "backgroundColor": "#FFFFFF",
+            "borderRadius": 12,
+            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          },
+          {
+            "padding": 16,
+          },
+          undefined,
+        ]
+      }
+    >
+      <View
+        accessibilityLabel="Loading"
+        accessible={true}
+        style={
+          {
+            "gap": 8,
+          }
+        }
+      >
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+        <View
+          style={
+            [
+              {
+                "backgroundColor": "#E4E7EB",
+              },
+              {
+                "borderRadius": 999,
+              },
+              {
+                "height": 12,
+                "width": "60%",
+              },
+            ]
+          }
+          testID="skeleton-line"
+        />
+      </View>
+    </View>
+    <View
+      accessibilityLabel="Loading"
+      accessible={true}
+      style={
+        [
+          {
+            "backgroundColor": "#E4E7EB",
+          },
+          {
+            "borderRadius": 12,
+            "height": 48,
+            "width": "100%",
+          },
+        ]
+      }
+      testID="skeleton-block"
+    />
+    <View
+      accessibilityLabel="Loading"
+      accessible={true}
+      style={
+        [
+          {
+            "backgroundColor": "#E4E7EB",
+          },
+          {
+            "borderRadius": 12,
+            "height": 64,
+            "width": "100%",
+          },
+        ]
+      }
+      testID="skeleton-block"
+    />
+  </View>
+</View>
+`;
+
+exports[`Join squad post shows the server’s price unchanged, split as the server returned it 1`] = `
+<View
+  edges={
+    [
+      "bottom",
+    ]
+  }
+  style={
+    {
+      "backgroundColor": "#F4F5F7",
+      "flex": 1,
+    }
+  }
+>
+  <RCTScrollView
+    contentContainerStyle={
+      {
+        "gap": 16,
+        "padding": 16,
+        "paddingBottom": 32,
+      }
+    }
+  >
+    <View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            {
+              "gap": 4,
+            },
+          ]
+        }
+      >
+        <Text
+          accessibilityRole="header"
+          style={
+            [
+              {
+                "fontFamily": "Inter_700Bold",
+                "fontSize": 22,
+                "lineHeight": 28,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              undefined,
+            ]
+          }
+        >
+          Arena
+        </Text>
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_500Medium",
+                "fontSize": 13,
+                "lineHeight": 18,
+              },
+              {
+                "color": "#5B6470",
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+              },
+              undefined,
+            ]
+          }
+        >
+          Gold · 
+          Nicosia
+           · 
+          Fri 20 Nov · 20:00
+        </Text>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#FFFFFF",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 12,
+            "borderWidth": 0.5,
+            "flexDirection": "row",
+            "gap": 8,
+            "minHeight": 48,
+            "paddingHorizontal": 16,
+          }
+        }
+      >
+        <View
+          testID="icon-person.2.fill"
+        />
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_400Regular",
+                "fontSize": 15,
+                "lineHeight": 20,
+              },
+              {
+                "color": "#0B1215",
+              },
+              {
+                "fontVariant": [
+                  "tabular-nums",
+                ],
+              },
+              undefined,
+            ]
+          }
+        >
+          2
+           open spot
+          s
+        </Text>
+      </View>
+      <View
+        style={
+          [
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 12,
+              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            },
+            {
+              "padding": 16,
+            },
+            undefined,
+          ]
+        }
+        testID="share-price"
+      >
+        <View
+          style={
+            {
+              "gap": 8,
+            }
+          }
+        >
+          <View
+            style={
+              {
+                "alignItems": "baseline",
+                "flexDirection": "row",
+                "gap": 12,
+                "justifyContent": "space-between",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Pitch
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              €6.00
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "baseline",
+                "flexDirection": "row",
+                "gap": 12,
+                "justifyContent": "space-between",
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#5B6470",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Service fee
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_400Regular",
+                    "fontSize": 15,
+                    "lineHeight": 20,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              €0.80
+            </Text>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "baseline",
+                  "flexDirection": "row",
+                  "gap": 12,
+                  "justifyContent": "space-between",
+                },
+                {
+                  "borderTopColor": "#E4E7EB",
+                  "borderTopWidth": 0.5,
+                  "paddingTop": 8,
+                },
+              ]
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  false,
+                  {
+                    "flex": 1,
+                  },
+                ]
+              }
+            >
+              Your share
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontFamily": "Inter_600SemiBold",
+                    "fontSize": 17,
+                    "lineHeight": 22,
+                  },
+                  {
+                    "color": "#0B1215",
+                  },
+                  {
+                    "fontVariant": [
+                      "tabular-nums",
+                    ],
+                  },
+                  undefined,
+                ]
+              }
+            >
+              €6.80
+            </Text>
+          </View>
+        </View>
+      </View>
+      <Text
+        style={
+          [
+            {
+              "fontFamily": "Inter_500Medium",
+              "fontSize": 13,
+              "lineHeight": 18,
+            },
+            {
+              "color": "#5B6470",
+            },
+            false,
+            undefined,
+          ]
+        }
+      >
+        Your card is only held, not charged — you're only charged once the match is confirmed with a full roster.
+      </Text>
+      <View
+        accessibilityLabel="Join and pay my share"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "alignSelf": "flex-start",
+              "borderRadius": 10,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 8,
+            },
+            {
+              "backgroundColor": "#0E5A3A",
+            },
+            false,
+            {
+              "alignSelf": "stretch",
+            },
+            false,
+            false,
+          ]
+        }
+      >
+        <Text
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#FFFFFF",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Join and pay my share
+        </Text>
+      </View>
+    </View>
+  </RCTScrollView>
+</View>
+`;
