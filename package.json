@@ -28,6 +28,7 @@
     "expo": "^55.0.28",
     "expo-apple-authentication": "~55.0.17",
     "expo-calendar": "~55.0.19",
+    "expo-camera": "~55.0.23",
     "expo-constants": "~55.0.17",
     "expo-contacts": "~55.0.18",
     "expo-crypto": "~55.0.19",
