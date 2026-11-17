@@ -15,7 +15,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.panosalepis.futtyapp",
       "deploymentTarget": "15.0",
       "usesAppleSignIn": true,
