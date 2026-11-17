@@ -13,7 +13,7 @@
 //   with one tap to flag conditions for it;
 // - the 6 v 6 on 5-a-side pitches setting;
 // - Venue setup (P6e): one tap each to opening hours, closures, prices and
-//   pitches;
+//   pitches, and to photos, amenities and the food and drink menu;
 // - below, unchanged from before P6c: adding a house player and recurring
 //   training slots (restyled in P6e);
 // - at the top, one tap to each other section (P6d): Money, Bookings,
@@ -117,6 +117,9 @@ const SETUP = [
   { label: 'Closures', subtitle: 'Days closed to new bookings', icon: 'calendar', pathname: '/venue-closures' },
   { label: 'Prices', subtitle: 'Per format, with peak and weekend prices', icon: 'creditcard.fill', pathname: '/venue-prices' },
   { label: 'Pitches', subtitle: 'Add, edit, close and combine pitches', icon: 'sportscourt.fill', pathname: '/venue-pitches' },
+  { label: 'Photos', subtitle: 'The first one is the cover', icon: 'photo', pathname: '/venue-photos' },
+  { label: 'Amenities', subtitle: 'Parking, showers and more', icon: 'checkmark.circle.fill', pathname: '/venue-amenities' },
+  { label: 'Food and drink', subtitle: 'Your menu and post-match offers', icon: 'cup.and.saucer.fill', pathname: '/venue-menu' },
 ] as const;
 
 type DashboardVenue ={ id: string; name: string; base_pitches: number | null; allows_6v6_on_5s: boolean };

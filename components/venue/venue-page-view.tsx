@@ -1,6 +1,7 @@
 // The venue page (docs/specs/15-design.md section 5): photo gallery, name,
 // address with Directions, amenities, pitches, prices, cancellation rules,
-// a slot for the weather strip (P11), offers, and a sticky "Book" bar.
+// a slot for the weather strip (P11), food and drink (P6e), offers, and a
+// sticky "Book" bar.
 // Takes the page state as props so every state can be tested; the screen
 // (app/venue/[id].tsx) loads it.
 import { Image } from 'expo-image';
@@ -23,8 +24,9 @@ import {
 import { initials } from '@/components/ui/avatar';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { formatEuros } from '@/lib/money/format';
+import { offerPrices } from '@/lib/post-match-offers';
 import type { VenuePageState } from '@/lib/use-venue-page';
-import { AMENITIES, cancellationLines, offerWhen, pitchSummary, type VenuePageData } from '@/lib/venue-page';
+import { AMENITIES, cancellationLines, groupMenu, offerWhen, pitchSummary, type VenuePageData } from '@/lib/venue-page';
 
 export type VenuePageViewProps = {
   state: VenuePageState;
@@ -157,6 +159,30 @@ export function VenuePageView({ state, onRetry, onDirections, onBook, weather }:
         {/* The forecast (P11; 05 Product section 14). */}
         <View testID="weather-strip-slot">{weather}</View>
 
+        {(data.menu ?? []).length > 0 ? (
+          <View style={styles.section} testID="venue-menu">
+            <SectionHeader title="Food and drink" />
+            {groupMenu(data.menu).map((group) => (
+              <View key={group.title ?? 'items'} style={styles.menuGroup}>
+                {group.title ? (
+                  <Text variant="headline" accessibilityRole="header">
+                    {group.title}
+                  </Text>
+                ) : null}
+                <Card padded={false}>
+                  {group.items.map((item) => (
+                    <MenuRow
+                      key={item.id}
+                      item={item}
+                      photoUrl={item.photo_path ? photoUrls[item.photo_path] : undefined}
+                    />
+                  ))}
+                </Card>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {data.offers.length > 0 ? (
           <View style={styles.section}>
             <SectionHeader title="After the game" />
@@ -251,6 +277,41 @@ function Offer({ offer, photoUrl }: { offer: VenuePageData['offers'][number]; ph
   );
 }
 
+/** One food or drink item: the offer price with the normal price struck
+ *  through when both exist and differ (as A8 shows offers); both from the server. */
+function MenuRow({ item, photoUrl }: { item: VenuePageData['menu'][number]; photoUrl?: string }) {
+  const prices = offerPrices(item);
+  const details = [item.description, item.dietary_tags?.length ? item.dietary_tags.join(' · ') : null].filter(Boolean);
+  return (
+    <View style={styles.menuRow} testID={`venue-menu-${item.id}`}>
+      {photoUrl ? (
+        <Image source={{ uri: photoUrl }} contentFit="cover" accessibilityLabel={item.name} style={styles.menuPhoto} />
+      ) : null}
+      <View style={styles.flex}>
+        <Text variant="body">{item.name}</Text>
+        {item.offer_text ? <Text variant="callout">{item.offer_text}</Text> : null}
+        {details.map((line) => (
+          <Text key={line} variant="caption" tone="inkMuted">
+            {line}
+          </Text>
+        ))}
+      </View>
+      {prices.now ? (
+        <View style={styles.menuPrices}>
+          {prices.was ? (
+            <Text variant="callout" tone="inkMuted" tabular style={styles.struck} accessibilityLabel={`was ${prices.was}`}>
+              {prices.was}
+            </Text>
+          ) : null}
+          <Text variant="body" tabular>
+            {prices.now}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function VenuePageSkeleton() {
   return (
     <View style={[styles.screen, styles.padded]} testID="venue-page-loading">
@@ -292,4 +353,16 @@ const styles = StyleSheet.create({
   offerBody: { padding: space.lg, gap: space.xs },
   offerTitle: { flexDirection: 'row', alignItems: 'baseline', gap: space.md },
   flex: { flex: 1 },
+  menuGroup: { gap: space.sm },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.lg,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border,
+  },
+  menuPhoto: { width: space.xxl * 2, height: space.xxl * 2, borderRadius: radius.control },
+  menuPrices: { alignItems: 'flex-end' },
+  struck: { textDecorationLine: 'line-through' },
 });

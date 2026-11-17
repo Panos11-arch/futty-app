@@ -6,8 +6,6 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Chip, SkeletonBlock, Text } from '@/components/ui';
 import { space } from '@/constants/futty-theme';
-import type { SetupState } from '@/lib/use-venue-setup';
-import type { VenueSetup } from '@/lib/venue-setup';
 
 export function TimeChips({
   label,
@@ -75,15 +73,18 @@ export function ConfirmStep({
   );
 }
 
-/** Loading, a load error with Try again, or the view once venue_setup is in. */
-export function SetupFrame({
+/** What a setup screen has loaded: venue_setup, or venue_media for photos, amenities and menu. */
+export type FrameState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; setup: T };
+
+/** Loading, a load error with Try again, or the view once its data is in. */
+export function SetupFrame<T>({
   state,
   retry,
   children,
 }: {
-  state: SetupState;
+  state: FrameState<T>;
   retry: () => void;
-  children: (setup: VenueSetup) => ReactNode;
+  children: (setup: T) => ReactNode;
 }) {
   return (
     <ScrollView contentContainerStyle={styles.content}>
