@@ -2,7 +2,9 @@
 --   answer_venue_player and remove_venue_player check that the caller is the
 --   booker with a plain select before they take the venue_bookings row lock,
 --   so a stranger gets offer_not_found without ever locking the booking (and
---   can't hold up joins, which take the same lock).
+--   can't hold up joins, which take the same lock). offer_venue_player and
+--   withdraw_venue_player do the same with the venue staff check: a signed-in
+--   user who isn't staff gets not_venue_staff without locking the booking.
 --
 -- How "not locked" is checked: a row lock taken inside a call that then fails
 -- is released when that call's sub-transaction rolls back, so pg_locks shows
@@ -21,9 +23,10 @@
 --   The booker's own answer and remove are in pay-venue-player-2-answer.
 begin;
 
--- p_sql, run by p_stranger, fails with offer_not_found and leaves the booking
--- row unlocked.
-create or replace function tests.vplo_stranger_never_locks(p_stranger uuid, p_booking uuid, p_sql text, p_what text)
+-- p_sql, run by p_stranger, fails with p_error and leaves the booking row
+-- unlocked.
+create or replace function tests.vplo_stranger_never_locks(p_stranger uuid, p_booking uuid, p_sql text, p_what text,
+                                                           p_error text default 'offer_not_found')
 returns void
 language plpgsql
 as $$
@@ -32,11 +35,16 @@ declare
   v_error text;
 begin
   v_error := tests.error_as(p_stranger, p_sql);
-  assert v_error = 'offer_not_found', format('%s: a stranger gets offer_not_found, got %s', p_what, v_error);
+  assert v_error = p_error, format('%s: a stranger gets %s, got %s', p_what, p_error, v_error);
   assert (select xmax::text from public.venue_bookings where id = p_booking) = v_xmax,
     format('%s: the stranger never took the booking row lock', p_what);
-  -- A second statement can take the lock straight away.
-  assert tests.error_of(format('select 1 from public.venue_bookings where id = %L for update nowait', p_booking)) is null,
+  -- A second statement can take the lock straight away. It rolls itself back
+  -- (raising row_free once it has the lock), so this test never keeps the
+  -- lock and the next check still sees a lock by the function it calls.
+  assert tests.error_of(format($q$do $d$ begin
+                                   perform 1 from public.venue_bookings where id = %L for update nowait;
+                                   raise exception 'row_free';
+                                 end $d$ $q$, p_booking)) = 'row_free',
     format('%s: the booking row is free', p_what);
 end;
 $$;
@@ -73,8 +81,19 @@ begin
   perform tests.vplo_stranger_never_locks(v_stranger, v_booking,
     format('select public.remove_venue_player(%L)', v_accepted), 'remove');
 
+  -- Staff only: a signed-in user who isn't venue staff, the booker included.
+  perform tests.vplo_stranger_never_locks(v_stranger, v_booking,
+    format('select public.offer_venue_player(%L, %L)', v_booking, 'Nikos'), 'offer', 'not_venue_staff');
+  perform tests.vplo_stranger_never_locks(v_booker, v_booking,
+    format('select public.offer_venue_player(%L, %L)', v_booking, 'Nikos'), 'offer (booker)', 'not_venue_staff');
+  perform tests.vplo_stranger_never_locks(v_stranger, v_booking,
+    format('select public.withdraw_venue_player(%L)', v_offered), 'withdraw (offered)', 'not_venue_staff');
+  perform tests.vplo_stranger_never_locks(v_booker, v_booking,
+    format('select public.withdraw_venue_player(%L)', v_accepted), 'withdraw (accepted, booker)', 'not_venue_staff');
+
   assert (select status from public.booking_venue_players where id = v_offered) = 'offered', 'the offer is untouched';
   assert (select status from public.booking_venue_players where id = v_accepted) = 'accepted', 'the player stays';
+  assert (select count(*) from public.booking_venue_players where booking_id = v_booking) = 2, 'no new offer';
 end $$;
 
 rollback;
