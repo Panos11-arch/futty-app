@@ -18,3 +18,5 @@ export { StartingLevelForm, type StartingLevelFormProps } from './starting-level
 export { MatchRatingsPanel, type MatchRatingsProps } from './match-ratings';
 export { MatchCompetitive, type MatchCompetitiveProps } from './match-competitive';
 export { BalanceTeams, type BalanceTeamsProps } from './balance-teams';
+export { MatchShare, type MatchShareProps } from './match-share';
+export { MotmCard, ResultCard, type ShareCardProps } from './share-card';

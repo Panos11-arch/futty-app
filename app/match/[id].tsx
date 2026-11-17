@@ -12,6 +12,9 @@
 // before kickoff), balance teams (a pickup's booker, before sides lock) and
 // player ratings (after confirmation; ratings show only as the server
 // returns them).
+//
+// A6: Share, for a confirmed match with a score only (MatchShare hides
+// itself otherwise): the result and man-of-the-match cards as PNGs.
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -24,6 +27,7 @@ import { MatchLineup } from '@/components/match/match-lineup';
 import { MatchMotm } from '@/components/match/match-motm';
 import { MatchRatingsPanel } from '@/components/match/match-ratings';
 import { MatchScorers } from '@/components/match/match-scorers';
+import { MatchShare } from '@/components/match/match-share';
 import { MatchPageSection } from '@/components/match/page-section';
 import { MatchResultPanel } from '@/components/match/result-panel';
 import { PostMatchOffers } from '@/components/offers/post-match-offers';
@@ -151,6 +155,7 @@ export default function MatchScreen() {
             </Text>
           </Card>
         ) : null}
+        {pageData ? <MatchShare page={pageData} /> : null}
         {match ? (
           <MatchPageSection title="Competitive or casual" status="ready" onRetry={reload} testID="section-competitive">
             <MatchCompetitive

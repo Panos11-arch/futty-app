@@ -40,6 +40,11 @@ jest.mock('@/lib/match/levels-api', () => ({
   rateMatchPlayer: jest.fn(),
   balanceMatchTeams: jest.fn(),
 }));
+// Share's sheet reads the safe area; the screen's SafeAreaView is a plain view here.
+jest.mock('react-native-safe-area-context', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { SafeAreaView: View, useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) };
+});
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
 jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
 jest.mock('@/lib/match/page-api', () => ({ setMatchGoals: jest.fn(), castMotmVote: jest.fn(), setMatchLineup: jest.fn() }));
@@ -92,6 +97,18 @@ describe('Match page: strangers', () => {
     expect(screen.queryByText(/^check-in for/)).toBeNull();
     expect(screen.queryByText(/Add .* scorers/)).toBeNull();
     expect(screen.queryByTestId('cast-vote')).toBeNull();
+  });
+
+  it('once confirmed, anyone can share the match cards', async () => {
+    mockPage = { status: 'ready', page: mockMatchPage() };
+    await render(<MatchScreen />);
+    expect(screen.getByTestId('match-share')).toBeTruthy();
+  });
+
+  it('a confirmed forfeit has no cards to share', async () => {
+    mockPage = { status: 'ready', page: mockMatchPage({ forfeit: { side: 'b', reason: 'no_show' } }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-share')).toBeNull();
   });
 
   it('page loading: a skeleton; page error: an inline error with retry', async () => {
@@ -155,6 +172,7 @@ describe('Match page: members', () => {
     mockResult = { status: 'ready', match: mockResultMatch({ status: 'scheduled' }) };
     mockPage = { status: 'ready', page: mockMatchPage({ status: 'scheduled', kickoffAt: '2099-01-01T17:00:00.000Z' }) };
     await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-share')).toBeNull();
     expect(screen.queryByTestId('section-scorers')).toBeNull();
     expect(screen.queryByTestId('section-motm')).toBeNull();
     expect(screen.getByText('Set lineup')).toBeTruthy();
