@@ -17,7 +17,7 @@ import 'react-native-reanimated';
 import { FuttyAiChat } from '@/components/futty-ai-chat';
 import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
-import { colors, FuttyColors, FuttyFonts, FuttyNavigationTheme } from '@/constants/futty-theme';
+import { colors, FuttyNavigationTheme, type } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useNeedsProfileSetup } from '@/lib/auth-providers';
@@ -39,9 +39,9 @@ SplashScreen.preventAutoHideAsync();
 // correctly on every platform — cheap insurance for something unverifiable
 // without a real device in front of me.
 const brandedHeaderOptions = {
-  headerStyle: { backgroundColor: FuttyColors.stone50 },
-  headerTintColor: FuttyColors.stone900,
-  headerTitleStyle: { fontFamily: FuttyFonts.sansSemiBold, color: FuttyColors.stone900 },
+  headerStyle: { backgroundColor: colors.canvas },
+  headerTintColor: colors.ink,
+  headerTitleStyle: { fontFamily: type.headline.fontFamily, color: colors.ink },
   // Chevron only, no previous screen's title next to it — the default
   // shows e.g. "< Profile" beside the back arrow on every pushed screen,
   // which reads as clutter rather than useful context.

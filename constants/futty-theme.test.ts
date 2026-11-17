@@ -1,4 +1,8 @@
-import { FuttyColors, FuttyFonts, colors, type } from '@/constants/futty-theme';
+import fs from 'node:fs';
+import path from 'node:path';
+
+import * as theme from '@/constants/futty-theme';
+import { colors, mono, type } from '@/constants/futty-theme';
 
 // WCAG 2.x relative luminance and contrast ratio, computed here rather than
 // trusted from a design tool.
@@ -70,34 +74,29 @@ describe('type scale', () => {
   });
 });
 
-describe('deprecated names', () => {
-  it('map every old colour to the nearest new token', () => {
-    expect(FuttyColors).toEqual({
-      emerald950: colors.brand,
-      emerald800: colors.brand,
-      emerald700: colors.brand,
-      emerald600: colors.brand,
-      emerald200: colors.brandSoft,
-      amber400: colors.warning,
-      rose600: colors.danger,
-      sky500: colors.inkMuted,
-      sky100: colors.canvas,
-      coral500: colors.warning,
-      coral100: colors.canvas,
-      violet500: colors.inkMuted,
-      violet100: colors.canvas,
-      stone50: colors.canvas,
-      stone200: colors.border,
-      stone400: colors.inkMuted,
-      stone500: colors.inkMuted,
-      stone700: colors.ink,
-      stone900: colors.ink,
-      white: colors.surface,
-    });
+describe('deprecated names (removed in U8)', () => {
+  it('FuttyColors and FuttyFonts are gone', () => {
+    expect(theme).not.toHaveProperty('FuttyColors');
+    expect(theme).not.toHaveProperty('FuttyFonts');
   });
 
-  it('no longer use Archivo Black for display text', () => {
-    expect(FuttyFonts.display).toBe('Inter_700Bold');
-    expect(Object.values(FuttyFonts).some((f) => f.includes('Archivo'))).toBe(false);
+  it('IBM Plex Mono stays, for codes only', () => {
+    expect(mono).toEqual({ medium: 'IBMPlexMono_500Medium', semiBold: 'IBMPlexMono_600SemiBold' });
+  });
+
+  it('nothing in app/, components/ or lib/ uses the old names', () => {
+    const root = path.join(__dirname, '..');
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(rel);
+        else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+          if (/\b(FuttyColors|FuttyFonts)\b/.test(fs.readFileSync(path.join(root, rel), 'utf8'))) hits.push(rel);
+        }
+      }
+    };
+    ['app', 'components', 'lib', 'hooks'].filter((d) => fs.existsSync(path.join(root, d))).forEach(walk);
+    expect(hits).toEqual([]);
   });
 });

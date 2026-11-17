@@ -8,7 +8,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Text } from '@/components/ui';
-import { colors, FuttyFonts, radius, space } from '@/constants/futty-theme';
+import { colors, mono, radius, space } from '@/constants/futty-theme';
 import { checkInLink, groupCode, windowLabel } from '@/lib/check-in';
 
 /** The QR fills the sheet's width, up to this. */
@@ -48,5 +48,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
   },
   codeBox: { gap: space.xs, alignItems: 'center' },
-  code: { fontFamily: FuttyFonts.mono, textAlign: 'center' },
+  code: { fontFamily: mono.medium, textAlign: 'center' },
 });
