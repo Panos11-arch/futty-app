@@ -1,6 +1,7 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { DocEmailLink, DocFAQ, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
+import { space } from '@/constants/futty-theme';
 
 /** Native transcription of docs/support.html's FAQ — see that file for the
  *  source content this is kept in sync with. */
@@ -16,7 +17,7 @@ export default function HelpScreen() {
       <DocEmailLink email="palepis@icloud.com" subject="Futty Support" />
 
       <DocHeading>Common questions</DocHeading>
-      <View style={{ gap: 8 }}>
+      <View style={styles.faqs}>
         <DocFAQ question="How do I book a pitch?">
           Open the Book tab, pick a day, city, format, and duration, then tap an open slot on any
           venue to reserve it.
@@ -41,3 +42,7 @@ export default function HelpScreen() {
     </DocScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  faqs: { gap: space.sm },
+});

@@ -1,18 +1,14 @@
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconLabel } from '@/components/icon-label';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Card } from '@/components/ui/card';
+import { ListRow } from '@/components/ui/list-row';
+import { colors, space } from '@/constants/futty-theme';
 import { useAppLock } from '@/lib/app-lock';
 
 export default function SecuritySettingsScreen() {
   const { supported, enabled, label, setEnabled } = useAppLock();
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const [busy, setBusy] = useState(false);
 
   async function toggle(next: boolean) {
@@ -25,52 +21,39 @@ export default function SecuritySettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ThemedView style={[styles.card, { borderColor: border }]}>
+        <Card padded={false}>
           {supported ? (
-            <View style={styles.row}>
-              <IconSymbol name="lock.fill" size={18} color={FuttyColors.stone700} />
-              <ThemedText style={styles.rowLabel}>Lock with {label}</ThemedText>
-              <Switch value={enabled} onValueChange={toggle} disabled={busy} />
-            </View>
+            <ListRow
+              title={`Lock with ${label}`}
+              leading={{ icon: 'lock.fill' }}
+              trailing={
+                <Switch
+                  accessibilityLabel={`Lock with ${label}`}
+                  value={enabled}
+                  onValueChange={toggle}
+                  disabled={busy}
+                />
+              }
+            />
           ) : (
-            <IconLabel icon="lock.fill" iconColor={FuttyColors.stone700} style={styles.hint}>
-              {Platform.OS === 'web'
-                ? 'App lock needs iOS or Android — biometrics are unavailable on web.'
-                : 'No biometrics enrolled on this device, so app lock is unavailable.'}
-            </IconLabel>
+            <ListRow
+              title={
+                Platform.OS === 'web'
+                  ? 'App lock needs iOS or Android — biometrics are unavailable on web.'
+                  : 'No biometrics enrolled on this device, so app lock is unavailable.'
+              }
+              leading={{ icon: 'lock.fill' }}
+            />
           )}
-        </ThemedView>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  content: {
-    gap: 12,
-    padding: 16,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  rowLabel: {
-    flex: 1,
-    fontSize: 13,
-  },
-  hint: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.md, padding: space.lg },
 });

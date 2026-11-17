@@ -1,15 +1,20 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
+import { Children, Fragment } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors } from '@/constants/futty-theme';
+import { SectionHeader } from '@/components/ui/section-header';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, radius, space } from '@/constants/futty-theme';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
 /** One tappable row in the account menu hierarchy (app/account/*) — an
  *  icon, a label, and a chevron. Shared so every menu/section page looks
- *  and behaves the same rather than each screen rolling its own row. */
+ *  and behaves the same rather than each screen rolling its own row.
+ *  Grouped iOS-style list (docs/specs/15-design.md): monochrome icons, body
+ *  text, chevron; destructive rows in danger. */
 export function MenuRow({
   icon,
   label,
@@ -22,85 +27,70 @@ export function MenuRow({
   label: string;
   sublabel?: string;
   onPress: () => void;
-  /** Red label/icon — used only for Log Out. */
+  /** Danger label/icon — used only for Log out. */
   destructive?: boolean;
   iconColor?: string;
 }) {
-  const tint = destructive ? FuttyColors.rose600 : (iconColor ?? FuttyColors.emerald950);
+  const tint = destructive ? colors.danger : (iconColor ?? colors.inkMuted);
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
-      <View style={[styles.iconCircle, destructive && styles.iconCircleDestructive]}>
-        <IconSymbol name={icon} size={16} color={tint} />
-      </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={sublabel ? `${label}, ${sublabel}` : label}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      <IconSymbol name={icon} size={ICON.small} color={tint} />
       <View style={styles.textBlock}>
-        <ThemedText style={[styles.label, destructive && { color: FuttyColors.rose600 }]}>{label}</ThemedText>
-        {sublabel ? <ThemedText style={styles.sublabel}>{sublabel}</ThemedText> : null}
+        <Text variant="body" tone={destructive ? 'danger' : 'ink'}>
+          {label}
+        </Text>
+        {sublabel ? (
+          <Text variant="callout" tone="inkMuted">
+            {sublabel}
+          </Text>
+        ) : null}
       </View>
-      {!destructive ? <IconSymbol name="chevron.right" size={16} color={FuttyColors.stone400} /> : null}
+      {!destructive ? <IconSymbol name="chevron.right" size={ICON.small} color={colors.inkMuted} /> : null}
     </Pressable>
   );
 }
 
-export function MenuSection({ title, children }: { title?: string; children: React.ReactNode }) {
+/** A titled group of rows on one card, separated by inset hairlines. */
+export function MenuSection({ title, children }: { title?: string; children: ReactNode }) {
+  const rows = Children.toArray(children).filter(Boolean);
   return (
     <View style={styles.section}>
-      {title ? <ThemedText style={styles.sectionTitle}>{title}</ThemedText> : null}
-      <View style={styles.sectionCard}>{children}</View>
+      {title ? <SectionHeader title={title} /> : null}
+      <View style={styles.sectionCard}>
+        {rows.map((row, i) => (
+          <Fragment key={i}>
+            {i > 0 ? <View style={styles.divider} /> : null}
+            {row}
+          </Fragment>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: 8,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: FuttyColors.stone400,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginLeft: 4,
-  },
+  section: { gap: space.sm },
   sectionCard: {
-    backgroundColor: FuttyColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: FuttyColors.stone200,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
+    borderWidth: hairline,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   row: {
+    minHeight: MIN_TOUCH,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: FuttyColors.stone200,
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
   },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: FuttyColors.stone50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleDestructive: {
-    backgroundColor: '#fee2e2',
-  },
-  textBlock: {
-    flex: 1,
-    gap: 1,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: FuttyColors.stone900,
-  },
-  sublabel: {
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
+  pressed: { backgroundColor: colors.canvas },
+  textBlock: { flex: 1, gap: 2 },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg + ICON.small + space.md },
 });

@@ -1,12 +1,14 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { FuttyColors, FuttyFonts } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Card } from '@/components/ui/card';
+import { DISABLED_OPACITY } from '@/components/ui/foundation';
+import type { IconSymbol } from '@/components/ui/icon-symbol';
+import { ListRow } from '@/components/ui/list-row';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, hairline, space } from '@/constants/futty-theme';
 import { personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
@@ -30,13 +32,14 @@ export default function GoPremiumScreen() {
   const myTeams = useMyTeams();
   // The Premium price label is a rule (P10); blank until the rules are loaded.
   const rulesState = useRules().state;
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
 
   if (profile.status === 'loading' || myTeams.status === 'loading') {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.loading}>
-          <ActivityIndicator />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.content}>
+          <Card testID="premium-skeleton">
+            <SkeletonText lines={4} />
+          </Card>
         </View>
       </SafeAreaView>
     );
@@ -77,106 +80,47 @@ export default function GoPremiumScreen() {
   const rows = allRows.filter((row) => row.plan === 'personal' || TEAM_PREMIUM_ENABLED);
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        {rows.map((row) => (
-          <Pressable
-            key={row.plan}
-            accessibilityRole="button"
-            disabled={!!row.disabledNote}
-            onPress={() =>
-              router.push({
-                pathname: '/premium-plan',
-                params: { plan: row.plan, teamId: myCaptainedTeam?.id ?? '' },
-              })
-            }>
-            <ThemedView style={[styles.card, { borderColor: border }, row.disabledNote && styles.cardDisabled]}>
-              <View style={[styles.iconCircle, row.active && styles.iconCircleActive]}>
-                <IconSymbol name={row.icon} size={18} color={row.active ? FuttyColors.white : FuttyColors.stone500} />
+        <Card padded={false}>
+          {rows.map((row, i) => {
+            const status = (
+              <Text variant="callout" tone={row.active ? 'success' : 'inkMuted'}>
+                {row.active ? 'Active' : 'Off'}
+              </Text>
+            );
+            return (
+              <View key={row.plan} testID={`plan-${row.plan}`} style={row.disabledNote ? styles.disabled : undefined}>
+                {i > 0 ? <View style={styles.divider} /> : null}
+                <ListRow
+                  title={row.title}
+                  accessibilityLabel={`${row.title}, ${row.disabledNote ?? row.priceLabel}, ${row.active ? 'Active' : 'Off'}`}
+                  subtitle={row.disabledNote ?? row.priceLabel}
+                  leading={{ icon: row.icon }}
+                  trailing={status}
+                  chevron={!row.disabledNote}
+                  onPress={
+                    row.disabledNote
+                      ? undefined
+                      : () =>
+                          router.push({
+                            pathname: '/premium-plan',
+                            params: { plan: row.plan, teamId: myCaptainedTeam?.id ?? '' },
+                          })
+                  }
+                />
               </View>
-              <View style={styles.textBlock}>
-                <ThemedText type="defaultSemiBold" style={styles.title}>
-                  {row.title}
-                </ThemedText>
-                <ThemedText style={styles.price}>{row.disabledNote ?? row.priceLabel}</ThemedText>
-              </View>
-              <View style={[styles.statusPill, row.active ? styles.statusPillActive : styles.statusPillInactive]}>
-                <ThemedText style={[styles.statusText, row.active && styles.statusTextActive]}>
-                  {row.active ? 'Active' : 'Off'}
-                </ThemedText>
-              </View>
-            </ThemedView>
-          </Pressable>
-        ))}
+            );
+          })}
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    gap: 10,
-    padding: 16,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-  },
-  cardDisabled: {
-    opacity: 0.55,
-  },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: FuttyColors.stone50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconCircleActive: {
-    backgroundColor: FuttyColors.emerald950,
-  },
-  textBlock: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontSize: 14,
-  },
-  price: {
-    fontFamily: FuttyFonts.sans,
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
-  statusPill: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusPillActive: {
-    backgroundColor: FuttyColors.emerald950,
-  },
-  statusPillInactive: {
-    backgroundColor: FuttyColors.stone200,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: FuttyColors.stone500,
-  },
-  statusTextActive: {
-    color: FuttyColors.white,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.md, padding: space.lg },
+  disabled: { opacity: DISABLED_OPACITY },
+  divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

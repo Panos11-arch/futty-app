@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
+import { colors, space } from '@/constants/futty-theme';
 
 export default function PaymentsScreen() {
   return (
@@ -33,9 +34,10 @@ export default function PaymentsScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+    backgroundColor: colors.canvas,
   },
   content: {
-    gap: 16,
-    padding: 16,
+    gap: space.xl,
+    padding: space.lg,
   },
 });

@@ -1,25 +1,26 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuthError } from '@/components/auth-form';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { FuttyColors } from '@/constants/futty-theme';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { Card } from '@/components/ui/card';
+import { ListRow } from '@/components/ui/list-row';
+import { SkeletonText } from '@/components/ui/skeleton';
+import { Text } from '@/components/ui/text';
+import { colors, space } from '@/constants/futty-theme';
 import { updateProfile, useProfile } from '@/lib/use-profile';
 
 export default function PrivacySettingsScreen() {
   const profile = useProfile();
-  const border = useThemeColor({ light: FuttyColors.stone200, dark: FuttyColors.stone200 }, 'icon');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (profile.status !== 'ready') {
     return (
-      <SafeAreaView style={styles.flex} edges={['top']}>
-        <View style={styles.loading}>
-          <ActivityIndicator />
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <View style={styles.content}>
+          <Card testID="privacy-skeleton">
+            <SkeletonText lines={2} />
+          </Card>
         </View>
       </SafeAreaView>
     );
@@ -37,59 +38,33 @@ export default function PrivacySettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['bottom']}>
+    <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <ThemedView style={[styles.card, { borderColor: border }]}>
-          <View style={styles.row}>
-            <View style={styles.rowText}>
-              <ThemedText type="defaultSemiBold" style={styles.rowTitle}>
-                Show my phone number
-              </ThemedText>
-              <ThemedText style={styles.rowNote}>
-                Other players can see it on your Community profile. Off by default.
-              </ThemedText>
-            </View>
-            <Switch value={profile.profile.show_phone_publicly} onValueChange={toggle} disabled={busy} />
-          </View>
-        </ThemedView>
-        {error ? <AuthError>{error}</AuthError> : null}
+        <Card padded={false}>
+          <ListRow
+            title="Show my phone number"
+            subtitle="Other players can see it on your Community profile. Off by default."
+            trailing={
+              <Switch
+                accessibilityLabel="Show my phone number"
+                value={profile.profile.show_phone_publicly}
+                onValueChange={toggle}
+                disabled={busy}
+              />
+            }
+          />
+        </Card>
+        {error ? (
+          <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  content: {
-    gap: 12,
-    padding: 16,
-  },
-  card: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rowText: {
-    flex: 1,
-    gap: 2,
-  },
-  rowTitle: {
-    fontSize: 14,
-  },
-  rowNote: {
-    fontSize: 12,
-    color: FuttyColors.stone500,
-  },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { gap: space.md, padding: space.lg },
 });
