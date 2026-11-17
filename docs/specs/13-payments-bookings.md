@@ -423,6 +423,17 @@ Staff edit their venue's opening hours, closures, prices and pitches from the da
 - **Told once per change:** a block tells its players once per block. In the same way, players are told once per closure, once per hours change and once per pitch closure. A new closure over the same game tells them again, even after an earlier one was removed. An hours change tells the players of each game it newly puts outside the hours, so saving the same hours again tells nobody. Closing a pitch again after reopening it tells them again.
 - **Pitches:** a pitch that holds a game (past or future; a cancelled game holds none) can't be deleted, only closed. A closed pitch gets no new bookings, alone or combined; games already on it stay on, and every player still in a game on it that hasn't ended is told, with the same message as for a block. Its size and formats can't change while it holds a game that hasn't ended. Its name, surface, indoor or outdoor, description and order can always change. Deleting an unused pitch removes the combinations it was part of. Removing a combination never moves a game already booked.
 
+## Venue notifications (decided 17 November, Dimitris; for Panos to confirm)
+
+A venue's staff (its owner today) are told about their own venue only, through `send_notification`. Staff can turn each kind off; none is always sent.
+
+- **New booking:** an app booking is confirmed (the booker has paid, or it was free). Walk-ins, phone bookings and owner blocks tell nobody, because staff added them.
+- **Booking cancelled:** only when the booker cancels the whole booking. A player leaving their spot, or the venue's own cancel, tells nobody.
+- **Short game:** when the 6-hour check finds a game short ("Short game: 8 of 10"), counted as the players' warning counts it, so the venue can offer a player.
+- **Daily summary at 20:00 Cyprus time,** for tomorrow: each pitch's games in time order; for app games, players joined vs needed (still in, as everywhere on the dashboard); cash expected, as two figures: app players' cash not yet ticked, and walk-in or phone bookings not yet marked paid (which may still be paid by card at the counter); blocks (including owner blocks) and condition flags. **Nothing is sent on a day with no game, block or flag.** Every venue with staff gets it, live or not.
+- **Once each:** every notice and each day's summary is sent once per staff member, however often the job runs. A summary missed at 20:00 is sent at the next run that evening, never after midnight. Nothing from before this feature is sent.
+- **Cyprus time:** every day and time in the text is Cyprus time, never UTC (a 19:00 game in winter reads 19:00).
+
 ## Rules in one place (decided 15 November)
 
 Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
