@@ -133,8 +133,22 @@ describe('BookingSheet: app booking roster', () => {
     expect(a.venueCancel).toHaveBeenLastCalledWith('b-app', 'q-2');
   });
 
+  it('shows the Stripe fee the server quoted, unchanged, before staff confirm', async () => {
+    await open(appRoster());
+    await act(() => fireEvent.press(screen.getByText('Cancel booking')));
+    expect(screen.getByText("Stripe's fees on these payments: €1.37. This comes off your next payout.")).toBeTruthy();
+  });
+
+  it("shows nothing about Stripe's fees when the server says 0", async () => {
+    const noFee = venueQuote({ venue_stripe_fee_cents: 0 });
+    await open(appRoster(), actions({ venueQuote: jest.fn(async () => ({ quote: noFee })) }));
+    await act(() => fireEvent.press(screen.getByText('Cancel booking')));
+    expect(screen.getByText('Cancel booking and refund players')).toBeTruthy();
+    expect(screen.queryByText(/Stripe/)).toBeNull();
+  });
+
   it('says only "Cancel booking" when nobody has paid, so nobody is refunded', async () => {
-    const unpaidOnly = venueQuote({ lines: [venueQuote().lines[3]] });
+    const unpaidOnly = venueQuote({ lines: [venueQuote().lines[3]], venue_stripe_fee_cents: 0 });
     const a = await open(appRoster(), actions({ venueQuote: jest.fn(async () => ({ quote: unpaidOnly })) }));
     await act(() => fireEvent.press(screen.getByText('Cancel booking')));
     expect(screen.queryByText('Cancel booking and refund players')).toBeNull();

@@ -127,7 +127,7 @@ A player who cancels in the first hour gets everything back. After that €1 is 
     - The booker is notified once, and the charge is retried every 6 hours. Retries stop at the original kickoff.
     - Anything still unpaid becomes the booker's debt, owed to Futty (built in P4c).
   - **Card refund or credit:** when the booker or the venue cancels, a player whose payment was taken has **48 hours** to choose venue credit. With no choice, it goes back to their card.
-  - **The venue cancels:** the venue owes Stripe's real fee on every payment that was taken, whether the player takes a card refund or credit, so Futty neither earns nor loses on that booking.
+  - **The venue cancels:** the venue owes Stripe's real fee on every payment that was taken, whether the player takes a card refund or credit, so Futty neither earns nor loses on that booking. Before staff confirm, the venue's cancel quote shows that amount: "Stripe's fees on these payments: €X.XX. This comes off your next payout." The server adds up the fee recorded for each card payment this cancel refunds or turns into credit, the same amount the cancel then records as owed. Nothing is shown when it is €0.
   - **€1 kept, the rest as credit, applies to whatever the share paid.** A Premium player's €6.00 gives €5.00 credit. A cash player's €0.80 fee is all kept, with no credit, because the pitch part was never paid. A 6 v 6 the booker paid for everyone (€66.60) keeps €12.00 (€1 × 12 players) and gives €54.60 credit.
   - **A share paid with credit is treated the same way:** the €1 is kept even from credit. A Premium share paid fully with €6.00 credit gives €5.00 credit back.
   - **A booker who paid for everyone can only cancel the whole booking,** not "my spot".
