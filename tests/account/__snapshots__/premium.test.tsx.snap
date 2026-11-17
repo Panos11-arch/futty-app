@@ -40,7 +40,7 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
           testID="plan-personal"
         >
           <View
-            accessibilityLabel="Personal Premium"
+            accessibilityLabel="Personal Premium, €3.99/mo, Off"
             accessibilityRole="button"
             accessibilityState={
               {

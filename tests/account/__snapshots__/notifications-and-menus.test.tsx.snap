@@ -1588,7 +1588,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
               <View
                 style={
                   {
-                    "backgroundColor": "#B42318",
+                    "backgroundColor": "#0B1215",
                     "borderRadius": 999,
                     "height": 8,
                     "marginTop": 6,
@@ -1601,6 +1601,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
             <View
               style={
                 {
+                  "paddingBottom": 12,
                   "paddingLeft": 48,
                   "paddingRight": 16,
                 }
@@ -1789,6 +1790,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
             <View
               style={
                 {
+                  "paddingBottom": 12,
                   "paddingLeft": 48,
                   "paddingRight": 16,
                 }

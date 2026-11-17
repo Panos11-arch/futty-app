@@ -1174,6 +1174,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               19:00
                · 
               5-a-side
+               · Awaiting payment
             </Text>
             <View
               accessibilityLabel="Pending"
@@ -1395,6 +1396,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               19:00
                · 
               5-a-side
+               · Booking cancelled
             </Text>
             <View
               accessibilityLabel="Refunded"

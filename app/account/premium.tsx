@@ -94,6 +94,7 @@ export default function GoPremiumScreen() {
                 {i > 0 ? <View style={styles.divider} /> : null}
                 <ListRow
                   title={row.title}
+                  accessibilityLabel={`${row.title}, ${row.disabledNote ?? row.priceLabel}, ${row.active ? 'Active' : 'Off'}`}
                   subtitle={row.disabledNote ?? row.priceLabel}
                   leading={{ icon: row.icon }}
                   trailing={status}

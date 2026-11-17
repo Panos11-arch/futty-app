@@ -6,6 +6,7 @@ import { Modal, Share, StyleSheet } from 'react-native';
 
 import AccountMenuScreen from '@/app/account/index';
 import PrivacySettingsScreen from '@/app/account/settings/privacy';
+import SecuritySettingsScreen from '@/app/account/settings/security';
 import NotificationsScreen, { groupByDay } from '@/app/notifications';
 import { DocFAQ } from '@/components/doc-screen';
 import { FuttyAiChat } from '@/components/futty-ai-chat';
@@ -20,6 +21,8 @@ let mockInviteStatuses = new Map<string, string>();
 const mockNotificationsReload = jest.fn();
 const mockMarkRead = jest.fn();
 const mockAccept = jest.fn();
+const mockDecline = jest.fn();
+const mockSetAppLock = jest.fn();
 const mockUpdateProfile = jest.fn();
 const mockSignOut = jest.fn();
 const mockSendAi = jest.fn();
@@ -31,7 +34,7 @@ jest.mock('@/lib/use-notifications', () => ({
 jest.mock('@/lib/notifications', () => ({ markNotificationRead: (...args: unknown[]) => mockMarkRead(...args) }));
 jest.mock('@/lib/invites', () => ({
   acceptInvite: (...args: unknown[]) => mockAccept(...args),
-  declineInvite: jest.fn(),
+  declineInvite: (...args: unknown[]) => mockDecline(...args),
   describeInviteError: (e: { message: string }) => e.message,
   inviteStatuses: () => Promise.resolve(mockInviteStatuses),
 }));
@@ -39,6 +42,9 @@ jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' }, signOut: 
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ ...mockProfile, reload: jest.fn() }),
   updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
+}));
+jest.mock('@/lib/app-lock', () => ({
+  useAppLock: () => ({ supported: true, enabled: false, label: 'Face ID', setEnabled: mockSetAppLock }),
 }));
 jest.mock('@/lib/futty-ai', () => ({ sendFuttyAiMessage: (...args: unknown[]) => mockSendAi(...args) }));
 
@@ -210,5 +216,29 @@ describe('Futty AI chat', () => {
     await fireEvent.changeText(screen.getByLabelText('Message to Futty AI'), 'hi');
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     expect(await screen.findByText("Couldn't reach Futty AI — try again in a moment.")).toBeTruthy();
+  });
+});
+
+describe('Invites and security', () => {
+  it('declining a team invite answers it and stays put', async () => {
+    mockDecline.mockResolvedValue({ error: null });
+    mockInviteStatuses = new Map([['inv2', 'pending']]);
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('n4', '2026-11-17T09:00:00Z', { type: 'team_invite', data: { inviteId: 'inv2' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Decline' }));
+    expect(await screen.findByText('Declined')).toBeTruthy();
+    expect(mockDecline).toHaveBeenCalledWith('inv2');
+    expect(mockAccept).not.toHaveBeenCalled();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('the app lock switch calls the same setter', async () => {
+    mockSetAppLock.mockResolvedValue(undefined);
+    await render(<SecuritySettingsScreen />);
+    await fireEvent(screen.getByLabelText('Lock with Face ID'), 'valueChange', true);
+    await waitFor(() => expect(mockSetAppLock).toHaveBeenCalledWith(true));
   });
 });

@@ -115,9 +115,30 @@ describe('Go Premium list', () => {
     expect(view.toJSON()).toMatchSnapshot();
     expect(screen.getByText('€3.99/mo')).toBeTruthy();
     expect(screen.getByText('Off')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Personal Premium' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Personal Premium, €3.99/mo, Off' }));
     await waitFor(() =>
       expect(router.push).toHaveBeenCalledWith({ pathname: '/premium-plan', params: { plan: 'personal', teamId: '' } })
     );
+  });
+});
+
+describe('Premium plan: manage and double taps', () => {
+  it('Manage opens the App Store subscriptions page, as before', async () => {
+    const { deepLinkToSubscriptions } = jest.requireMock<{ deepLinkToSubscriptions: jest.Mock }>('expo-iap');
+    mockProfile = { status: 'ready', profile: { is_premium: true } };
+    await render(<PremiumPlanScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Manage or cancel subscription' }));
+    expect(deepLinkToSubscriptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('Subscribe asks the store once, however often it is tapped while the purchase is open', async () => {
+    mockRequestPurchase.mockReturnValue(new Promise(() => {}));
+    await render(<PremiumPlanScreen />);
+    const subscribe = screen.getByRole('button', { name: 'Subscribe' });
+    await fireEvent.press(subscribe);
+    await fireEvent.press(subscribe);
+    expect(mockRequestPurchase).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole('button', { name: 'Restore purchases' }));
+    expect(mockRestore).not.toHaveBeenCalled();
   });
 });

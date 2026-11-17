@@ -166,7 +166,7 @@ function ProfileStatus() {
             <MenuRow
               icon="star.fill"
               label={profile.profile.is_premium ? 'Manage Premium' : 'Go Premium'}
-              sublabel={profile.profile.is_premium ? 'Premium' : 'Futty Premium'}
+              sublabel={profile.profile.is_premium ? undefined : 'Futty Premium'}
               onPress={() => router.push('/account/premium')}
             />
             {profile.profile.role === 'venue_owner' ? (

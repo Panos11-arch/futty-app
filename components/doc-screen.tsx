@@ -64,7 +64,6 @@ export function DocFAQ({ question, children }: PropsWithChildren<{ question: str
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={question}
       accessibilityState={{ expanded: open }}
       onPress={() => setOpen((v) => !v)}
       style={styles.faqCard}>

@@ -40,6 +40,7 @@ export default function TeamsScreen() {
                 {i > 0 ? <View style={styles.divider} /> : null}
                 <ListRow
                   title={team.name}
+                  accessibilityLabel={`${team.name}, ${role === 'captain' ? 'Captain' : role === 'substitute' ? 'Substitute' : 'Player'}${team.city ? `, ${team.city}` : ''}, ${team.played} played, ${team.won} won, ${team.drawn} drawn, ${team.lost} lost`}
                   subtitle={`${role === 'captain' ? 'Captain' : role === 'substitute' ? 'Substitute' : 'Player'}${team.city ? ` · ${team.city}` : ''}`}
                   leading={{ icon: 'shield.fill' }}
                   trailing={

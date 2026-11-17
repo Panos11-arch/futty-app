@@ -34,6 +34,7 @@ Sentence case on menu rows and section titles ("Edit profile", "Your payments", 
 - Team Premium prices (€45 / €59 per season) are client constants (lib/teams.ts), not from the store.
 - Screen header titles in app/_layout.tsx are Title Case (shared file).
 - Payment methods and transactions have no retry on error (they load once in an effect).
+- Transactions: StatusPill has no "cancelled" state, so a cancelled share keeps the word "Cancelled" with no pill (a new pill is a components/ui change). The old words stay beside the pills: "Awaiting payment" next to Pending, "Booking cancelled" next to Refunded.
 
 ## Tests
 

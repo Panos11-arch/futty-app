@@ -35,10 +35,10 @@ const STATUS_PILL: Record<string, Status> = {
   refunded: 'refunded',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  paid: 'Paid',
+/** Words shown next to the pill, or in place of one (no pill for cancelled). */
+const STATUS_NOTE: Record<string, string> = {
   pending: 'Awaiting payment',
-  refunded: 'Refunded (booking cancelled)',
+  refunded: 'Booking cancelled',
   cancelled: 'Cancelled',
 };
 
@@ -107,7 +107,7 @@ export default function TransactionsScreen() {
                     <View style={styles.rowMain}>
                       <Text variant="callout" tone="inkMuted" tabular style={styles.flex}>
                         {tx.booking_day} · {tx.start_time.slice(0, 5)} · {tx.format}
-                        {pill ? '' : ` · ${STATUS_LABEL[tx.status] ?? tx.status}`}
+                        {STATUS_NOTE[tx.status] ? ` · ${STATUS_NOTE[tx.status]}` : pill ? '' : ` · ${tx.status}`}
                       </Text>
                       {pill ? <StatusPill status={pill} /> : null}
                     </View>
