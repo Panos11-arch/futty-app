@@ -21,6 +21,7 @@ import {
   payOwedItem,
   paymentActionLabel,
   paymentAmountCents,
+  paymentRowSentence,
   paymentSentence,
   updateGuaranteeCard,
   useCredit,
@@ -197,6 +198,48 @@ describe('words', () => {
     const words = paymentSentence('cash_unpaid');
     expect(words).toBe('Cash for your spot wasn’t ticked as paid. You can pay it by card now.');
     expect(words).not.toMatch(/debt|charged/i);
+  });
+
+  describe('the row’s sentence for unticked cash (spec 13, "Cash at the venue")', () => {
+    it('booker responsible: the booker will be charged, with the server’s amount and booker name', () => {
+      expect(
+        paymentRowSentence({ ...cashUnpaid, payment_mode: 'each_pays_responsible', booker_name: 'Andreas', is_booker: false }),
+      ).toBe('Pay €6.00 by card now, or Andreas will be charged for your spot.');
+    });
+
+    it('just my spot: the player remains in debt to the venue', () => {
+      expect(
+        paymentRowSentence({ ...cashUnpaid, payment_mode: 'each_pays_own_spot', booker_name: 'Andreas', is_booker: false }),
+      ).toBe('Pay €6.00 by card now, or remain in debt to Nuevo Campo.');
+    });
+
+    it('uses the server’s amount as it is (2000 -> €20.00 in a short game)', () => {
+      expect(paymentRowSentence({ ...cashUnpaid, amount_cents: 2000, payment_mode: 'each_pays_own_spot', is_booker: false })).toBe(
+        'Pay €20.00 by card now, or remain in debt to Nuevo Campo.',
+      );
+    });
+
+    it('the booker’s own unticked cash keeps the neutral words (never names them to themselves)', () => {
+      expect(
+        paymentRowSentence({ ...cashUnpaid, payment_mode: 'each_pays_responsible', booker_name: 'Andreas', is_booker: true }),
+      ).toBe(paymentSentence('cash_unpaid'));
+    });
+
+    it('neutral words without the mode, the amount or the booker’s name', () => {
+      expect(paymentRowSentence(cashUnpaid)).toBe(paymentSentence('cash_unpaid'));
+      expect(paymentRowSentence({ ...cashUnpaid, payment_mode: 'pay_all', is_booker: false })).toBe(paymentSentence('cash_unpaid'));
+      expect(
+        paymentRowSentence({ ...cashUnpaid, amount_cents: null, payment_mode: 'each_pays_own_spot', is_booker: false }),
+      ).toBe(paymentSentence('cash_unpaid'));
+      expect(
+        paymentRowSentence({ ...cashUnpaid, payment_mode: 'each_pays_responsible', booker_name: null, is_booker: false }),
+      ).toBe(paymentSentence('cash_unpaid'));
+    });
+
+    it('other kinds keep their own sentence', () => {
+      expect(paymentRowSentence(cardFailed)).toBe(paymentSentence('card_failed'));
+      expect(paymentRowSentence({ ...cardFailed, kind: 'payment_due' })).toBe(paymentSentence('payment_due'));
+    });
   });
 
   it('a failed guarantee: the booking stays on (spec 13: a failed hold never cancels it)', () => {

@@ -14,6 +14,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
+import type { PaymentMode } from '@/lib/booking-actions';
 import type { PaymentSheet, PayOutcome } from '@/lib/booking-checkout';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { useLoad } from '@/lib/booking-search';
@@ -55,9 +56,14 @@ export type OwedPayment = {
   booking_day: string;
   start_time: string;
   amount_cents: number | null;
+  /** cash_unpaid only: the booking's mode, the booker's name and whether
+   *  the caller is the booker, for spec 13's sentence. */
+  payment_mode?: PaymentMode | null;
+  booker_name?: string | null;
+  is_booker?: boolean;
 };
 
-/** my_owed(). `blocked`: any debt, which blocks booking everywhere. */
+/** my_owed().`blocked`: any debt, which blocks booking everywhere. */
 export type Owed = {
   blocked: boolean;
   debt_cents: number;
@@ -156,9 +162,7 @@ export function owedWhen(payment: Pick<OwedPayment, 'booking_day' | 'start_time'
   return formatMatchWhen(cyprusWallTime(payment.booking_day, payment.start_time).toISOString());
 }
 
-// True in every booking mode. Spec 13's own cash wording ("…or [booker]
-// will be charged for your spot" / "…or remain in debt to [venue]") needs
-// my_owed to return the booking's payment_mode and booker name first.
+// True in every booking mode: Home's banner, and a row whose mode isn't known.
 const PAYMENT_WORDS: Record<OwedPayment['kind'], string> = {
   card_failed: 'Your guarantee card was declined. Update it so the hold can be retried. Your booking stays on.',
   payment_due: 'Your share isn’t paid yet.',
@@ -167,6 +171,27 @@ const PAYMENT_WORDS: Record<OwedPayment['kind'], string> = {
 
 export function paymentSentence(kind: OwedPayment['kind']): string {
   return PAYMENT_WORDS[kind];
+}
+
+/** The sentence on a "Pay what I owe" row. Unticked cash uses spec 13's own
+ *  words for the booking's mode, with my_owed's amount, booker and venue:
+ *  "Pay €6.00 by card now, or Andreas will be charged for your spot." (booker
+ *  responsible) or "…or remain in debt to Nuevo Campo." (just my spot). The
+ *  booker's own row, or one missing what the sentence needs, keeps the
+ *  neutral words. */
+export function paymentRowSentence(
+  payment: Pick<OwedPayment, 'kind' | 'amount_cents' | 'venue_name' | 'payment_mode' | 'booker_name' | 'is_booker'>,
+): string {
+  if (payment.kind === 'cash_unpaid' && payment.amount_cents !== null && payment.is_booker === false) {
+    const pay = `Pay ${formatEuros(payment.amount_cents)} by card now`;
+    if (payment.payment_mode === 'each_pays_responsible' && payment.booker_name) {
+      return `${pay}, or ${payment.booker_name} will be charged for your spot.`;
+    }
+    if (payment.payment_mode === 'each_pays_own_spot') {
+      return `${pay}, or remain in debt to ${payment.venue_name}.`;
+    }
+  }
+  return paymentSentence(payment.kind);
 }
 
 /** The amount shown on a payment row as money to pay: never a guarantee's
