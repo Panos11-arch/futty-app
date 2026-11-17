@@ -1,6 +1,8 @@
 import { runInThisContext } from 'node:vm';
 
-import { dateKeyToDate, dayLabel, isToday } from '@/lib/days';
+import { renderHook } from '@testing-library/react-native';
+
+import { dateKeyToDate, dayLabel, isToday, nextDays, toDateKey, useDays } from '@/lib/days';
 
 // "Today" is the Cyprus date (Asia/Nicosia), whatever zone the phone is set to.
 // Each test sets the phone's zone, then labels a Cyprus day as the screens do:
@@ -124,6 +126,102 @@ describe('isToday', () => {
       expect(isToday(dateKeyToDate('2026-11-16'))).toBe(true);
       expect(isToday(dateKeyToDate('2026-11-17'))).toBe(false);
       expect(dayLabel(dateKeyToDate('2026-11-16'))).toBe('Today');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+// The matchmaking day chips: useDays() -> nextDays(). The first chip must be
+// today in Cyprus, so a phone abroad never skips Cyprus today or offers
+// Cyprus yesterday.
+function keys(count: number, nowUtc: string) {
+  return nextDays(count, new Date(nowUtc)).map(toDateKey);
+}
+
+describe('nextDays starts from the Cyprus date, not the phone date', () => {
+  it('London: 00:30 Tuesday in Cyprus, still Monday on the phone, starts on Tuesday', () => {
+    onPhoneIn('Europe/London');
+    expect(keys(3, '2026-11-16T22:30:00Z')).toEqual(['2026-11-17', '2026-11-18', '2026-11-19']);
+  });
+
+  it('New York: 06:00 Tuesday in Cyprus, still Monday on the phone, starts on Tuesday', () => {
+    onPhoneIn('America/New_York');
+    expect(keys(3, '2026-11-17T04:00:00Z')).toEqual(['2026-11-17', '2026-11-18', '2026-11-19']);
+  });
+
+  it('Tokyo: 23:30 Monday in Cyprus, already Tuesday on the phone, starts on Monday', () => {
+    onPhoneIn('Asia/Tokyo');
+    expect(keys(3, '2026-11-16T21:30:00Z')).toEqual(['2026-11-16', '2026-11-17', '2026-11-18']);
+  });
+
+  it('the first day is labelled Today and no other is', () => {
+    onPhoneIn('Asia/Tokyo');
+    const now = new Date('2026-11-16T21:30:00Z');
+    const labels = nextDays(3, now).map((day) => dayLabel(day, now));
+    expect(labels[0]).toBe('Today');
+    expect(labels.slice(1)).not.toContain('Today');
+  });
+
+  it('rolls over the end of a month and a year', () => {
+    onPhoneIn('Asia/Tokyo');
+    // 23:30 on 31 Dec in Cyprus is already 1 Jan in Tokyo.
+    expect(keys(3, '2026-12-31T21:30:00Z')).toEqual(['2026-12-31', '2027-01-01', '2027-01-02']);
+  });
+});
+
+describe('nextDays around midnight Cyprus time', () => {
+  it.each(['Europe/London', 'America/New_York', 'Asia/Tokyo'])('%s: starts the next day at Cyprus midnight', (zone) => {
+    onPhoneIn(zone);
+    expect(keys(2, '2026-11-16T21:59:59Z')).toEqual(['2026-11-16', '2026-11-17']);
+    expect(keys(2, '2026-11-16T22:00:00Z')).toEqual(['2026-11-17', '2026-11-18']);
+  });
+});
+
+describe('nextDays across a daylight-saving change', () => {
+  it.each(['Europe/London', 'America/New_York', 'Asia/Tokyo'])(
+    '%s: autumn, 21 days through 25 Oct 2026 have no gap or repeat',
+    (zone) => {
+      onPhoneIn(zone);
+      // 23:30 on 24 Oct in Cyprus (summer time, UTC+3).
+      const days = keys(21, '2026-10-24T20:30:00Z');
+      expect(days[0]).toBe('2026-10-24');
+      expect(days.slice(0, 4)).toEqual(['2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27']);
+      expect(days[20]).toBe('2026-11-13');
+      expect(new Set(days).size).toBe(21);
+      // 23:30 on 25 Oct in Cyprus is now winter time (UTC+2): still the 25th.
+      expect(keys(1, '2026-10-25T21:30:00Z')).toEqual(['2026-10-25']);
+    },
+  );
+
+  it.each(['Europe/London', 'America/New_York', 'Asia/Tokyo'])(
+    '%s: spring, 21 days through 28 Mar 2027 have no gap or repeat',
+    (zone) => {
+      onPhoneIn(zone);
+      // 23:30 on 27 Mar in Cyprus (winter time, UTC+2).
+      const days = keys(21, '2027-03-27T21:30:00Z');
+      expect(days.slice(0, 3)).toEqual(['2027-03-27', '2027-03-28', '2027-03-29']);
+      expect(days[20]).toBe('2027-04-16');
+      expect(new Set(days).size).toBe(21);
+      // 00:30 on 29 Mar in Cyprus is summer time (UTC+3): already the 29th.
+      expect(keys(1, '2027-03-28T21:30:00Z')).toEqual(['2027-03-29']);
+    },
+  );
+
+  it('the week New York has changed clocks and Cyprus has not', () => {
+    onPhoneIn('America/New_York');
+    // 00:00 on 21 Mar in Cyprus is 18:00 on 20 Mar in New York.
+    expect(keys(2, '2027-03-20T22:00:00Z')).toEqual(['2027-03-21', '2027-03-22']);
+  });
+});
+
+describe('useDays', () => {
+  it('defaults to now and starts from the Cyprus date', async () => {
+    onPhoneIn('Asia/Tokyo');
+    jest.useFakeTimers({ now: new Date('2026-11-16T21:30:00Z') });
+    try {
+      const { result } = await renderHook(() => useDays(2));
+      expect(result.current.map(toDateKey)).toEqual(['2026-11-16', '2026-11-17']);
     } finally {
       jest.useRealTimers();
     }

@@ -17,9 +17,13 @@ export function toDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-/** Today plus the following `count - 1` days, each normalised to midnight local. */
+/**
+ * Today in Cyprus (Asia/Nicosia) at the instant `from`, plus the following
+ * `count - 1` days. Each is a local-midnight Date whose toDateKey() is that
+ * Cyprus date, so a phone abroad never skips or adds a day around midnight.
+ */
 export function nextDays(count: number = DAY_PICKER_LENGTH, from: Date = new Date()) {
-  const base = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const base = dateKeyToDate(cyprusDateKey(from));
 
   return Array.from({ length: count }, (_, offset) => {
     const date = new Date(base);
