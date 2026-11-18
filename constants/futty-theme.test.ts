@@ -40,12 +40,18 @@ describe('colour tokens', () => {
       onBrand: '#FFFFFF',
       logoMint: '#00FF9C',
       logoBlack: '#000000',
-      badgeBronze: '#8C5A2B',
-      badgeSilver: '#646C76',
-      badgeGold: '#876600',
-      badgePlatinum: '#4F6D7A',
-      badgeDiamond: '#1E6FA8',
-      badgeChampion: '#6D28D9',
+      badgeBronze: '#B87333',
+      badgeOnBronze: '#0B1215',
+      badgeSilver: '#C0C7CF',
+      badgeOnSilver: '#0B1215',
+      badgeGold: '#E0B000',
+      badgeOnGold: '#0B1215',
+      badgePlatinum: '#E5E4E2',
+      badgeOnPlatinum: '#0B1215',
+      badgeDiamond: '#7FD4FF',
+      badgeOnDiamond: '#0B1215',
+      badgeChampion: '#000000',
+      badgeOnChampion: '#00FF9C',
     });
   });
 
@@ -76,12 +82,19 @@ describe('colour tokens', () => {
     }
   }
 
-  // Streak badges (A11): a filled badge carries its label in onBrand, and a
-  // greyed badge (earned, not Premium) is inkMuted on border.
-  const badgeColours = ['badgeBronze', 'badgeSilver', 'badgeGold', 'badgePlatinum', 'badgeDiamond', 'badgeChampion'] as const;
-  for (const badge of badgeColours) {
-    it(`onBrand on ${badge} has a contrast ratio of at least 4.5`, () => {
-      expect(contrast(colors.onBrand, colors[badge])).toBeGreaterThanOrEqual(4.5);
+  // Streak badges (A11): each badge carries its label in its own badgeOn<Name>
+  // colour, and a greyed badge (earned, not Premium) is inkMuted on border.
+  const badgePairs = [
+    ['badgeOnBronze', 'badgeBronze'],
+    ['badgeOnSilver', 'badgeSilver'],
+    ['badgeOnGold', 'badgeGold'],
+    ['badgeOnPlatinum', 'badgePlatinum'],
+    ['badgeOnDiamond', 'badgeDiamond'],
+    ['badgeOnChampion', 'badgeChampion'],
+  ] as const;
+  for (const [label, badge] of badgePairs) {
+    it(`${label} on ${badge} has a contrast ratio of at least 4.5`, () => {
+      expect(contrast(colors[label], colors[badge])).toBeGreaterThanOrEqual(4.5);
     });
   }
 
@@ -97,7 +110,7 @@ describe('colour tokens', () => {
         const rel = `${dir}/${entry.name}`;
         if (entry.isDirectory()) walk(rel);
         else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
-          if (/\bbadge(Bronze|Silver|Gold|Platinum|Diamond|Champion)\b/.test(fs.readFileSync(path.join(root, rel), 'utf8'))) {
+          if (/\bbadge(On)?(Bronze|Silver|Gold|Platinum|Diamond|Champion)\b/.test(fs.readFileSync(path.join(root, rel), 'utf8'))) {
             hits.push(rel);
           }
         }

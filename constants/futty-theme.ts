@@ -34,15 +34,23 @@ export const colors = {
   /** Logo only. The Premium logo's background. */
   logoBlack: '#000000',
   /**
-   * Streak badges only (components/stats, A11), each with an onBrand label.
-   * A badge earned while not Premium is shown greyed in border / inkMuted.
+   * Streak badges only (components/stats, A11): each badge's fill and the
+   * colour of its label. A badge earned while not Premium is shown greyed in
+   * border / inkMuted. Champion uses the logo's black and mint by value (the
+   * logo tokens themselves stay in the logo).
    */
-  badgeBronze: '#8C5A2B',
-  badgeSilver: '#646C76',
-  badgeGold: '#876600',
-  badgePlatinum: '#4F6D7A',
-  badgeDiamond: '#1E6FA8',
-  badgeChampion: '#6D28D9',
+  badgeBronze: '#B87333',
+  badgeOnBronze: '#0B1215',
+  badgeSilver: '#C0C7CF',
+  badgeOnSilver: '#0B1215',
+  badgeGold: '#E0B000',
+  badgeOnGold: '#0B1215',
+  badgePlatinum: '#E5E4E2',
+  badgeOnPlatinum: '#0B1215',
+  badgeDiamond: '#7FD4FF',
+  badgeOnDiamond: '#0B1215',
+  badgeChampion: '#000000',
+  badgeOnChampion: '#00FF9C',
 } as const;
 
 /** Inter families as registered with useFonts() in app/_layout.tsx. */
