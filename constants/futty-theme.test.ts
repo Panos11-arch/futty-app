@@ -40,6 +40,12 @@ describe('colour tokens', () => {
       onBrand: '#FFFFFF',
       logoMint: '#00FF9C',
       logoBlack: '#000000',
+      badgeBronze: '#8C5A2B',
+      badgeSilver: '#646C76',
+      badgeGold: '#876600',
+      badgePlatinum: '#4F6D7A',
+      badgeDiamond: '#1E6FA8',
+      badgeChampion: '#6D28D9',
     });
   });
 
@@ -69,6 +75,37 @@ describe('colour tokens', () => {
       });
     }
   }
+
+  // Streak badges (A11): a filled badge carries its label in onBrand, and a
+  // greyed badge (earned, not Premium) is inkMuted on border.
+  const badgeColours = ['badgeBronze', 'badgeSilver', 'badgeGold', 'badgePlatinum', 'badgeDiamond', 'badgeChampion'] as const;
+  for (const badge of badgeColours) {
+    it(`onBrand on ${badge} has a contrast ratio of at least 4.5`, () => {
+      expect(contrast(colors.onBrand, colors[badge])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it('inkMuted on border (a greyed badge) has a contrast ratio of at least 4.5', () => {
+    expect(contrast(colors.inkMuted, colors.border)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('uses the badge colours only for streak badges (components/stats)', () => {
+    const root = path.join(__dirname, '..');
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(rel);
+        else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+          if (/\bbadge(Bronze|Silver|Gold|Platinum|Diamond|Champion)\b/.test(fs.readFileSync(path.join(root, rel), 'utf8'))) {
+            hits.push(rel);
+          }
+        }
+      }
+    };
+    ['app', 'components', 'lib', 'hooks'].filter((d) => fs.existsSync(path.join(root, d))).forEach(walk);
+    expect(hits.filter((rel) => !rel.startsWith('components/stats/'))).toEqual([]);
+  });
 
   it('onBrand on brand has a contrast ratio of at least 4.5', () => {
     expect(contrast(colors.onBrand, colors.brand)).toBeGreaterThanOrEqual(4.5);

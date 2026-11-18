@@ -33,6 +33,16 @@ export const colors = {
   logoMint: '#00FF9C',
   /** Logo only. The Premium logo's background. */
   logoBlack: '#000000',
+  /**
+   * Streak badges only (components/stats, A11), each with an onBrand label.
+   * A badge earned while not Premium is shown greyed in border / inkMuted.
+   */
+  badgeBronze: '#8C5A2B',
+  badgeSilver: '#646C76',
+  badgeGold: '#876600',
+  badgePlatinum: '#4F6D7A',
+  badgeDiamond: '#1E6FA8',
+  badgeChampion: '#6D28D9',
 } as const;
 
 /** Inter families as registered with useFonts() in app/_layout.tsx. */
