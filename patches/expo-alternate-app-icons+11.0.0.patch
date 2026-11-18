@@ -1,0 +1,43 @@
+diff --git a/node_modules/expo-alternate-app-icons/ios/ExpoAlternateAppIconsModule.swift b/node_modules/expo-alternate-app-icons/ios/ExpoAlternateAppIconsModule.swift
+index 8281c53..502a3b2 100644
+--- a/node_modules/expo-alternate-app-icons/ios/ExpoAlternateAppIconsModule.swift
++++ b/node_modules/expo-alternate-app-icons/ios/ExpoAlternateAppIconsModule.swift
+@@ -1,23 +1,32 @@
+ import ExpoModulesCore
+ 
+ public class ExpoAlternateAppIconsModule: Module {
+-    private var supportsAlternateIcons = UIApplication.shared.supportsAlternateIcons;
++    // Futty patch (Expo SDK 55, bridgeless): never touch UIApplication when
++    // Expo creates this module, which may not be on the main thread. Whether
++    // the app has alternate icons is read from the built Info.plist instead
++    // (actool writes CFBundleAlternateIcons there from
++    // ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES), which is safe anywhere.
++    private static let supportsAlternateIcons: Bool = {
++        let icons = Bundle.main.object(forInfoDictionaryKey: "CFBundleIcons") as? [String: Any]
++        return icons?["CFBundleAlternateIcons"] != nil
++    }()
+ 
+     public func definition() -> ModuleDefinition {
+         Name("ExpoAlternateAppIcons")
+ 
+         Constants({
+           return [
+-            "supportsAlternateIcons": self.supportsAlternateIcons
++            "supportsAlternateIcons": Self.supportsAlternateIcons
+           ]
+         })
+ 
+         AsyncFunction("setAlternateAppIcon", setAlternateAppIcon)
+-        Function("getAppIconName", getAppIconName)
+-    }
+ 
+-    private func getAppIconName() -> String? {
+-        return UIApplication.shared.alternateIconName;
++        // Futty patch: UIApplication is read on the main thread (an async
++        // function on the main queue, not a sync call from the JS thread).
++        AsyncFunction("getAppIconName") { () -> String? in
++            return UIApplication.shared.alternateIconName
++        }.runOnQueue(.main)
+     }
+ 
+     private func setAlternateAppIcon(icon: String?, promise: Promise) -> Void {
