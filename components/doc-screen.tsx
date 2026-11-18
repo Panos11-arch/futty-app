@@ -14,13 +14,17 @@ import { colors, hairline, radius, space } from '@/constants/futty-theme';
  *  Privacy policy) — native views rather than a WebView loading docs/*.html,
  *  so these read in the app's own type/spacing instead of a plain browser
  *  page, and don't need react-native-webview added as a new dependency. */
-export function DocScreen({ updated, children }: PropsWithChildren<{ updated?: string }>) {
+export function DocScreen({
+  updated,
+  updatedLabel = 'Last updated',
+  children,
+}: PropsWithChildren<{ updated?: string; updatedLabel?: string }>) {
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         {updated ? (
           <Text variant="caption" tone="inkMuted">
-            Last updated: {updated}
+            {updatedLabel}: {updated}
           </Text>
         ) : null}
         {children}

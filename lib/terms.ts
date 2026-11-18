@@ -4,7 +4,8 @@
 // across all venues and the credit rules. Every amount and time limit comes
 // from public.app_rules, so the terms follow the rules with no code change.
 // The founders read this wording before release; the decisions doc (#16)
-// still asks for legal advice on venue credit.
+// still asks for legal advice on venue credit. The Greek text the screen
+// shows on a phone set to Greek is lib/terms-el.ts: change both together.
 import { type AppRules, daysText, eurosText, hoursText, minutesText, monthsText } from '@/lib/rules';
 
 export type TermsSection = { heading: string; paragraphs?: string[]; bullets?: string[] };
@@ -92,6 +93,45 @@ export function termsSections(r: AppRules, { teamPremium }: { teamPremium: boole
         `In Gipedo Pano the losing team pays for the pitch. Each team’s captain has their card held for the pitch price plus ${eurosText(r.gipedo_fee_cents)} for each player in the booking.`,
         'After the match, the losing team’s hold is taken in full and the winning team’s released. A draw or a disputed result splits it: half of each hold is taken and the rest released.',
         `Gipedo Pano can only be booked up to ${daysText(r.gipedo_max_days)} ahead. A team that pulls out ${cutoff} or more before kickoff pays ${fee} per player from its hold; less than ${cutoff} before, it counts as the losing team.`,
+      ],
+    },
+    {
+      heading: 'Checking in',
+      bullets: [
+        'At the venue, check in by scanning the venue’s QR code in the app or typing its code, while check-in is open; the app shows when it opens and closes. Your captain or the venue’s staff can also mark you as arrived.',
+        'Only players who checked in count in the match’s stats, can vote for man of the match and can rate or be rated.',
+        'The venue can undo only its own tick, and not once you’ve voted or rated in that match.',
+      ],
+    },
+    {
+      heading: 'No-shows',
+      bullets: [
+        'If you held a spot in a booking and didn’t check in by the time the result is final, the venue records a no-show for you. Only that venue sees its no-show record.',
+        `A no-show doesn’t change what you pay: your share is handled as in “Booking and paying” and “Cancelling”, and less than ${cutoff} before kickoff nothing is given back. Futty adds no charge for a no-show.`,
+      ],
+    },
+    {
+      heading: 'Players offered by a venue',
+      bullets: [
+        'When a booking is short, the venue may offer a player who isn’t on Futty. Only the booker can accept or decline, until kickoff; an offer not answered by kickoff lapses. The venue can withdraw the player, and the booker can remove them, until kickoff.',
+        `A player the venue offers plays free: they have no share and the venue never charges them. For what the team pays, their spot counts as empty, so the players who joined still split the full pitch price and the difference is charged ${collection} after the match, as in “Booking and paying”.`,
+        'While accepted, they take a spot, so fewer app players can join.',
+      ],
+    },
+    {
+      heading: 'Ratings and levels',
+      bullets: [
+        'After a confirmed match, players who checked in can rate the other players who checked in, from 1 to 10, and vote for man of the match. Individual ratings and votes are never shown to anyone else.',
+        'Your level is worked out by Futty from results and ratings in competitive matches.',
+        'Rate and vote honestly. Don’t trade or arrange ratings or votes.',
+      ],
+    },
+    {
+      heading: 'Post-match offers',
+      bullets: [
+        'After a match, players in it may see food and drink offers from the venue. Opening an offer gives you a code to show at the venue’s counter.',
+        'You pay the venue at the counter, not through Futty. A code can be used once, at that venue, until the end of the match day (Cyprus time).',
+        'Offers, prices and what’s served are the venue’s. Futty isn’t a party to the sale.',
       ],
     },
     {

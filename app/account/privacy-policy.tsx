@@ -1,9 +1,17 @@
 import { DocBullet, DocEmailLink, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
+import { CONTACT_EMAIL } from '@/lib/contact';
+import { deviceLanguage } from '@/lib/language';
 
-/** The same text is on the website, site/privacy/index.html
- *  (https://futty.app/privacy), which App Store Connect's Privacy Policy URL
- *  points at. tests/site/site-matches-app.test.tsx fails if the two differ. */
+/** The Privacy policy, in English, or in Greek on a phone set to Greek
+ *  (lib/language.ts). The same text is on the website: site/privacy/index.html
+ *  (https://futty.app/privacy, which App Store Connect's Privacy Policy URL
+ *  points at) and site/el/privacy/index.html (https://futty.app/el/privacy).
+ *  tests/site/site-matches-app.test.tsx fails if they differ. */
 export default function PrivacyPolicyScreen() {
+  return deviceLanguage() === 'el' ? <PrivacyPolicyEl /> : <PrivacyPolicyEn />;
+}
+
+function PrivacyPolicyEn() {
   return (
     <DocScreen updated="November 2026">
       <DocParagraph>
@@ -13,80 +21,162 @@ export default function PrivacyPolicyScreen() {
       </DocParagraph>
 
       <DocHeading>Information you provide</DocHeading>
-      <DocBullet>Email address — account sign-in and password recovery.</DocBullet>
-      <DocBullet>Username, full name — identifies you to other players/teammates.</DocBullet>
+      <DocBullet>Email address: account sign-in and password recovery.</DocBullet>
+      <DocBullet>Username, full name: identifies you to other players and teammates.</DocBullet>
       <DocBullet>
-        Phone number (optional) — only shown to other users if you turn on &quot;Show my number
+        Phone number (optional): only shown to other users if you turn on &quot;Show my number
         publicly&quot;, off by default.
       </DocBullet>
       <DocBullet>
-        City, gender, date of birth, position, preferred foot, bio (optional) — shown on your
-        player profile so teammates and opponents know who they&apos;re playing with.
+        City, gender, date of birth, position, preferred foot, bio (optional): shown on your player
+        profile so teammates and opponents know who they&apos;re playing with.
       </DocBullet>
 
       <DocHeading>Information created by using the app</DocHeading>
-      <DocBullet>Bookings — which pitch, date, and time you book.</DocBullet>
+      <DocBullet>Bookings: which pitch, date and time you book or join.</DocBullet>
+      <DocBullet>Teams and leagues: team membership, league standings and match results.</DocBullet>
       <DocBullet>
-        Teams and leagues — team membership, league standings, match results, XP and stats
-        derived from games you play.
-      </DocBullet>
-      <DocBullet>
-        Squad posts — &quot;need players&quot; / &quot;need opposition&quot; posts you create or
+        Squad posts: &quot;need players&quot; and &quot;need opposition&quot; posts you create or
         respond to.
       </DocBullet>
       <DocBullet>
-        Messages — chat messages sent between team captains to arrange a fixture, visible only to
+        Messages: chat messages sent between team captains to arrange a fixture, visible only to
         the two captains involved.
       </DocBullet>
-      <DocBullet>Follows — which players or teams you choose to follow.</DocBullet>
+      <DocBullet>Follows: which players or teams you choose to follow.</DocBullet>
       <DocBullet>
-        Futty AI chat — messages you type into the in-app assistant, used only to answer your
+        Futty AI chat: messages you type into the in-app assistant, used only to answer your
         question.
       </DocBullet>
 
-      <DocHeading>Push notifications</DocHeading>
+      <DocHeading>Match records</DocHeading>
+      <DocParagraph>When you play a match booked or arranged in Futty, we keep:</DocParagraph>
+      <DocBullet>
+        Check-ins: whether you checked in, when, and how (you scanned the venue&apos;s code, your
+        captain ticked you, or the venue marked you as arrived). Only players who checked in count
+        in stats, man of the match, ratings and levels.
+      </DocBullet>
+      <DocBullet>Goals, assists and lineups entered for the match.</DocBullet>
+      <DocBullet>Man of the match votes and the ratings (1 to 10) you give other players.</DocBullet>
+      <DocBullet>
+        Your level and its history, worked out by Futty from results and ratings, and your answers
+        to the level questions.
+      </DocBullet>
+      <DocBullet>
+        Stats: season stats, leaderboards and team of the week, worked out from confirmed matches.
+      </DocBullet>
+      <DocParagraph>Who sees them:</DocParagraph>
+      <DocBullet>
+        Nobody sees who voted for whom or what score one player gave another. You see only your own
+        vote and your own ratings.
+      </DocBullet>
+      <DocBullet>
+        The match page (score, goals, lineups, each player&apos;s match rating once there are enough
+        ratings, and the man of the match once voting closes) is seen by the players in the match,
+        and by everyone signed in once the result is confirmed.
+      </DocBullet>
+      <DocBullet>Check-ins are seen by the players in the match and by the venue&apos;s staff.</DocBullet>
+      <DocBullet>
+        Levels, season stats, leaderboards and team of the week are seen by everyone signed in.
+      </DocBullet>
+      <DocBullet>Your answers to the level questions are seen only by you.</DocBullet>
+
+      <DocHeading>What venues see</DocHeading>
+      <DocParagraph>A venue&apos;s staff see, for their own venue only:</DocParagraph>
+      <DocBullet>your bookings at that venue, and the players in them;</DocBullet>
+      <DocBullet>what you paid at that venue and how;</DocBullet>
+      <DocBullet>anything you owe that venue;</DocBullet>
+      <DocBullet>
+        whether you checked in, and how many times you held a spot and didn&apos;t show up.
+      </DocBullet>
       <DocParagraph>
-        If you enable push notifications, your device&apos;s push token is stored so we can notify
-        you about relevant squad posts. You can turn this off at any time in Account &gt; Settings
-        &gt; Notifications, which removes your stored token.
+        A venue never sees your bookings, payments, debts or no-shows at another venue.
+      </DocParagraph>
+      <DocParagraph>
+        When you open a venue&apos;s post-match offer, Futty makes a code for you. The venue sees
+        what the code is for, how many codes were opened and which were used at its counter. These
+        counts stay with the venue after you delete your account, but are no longer linked to you.
+      </DocParagraph>
+
+      <DocHeading>Players offered by a venue</DocHeading>
+      <DocParagraph>
+        A venue can offer a player who isn&apos;t on Futty to a team that&apos;s short. Staff type
+        only that player&apos;s first name. There is no account, email or phone number, and Futty
+        never contacts that player. The name is seen by the venue&apos;s staff, the booker, and, once
+        the booker accepts, the other players in the booking.
+      </DocParagraph>
+
+      <DocHeading>Camera</DocHeading>
+      <DocParagraph>
+        If you allow it, Futty uses the camera only to scan the venue&apos;s check-in QR code at a
+        match. The picture is read on your phone to find the code and is never saved or sent; only
+        the code is sent to check you in. You can type the code instead.
+      </DocParagraph>
+
+      <DocHeading>Photos</DocHeading>
+      <DocParagraph>
+        Venue staff can choose photos from their phone to add pictures of their venue and its menu.
+        Before the first upload, staff confirm the photos are the venue&apos;s and Futty may show
+        them. Futty uploads only the photos staff pick, resized, and shows them to players in the
+        app. Futty never reads players&apos; photo libraries.
+      </DocParagraph>
+
+      <DocHeading>Contacts</DocHeading>
+      <DocParagraph>
+        If you allow it, the Community tab reads the phone numbers in your device&apos;s contacts and
+        checks them against Futty accounts so it can show which of your contacts already use the
+        app. The numbers are sent to our server only for that check and are not stored.
+      </DocParagraph>
+
+      <DocHeading>Calendar</DocHeading>
+      <DocParagraph>
+        If you choose to add a booking to your calendar, Futty writes that event to your phone&apos;s
+        calendar and remembers, on your phone only, which event it added. Futty doesn&apos;t read
+        your other events or send them anywhere.
+      </DocParagraph>
+
+      <DocHeading>Notifications</DocHeading>
+      <DocParagraph>
+        If you enable push notifications, your device&apos;s push token is stored so we can tell you
+        about your bookings, matches and squad posts. If you add your WhatsApp number and choose
+        WhatsApp for reminders, we store that number and send those reminders through WhatsApp;
+        reply STOP to stop them. You can turn each kind off at any time in Account &gt; Settings
+        &gt; Notifications.
       </DocParagraph>
 
       <DocHeading>Biometric app lock</DocHeading>
       <DocParagraph>
-        Face ID / fingerprint app-lock is handled entirely on your device by iOS/Android&apos;s own
-        biometric APIs. Futty never receives, stores, or transmits your biometric data — the app is
-        only ever told &quot;unlocked&quot; or &quot;not unlocked&quot;.
+        Face ID and fingerprint app lock is handled entirely on your device by iOS and
+        Android&apos;s own biometric APIs. Futty never receives, stores or sends your biometric
+        data; the app is only ever told &quot;unlocked&quot; or &quot;not unlocked&quot;.
       </DocParagraph>
 
       <DocHeading>Payments</DocHeading>
       <DocParagraph>
-        Personal and Team Premium purchases are handled entirely by Apple (via the App Store) —
-        Futty never sees or stores your card details, only confirmation that a purchase was made. Pitch booking payments (including each player&apos;s split share)
-        are processed by Stripe; Futty never stores your full card number. We keep a record of
-        what you paid for, how much, and its status (held, charged, refunded).
+        Futty Premium (personal and team) is bought through Apple&apos;s App Store. Pitch bookings
+        are paid by card through Stripe. In both cases the payment provider handles your card
+        details; Futty never sees or stores your full card number. We keep a record of what you
+        paid for, how much, and its status (held, charged, refunded).
       </DocParagraph>
 
       <DocHeading>Who your information is shared with</DocHeading>
       <DocBullet>
-        Other users — your username, and any profile fields you&apos;ve chosen to make visible, are
-        visible to other signed-in users (this is a community app; player/team browsing is a core
-        feature). Your email and phone number (unless you opt in) are never shown to other users.
+        Other users: your username, and any profile fields you&apos;ve chosen to make visible, are
+        visible to other signed-in users (this is a community app; player and team browsing is a
+        core feature). Your email and phone number (unless you opt in) are never shown to other
+        users.
+      </DocBullet>
+      <DocBullet>Venues: as described in &quot;What venues see&quot;.</DocBullet>
+      <DocBullet>
+        Service providers: the app is built on Supabase (database, authentication, hosting),
+        Expo/EAS (app infrastructure, push delivery), Stripe (card payments), Apple (App Store
+        purchases), Sentry (crash and error reports, which include technical device information),
+        Anthropic (processes Futty AI chat messages to generate answers) and Meta (delivers WhatsApp
+        reminders, if you choose them). These providers process data on our behalf.
       </DocBullet>
       <DocBullet>
-        Service providers — the app is built on Supabase (database, authentication, hosting),
-        Stripe (pitch booking payments), Apple (App Store purchases), Expo/EAS (app infrastructure,
-        push delivery), Sentry (crash and error reports, including technical device information)
-        and Anthropic (processes Futty AI chat messages to generate answers). These providers
-        process data on our behalf.
+        We do not sell your data, and we do not use third-party advertising or tracking SDKs.
       </DocBullet>
-      <DocBullet>We do not sell your data, and we do not use third-party ad/tracking SDKs.</DocBullet>
-
-      <DocHeading>Contacts</DocHeading>
-      <DocParagraph>
-        If you allow it, the Community tab checks the phone numbers in your device&apos;s contacts
-        against Futty accounts to show which of your contacts already use the app. The numbers are
-        sent to our server only for that check and are not stored.
-      </DocParagraph>
 
       <DocHeading>Blocking and reporting</DocHeading>
       <DocParagraph>
@@ -97,19 +187,251 @@ export default function PrivacyPolicyScreen() {
 
       <DocHeading>Your choices</DocHeading>
       <DocBullet>You can edit or remove most profile fields at any time from Edit Profile.</DocBullet>
-      <DocBullet>You can turn off push notifications and phone number visibility at any time.</DocBullet>
+      <DocBullet>You can turn off notifications and phone number visibility at any time.</DocBullet>
       <DocBullet>
         You can delete your account at any time from Account &gt; Settings &gt; Delete account. This
         removes your login, profile details and saved cards. Match results you took part in stay in
-        league tables under &quot;Deleted player&quot; so other teams&apos; records stay accurate. You
-        can also ask us to do this by email.
+        league tables under &quot;Deleted player&quot; so other teams&apos; records stay accurate.
+        You can also ask us to do this by email.
       </DocBullet>
 
       <DocHeading>Changes to this policy</DocHeading>
-      <DocParagraph>If this policy changes materially, we&apos;ll update the date above.</DocParagraph>
+      <DocParagraph>
+        If this policy changes materially, we&apos;ll update the &quot;Last updated&quot; date above.
+      </DocParagraph>
 
       <DocHeading>Contact</DocHeading>
-      <DocEmailLink email="support@futty.app" />
+      <DocParagraph>Questions about this policy or your data:</DocParagraph>
+      <DocEmailLink email={CONTACT_EMAIL} />
+    </DocScreen>
+  );
+}
+
+/** The Greek policy. Same sections, in the same order, as the English. */
+function PrivacyPolicyEl() {
+  return (
+    <DocScreen updated="Νοέμβριος 2026" updatedLabel="Τελευταία ενημέρωση">
+      <DocParagraph>
+        Το Futty («η εφαρμογή», «εμείς») είναι εφαρμογή για κρατήσεις γηπέδων και κοινότητα
+        ποδοσφαίρου, από 5x5 έως 11x11, στην Κύπρο. Αυτή η σελίδα εξηγεί ποιες πληροφορίες
+        συλλέγει η εφαρμογή, γιατί και πώς χρησιμοποιούνται.
+      </DocParagraph>
+
+      <DocHeading>Πληροφορίες που μας δίνετε</DocHeading>
+      <DocBullet>Διεύθυνση email: σύνδεση στον λογαριασμό και ανάκτηση κωδικού.</DocBullet>
+      <DocBullet>
+        Όνομα χρήστη, ονοματεπώνυμο: σας αναγνωρίζουν οι άλλοι παίκτες και οι συμπαίκτες σας.
+      </DocBullet>
+      <DocBullet>
+        Αριθμός τηλεφώνου (προαιρετικά): εμφανίζεται σε άλλους χρήστες μόνο αν ενεργοποιήσετε το
+        «Show my number publicly», που είναι απενεργοποιημένο από προεπιλογή.
+      </DocBullet>
+      <DocBullet>
+        Πόλη, φύλο, ημερομηνία γέννησης, θέση, πόδι, βιογραφικό (προαιρετικά): εμφανίζονται στο
+        προφίλ σας, ώστε συμπαίκτες και αντίπαλοι να ξέρουν με ποιον παίζουν.
+      </DocBullet>
+
+      <DocHeading>Πληροφορίες που δημιουργούνται όταν χρησιμοποιείτε την εφαρμογή</DocHeading>
+      <DocBullet>
+        Κρατήσεις: ποιο γήπεδο, ποια μέρα και ώρα κλείνετε ή στην οποία συμμετέχετε.
+      </DocBullet>
+      <DocBullet>
+        Ομάδες και πρωταθλήματα: σε ποιες ομάδες είστε, βαθμολογίες πρωταθλημάτων και
+        αποτελέσματα αγώνων.
+      </DocBullet>
+      <DocBullet>
+        Αναρτήσεις ομάδας: αναρτήσεις «ζητούνται παίκτες» και «ζητείται αντίπαλος» που
+        δημιουργείτε ή στις οποίες απαντάτε.
+      </DocBullet>
+      <DocBullet>
+        Μηνύματα: μηνύματα μεταξύ αρχηγών ομάδων για να κανονίσουν έναν αγώνα, που τα βλέπουν μόνο
+        οι δύο αρχηγοί.
+      </DocBullet>
+      <DocBullet>Ακολουθήσεις: ποιους παίκτες ή ποιες ομάδες ακολουθείτε.</DocBullet>
+      <DocBullet>
+        Futty AI: μηνύματα που γράφετε στον βοηθό της εφαρμογής, που χρησιμοποιούνται μόνο για να
+        απαντηθεί η ερώτησή σας.
+      </DocBullet>
+
+      <DocHeading>Στοιχεία αγώνων</DocHeading>
+      <DocParagraph>Όταν παίζετε σε αγώνα που κλείστηκε ή οργανώθηκε στο Futty, κρατάμε:</DocParagraph>
+      <DocBullet>
+        Check-in: αν κάνατε check-in, πότε και πώς (σκανάρατε τον κωδικό του γηπέδου, σας σημείωσε
+        ο αρχηγός σας ή σας σημείωσε το γήπεδο ως παρόντα). Μόνο οι παίκτες που έκαναν check-in
+        μετράνε στα στατιστικά, στον καλύτερο παίκτη του αγώνα, στις βαθμολογίες και στα επίπεδα.
+      </DocBullet>
+      <DocBullet>Γκολ, ασίστ και συνθέσεις που καταχωρούνται για τον αγώνα.</DocBullet>
+      <DocBullet>
+        Ψήφους για τον καλύτερο παίκτη του αγώνα και τις βαθμολογίες (από 1 έως 10) που δίνετε σε
+        άλλους παίκτες.
+      </DocBullet>
+      <DocBullet>
+        Το επίπεδό σας και το ιστορικό του, που υπολογίζει το Futty από τα αποτελέσματα και τις
+        βαθμολογίες, καθώς και τις απαντήσεις σας στις ερωτήσεις επιπέδου.
+      </DocBullet>
+      <DocBullet>
+        Στατιστικά: στατιστικά σεζόν, κατατάξεις και ομάδα της εβδομάδας, από επιβεβαιωμένους
+        αγώνες.
+      </DocBullet>
+      <DocParagraph>Ποιος τα βλέπει:</DocParagraph>
+      <DocBullet>
+        Κανείς δεν βλέπει ποιος ψήφισε ποιον ή τι βαθμό έδωσε ένας παίκτης σε άλλον. Εσείς βλέπετε
+        μόνο τη δική σας ψήφο και τις δικές σας βαθμολογίες.
+      </DocBullet>
+      <DocBullet>
+        Τη σελίδα του αγώνα (σκορ, γκολ, συνθέσεις, τη βαθμολογία κάθε παίκτη όταν υπάρχουν αρκετές
+        βαθμολογίες, και τον καλύτερο παίκτη όταν κλείσει η ψηφοφορία) τη βλέπουν οι παίκτες του
+        αγώνα, και όλοι οι συνδεδεμένοι χρήστες όταν επιβεβαιωθεί το αποτέλεσμα.
+      </DocBullet>
+      <DocBullet>Τα check-in τα βλέπουν οι παίκτες του αγώνα και το προσωπικό του γηπέδου.</DocBullet>
+      <DocBullet>
+        Τα επίπεδα, τα στατιστικά σεζόν, τις κατατάξεις και την ομάδα της εβδομάδας τα βλέπουν όλοι
+        οι συνδεδεμένοι χρήστες.
+      </DocBullet>
+      <DocBullet>Τις απαντήσεις σας στις ερωτήσεις επιπέδου τις βλέπετε μόνο εσείς.</DocBullet>
+
+      <DocHeading>Τι βλέπουν τα γήπεδα</DocHeading>
+      <DocParagraph>Το προσωπικό ενός γηπέδου βλέπει, μόνο για το δικό του γήπεδο:</DocParagraph>
+      <DocBullet>τις κρατήσεις σας σε αυτό το γήπεδο και τους παίκτες τους·</DocBullet>
+      <DocBullet>τι πληρώσατε σε αυτό το γήπεδο και πώς·</DocBullet>
+      <DocBullet>ό,τι οφείλετε σε αυτό το γήπεδο·</DocBullet>
+      <DocBullet>
+        αν κάνατε check-in, και πόσες φορές είχατε θέση σε κράτηση και δεν εμφανιστήκατε.
+      </DocBullet>
+      <DocParagraph>
+        Ένα γήπεδο δεν βλέπει ποτέ τις κρατήσεις, τις πληρωμές, τις οφειλές ή τις μη εμφανίσεις σας
+        σε άλλο γήπεδο.
+      </DocParagraph>
+      <DocParagraph>
+        Όταν ανοίγετε μια προσφορά του γηπέδου μετά τον αγώνα, το Futty δημιουργεί έναν κωδικό για
+        εσάς. Το γήπεδο βλέπει σε τι αντιστοιχεί ο κωδικός, πόσοι κωδικοί ανοίχτηκαν και ποιοι
+        χρησιμοποιήθηκαν στο ταμείο του. Αυτοί οι αριθμοί μένουν στο γήπεδο αν διαγράψετε τον
+        λογαριασμό σας, αλλά δεν συνδέονται πια με εσάς.
+      </DocParagraph>
+
+      <DocHeading>Παίκτες που προτείνει το γήπεδο</DocHeading>
+      <DocParagraph>
+        Ένα γήπεδο μπορεί να προτείνει έναν παίκτη που δεν είναι στο Futty σε ομάδα που της λείπουν
+        παίκτες. Το προσωπικό γράφει μόνο το μικρό όνομα του παίκτη. Δεν υπάρχει λογαριασμός, email
+        ή τηλέφωνο, και το Futty δεν επικοινωνεί ποτέ με αυτόν τον παίκτη. Το όνομα το βλέπουν το
+        προσωπικό του γηπέδου, αυτός που έκανε την κράτηση και, αφού εκείνος δεχτεί, οι άλλοι παίκτες
+        της κράτησης.
+      </DocParagraph>
+
+      <DocHeading>Κάμερα</DocHeading>
+      <DocParagraph>
+        Αν το επιτρέψετε, το Futty χρησιμοποιεί την κάμερα μόνο για να σκανάρει τον κωδικό QR του
+        γηπέδου για check-in σε αγώνα. Η εικόνα διαβάζεται στο τηλέφωνό σας για να βρεθεί ο κωδικός
+        και δεν αποθηκεύεται ούτε αποστέλλεται· αποστέλλεται μόνο ο κωδικός για να γίνει το
+        check-in. Μπορείτε επίσης να πληκτρολογήσετε τον κωδικό.
+      </DocParagraph>
+
+      <DocHeading>Φωτογραφίες</DocHeading>
+      <DocParagraph>
+        Το προσωπικό ενός γηπέδου μπορεί να επιλέξει φωτογραφίες από το τηλέφωνό του για να
+        προσθέσει εικόνες του γηπέδου και του μενού του. Πριν από την πρώτη μεταφόρτωση, το
+        προσωπικό επιβεβαιώνει ότι οι φωτογραφίες ανήκουν στο γήπεδο και ότι το Futty μπορεί να τις
+        δείχνει. Το Futty ανεβάζει μόνο τις φωτογραφίες που επιλέγει το προσωπικό, σε μικρότερο
+        μέγεθος, και τις δείχνει στους παίκτες μέσα στην εφαρμογή. Το Futty δεν διαβάζει ποτέ τις
+        φωτογραφίες των παικτών.
+      </DocParagraph>
+
+      <DocHeading>Επαφές</DocHeading>
+      <DocParagraph>
+        Αν το επιτρέψετε, η καρτέλα Community διαβάζει τους αριθμούς τηλεφώνου στις επαφές της
+        συσκευής σας και τους ελέγχει με τους λογαριασμούς του Futty, για να σας δείξει ποιες επαφές
+        σας χρησιμοποιούν ήδη την εφαρμογή. Οι αριθμοί στέλνονται στον διακομιστή μας μόνο για αυτόν
+        τον έλεγχο και δεν αποθηκεύονται.
+      </DocParagraph>
+
+      <DocHeading>Ημερολόγιο</DocHeading>
+      <DocParagraph>
+        Αν επιλέξετε να προσθέσετε μια κράτηση στο ημερολόγιό σας, το Futty γράφει αυτό το γεγονός
+        στο ημερολόγιο του τηλεφώνου σας και θυμάται, μόνο στο τηλέφωνό σας, ποιο γεγονός πρόσθεσε.
+        Το Futty δεν διαβάζει τα άλλα γεγονότα σας και δεν τα στέλνει πουθενά.
+      </DocParagraph>
+
+      <DocHeading>Ειδοποιήσεις</DocHeading>
+      <DocParagraph>
+        Αν ενεργοποιήσετε τις ειδοποιήσεις, αποθηκεύεται το διακριτικό ειδοποιήσεων της συσκευής
+        σας, ώστε να σας ενημερώνουμε για τις κρατήσεις, τους αγώνες και τις αναρτήσεις ομάδων. Αν
+        προσθέσετε τον αριθμό σας στο WhatsApp και επιλέξετε WhatsApp για υπενθυμίσεις, αποθηκεύουμε
+        αυτόν τον αριθμό και στέλνουμε αυτές τις υπενθυμίσεις μέσω WhatsApp· απαντήστε STOP για να
+        σταματήσουν. Μπορείτε να απενεργοποιήσετε κάθε είδος οποιαδήποτε στιγμή από Account &gt;
+        Settings &gt; Notifications.
+      </DocParagraph>
+
+      <DocHeading>Κλείδωμα με βιομετρικά</DocHeading>
+      <DocParagraph>
+        Το κλείδωμα της εφαρμογής με Face ID ή δακτυλικό αποτύπωμα γίνεται εξ ολοκλήρου στη συσκευή
+        σας, από τα βιομετρικά συστήματα του iOS και του Android. Το Futty δεν λαμβάνει, δεν
+        αποθηκεύει και δεν στέλνει ποτέ βιομετρικά σας δεδομένα· η εφαρμογή μαθαίνει μόνο
+        «ξεκλειδώθηκε» ή «δεν ξεκλειδώθηκε».
+      </DocParagraph>
+
+      <DocHeading>Πληρωμές</DocHeading>
+      <DocParagraph>
+        Το Futty Premium (προσωπικό και ομάδας) αγοράζεται μέσω του App Store της Apple. Οι
+        κρατήσεις γηπέδων πληρώνονται με κάρτα μέσω της Stripe. Και στις δύο περιπτώσεις τα
+        στοιχεία της κάρτας σας τα χειρίζεται ο πάροχος πληρωμών· το Futty δεν βλέπει και δεν
+        αποθηκεύει ποτέ ολόκληρο τον αριθμό της κάρτας σας. Κρατάμε αρχείο για το τι πληρώσατε,
+        πόσα, και σε τι κατάσταση είναι η πληρωμή (δεσμευμένη, χρεωμένη, επιστραμμένη).
+      </DocParagraph>
+
+      <DocHeading>Με ποιους μοιραζόμαστε τις πληροφορίες σας</DocHeading>
+      <DocBullet>
+        Άλλοι χρήστες: το όνομα χρήστη σας, και όσα στοιχεία του προφίλ έχετε επιλέξει να φαίνονται,
+        τα βλέπουν οι άλλοι συνδεδεμένοι χρήστες (είναι εφαρμογή κοινότητας· η αναζήτηση παικτών και
+        ομάδων είναι βασική λειτουργία). Το email σας και ο αριθμός τηλεφώνου σας (εκτός αν το
+        επιλέξετε) δεν εμφανίζονται ποτέ σε άλλους χρήστες.
+      </DocBullet>
+      <DocBullet>Γήπεδα: όπως περιγράφεται στο «Τι βλέπουν τα γήπεδα».</DocBullet>
+      <DocBullet>
+        Πάροχοι υπηρεσιών: η εφαρμογή βασίζεται στα Supabase (βάση δεδομένων, σύνδεση, φιλοξενία),
+        Expo/EAS (υποδομή εφαρμογής, αποστολή ειδοποιήσεων), Stripe (πληρωμές με κάρτα), Apple
+        (αγορές στο App Store), Sentry (αναφορές σφαλμάτων, που περιλαμβάνουν τεχνικές πληροφορίες
+        της συσκευής), Anthropic (επεξεργάζεται τα μηνύματα του Futty AI για να δώσει απαντήσεις) και
+        Meta (στέλνει τις υπενθυμίσεις WhatsApp, αν τις επιλέξετε). Αυτοί οι πάροχοι επεξεργάζονται
+        δεδομένα για λογαριασμό μας.
+      </DocBullet>
+      <DocBullet>
+        Δεν πουλάμε τα δεδομένα σας και δεν χρησιμοποιούμε εργαλεία διαφήμισης ή παρακολούθησης
+        τρίτων.
+      </DocBullet>
+
+      <DocHeading>Αποκλεισμός και αναφορές</DocHeading>
+      <DocParagraph>
+        Μπορείτε να αποκλείσετε έναν άλλο χρήστη μέσα από την εφαρμογή, ώστε να μη βλέπετε τα
+        μηνύματα και τις αναρτήσεις του. Μπορείτε επίσης να αναφέρετε έναν χρήστη ή κάποιο
+        περιεχόμενο· τις αναφορές τις εξετάζει ο προγραμματιστής της εφαρμογής.
+      </DocParagraph>
+
+      <DocHeading>Οι επιλογές σας</DocHeading>
+      <DocBullet>
+        Μπορείτε να αλλάξετε ή να αφαιρέσετε τα περισσότερα στοιχεία του προφίλ σας οποιαδήποτε
+        στιγμή από το Edit Profile.
+      </DocBullet>
+      <DocBullet>
+        Μπορείτε να απενεργοποιήσετε τις ειδοποιήσεις και την εμφάνιση του αριθμού σας οποιαδήποτε
+        στιγμή.
+      </DocBullet>
+      <DocBullet>
+        Μπορείτε να διαγράψετε τον λογαριασμό σας οποιαδήποτε στιγμή από Account &gt; Settings &gt;
+        Delete account. Έτσι διαγράφονται η σύνδεσή σας, τα στοιχεία του προφίλ σας και οι
+        αποθηκευμένες κάρτες σας. Τα αποτελέσματα αγώνων στους οποίους πήρατε μέρος μένουν στις
+        βαθμολογίες ως «Deleted player», ώστε να μένουν σωστά τα στοιχεία των άλλων ομάδων.
+        Μπορείτε επίσης να μας το ζητήσετε με email.
+      </DocBullet>
+
+      <DocHeading>Αλλαγές σε αυτή την πολιτική</DocHeading>
+      <DocParagraph>
+        Αν αυτή η πολιτική αλλάξει ουσιαστικά, θα ενημερώσουμε την ημερομηνία «Τελευταία ενημέρωση»
+        παραπάνω.
+      </DocParagraph>
+
+      <DocHeading>Επικοινωνία</DocHeading>
+      <DocParagraph>Ερωτήσεις για αυτή την πολιτική ή για τα δεδομένα σας:</DocParagraph>
+      <DocEmailLink email={CONTACT_EMAIL} />
     </DocScreen>
   );
 }

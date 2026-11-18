@@ -65,6 +65,42 @@ describe('Terms of Use', () => {
     expect(text()).not.toMatch(/3 hours before kickoff|automatically cancelled/);
   });
 
+  it('covers check-in, no-shows, venue players, ratings and post-match offers', () => {
+    expect(section('Checking in')).toContain(
+      'Only players who checked in count in the match’s stats, can vote for man of the match and can rate or be rated.',
+    );
+    expect(section('No-shows')).toEqual([
+      'If you held a spot in a booking and didn’t check in by the time the result is final, the venue records a no-show for you. Only that venue sees its no-show record.',
+      'A no-show doesn’t change what you pay: your share is handled as in “Booking and paying” and “Cancelling”, and less than 6 hours before kickoff nothing is given back. Futty adds no charge for a no-show.',
+    ]);
+    expect(section('Players offered by a venue')).toContain(
+      'A player the venue offers plays free: they have no share and the venue never charges them. For what the team pays, their spot counts as empty, so the players who joined still split the full pitch price and the difference is charged 2 hours after the match, as in “Booking and paying”.',
+    );
+    expect(section('Ratings and levels')[0]).toContain('Individual ratings and votes are never shown to anyone else.');
+    expect(section('Post-match offers')).toContain(
+      'You pay the venue at the counter, not through Futty. A code can be used once, at that venue, until the end of the match day (Cyprus time).',
+    );
+  });
+
+  it('words the new sections from the rules', () => {
+    expect(section('No-shows', CHANGED_RULES)[1]).toContain('less than 4 hours before kickoff');
+    expect(section('Players offered by a venue', CHANGED_RULES)[1]).toContain('charged 3 hours after the match');
+  });
+
+  it('leaves the debt and credit sections where they were', () => {
+    const headings = termsSections(SPEC_RULES, { teamPremium: false }).map((s) => s.heading);
+    expect(headings.slice(0, 7)).toEqual([
+      'Your account',
+      'Prices and the service fee',
+      'Booking and paying',
+      'Cancelling',
+      'Venue credit',
+      'Money you owe',
+      'Gipedo Pano',
+    ]);
+    expect(section('Money you owe')).toHaveLength(3);
+  });
+
   it('mentions Team Premium only when it is on', () => {
     expect(text(SPEC_RULES, false)).not.toContain('Team Premium');
     expect(text(SPEC_RULES, true)).toContain('Team Premium is a one-time purchase per team');
