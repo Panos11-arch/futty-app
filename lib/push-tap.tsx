@@ -14,6 +14,10 @@ import { Platform } from 'react-native';
 import { isVenueNotificationType, isVenuePlayerBookerType, markNotificationRead } from '@/lib/notifications';
 import { playHref } from '@/lib/play-segments';
 
+/** A10 (match-record.md decision 1j): these open the post-match flow, after
+ *  the game and again when the vote and ratings open. */
+const POST_MATCH_FLOW_TYPES = new Set(['match_after_game', 'match_result_confirmed', 'motm_vote_open']);
+
 // A push that arrives while the app is open shows as a banner (and in the
 // notification list), silently, so it can be tapped like any other.
 if (Platform.OS !== 'web') {
@@ -33,7 +37,8 @@ function stringId(data: Record<string, unknown>, key: string): string | null {
 }
 
 /** Where a push's data opens: a venue staff notice opens the venue dashboard
- *  (checked first, so staff never land on My Bookings); otherwise its match,
+ *  (checked first, so staff never land on My Bookings); the post-match pushes
+ *  open the post-match flow; otherwise its match,
  *  booking, squad post or team, in that order; anything else opens the
  *  notifications list. */
 export function routeForPushData(raw: unknown): Href {
@@ -46,6 +51,9 @@ export function routeForPushData(raw: unknown): Href {
   if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
 
   const matchId = stringId(data, 'matchId');
+  if (matchId && typeof data.type === 'string' && POST_MATCH_FLOW_TYPES.has(data.type)) {
+    return { pathname: '/match/after-game', params: { id: matchId } };
+  }
   if (matchId) return { pathname: '/match/[id]', params: { id: matchId } };
 
   const bookingId = stringId(data, 'bookingId');

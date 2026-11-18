@@ -2,9 +2,18 @@
 import '../navigation/mocks';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { router } from 'expo-router';
 
 import MatchScreen from '@/app/match/[id]';
-import { mockMatchPage, mockPagePlayer, mockResultMatch, mockRoster } from '@/lib/match/mock';
+import {
+  mockMatchPage,
+  mockPagePlayer,
+  mockResultMatch,
+  mockRoster,
+  PAGE_CLOSED,
+  PAGE_CLOSES_AT,
+  RESULT_AFTER_END,
+} from '@/lib/match/mock';
 
 let mockResult: Record<string, unknown>;
 let mockPage: Record<string, unknown>;
@@ -15,6 +24,7 @@ const mockReloadPage = jest.fn();
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
   return {
+    router: { push: jest.fn() },
     Stack: { Screen: () => null },
     useLocalSearchParams: () => ({ id: 'm1' }),
     useFocusEffect: (effect: () => void) => useEffect(effect, [effect]),
@@ -246,5 +256,46 @@ describe('Match page: levels (A5b)', () => {
     mockPage = { status: 'ready', page: mockMatchPage({ status: 'played' }) };
     await render(<MatchScreen />);
     expect(screen.queryByTestId('section-balance')).toBeNull();
+  });
+});
+
+describe('Match page: Add your stats (A10, decision 1j)', () => {
+  let nowSpy: jest.SpyInstance;
+  afterEach(() => nowSpy?.mockRestore());
+  const at = (now: number) => {
+    nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+  };
+
+  it('shown when the player has a step left; it opens the post-match flow', async () => {
+    at(RESULT_AFTER_END);
+    mockResult = { status: 'ready', match: mockResultMatch() };
+    mockPage = { status: 'ready', page: mockMatchPage({ status: 'played' }) };
+    jest.mocked(router.push).mockClear();
+    await render(<MatchScreen />);
+    await fireEvent.press(screen.getByTestId('match-add-stats'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
+  });
+
+  it('hidden when every window has closed', async () => {
+    at(PAGE_CLOSED);
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage() };
+    mockRatings = {
+      status: 'ready',
+      ratings: { ratingsOpen: false, ratingsCloseAt: PAGE_CLOSES_AT, players: [], myRatings: [] },
+      names: {},
+    };
+    await render(<MatchScreen />);
+    expect(screen.getByTestId('match-result-panel')).toBeTruthy();
+    expect(screen.queryByTestId('match-add-stats')).toBeNull();
+  });
+
+  it('hidden for someone outside the match', async () => {
+    at(RESULT_AFTER_END);
+    mockViewer = 'stranger';
+    mockResult = { status: 'ready', match: null };
+    mockPage = { status: 'ready', page: mockMatchPage() };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-add-stats')).toBeNull();
   });
 });

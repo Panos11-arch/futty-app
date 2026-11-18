@@ -79,3 +79,23 @@ describe.each(ZONES_AND_SEASONS)('playedAt, phone on %s in %s', (zone, season) =
     expect((await results()).map((r) => r.key)).toEqual(['friendly:m1', 'league:f1', 'booking:b1']);
   });
 });
+
+// A10: Home finds each result's match from the row it came from.
+describe('the source ids', () => {
+  beforeEach(() => {
+    mockFriendlies = [{ id: 'm1', status: 'confirmed', post: { scheduled_at: '2026-11-14T17:00:00.000Z' }, ...teams }];
+    mockFixtures = [{ id: 'f1', status: 'completed', scheduled_day: '2026-11-13', scheduled_time: '19:00:00', ...teams }];
+    mockBookings = [{ id: 'b1', booking_day: '2026-11-12', start_time: '19:00:00', result_goals_for: 4, result_goals_against: 2 }];
+  });
+
+  it('each result carries the id of its friendly, fixture or booking', async () => {
+    const { result } = await renderHook(() => useRecentResults());
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    const rows = (result.current as { results: Record<string, unknown>[] }).results;
+    expect(rows).toEqual([
+      expect.objectContaining({ key: 'friendly:m1', friendlyMatchId: 'm1' }),
+      expect.objectContaining({ key: 'league:f1', leagueFixtureId: 'f1' }),
+      expect.objectContaining({ key: 'booking:b1', bookingId: 'b1' }),
+    ]);
+  });
+});

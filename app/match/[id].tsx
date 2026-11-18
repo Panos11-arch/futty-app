@@ -15,7 +15,10 @@
 //
 // A6: Share, for a confirmed match with a score only (MatchShare hides
 // itself otherwise): the result and man-of-the-match cards as PNGs.
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+//
+// A10 (decision 1j): "Add your stats" opens the post-match flow, shown only
+// while this player has a step left in it.
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,6 +35,7 @@ import { MatchPageSection } from '@/components/match/page-section';
 import { MatchResultPanel } from '@/components/match/result-panel';
 import { PostMatchOffers } from '@/components/offers/post-match-offers';
 import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
@@ -40,6 +44,7 @@ import { colors, space } from '@/constants/futty-theme';
 import { formatMatchWhen } from '@/lib/match/format';
 import { canBalanceTeams } from '@/lib/match/levels';
 import { lineupEditable, playedMatch, sideOf, writerSides, type MatchPage } from '@/lib/match/page';
+import { postMatchSteps } from '@/lib/match/post-match';
 import { useFormationPresets, useMatchPage, useMatchRoster } from '@/lib/match/use-match-page';
 import { captainSideOf } from '@/lib/match/result';
 import { useMatchRatings } from '@/lib/match/use-levels';
@@ -131,6 +136,19 @@ export default function MatchScreen() {
     const showPlayed = sectionStatus !== 'ready' || (pageData !== null && playedMatch(pageData));
     const score = !match && pageData ? pageScore(pageData) : null;
     const rated = pageData !== null && playedMatch(pageData);
+    const hasSteps =
+      match !== null &&
+      postMatchSteps(
+        {
+          match,
+          page: pageData,
+          roster: roster.status === 'ready' ? roster.roster : null,
+          ratings: ratings.status === 'ready' ? ratings.ratings : null,
+          viewerId: result.viewerId,
+          captainTeamIds,
+        },
+        now
+      ).length > 0;
 
     content = (
       <View style={styles.stack}>
@@ -154,6 +172,15 @@ export default function MatchScreen() {
               {score}
             </Text>
           </Card>
+        ) : null}
+        {match && hasSteps ? (
+          <Button
+            label="Add your stats"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/match/after-game', params: { id: match.match.id } })}
+            fullWidth
+            testID="match-add-stats"
+          />
         ) : null}
         {pageData ? <MatchShare page={pageData} /> : null}
         {match ? (
