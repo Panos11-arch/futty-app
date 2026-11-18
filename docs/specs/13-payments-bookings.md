@@ -445,6 +445,7 @@ A venue's staff (its owner today) are told about their own venue only, through `
 - **Daily summary at 20:00 Cyprus time,** for tomorrow: each pitch's games in time order; for app games, players joined vs needed (still in, as everywhere on the dashboard); cash expected, as two figures: app players' cash not yet ticked, and walk-in or phone bookings not yet marked paid (which may still be paid by card at the counter); blocks (including owner blocks) and condition flags. **Nothing is sent on a day with no game, block or flag.** Every venue with staff gets it, live or not.
 - **Once each:** every notice and each day's summary is sent once per staff member, however often the job runs. A summary missed at 20:00 is sent at the next run that evening, never after midnight. Nothing from before this feature is sent.
 - **Cyprus time:** every day and time in the text is Cyprus time, never UTC (a 19:00 game in winter reads 19:00).
+- **Venue players in staff counts (decided 18 November, Dimitris):** what staff see counts accepted venue players as joined: the summary reads "10 of 10 (1 venue player)", a game is short only when app players and venue players together are fewer than it's for, and no short-game notice is sent when venue players fill the gap. A booking cancelled before staff were told about it tells them nothing. Players' amounts, their 6-hour warning and collection still count a venue player as an empty spot ("Short games").
 
 ## Post-match offers (decided 17 November, Dimitris; for Panos and Anghelo to confirm)
 

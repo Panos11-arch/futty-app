@@ -592,7 +592,7 @@ describe('no-shows', () => {
   });
 
   it.each([
-    ['check_in_used', "They've already voted, so this can't be undone."],
+    ['check_in_used', "They've already voted or rated, so this can't be undone."],
     ['check_in_closed', 'Check-in for this game is closed.'],
     ['not_in_match', "This player doesn't hold a spot in this game."],
     ['not_checked_in', "This player isn't checked in."],

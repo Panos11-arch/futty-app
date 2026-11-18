@@ -694,7 +694,7 @@ export function describeVenuePlayerError(code: string): string {
 export function describeAttendanceError(code: string): string {
   switch (code) {
     case 'check_in_used':
-      return "They've already voted, so this can't be undone.";
+      return "They've already voted or rated, so this can't be undone.";
     case 'check_in_closed':
       return 'Check-in for this game is closed.';
     case 'not_in_match':
