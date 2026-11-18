@@ -5,8 +5,9 @@
 -- same rules hold: confirmed matches only; a player counts only if they
 -- checked in (1b.2), or held a spot in a confirmed forfeit (1b.3); a named
 -- team counts every confirmed match it played (1b.3); guests never count.
--- A forfeit is a loss for the side that forfeited and a win for the other,
--- with no goals (section 7, decision 1g.3).
+-- A forfeit is a 3-0 win for the other side (decision 1g.3): the score
+-- counts in goals for and against and clean sheets, but no player is
+-- credited with a goal.
 --
 -- Like the A3b views these run as their owner (not security_invoker) and
 -- expose aggregates only: never an individual rating or vote. A match
@@ -19,14 +20,29 @@
 -- holds one league's matches (a league is its own season); 'all' is every
 -- match ever.
 
--- Decision 1g.1: the fewest appearances a player needs to be on a leaderboard.
+-- Decision 1g.1: the fewest appearances a player needs to be on a
+-- leaderboard. There is no minimum (18 November): one game is enough.
 create or replace function public.stats_min_appearances()
 returns integer
 language sql
 immutable
 set search_path = ''
 as $$
-  select 5;
+  select 1;
+$$;
+
+-- Decision 1g.3: a side's goals in a match, a forfeit counting 3-0.
+create or replace function public.stats_side_goals(p_goals integer, p_forfeit_side text, p_side text, p_for boolean)
+returns integer
+language sql
+immutable
+set search_path = ''
+as $$
+  select case
+           when p_forfeit_side is null then p_goals
+           when (p_forfeit_side = p_side) = p_for then 0
+           else 3
+         end;
 $$;
 
 -- A player's match rating once it is shown on the match page (decision
@@ -63,6 +79,8 @@ select
   p.team_id,
   p.result,
   p.forfeit_side is not null as is_forfeit,
+  public.stats_side_goals(p.goals_for, p.forfeit_side, p.side, true) as team_goals_for,
+  public.stats_side_goals(p.goals_against, p.forfeit_side, p.side, false) as team_goals_against,
   case
     when mp.position = 'gk' then 'gk'
     when mp.position like 'd%' then 'def'
@@ -100,8 +118,8 @@ select
   s.venue_id,
   s.result,
   s.forfeit_side is not null as is_forfeit,
-  s.goals_for,
-  s.goals_against
+  public.stats_side_goals(s.goals_for, s.forfeit_side, s.side, true) as goals_for,
+  public.stats_side_goals(s.goals_against, s.forfeit_side, s.side, false) as goals_against
 from public.match_form_sides s
 join public.matches m on m.id = s.match_id
 left join public.league_fixtures lf on lf.id = m.league_fixture_id
@@ -152,7 +170,7 @@ select
 from agg a;
 
 -- A named team's season: as a player's, plus goals for and against, clean
--- sheets (a forfeit is never one), the longest run of wins in a row, and
+-- sheets (a forfeit win counts 3-0, so it is one), the longest run of wins in a row, and
 -- the men of the match and average rating of its players in its matches.
 create view public.team_season_stats as
 with rows as (
@@ -199,7 +217,7 @@ select
   round(100.0 * count(*) filter (where r.result = 'W') / count(*))::integer as win_pct,
   coalesce(sum(r.goals_for), 0)::integer as goals_for,
   coalesce(sum(r.goals_against), 0)::integer as goals_against,
-  count(*) filter (where not r.is_forfeit and r.goals_against = 0)::integer as clean_sheets,
+  count(*) filter (where r.goals_against = 0)::integer as clean_sheets,
   coalesce(l.longest_win_run, 0) as longest_win_run,
   coalesce(pl.motm, 0) as motm,
   pl.average_rating
@@ -237,7 +255,7 @@ left join public.venues v on v.id = s.venue_id
 where s.team_id is not null;
 
 -- Leaderboards per venue and per city for a calendar year (Cyprus time):
--- only players with stats_min_appearances() or more appearances there.
+-- every player with stats_min_appearances() (1) or more appearances there.
 -- Ranks are shared on ties (1, 1, 3). The win-rate board breaks ties by
 -- appearances.
 create view public.stats_leaderboards as
@@ -291,5 +309,7 @@ grant select on public.player_season_stats, public.team_season_stats, public.tea
 
 revoke all on function public.match_rating_shown(uuid, uuid) from public, anon;
 grant execute on function public.match_rating_shown(uuid, uuid) to authenticated, service_role;
+revoke all on function public.stats_side_goals(integer, text, text, boolean) from public, anon;
+grant execute on function public.stats_side_goals(integer, text, text, boolean) to authenticated, service_role;
 revoke all on function public.stats_min_appearances() from public, anon;
 grant execute on function public.stats_min_appearances() to authenticated, service_role;
