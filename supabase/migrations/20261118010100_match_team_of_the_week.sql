@@ -26,6 +26,8 @@ create table public.team_of_the_week (
   week_start date not null,
   scope text not null check (scope in ('venue', 'city', 'league')),
   venue_id uuid references public.venues (id) on delete cascade,
+  -- The city (lower case, trimmed) of a city team and of a venue team whose
+  -- venue has one, so the app can show a player their city's teams.
   city_key text,
   league_id uuid references public.leagues (id) on delete cascade,
   name text not null,
@@ -33,7 +35,7 @@ create table public.team_of_the_week (
   created_at timestamptz not null default now(),
   check (extract(isodow from week_start) = 1),
   check ((scope = 'venue') = (venue_id is not null)),
-  check ((scope = 'city') = (city_key is not null)),
+  check (scope <> 'city' or city_key is not null),
   check ((scope = 'league') = (league_id is not null))
 );
 
@@ -202,7 +204,7 @@ begin
     busy as (
       select venue_id from week where venue_id is not null group by venue_id having count(*) >= 4
     )
-    select 'venue' as scope, w.venue_id, null::text as city_key, min(w.venue_name) as name, array_agg(w.id) as ids
+    select 'venue' as scope, w.venue_id, min(w.city_key) as city_key, min(w.venue_name) as name, array_agg(w.id) as ids
     from week w where w.venue_id in (select venue_id from busy)
     group by w.venue_id
     union all

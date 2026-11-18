@@ -524,7 +524,7 @@ The A7a views and tables (decision 1g; signed-in players read them, signed-out u
 | `team_season_stats` | `team_id`, `season_kind`, `season_year`, `league_id`, `played`, `won`, `drawn`, `lost`, `win_pct`, `goals_for`, `goals_against`, `clean_sheets`, `longest_win_run`, `motm`, `average_rating` |
 | `team_recent_matches` | as `player_recent_matches`, by `team_id` |
 | `stats_leaderboards` | `scope` (`venue`, `city`), `scope_key` (venue id or city), `scope_name`, `season_year`, `profile_id`, `appearances`, `goals`, `motm`, `won`, `win_pct`, `min_appearances`, `goals_rank`, `motm_rank`, `win_rate_rank` |
-| `team_of_the_week` | `id`, `week_start` (a Monday), `scope` (`venue`, `city`, `league`), `venue_id`, `city_key`, `league_id`, `name`, `matches` |
+| `team_of_the_week` | `id`, `week_start` (a Monday), `scope` (`venue`, `city`, `league`), `venue_id`, `city_key` (a city team's city, and a venue team's venue's city), `league_id`, `name`, `matches` |
 | `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `position_group`, `sort` (1–5), `average_rating`, `rated_matches`, `motm`, `goals` |
 
 `match_rating_shown(match, player)` returns a player's match rating once the match page shows it (null otherwise); `stats_min_appearances()` is decision 1g.1.

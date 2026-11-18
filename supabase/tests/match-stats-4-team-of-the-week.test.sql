@@ -111,6 +111,7 @@ begin
 
   select * into v_t from public.team_of_the_week where week_start = v_monday and scope = 'venue';
   assert v_t.venue_id = v1 and v_t.matches = 4, format('v1, 4 matches (m5 is next week), got %s', v_t);
+  assert v_t.city_key = 'nicosia', 'a venue team carries its city';
   select array_agg(format('%s:%s:%s', p.sort, p.position_group, p.profile_id) order by p.sort) into v_players
   from public.team_of_the_week_players p where p.team_of_the_week_id = v_t.id;
   assert v_players = array[format('1:gk:%s', k1), format('2:def:%s', d2), format('3:mid:%s', mid),
@@ -175,6 +176,7 @@ begin
   end loop;
   assert tests.a7_tick('2026-11-09 07:00+00') = 1, 'one venue team';
   assert (select scope from public.team_of_the_week where week_start = '2026-11-02') = 'venue', 'by venue';
+  assert (select city_key from public.team_of_the_week where week_start = '2026-11-02') is null, 'no city';
   assert (select average_rating from public.team_of_the_week_players p
           join public.team_of_the_week t on t.id = p.team_of_the_week_id where t.week_start = '2026-11-02') = 7.00, 'avg 7';
 end $$;
