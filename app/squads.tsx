@@ -1,6 +1,6 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,9 +24,12 @@ import {
   cancelOppositionOffer,
   describeOppositionPostNeed,
   describePlayerPostNeed,
+  getSquadPostPrices,
   leaveSquadPost,
   offerOpposition,
+  type SquadPostPrice,
 } from '@/lib/squads';
+import { formatEuros } from '@/lib/money/format';
 import { supabase } from '@/lib/supabase';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useSquadPosts, type SquadPostWithDetails } from '@/lib/use-squad-posts';
@@ -86,7 +89,17 @@ function ErrorText({ children }: { children: string }) {
   );
 }
 
-function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onChanged: () => void }) {
+function PlayersPostCard({
+  post,
+  price,
+  onChanged,
+}: {
+  post: SquadPostWithDetails;
+  /** The server's price per player; none while loading, on error or when
+   *  the server has none for this post. */
+  price?: SquadPostPrice;
+  onChanged: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,6 +137,7 @@ function PlayersPostCard({ post, onChanged }: { post: SquadPostWithDetails; onCh
           value={full ? 'Full' : String(spotsLeft)}
           tone={full ? 'inkMuted' : 'ink'}
         />
+        {price ? <Fact label="Price" value={`${formatEuros(price.share_cents)} each`} /> : null}
       </View>
 
       {post.roster.length > 0 ? (
@@ -384,6 +398,27 @@ function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; o
   );
 }
 
+/** Each "Need players" post's price per player, from squad_post_prices. Null
+ *  while loading, on error, and for the other view: cards then show no price. */
+function usePlayerPostPrices(posts: SquadPostWithDetails[] | null): Map<string, SquadPostPrice> | null {
+  const [prices, setPrices] = useState<Map<string, SquadPostPrice> | null>(null);
+  const key = posts ? posts.map((p) => p.id).join(',') : null;
+
+  useEffect(() => {
+    setPrices(null);
+    if (key === null) return;
+    let current = true;
+    getSquadPostPrices(key ? key.split(',') : []).then((result) => {
+      if (current) setPrices(result);
+    });
+    return () => {
+      current = false;
+    };
+  }, [key]);
+
+  return prices;
+}
+
 export default function SquadsScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10): loads them
   // and re-renders when they arrive.
@@ -391,6 +426,7 @@ export default function SquadsScreen() {
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<View_>(params.view === 'opposition' ? 'opposition' : 'players');
   const posts = useSquadPosts(view);
+  const prices = usePlayerPostPrices(view === 'players' && posts.status === 'ready' ? posts.posts : null);
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -416,7 +452,7 @@ export default function SquadsScreen() {
         {posts.status === 'ready'
           ? posts.posts.map((post) =>
               view === 'players' ? (
-                <PlayersPostCard key={post.id} post={post} onChanged={posts.reload} />
+                <PlayersPostCard key={post.id} post={post} price={prices?.get(post.id)} onChanged={posts.reload} />
               ) : (
                 <OppositionPostCard key={post.id} post={post} onChanged={posts.reload} />
               )
