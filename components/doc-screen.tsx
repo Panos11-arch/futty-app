@@ -57,8 +57,8 @@ export function DocEmailLink({ email, subject }: { email: string; subject?: stri
   return <Button label={email} variant="plain" onPress={() => Linking.openURL(url)} />;
 }
 
-/** Tap-to-expand question, matching the <details>/<summary> pairs in the old
- *  docs/support.html. */
+/** Tap-to-expand question, matching the <details>/<summary> pairs on the
+ *  website's support page (site/support/index.html). */
 export function DocFAQ({ question, children }: PropsWithChildren<{ question: string }>) {
   const [open, setOpen] = useState(false);
   return (
