@@ -13,6 +13,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
 import { describeFunctionError } from '@/lib/edge-functions';
+import { syncPremiumIconAfterPurchase } from '@/lib/premium-icon';
 import {
   openablePlan,
   personalPremiumPerks,
@@ -107,6 +108,9 @@ export default function PremiumPlanScreen() {
       profile.reload();
       myTeams.reload();
       router.back();
+      // The Premium app icon, from the server's is_premium. Last, once the
+      // purchase is finished: on Android switching the icon may end the app.
+      if (plan === 'personal') void syncPremiumIconAfterPurchase();
     },
     onPurchaseError: (purchaseError) => {
       setBusy(false);

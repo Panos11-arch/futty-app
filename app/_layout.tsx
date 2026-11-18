@@ -17,6 +17,7 @@ import 'react-native-reanimated';
 import { FuttyAiChat } from '@/components/futty-ai-chat';
 import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
+import { PremiumIconSync } from '@/components/premium-icon-sync';
 import { colors, FuttyNavigationTheme, type } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
@@ -238,6 +239,8 @@ export function RootNavigator() {
           calls an authenticated Edge Function. */}
       {inApp ? <FuttyAiChat /> : null}
       {inApp ? <PushTapHandler /> : null}
+      {/* The Premium home-screen icon, checked once per launch. */}
+      {inApp ? <PremiumIconSync /> : null}
     </View>
   );
 }

@@ -102,7 +102,20 @@
       ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
-      "./plugins/withCrashReasonFile"
+      "./plugins/withCrashReasonFile",
+      [
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "Premium",
+            "ios": "./assets/images/icon-premium.png",
+            "android": {
+              "foregroundImage": "./assets/images/android-icon-premium-foreground.png",
+              "backgroundColor": "#000000"
+            }
+          }
+        ]
+      ]
     ],
     "experiments": {
       "typedRoutes": true
