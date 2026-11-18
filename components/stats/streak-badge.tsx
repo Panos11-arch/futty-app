@@ -11,13 +11,14 @@ import { weeksLabel, type StreakBadgeKey } from '@/lib/stats/streaks';
 
 export type StreakBadgeLook = 'colour' | 'greyed' | 'locked';
 
-const badgeColours: Record<StreakBadgeKey, string> = {
-  bronze: colors.badgeBronze,
-  silver: colors.badgeSilver,
-  gold: colors.badgeGold,
-  platinum: colors.badgePlatinum,
-  diamond: colors.badgeDiamond,
-  champion: colors.badgeChampion,
+/** Each badge's fill and the colour of its label on that fill. */
+const badgeColours: Record<StreakBadgeKey, { fill: string; label: string }> = {
+  bronze: { fill: colors.badgeBronze, label: colors.badgeOnBronze },
+  silver: { fill: colors.badgeSilver, label: colors.badgeOnSilver },
+  gold: { fill: colors.badgeGold, label: colors.badgeOnGold },
+  platinum: { fill: colors.badgePlatinum, label: colors.badgeOnPlatinum },
+  diamond: { fill: colors.badgeDiamond, label: colors.badgeOnDiamond },
+  champion: { fill: colors.badgeChampion, label: colors.badgeOnChampion },
 };
 
 export function streakBadgeLook(earned: boolean, inColour: boolean): StreakBadgeLook {
@@ -36,6 +37,9 @@ export function StreakBadge({
   weeks: number;
   look: StreakBadgeLook;
 }) {
+  // An unknown badge from a newer server shows greyed rather than guessing a colour.
+  const palette = badgeColours[badge];
+  const shown = look === 'colour' && !palette ? 'greyed' : look;
   const a11y =
     look === 'colour'
       ? `${label} streak badge, earned`
@@ -44,17 +48,17 @@ export function StreakBadge({
         : `${label} streak badge, ${weeksLabel(weeks)} in a row`;
   return (
     <View
-      testID={`streak-badge-${badge}-${look}`}
+      testID={`streak-badge-${badge}-${shown}`}
       accessible
       accessibilityLabel={a11y}
       style={[
         styles.badge,
-        look === 'colour' && { backgroundColor: badgeColours[badge] ?? colors.inkMuted },
-        look === 'greyed' && styles.greyed,
-        look === 'locked' && styles.locked,
+        shown === 'colour' && { backgroundColor: palette.fill },
+        shown === 'greyed' && styles.greyed,
+        shown === 'locked' && styles.locked,
       ]}
     >
-      <Text variant="caption" tone={look === 'colour' ? 'onBrand' : 'inkMuted'}>
+      <Text variant="caption" tone="inkMuted" style={shown === 'colour' ? { color: palette.label } : undefined}>
         {label}
       </Text>
       {look === 'locked' ? (

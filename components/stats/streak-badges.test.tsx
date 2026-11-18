@@ -25,6 +25,7 @@ const earned: PlayerStreakBadges['badges'] = [
 ];
 
 const background = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
+const textColour = (text: string) => StyleSheet.flatten(screen.getByText(text).props.style).color;
 
 describe('StreakBadgesView (another player’s profile)', () => {
   it('a Premium player’s badges in colour', async () => {
@@ -32,12 +33,15 @@ describe('StreakBadgesView (another player’s profile)', () => {
     expect(screen.getByText('Streak badges')).toBeTruthy();
     expect(background('streak-badge-bronze-colour')).toBe(colors.badgeBronze);
     expect(background('streak-badge-silver-colour')).toBe(colors.badgeSilver);
+    expect(textColour('Bronze')).toBe(colors.badgeOnBronze);
+    expect(textColour('Silver')).toBe(colors.badgeOnSilver);
   });
 
   it('a basic player’s badges greyed, with no upsell on someone else’s profile', async () => {
     await render(<StreakBadgesView badges={{ inColour: false, badges: earned }} />);
     expect(background('streak-badge-bronze-greyed')).toBe(colors.border);
     expect(background('streak-badge-silver-greyed')).toBe(colors.border);
+    expect(textColour('Bronze')).toBe(colors.inkMuted);
     expect(screen.queryByText(/Go Premium/)).toBeNull();
   });
 

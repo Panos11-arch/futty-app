@@ -53,6 +53,7 @@ const ready = (s: MyStreak) => ({ status: 'ready' as const, streak: s });
 const view = (s: MyStreak) => render(<StreakCardView state={ready(s)} onRetry={jest.fn()} onGoPremium={mockPush} />);
 
 const background = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
+const textColour = (text: string) => StyleSheet.flatten(screen.getByText(text).props.style).color;
 
 beforeEach(() => {
   mockPush.mockReset();
@@ -73,6 +74,9 @@ describe('StreakCardView', () => {
     expect(background('streak-badge-bronze-colour')).toBe(colors.badgeBronze);
     expect(background('streak-badge-silver-colour')).toBe(colors.badgeSilver);
     expect(background('streak-badge-gold-colour')).toBe(colors.badgeGold);
+    expect(textColour('Bronze')).toBe(colors.badgeOnBronze);
+    expect(textColour('Silver')).toBe(colors.badgeOnSilver);
+    expect(textColour('Gold')).toBe(colors.badgeOnGold);
     expect(screen.getByTestId('streak-badge-platinum-locked')).toBeTruthy();
     expect(screen.getByText('12 weeks')).toBeTruthy();
     expect(screen.getByText('30 weeks')).toBeTruthy();
@@ -85,6 +89,7 @@ describe('StreakCardView', () => {
     expect(background('streak-badge-bronze-greyed')).toBe(colors.border);
     expect(background('streak-badge-silver-greyed')).toBe(colors.border);
     expect(screen.getByLabelText('Bronze streak badge, earned, shown in colour with Premium')).toBeTruthy();
+    expect(textColour('Bronze')).toBe(colors.inkMuted);
     expect(screen.getByText(GO_PREMIUM_BADGES)).toBeTruthy();
     fireEvent.press(screen.getByText(GO_PREMIUM_BADGES));
     expect(mockPush).toHaveBeenCalled();
@@ -104,7 +109,10 @@ describe('StreakCardView', () => {
   it('after Premium ends the badges stay earned but are greyed again', async () => {
     const earned = levels(6);
     const { rerender } = await view(streak({ isPremium: true, badges: earned }));
-    expect(screen.getByTestId('streak-badge-champion-colour')).toBeTruthy();
+    expect(background('streak-badge-champion-colour')).toBe(colors.badgeChampion);
+    expect(textColour('Champion')).toBe(colors.badgeOnChampion);
+    expect(textColour('Platinum')).toBe(colors.badgeOnPlatinum);
+    expect(textColour('Diamond')).toBe(colors.badgeOnDiamond);
     await rerender(
       <StreakCardView state={ready(streak({ isPremium: false, badges: earned }))} onRetry={jest.fn()} onGoPremium={mockPush} />,
     );
