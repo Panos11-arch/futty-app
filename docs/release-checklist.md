@@ -156,7 +156,7 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 
 ## 5. Sign in with Apple and Google (P13)
 
-- [ ] Every step in `docs/p13-provider-setup.md`, sections 1 to 9, in the production project: the Apple key and App ID, the Supabase Apple and Google providers, the Google consent screen (with the privacy policy and terms links), the redirect URLs, the `delete-account` secrets for revoking Apple tokens, and identity linking.
+- [ ] Every step in `docs/p13-provider-setup.md`, sections 1 to 9, in the production project: the Apple key and App ID, the Supabase Apple and Google providers, the Google consent screen (with the privacy policy link https://futty.app/privacy and the terms link https://futty.app/terms), the redirect URLs, the `delete-account` secrets for revoking Apple tokens, and identity linking.
 - [ ] Calendar reminder for the Apple client secret (it expires after at most 6 months), if a Services ID was made.
 
 ## 6. The demo account
@@ -194,7 +194,8 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 
 ## 9. Privacy
 
-- [ ] **Privacy policy URL:** host `docs/privacy-policy.html` at a public URL and enter it in App Store Connect (App Information). It must say what the app's own screen (`app/account/privacy-policy.tsx`) says. Check it covers Stripe (payments), Sentry (crash reports), contact matching (phone numbers are sent to find friends on Futty), calendar, push notifications and the Futty AI.
+- [ ] **Website:** `site/` is the website, plain HTML and CSS with no build step. Host it at https://futty.app so that https://futty.app/privacy, https://futty.app/terms and https://futty.app/support work.
+- [ ] **Privacy policy URL:** enter https://futty.app/privacy in App Store Connect (App Information). It must say what the app's own screen (`app/account/privacy-policy.tsx`) says; `tests/site/site-matches-app.test.tsx` fails if `site/privacy/index.html` drifts from it. Check it covers Stripe (payments), Sentry (crash reports), contact matching (phone numbers are sent to find friends on Futty), calendar, push notifications and the Futty AI.
 - [ ] **App Privacy answers** (draft to check against the code; "linked to the user" unless noted):
   - Contact info: name, email address, phone number.
   - Contacts: phone numbers from the address book, only when the user allows it, used to find friends on Futty.
@@ -212,6 +213,8 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 
 ## 11. Terms of Use
 
+- [ ] **Terms of Use URL:** https://futty.app/terms, in App Store Connect wherever the Premium subscription asks for the terms (the License Agreement or the app description). `site/terms/index.html` shows the terms with spec 13's default amounts; `tests/site/site-matches-app.test.tsx` fails if it drifts from the app's Terms of Use screen with those amounts. If production's `app_rules` ever differ from the defaults, the website has to be updated by hand: the test can't see production.
+- [ ] **Support URL:** https://futty.app/support, in App Store Connect (the version's Support URL).
 - [ ] **Founders: read the new wording** in `lib/terms.ts` (shown in the app under Account → Terms of Use) before release. It is written from spec 13 and spells out the debt block across all venues and the credit rules, as spec 13's legal check asks. Legal advice on venue credit (decisions doc #16) is still open.
 
 ## 12. App Review risks

@@ -1,8 +1,8 @@
 import { DocBullet, DocEmailLink, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
 
-/** Native transcription of docs/privacy-policy.html — keep the two in sync;
- *  the HTML version is what App Store Connect's Privacy Policy URL field
- *  points at, this is what's shown inside the app itself. */
+/** The same text is on the website, site/privacy/index.html
+ *  (https://futty.app/privacy), which App Store Connect's Privacy Policy URL
+ *  points at. tests/site/site-matches-app.test.tsx fails if the two differ. */
 export default function PrivacyPolicyScreen() {
   return (
     <DocScreen updated="November 2026">

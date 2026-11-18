@@ -3,8 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { DocEmailLink, DocFAQ, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
 import { space } from '@/constants/futty-theme';
 
-/** Native transcription of docs/support.html's FAQ — see that file for the
- *  source content this is kept in sync with. */
+/** The FAQ here is also on the website, site/support/index.html — keep the
+ *  two in sync. */
 export default function HelpScreen() {
   return (
     <DocScreen>
