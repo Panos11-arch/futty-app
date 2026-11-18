@@ -128,6 +128,15 @@ describe('Profile', () => {
     expect(mockProfileReload).toHaveBeenCalledTimes(1);
   });
 
+  it('the header shows the basic logo to a basic player and the Premium logo to a Premium player (U9)', async () => {
+    mockProfile = { status: 'ready', profile };
+    const view = await render(<ProfileScreen />);
+    expect(screen.getByTestId('futty-logo-basic')).toBeTruthy();
+    mockProfile = { status: 'ready', profile: { ...profile, is_premium: true } };
+    await view.rerender(<ProfileScreen />);
+    expect(screen.getByTestId('futty-logo-premium')).toBeTruthy();
+  });
+
   it('missing profile says so', async () => {
     mockProfile = { status: 'missing' };
     await render(<ProfileScreen />);

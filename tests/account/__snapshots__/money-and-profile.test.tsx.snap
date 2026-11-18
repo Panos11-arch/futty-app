@@ -31,25 +31,77 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
           }
         }
       >
-        <Text
-          accessibilityRole="header"
+        <View
           style={
-            [
-              {
-                "fontFamily": "Inter_700Bold",
-                "fontSize": 28,
-                "lineHeight": 34,
-              },
-              {
-                "color": "#0B1215",
-              },
-              false,
-              undefined,
-            ]
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "gap": 12,
+            }
           }
         >
-          Profile
-        </Text>
+          <ViewManagerAdapter_ExpoImage
+            accessibilityLabel="Futty"
+            accessibilityRole="image"
+            backgroundColor={4294967295}
+            borderRadius={7.2}
+            containerViewRef={"[React.ref]"}
+            contentFit="contain"
+            contentPosition={
+              {
+                "left": "50%",
+                "top": "50%",
+              }
+            }
+            height={32}
+            nativeViewRef={"[React.ref]"}
+            onError={[Function]}
+            onLoad={[Function]}
+            onLoadStart={[Function]}
+            onProgress={[Function]}
+            placeholder={[]}
+            sfEffect={null}
+            source={
+              [
+                {
+                  "testUri": "../../../assets/images/icon.png",
+                },
+              ]
+            }
+            style={
+              {
+                "backgroundColor": "#FFFFFF",
+                "borderRadius": 7.2,
+                "height": 32,
+                "width": 32,
+              }
+            }
+            symbolSize={null}
+            symbolWeight={null}
+            testID="futty-logo-basic"
+            transition={null}
+            width={32}
+          />
+          <Text
+            accessibilityRole="header"
+            style={
+              [
+                {
+                  "fontFamily": "Inter_700Bold",
+                  "fontSize": 28,
+                  "lineHeight": 34,
+                },
+                {
+                  "color": "#0B1215",
+                },
+                false,
+                undefined,
+              ]
+            }
+          >
+            Profile
+          </Text>
+        </View>
         <Text
           style={
             [

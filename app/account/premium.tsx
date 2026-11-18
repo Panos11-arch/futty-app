@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/card';
 import { DISABLED_OPACITY } from '@/components/ui/foundation';
+import { FuttyLogo } from '@/components/ui/futty-logo';
 import type { IconSymbol } from '@/components/ui/icon-symbol';
 import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
@@ -82,6 +83,9 @@ export default function GoPremiumScreen() {
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.logo}>
+          <FuttyLogo size={space.xxl * 2} />
+        </View>
         <Card padded={false}>
           {rows.map((row, i) => {
             const status = (
@@ -121,6 +125,7 @@ export default function GoPremiumScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg },
+  logo: { alignItems: 'center', paddingVertical: space.sm },
   disabled: { opacity: DISABLED_OPACITY },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 });

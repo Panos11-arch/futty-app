@@ -25,6 +25,57 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
     <View>
       <View
         style={
+          {
+            "alignItems": "center",
+            "paddingVertical": 8,
+          }
+        }
+      >
+        <ViewManagerAdapter_ExpoImage
+          accessibilityLabel="Futty"
+          accessibilityRole="image"
+          backgroundColor={4294967295}
+          borderRadius={14.4}
+          containerViewRef={"[React.ref]"}
+          contentFit="contain"
+          contentPosition={
+            {
+              "left": "50%",
+              "top": "50%",
+            }
+          }
+          height={64}
+          nativeViewRef={"[React.ref]"}
+          onError={[Function]}
+          onLoad={[Function]}
+          onLoadStart={[Function]}
+          onProgress={[Function]}
+          placeholder={[]}
+          sfEffect={null}
+          source={
+            [
+              {
+                "testUri": "../../../assets/images/icon.png",
+              },
+            ]
+          }
+          style={
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderRadius": 14.4,
+              "height": 64,
+              "width": 64,
+            }
+          }
+          symbolSize={null}
+          symbolWeight={null}
+          testID="futty-logo-basic"
+          transition={null}
+          width={64}
+        />
+      </View>
+      <View
+        style={
           [
             {
               "backgroundColor": "#FFFFFF",

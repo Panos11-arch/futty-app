@@ -29,6 +29,10 @@ export const colors = {
   danger: '#B42318',
   /** Text and icons on brand buttons */
   onBrand: '#FFFFFF',
+  /** Logo only (components/ui/futty-logo.tsx, scripts/logo). Never UI. The F. */
+  logoMint: '#00FF9C',
+  /** Logo only. The Premium logo's background. */
+  logoBlack: '#000000',
 } as const;
 
 /** Inter families as registered with useFonts() in app/_layout.tsx. */

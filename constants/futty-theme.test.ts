@@ -38,7 +38,25 @@ describe('colour tokens', () => {
       warning: '#8A5C00',
       danger: '#B42318',
       onBrand: '#FFFFFF',
+      logoMint: '#00FF9C',
+      logoBlack: '#000000',
     });
+  });
+
+  it('uses the logo colours only for the logo (U9), so the rest of the app keeps its colours', () => {
+    const root = path.join(__dirname, '..');
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(rel);
+        else if (/\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)) {
+          if (/\b(logoMint|logoBlack)\b/.test(fs.readFileSync(path.join(root, rel), 'utf8'))) hits.push(rel);
+        }
+      }
+    };
+    ['app', 'components', 'lib', 'hooks'].filter((d) => fs.existsSync(path.join(root, d))).forEach(walk);
+    expect(hits).toEqual(['components/ui/futty-logo.tsx']);
   });
 
   const textColours = ['ink', 'inkMuted', 'brand', 'success', 'warning', 'danger'] as const;
