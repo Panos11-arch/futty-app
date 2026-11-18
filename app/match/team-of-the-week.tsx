@@ -1,6 +1,6 @@
-// Team of the week (A7, docs/specs/match-record.md decision 1g.4): every team
-// picked for the latest week (venues, leagues, cities), as the server picked
-// them. Opened from Home and the team_of_the_week notification.
+// Team of the week (A7, docs/specs/match-record.md decision 1g.4): Futty's one
+// team for the latest week, as the server picked it, and how it's picked.
+// Opened from Home and the team_of_the_week notification.
 import { Stack } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
 import type { TeamOfTheWeek } from '@/lib/match/stats-api';
-import { useLatestTeamsOfTheWeek, useTeamOfTheWeekPlayers } from '@/lib/match/use-stats';
+import { useLatestTeamOfTheWeek, useTeamOfTheWeekPlayers } from '@/lib/match/use-stats';
 
 function Team({ team }: { team: TeamOfTheWeek }) {
   const players = useTeamOfTheWeekPlayers(team.id);
@@ -26,26 +26,31 @@ function Team({ team }: { team: TeamOfTheWeek }) {
 }
 
 export default function TeamOfTheWeekScreen() {
-  const teams = useLatestTeamsOfTheWeek();
+  const latest = useLatestTeamOfTheWeek();
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <Stack.Screen options={{ title: 'Team of the week' }} />
       <ScrollView contentContainerStyle={styles.content}>
         <Text variant="callout" tone="inkMuted">
-          The best average match rating at each position, from last week’s confirmed games. Picked every Monday morning.
+          The best keeper, defender, midfielder and forward from every confirmed game last week, plus the next best
+          outfield player. Picked every Monday morning on average points per game.
         </Text>
-        {teams.status === 'loading' ? (
+        <Text variant="caption" tone="inkMuted">
+          Forwards score most for goals and assists, midfielders for assists, goals and big wins, defenders and keepers for
+          clean sheets. Everyone scores for a win and for man of the match.
+        </Text>
+        {latest.status === 'loading' ? (
           <View testID="team-of-the-week-screen-skeleton">
             <SkeletonText lines={5} />
           </View>
         ) : null}
-        {teams.status === 'error' ? (
-          <Banner tone="danger" message="Couldn’t load the teams of the week." action={{ label: 'Try again', onPress: teams.reload }} />
+        {latest.status === 'error' ? (
+          <Banner tone="danger" message="Couldn’t load the team of the week." action={{ label: 'Try again', onPress: latest.reload }} />
         ) : null}
-        {teams.status === 'ready' && teams.teams.length === 0 ? (
-          <EmptyState icon="trophy.fill" message="No team of the week yet. Rate your teammates after each game." />
+        {latest.status === 'ready' && !latest.team ? (
+          <EmptyState icon="trophy.fill" message="No team of the week yet. Play a confirmed game to be in with a chance." />
         ) : null}
-        {teams.status === 'ready' ? teams.teams.map((t) => <Team key={t.id} team={t} />) : null}
+        {latest.status === 'ready' && latest.team ? <Team team={latest.team} /> : null}
       </ScrollView>
     </SafeAreaView>
   );

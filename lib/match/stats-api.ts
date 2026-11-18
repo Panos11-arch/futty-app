@@ -53,28 +53,28 @@ export type LeaderboardRow = {
   rank: number;
 };
 
+/** One team of the week for all of Futty (decision 1g.4). */
 export type TeamOfTheWeek = {
   id: string;
   week_start: string;
-  scope: 'venue' | 'city' | 'league';
-  venue_id: string | null;
-  city_key: string | null;
-  league_id: string | null;
-  name: string;
   matches: number;
 };
 
-export type PositionGroup = 'gk' | 'def' | 'mid' | 'fwd' | 'outfield';
+export type PositionGroup = 'gk' | 'def' | 'mid' | 'fwd';
 
 export type TeamOfTheWeekPlayer = {
   profile_id: string;
   name: string;
   position_group: PositionGroup;
   sort: number;
-  average_rating: number;
-  rated_matches: number;
-  motm: number;
+  /** Average points per game that week, from the server. */
+  average_points: number;
+  games: number;
   goals: number;
+  assists: number;
+  clean_sheets: number;
+  motm: number;
+  average_rating: number | null;
 };
 
 const yearFormat = new Intl.DateTimeFormat('en-GB', { timeZone: CYPRUS_TIME_ZONE, year: 'numeric' });
@@ -214,36 +214,22 @@ export async function getLeaderboard(scope: LeaderboardScope, year: number, boar
   return { rows, error: namesError };
 }
 
-/** The teams of the most recent week that has any: venues, then leagues, then cities. */
-export async function getLatestTeamsOfTheWeek() {
+/** The latest team of the week, or null when there's none yet. */
+export async function getLatestTeamOfTheWeek() {
   const { data, error } = await supabase
     .from('team_of_the_week')
-    .select('id, week_start, scope, venue_id, city_key, league_id, name, matches')
+    .select('id, week_start, matches')
     .order('week_start', { ascending: false })
-    .order('scope', { ascending: false })
-    .order('name', { ascending: true })
-    .limit(100);
-  const all = (data as TeamOfTheWeek[] | null) ?? [];
-  const latest = all.length > 0 ? all[0].week_start : null;
-  return { teams: all.filter((t) => t.week_start === latest), error };
-}
-
-/** The viewer's city's team this week: the city's own team first, else a venue team there. */
-export function teamForCity(teams: TeamOfTheWeek[], city: string | null | undefined): TeamOfTheWeek | null {
-  const key = cityKey(city);
-  if (!key) return null;
-  return (
-    teams.find((t) => t.scope === 'city' && t.city_key === key) ??
-    teams.find((t) => t.scope === 'venue' && t.city_key === key) ??
-    null
-  );
+    .limit(1)
+    .maybeSingle();
+  return { team: (data as TeamOfTheWeek | null) ?? null, error };
 }
 
 /** A team of the week's five players, in their slots, with names. */
 export async function getTeamOfTheWeekPlayers(teamOfTheWeekId: string) {
   const { data, error } = await supabase
     .from('team_of_the_week_players')
-    .select('profile_id, position_group, sort, average_rating, rated_matches, motm, goals')
+    .select('profile_id, position_group, sort, average_points, games, goals, assists, clean_sheets, motm, average_rating')
     .eq('team_of_the_week_id', teamOfTheWeekId)
     .order('sort', { ascending: true });
   if (error) return { players: [] as TeamOfTheWeekPlayer[], error };
@@ -273,5 +259,23 @@ export const POSITION_LABELS: Record<PositionGroup, string> = {
   def: 'Defender',
   mid: 'Midfielder',
   fwd: 'Forward',
-  outfield: 'Outfield',
 };
+
+/** "8.5 pts": average points per game, one decimal. */
+export function formatPoints(points: number): string {
+  return `${Number(points).toFixed(1)} pts`;
+}
+
+/** The numbers behind a pick, for its position: "2 goals · 1 assist", "1 clean sheet". */
+export function pickLine(p: Pick<TeamOfTheWeekPlayer, 'position_group' | 'goals' | 'assists' | 'clean_sheets' | 'games' | 'motm'>): string {
+  const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+  const parts =
+    p.position_group === 'gk' || p.position_group === 'def'
+      ? [n(p.clean_sheets, 'clean sheet', 'clean sheets')]
+      : p.position_group === 'mid'
+        ? [n(p.assists, 'assist', 'assists'), n(p.goals, 'goal', 'goals')]
+        : [n(p.goals, 'goal', 'goals'), n(p.assists, 'assist', 'assists')];
+  if (p.motm > 0) parts.push(n(p.motm, 'man of the match', 'men of the match'));
+  parts.push(n(p.games, 'game', 'games'));
+  return parts.join(' · ');
+}

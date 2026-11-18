@@ -2,16 +2,17 @@ import {
   cityKey,
   cyprusYear,
   defaultScope,
+  formatPoints,
+  pickLine,
   formatRating,
   formatWeekOf,
-  getLatestTeamsOfTheWeek,
+  getLatestTeamOfTheWeek,
   getLeaderboard,
   getLeaderboardScopes,
   getPlayerSeasonStats,
   getTeamOfTheWeekPlayers,
   getTeamRecentMatches,
   getTeamSeasonStats,
-  teamForCity,
   type LeaderboardScope,
   type TeamOfTheWeek,
 } from '@/lib/match/stats-api';
@@ -149,51 +150,40 @@ describe('leaderboards', () => {
 });
 
 const totw = (over: Partial<TeamOfTheWeek>): TeamOfTheWeek => ({
-  id: 'x',
+  id: 't',
   week_start: '2026-11-09',
-  scope: 'city',
-  venue_id: null,
-  city_key: 'nicosia',
-  league_id: null,
-  name: 'Nicosia',
   matches: 3,
   ...over,
 });
 
 describe('team of the week', () => {
-  it('keeps only the latest week', async () => {
-    mockResponses = [
-      {
-        data: [totw({ id: 'new1' }), totw({ id: 'new2', scope: 'venue' }), totw({ id: 'old', week_start: '2026-11-02' })],
-        error: null,
-      },
-    ];
-    const { teams } = await getLatestTeamsOfTheWeek();
-    expect(teams.map((t) => t.id)).toEqual(['new1', 'new2']);
+  it('the latest week’s one team', async () => {
+    mockResponses = [{ data: totw({ id: 'new' }), error: null }];
+    const { team } = await getLatestTeamOfTheWeek();
+    expect(team?.id).toBe('new');
+    expect(mockCalls).toContainEqual(['from', 'team_of_the_week']);
+    expect(mockCalls).toContainEqual(['order', 'week_start', { ascending: false }]);
+    expect(mockCalls).toContainEqual(['limit', 1]);
+    expect(mockCalls).toContainEqual(['maybeSingle']);
   });
 
-  it('nothing at all is an empty list', async () => {
-    mockResponses = [{ data: [], error: null }];
-    expect((await getLatestTeamsOfTheWeek()).teams).toEqual([]);
-  });
-
-  it('the viewer’s city: its own team first, else a venue team there', () => {
-    const venue = totw({ id: 'v', scope: 'venue', venue_id: 'v1' });
-    const city = totw({ id: 'c' });
-    const elsewhere = totw({ id: 'l', city_key: 'limassol' });
-    expect(teamForCity([venue, city, elsewhere], ' NICOSIA')?.id).toBe('c');
-    expect(teamForCity([venue, elsewhere], 'Nicosia')?.id).toBe('v');
-    expect(teamForCity([elsewhere], 'Nicosia')).toBeNull();
-    expect(teamForCity([city], null)).toBeNull();
+  it('none yet is null', async () => {
+    mockResponses = [{ data: null, error: null }];
+    expect((await getLatestTeamOfTheWeek()).team).toBeNull();
   });
 
   it('players in their slots, with names', async () => {
     mockResponses = [
-      { data: [{ profile_id: 'k', position_group: 'gk', sort: 1, average_rating: 7, rated_matches: 1, motm: 0, goals: 0 }], error: null },
+      {
+        data: [
+          { profile_id: 'k', position_group: 'gk', sort: 1, average_points: 8, games: 1, goals: 0, assists: 0, clean_sheets: 1, motm: 0, average_rating: 7 },
+        ],
+        error: null,
+      },
       names([{ id: 'k', full_name: 'Kostas' }]),
     ];
     const { players } = await getTeamOfTheWeekPlayers('x');
-    expect(players[0]).toMatchObject({ profile_id: 'k', name: 'Kostas', sort: 1 });
+    expect(players[0]).toMatchObject({ profile_id: 'k', name: 'Kostas', sort: 1, average_points: 8 });
     expect(mockCalls).toContainEqual(['order', 'sort', { ascending: true }]);
   });
 });
@@ -203,6 +193,19 @@ describe('formatting', () => {
     expect(formatRating(8.44)).toBe('8.4');
     expect(formatRating(7)).toBe('7.0');
     expect(formatRating(null)).toBe('–');
+  });
+
+  it('points per game, one decimal', () => {
+    expect(formatPoints(8.5)).toBe('8.5 pts');
+    expect(formatPoints(4)).toBe('4.0 pts');
+  });
+
+  it('the numbers behind a pick, by position', () => {
+    const base = { goals: 2, assists: 1, clean_sheets: 1, games: 2, motm: 0 };
+    expect(pickLine({ ...base, position_group: 'fwd' })).toBe('2 goals · 1 assist · 2 games');
+    expect(pickLine({ ...base, position_group: 'mid' })).toBe('1 assist · 2 goals · 2 games');
+    expect(pickLine({ ...base, position_group: 'def', motm: 1 })).toBe('1 clean sheet · 1 man of the match · 2 games');
+    expect(pickLine({ ...base, position_group: 'gk', clean_sheets: 0, games: 1 })).toBe('0 clean sheets · 1 game');
   });
 
   it('the week', () => {
