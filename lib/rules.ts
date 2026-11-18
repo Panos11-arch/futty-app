@@ -38,6 +38,8 @@ export type AppRules = {
   weather_wind_kmh: number;
   weather_thunderstorms: boolean;
   weather_heat_c: number;
+  /** Saved searches a player can keep (decided 18 November). */
+  saved_searches_max: number;
 };
 
 const INTEGER_RULES = [
@@ -46,7 +48,7 @@ const INTEGER_RULES = [
   'free_cancel_minutes', 'cancel_fee_cents', 'refund_cutoff_hours', 'refund_choice_hours',
   'capture_delay_minutes', 'payment_window_minutes', 'guarantee_hold_lead_hours', 'guarantee_retry_hours',
   'collection_delay_hours', 'credit_expiry_months', 'gipedo_max_days', 'gipedo_opponent_hours',
-  'weather_rain_chance_pct', 'weather_wind_kmh', 'weather_heat_c',
+  'weather_rain_chance_pct', 'weather_wind_kmh', 'weather_heat_c', 'saved_searches_max',
 ] as const satisfies readonly (keyof AppRules)[];
 
 const BOOLEAN_RULES = ['weather_heavy_rain', 'weather_thunderstorms'] as const satisfies readonly (keyof AppRules)[];

@@ -57,6 +57,10 @@ export function routeForPushData(raw: unknown): Href {
   const postId = stringId(data, 'postId');
   if (postId) return { pathname: '/join-squad-post', params: { postId } };
 
+  // A saved search's freed slot opens Book at that venue.
+  const venueId = stringId(data, 'venueId');
+  if (data.type === 'saved_search_match' && venueId) return { pathname: '/book', params: { venueId } };
+
   const teamId = stringId(data, 'teamId');
   if (teamId) return playHref('teams', { teamId });
 

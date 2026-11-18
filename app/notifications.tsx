@@ -47,6 +47,7 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   venue_player_accepted: 'person.crop.circle.badge.plus',
   venue_player_declined: 'person.2.fill',
   venue_player_removed: 'person.2.fill',
+  saved_search_match: 'magnifyingglass',
 };
 
 function inviteIdOf(notification: AppNotification) {
@@ -132,6 +133,9 @@ async function openNotification(notification: AppNotification) {
     router.push({ pathname: '/fixture-confirmed', params: { kind: 'league', id: data.fixtureId } });
   } else if (notification.type === 'booking_slot') {
     router.push('/book');
+  } else if (notification.type === 'saved_search_match') {
+    // A freed slot opens Book at that venue; a game asking for players, its post.
+    router.push(routeForPushData({ ...data, type: notification.type }));
   } else if (notification.type === 'booking_cancelled') {
     router.push('/my-bookings');
   } else if (notification.type === 'match_payment_due' && typeof data.bookingId === 'string') {
