@@ -15,6 +15,7 @@ const mockUseSquadPosts = jest.fn();
 const mockLeave = jest.fn();
 const mockOffer = jest.fn();
 const mockCancelOffer = jest.fn();
+const mockPrices = jest.fn();
 
 let mockShare: { id: string } | null = null;
 const mockInvoke = jest.fn();
@@ -44,6 +45,7 @@ jest.mock('@/lib/squads', () => ({
   leaveSquadPost: (...args: unknown[]) => mockLeave(...args),
   offerOpposition: (...args: unknown[]) => mockOffer(...args),
   cancelOppositionOffer: (...args: unknown[]) => mockCancelOffer(...args),
+  getSquadPostPrices: (...args: unknown[]) => mockPrices(...args),
 }));
 jest.mock('@/components/match/head-to-head', () => ({ TeamHeadToHead: () => null }));
 
@@ -84,6 +86,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   params.mockSearchParams = {};
   mockMyTeams = { status: 'ready', teams: [] };
+  mockPrices.mockResolvedValue(new Map());
 });
 
 describe('Squads', () => {
@@ -120,6 +123,41 @@ describe('Squads', () => {
     expect(screen.getByLabelText('Spots left: 2')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Join and pay my share' }));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/join-squad-post', params: { postId: 'pp1' } });
+  });
+
+  it('need players: each card shows the server’s price per player, unchanged', async () => {
+    mockPrices.mockResolvedValue(
+      new Map([
+        ['pp1', { share_cents: 680, fee_cents: 80, pitch_cents: 600 }],
+        ['pp2', { share_cents: 1234, fee_cents: null, pitch_cents: null }],
+      ])
+    );
+    mockPosts = { status: 'ready', posts: [playersPost, { ...playersPost, id: 'pp2' }, { ...playersPost, id: 'pp3' }] };
+    await render(<SquadsScreen />);
+    expect(await screen.findByLabelText('Price: €6.80 each')).toBeTruthy();
+    expect(screen.getByLabelText('Price: €12.34 each')).toBeTruthy();
+    expect(mockPrices).toHaveBeenCalledWith(['pp1', 'pp2', 'pp3']);
+    // pp3 has no price from the server: its card shows none.
+    expect(screen.getAllByLabelText(/^Price:/)).toHaveLength(2);
+  });
+
+  it('need players: no price while it loads or when it fails', async () => {
+    let resolve: (value: null) => void = () => {};
+    mockPrices.mockReturnValue(new Promise((r) => (resolve = r)));
+    mockPosts = { status: 'ready', posts: [playersPost] };
+    await render(<SquadsScreen />);
+    expect(screen.queryByLabelText(/^Price:/)).toBeNull();
+    resolve(null);
+    await waitFor(() => expect(mockPrices).toHaveBeenCalled());
+    expect(screen.queryByLabelText(/^Price:/)).toBeNull();
+    expect(screen.getByLabelText('Spots left: 2')).toBeTruthy();
+  });
+
+  it('need opposition: no prices asked for', async () => {
+    params.mockSearchParams = { view: 'opposition' };
+    mockPosts = { status: 'ready', posts: [oppositionPost] };
+    await render(<SquadsScreen />);
+    expect(mockPrices).not.toHaveBeenCalled();
   });
 
   it('need players: full posts cannot be joined; my own spot can be cancelled', async () => {

@@ -61,6 +61,35 @@ export async function getSquadPostBlockNotice(postId: string): Promise<BlockNoti
   return row ? describeBlockNotice(row.venue_name) : null;
 }
 
+/** What joining a post costs, as public.squad_post_price works it out for the
+ *  signed-in player, in integer cents. pitch_cents and fee_cents are null for
+ *  the oldest bookings (the fee folded into the price): show the share only. */
+export type SquadPostPrice = { share_cents: number; fee_cents: number | null; pitch_cents: number | null };
+
+/** The most posts squad_post_prices takes at once. */
+export const SQUAD_POST_PRICES_BATCH = 50;
+
+/** Each post's price per player, by post id, for the "Need players" cards.
+ *  Posts the server can't price (or the caller can't see) are missing. Null
+ *  if any request fails, so no card shows a price that may be wrong. */
+export async function getSquadPostPrices(postIds: string[]): Promise<Map<string, SquadPostPrice> | null> {
+  const batches: string[][] = [];
+  for (let i = 0; i < postIds.length; i += SQUAD_POST_PRICES_BATCH) {
+    batches.push(postIds.slice(i, i + SQUAD_POST_PRICES_BATCH));
+  }
+  const results = await Promise.all(
+    batches.map((ids) => supabase.rpc('squad_post_prices', { p_post_ids: ids }))
+  );
+  const prices = new Map<string, SquadPostPrice>();
+  for (const { data, error } of results) {
+    if (error || !Array.isArray(data)) return null;
+    for (const row of data as (SquadPostPrice & { post_id: string })[]) {
+      prices.set(row.post_id, { share_cents: row.share_cents, fee_cents: row.fee_cents, pitch_cents: row.pitch_cents });
+    }
+  }
+  return prices;
+}
+
 /** "Looking for a Gold-level opponent" — the "need opposition" equivalent of
  *  describePlayerPostNeed above. Informational only (item 3 of the payment-
  *  auth batch) — a team below or above this level can still see and offer to

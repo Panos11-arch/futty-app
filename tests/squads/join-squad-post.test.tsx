@@ -13,7 +13,7 @@ const g = globalThis as {
   mockPresentPaymentSheet?: jest.Mock;
 };
 let mockPosts: Record<string, unknown>;
-let mockPrice: { share_cents: number; fee_cents: number | null } | null;
+let mockPrice: { share_cents: number; fee_cents: number | null; pitch_cents: number | null } | null;
 let mockShare: { id: string } | null;
 const mockReload = jest.fn();
 const mockRpc = jest.fn();
@@ -82,7 +82,7 @@ beforeEach(() => {
   g.mockInitPaymentSheet = jest.fn().mockResolvedValue({ error: null });
   g.mockPresentPaymentSheet = jest.fn().mockResolvedValue({ error: null });
   mockPosts = { status: 'ready', posts: [post] };
-  mockPrice = { share_cents: 680, fee_cents: 80 };
+  mockPrice = { share_cents: 680, fee_cents: 80, pitch_cents: 600 };
   mockShare = { id: 'share1' };
   mockBlockNotice.mockResolvedValue(null);
   mockJoin.mockResolvedValue({ error: null });
@@ -116,8 +116,25 @@ describe('Join squad post', () => {
     expect(view.toJSON()).toMatchSnapshot();
   });
 
+  it('the pitch line is the server’s pitch_cents, never the share minus the fee', async () => {
+    // Deliberately not 690 − 80: the screen must show what the server sent.
+    mockPrice = { share_cents: 690, fee_cents: 80, pitch_cents: 599 };
+    await render(<JoinSquadPostScreen />);
+    await screen.findByText('€6.90');
+    expect(screen.getByText('€5.99')).toBeTruthy();
+    expect(screen.queryByText('€6.10')).toBeNull();
+  });
+
+  it('no pitch part from the server: just the share', async () => {
+    mockPrice = { share_cents: 680, fee_cents: 80, pitch_cents: null };
+    await render(<JoinSquadPostScreen />);
+    await screen.findByText('€6.80');
+    expect(screen.queryByText('Pitch')).toBeNull();
+    expect(screen.queryByText('Service fee')).toBeNull();
+  });
+
   it('no fee: just the share, nothing added', async () => {
-    mockPrice = { share_cents: 1234, fee_cents: null };
+    mockPrice = { share_cents: 1234, fee_cents: null, pitch_cents: null };
     await render(<JoinSquadPostScreen />);
     await screen.findByText('€12.34');
     expect(screen.queryByText('Service fee')).toBeNull();

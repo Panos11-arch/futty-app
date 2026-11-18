@@ -25,6 +25,7 @@ import {
   getSquadPostBlockNotice,
   joinSquadPost,
   leaveSquadPost,
+  type SquadPostPrice,
 } from '@/lib/squads';
 import { supabase } from '@/lib/supabase';
 import { useSquadPosts } from '@/lib/use-squad-posts';
@@ -40,8 +41,7 @@ export default function JoinSquadPostScreen() {
   const posts = useSquadPosts('players');
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
-  const [shareCents, setShareCents] = useState<number | null>(null);
-  const [feeCents, setFeeCents] = useState<number | null>(null);
+  const [price, setPrice] = useState<SquadPostPrice | null>(null);
   const [blockNotice, setBlockNotice] = useState<BlockNotice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,15 +50,14 @@ export default function JoinSquadPostScreen() {
 
   useEffect(() => {
     if (!post?.venue_booking_id) return;
-    // The server works the share out (same maths as the share it creates on
-    // join); someone else's booking total isn't readable from the app.
+    // The server works the share and its parts out (same maths as the share
+    // it creates on join); someone else's booking total isn't readable from
+    // the app, and the app never subtracts one amount from another.
     supabase
       .rpc('squad_post_price', { p_post_id: post.id })
-      .maybeSingle<{ share_cents: number; fee_cents: number | null }>()
+      .maybeSingle<SquadPostPrice>()
       .then(({ data }) => {
-        if (!data) return;
-        setShareCents(data.share_cents);
-        setFeeCents(data.fee_cents);
+        if (data) setPrice(data);
       });
   }, [post?.id, post?.venue_booking_id]);
 
@@ -240,18 +239,18 @@ export default function JoinSquadPostScreen() {
           </Text>
         </View>
 
-        {shareCents !== null ? (
+        {price ? (
           <Card testID="share-price">
             <PriceBreakdown
               lines={
-                feeCents
+                price.fee_cents && price.pitch_cents !== null
                   ? [
-                      { label: 'Pitch', cents: shareCents - feeCents },
-                      { label: 'Service fee', cents: feeCents },
+                      { label: 'Pitch', cents: price.pitch_cents },
+                      { label: 'Service fee', cents: price.fee_cents },
                     ]
                   : []
               }
-              totalCents={shareCents}
+              totalCents={price.share_cents}
               totalLabel="Your share"
             />
           </Card>
