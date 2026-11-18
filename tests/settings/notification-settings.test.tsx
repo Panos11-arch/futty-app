@@ -11,6 +11,8 @@ let mockRole: 'player' | 'venue_owner' = 'player';
 const mockWrites: unknown[][] = [];
 
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
+// A9's WhatsApp section has its own tests (components/notifications/whatsapp-section.test.tsx).
+jest.mock('@/components/notifications/whatsapp-section', () => ({ WhatsAppSection: () => null }));
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ status: 'ready', profile: { id: 'me', role: mockRole } }),
 }));
