@@ -37,6 +37,7 @@ export function useVenuePage(venueId: string | undefined) {
     const paths = [
       ...page.photos.map((p) => p.storage_path),
       ...page.offers.flatMap((o) => (o.photo_path ? [o.photo_path] : [])),
+      ...(page.menu ?? []).flatMap((i) => (i.photo_path ? [i.photo_path] : [])),
     ];
     const photoUrls: Record<string, string> = {};
     if (paths.length > 0) {

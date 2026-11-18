@@ -297,6 +297,22 @@ describe('Venue dashboard: Today', () => {
     expect(push.mock.calls).toEqual([[{ pathname, params: { venueId: 'v1' } }]]);
   });
 
+  it.each([
+    ['Opening hours', '/venue-hours'],
+    ['Closures', '/venue-closures'],
+    ['Prices', '/venue-prices'],
+    ['Pitches', '/venue-pitches'],
+    ['Photos', '/venue-photos'],
+    ['Amenities', '/venue-amenities'],
+    ['Food and drink', '/venue-menu'],
+  ])('the %s setup row opens %s for this venue (P6e)', async (label, pathname) => {
+    const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
+    push.mockClear();
+    await open();
+    await fireEvent.press(within(screen.getByTestId('venue-setup')).getByText(label));
+    expect(push.mock.calls).toEqual([[{ pathname, params: { venueId: 'v1' } }]]);
+  });
+
   it('keeps the Payouts row with what it is for (P4d), opening the same screen', async () => {
     const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
     push.mockClear();

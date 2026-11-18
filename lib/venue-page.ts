@@ -62,6 +62,19 @@ export type VenuePageData = {
     available_to: string | null;
     available_weekdays: number[] | null;
   }[];
+  /** P6e: the active food and drink items, by category (none last), then the staff's order. */
+  menu: {
+    id: string;
+    name: string;
+    category: string | null;
+    description: string | null;
+    price_cents: number | null;
+    offer_price_cents: number | null;
+    is_post_match_offer: boolean;
+    offer_text: string | null;
+    photo_path: string | null;
+    dietary_tags: string[] | null;
+  }[];
 };
 
 /** Photo files are in this private bucket; the app shows them through signed URLs. */
@@ -153,4 +166,24 @@ export function offerWhen(offer: Pick<VenuePageData['offers'][number], 'availabl
 /** A pitch in one line: "5-a-side · Artificial grass · Indoor". */
 export function pitchSummary(pitch: VenuePageData['pitches'][number]): string {
   return [pitch.size, pitch.surface, pitch.indoor ? 'Indoor' : 'Outdoor'].filter(Boolean).join(' · ');
+}
+
+export type MenuGroup<T> = { title: string | null; items: T[] };
+
+/** Items in the server's order, grouped by category; items without one come
+ *  last under "Other", or untitled when no item has a category. */
+export function groupMenu<T extends { category: string | null }>(items: T[]): MenuGroup<T>[] {
+  const groups: MenuGroup<T>[] = [];
+  const loose: T[] = [];
+  for (const item of items) {
+    if (item.category === null) {
+      loose.push(item);
+      continue;
+    }
+    const last = groups[groups.length - 1];
+    if (last && last.title === item.category) last.items.push(item);
+    else groups.push({ title: item.category, items: [item] });
+  }
+  if (loose.length > 0) groups.push({ title: groups.length > 0 ? 'Other' : null, items: loose });
+  return groups;
 }

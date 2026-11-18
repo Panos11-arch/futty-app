@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 
 import { loadWithFile } from '@/components/ui/test-utils';
@@ -9,6 +9,8 @@ import type { VenuePageData } from '@/lib/venue-page';
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 34, left: 0 }),
 }));
+// The view only formats; offerPrices' module also holds A8's server calls.
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(() => Promise.resolve()), ImpactFeedbackStyle: { Light: 'light' } }));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
@@ -36,6 +38,7 @@ const bare: VenuePageData = {
   prices: [],
   hours: [],
   offers: [],
+  menu: [],
 };
 
 const full: VenuePageData = {
@@ -103,7 +106,7 @@ describe('VenuePageView', () => {
     expect(screen.queryByTestId('venue-gallery-photo')).toBeNull();
     expect(screen.getByText('Nuevo Campo')).toBeTruthy();
     expect(screen.getByText('2 Aristidou Street, Latsia, Nicosia (Strovolos)')).toBeTruthy();
-    for (const section of ['Amenities', 'Pitches', 'Prices', 'After the game']) {
+    for (const section of ['Amenities', 'Pitches', 'Prices', 'Food and drink', 'After the game']) {
       expect(screen.queryByText(section)).toBeNull();
     }
     expect(screen.getByText('Cancellation')).toBeTruthy();
@@ -154,6 +157,69 @@ describe('VenuePageView', () => {
     expect(p.onDirections).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole('button', { name: 'Book' }));
     expect(p.onBook).toHaveBeenCalledTimes(1);
+  });
+
+  it('Food and drink (P6e): the active items by category, an offer price with the normal price struck through', async () => {
+    const dish = (over: Partial<VenuePageData['menu'][number]>): VenuePageData['menu'][number] => ({
+      id: 'm',
+      name: 'Item',
+      category: null,
+      description: null,
+      price_cents: 300,
+      offer_price_cents: null,
+      is_post_match_offer: false,
+      offer_text: null,
+      photo_path: null,
+      dietary_tags: null,
+      ...over,
+    });
+    await render(
+      <VenuePageView
+        state={ready(
+          {
+            ...bare,
+            menu: [
+              dish({ id: 'm1', name: 'Frappé', category: 'Drinks', price_cents: 350 }),
+              dish({
+                id: 'm2',
+                name: 'Keo beer',
+                category: 'Drinks',
+                price_cents: 400,
+                offer_price_cents: 300,
+                is_post_match_offer: true,
+                offer_text: 'After your game',
+              }),
+              dish({
+                id: 'm3',
+                name: 'Halloumi wrap',
+                category: 'Food',
+                description: 'With tomato and mint',
+                price_cents: 650,
+                dietary_tags: ['vegetarian', 'local'],
+                photo_path: 'v1/items/wrap.jpg',
+              }),
+              dish({ id: 'm4', name: 'Ice cream', price_cents: 250 }),
+            ],
+          },
+          { 'v1/items/wrap.jpg': 'https://signed/wrap' },
+        )}
+        {...props()}
+      />,
+    );
+    const section = screen.getByTestId('venue-menu');
+    expect(within(section).getByText('Food and drink')).toBeTruthy();
+    expect(within(section).getByText('Drinks')).toBeTruthy();
+    expect(within(section).getByText('Food')).toBeTruthy();
+    expect(within(section).getByText('Other')).toBeTruthy();
+    expect(screen.getByTestId('venue-menu-m1')).toHaveTextContent(/Frappé.*€3\.50/);
+    expect(within(screen.getByTestId('venue-menu-m2')).getByText('€3.00')).toBeTruthy();
+    const was = within(screen.getByTestId('venue-menu-m2')).getByLabelText('was €4.00');
+    expect(was).toHaveTextContent('€4.00');
+    expect(was).toHaveStyle({ textDecorationLine: 'line-through' });
+    expect(screen.getByText('After your game')).toBeTruthy();
+    expect(screen.getByTestId('venue-menu-m3')).toHaveTextContent(/With tomato and mint.*vegetarian · local.*€6\.50/);
+    expect(within(screen.getByTestId('venue-menu-m3')).getByLabelText('Halloumi wrap')).toBeTruthy();
+    expect(screen.getByTestId('venue-menu-m4')).toHaveTextContent(/Ice cream.*€2\.50/);
   });
 
   it('the cancellation lines follow the server\'s numbers', async () => {
