@@ -6,6 +6,10 @@
 -- saved_searches_tick, called from venue_notifications_tick, matches it.
 begin;
 
+-- Events earlier test files left in the queue are matched first, so only
+-- this file's own events count below.
+select public.saved_searches_tick();
+
 -- tests.save_search(...): saves a search as p_profile, the way the app does.
 create or replace function tests.save_search(
   p_profile uuid,
