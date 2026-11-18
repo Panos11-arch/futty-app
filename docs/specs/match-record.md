@@ -131,6 +131,22 @@ Skill level, ratings and competitive matches (05 section 4; 12 section 2, rows 2
    - It is locked as for `set_match_player_side` (`sides_locked`).
 6. **XP is replaced by the level.** New matches never award or take XP. The app shows the level instead: one decimal, a "provisional" tag until 5 competitive matches, and the reliability %. `profiles.xp` and `teams.xp` stay, because legacy screens and the old 3-attempt score functions (which still take 20 XP for repeated disputes on old matches) read them. They are dropped once nothing reads them.
 
+## 1g. Decisions (18 November, Anghelo, A7a; to confirm with Panos)
+
+Season stats, leaderboards and team of the week (05 sections 3 and 8; 06 section 7, A7).
+
+1. **Leaderboard minimum: 5 appearances (to confirm with Panos).** A player is on a venue's or a city's leaderboard for a year only with 5 or more appearances there that year (`stats_min_appearances()`, shown in the app). Five is about a month of weekly games: enough that one lucky night doesn't top the table.
+2. **Seasons.** The calendar year in Cyprus time for every confirmed match (league games included, so a player's year is complete); a league is also its own season; and all time. A match at 00:30 on 1 January in Cyprus belongs to the new year.
+3. **Forfeits in stats.** As in form (1b.3): the forfeiting side gets a loss and the other side a win, for every spot holder with or without a check-in, with no goals. A forfeit is never a clean sheet. Closes section 10, question 1, "whether a forfeit counts as a win in the winner's stats" (yes).
+4. **Team of the week.**
+   - Picked once a week by `match_jobs_tick`, from Monday 09:00 Cyprus time, for the week before (Monday 00:00 to Monday 00:00, Cyprus time). Sunday night's games count only if their ratings window has closed by then (`confirmed_at + 24 hours`).
+   - One team per venue with 4 or more confirmed matches that week; one per city (`venues.city`, compared without case or spaces) for the other venues' matches; one per league with matches that week. A venue with no city and fewer than 4 matches is left out. A scope where nobody has a match rating gets no team.
+   - Candidates: players with a match rating that week (3 or more ratings, 1f.4). Score: the average of their match ratings that week. Ties: more men of the match that week, then more goals, then a fixed order.
+   - A player's position is the one from their latest rated match that week: `gk` keeper, `d…` defender, `m…` midfielder, `f…` forward, none = outfield (1e.4).
+   - Five players, as in 5-a-side: the best keeper, the best defender, the best midfielder and the best forward (each only if there is one), then the best of the others who aren't keepers until there are five.
+   - Each player picked gets `team_of_the_week` (can be turned off; "Your games"), once per team they are in.
+5. **What is shown.** Season averages and team-of-the-week averages are aggregates of match ratings that the match page already shows to everyone signed in (1f.4); no individual rating or vote is ever shown.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
@@ -472,6 +488,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `followed_team_match` | match (A3): "X play Y tonight" | |
 | `followed_team_result` | match (A3): "Result: X 5–3 Y" | |
 | `followed_team_opponent_wanted` | match (A3): "X want an opponent on Thursday" | |
+| `team_of_the_week` | match (A7): "You're in the team of the week: <venue, city or league>." | |
 
 `booking_spot_released` replaces `spot_released` from the A1 prompt (decision 6): `spot_released` isn't allowed. A later prompt that needs a new type adds it to this list in the same PR.
 
@@ -499,6 +516,19 @@ The A3b views (signed-in players read them; signed-out users can't):
 | `head_to_head` | `team_id`, `opponent_team_id`, `played`, `won`, `drawn`, `lost`, `goals_for`, `goals_against`, `last_3` (`[{matchId, kickoffAt, result, goalsFor, goalsAgainst}]`, newest first) |
 | `player_teammates` | `profile_id` (always the caller), `teammate_profile_id`, `matches_together`, `last_played_at` |
 
+The A7a views and tables (decision 1g; signed-in players read them, signed-out users can't):
+
+| View or table | Columns |
+| --- | --- |
+| `player_season_stats` | `profile_id`, `season_kind` (`year`, `league`, `all`), `season_year`, `league_id`, `appearances`, `won`, `drawn`, `lost`, `win_pct`, `goals`, `assists`, `motm`, `average_rating`, `rated_matches`, `level_start`, `level_end` |
+| `team_season_stats` | `team_id`, `season_kind`, `season_year`, `league_id`, `played`, `won`, `drawn`, `lost`, `win_pct`, `goals_for`, `goals_against`, `clean_sheets`, `longest_win_run`, `motm`, `average_rating` |
+| `team_recent_matches` | as `player_recent_matches`, by `team_id` |
+| `stats_leaderboards` | `scope` (`venue`, `city`), `scope_key` (venue id or city), `scope_name`, `season_year`, `profile_id`, `appearances`, `goals`, `motm`, `won`, `win_pct`, `min_appearances`, `goals_rank`, `motm_rank`, `win_rate_rank` |
+| `team_of_the_week` | `id`, `week_start` (a Monday), `scope` (`venue`, `city`, `league`), `venue_id`, `city_key` (a city team's city, and a venue team's venue's city), `league_id`, `name`, `matches` |
+| `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `position_group`, `sort` (1–5), `average_rating`, `rated_matches`, `motm`, `goals` |
+
+`match_rating_shown(match, player)` returns a player's match rating once the match page shows it (null otherwise); `stats_min_appearances()` is decision 1g.1.
+
 ## 8. Contract 2: what the match code needs from `booking_participants`
 
 When Panos builds `booking_participants` (06 section 4), the match code needs, per spot: `booking_id`, `profile_id` or `guest_name`, `is_venue_provided`, whether the spot is still held, and the share id (if any). A venue-provided player plays (13) and gets a `match_players` row as a guest unless they have a profile. Until it exists, decision 1 applies.
@@ -521,7 +551,7 @@ Each one is decided with Panos before the prompt that needs it, and written into
 1. **Forfeits:**
    - who may record a `no_show` forfeit (venue staff, the other captain, or both) and how it is proved (check-ins?);
    - whether a forfeit has a score (it is null for now);
-   - whether a forfeit counts as a win in the winner's stats;
+   - ~~whether a forfeit counts as a win in the winner's stats~~: decided 18 November, yes (decision 1g.3, to confirm with Panos);
    - what happens to the match when a Gipedo Pano team pulls out more than 6 hours before kickoff (13 takes €1 per player; is the match `void`?).
 2. ~~Check-in window~~: decided 10 November (decision 1a.4).
 3. ~~Ratings window~~: decided 17 November, 24 hours from `confirmed_at` (decision 1f.4).
