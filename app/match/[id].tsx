@@ -244,6 +244,7 @@ export default function MatchScreen() {
                     matchId={pageData!.matchId}
                     ratings={ratings.ratings}
                     names={ratings.names}
+                    kits={ratings.kits}
                     roster={rosterState}
                     onRetryRoster={reloadRoster}
                     viewerId={result.viewerId}

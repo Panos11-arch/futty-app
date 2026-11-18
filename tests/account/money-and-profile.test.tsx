@@ -198,6 +198,25 @@ describe('Profile', () => {
     expect(screen.queryByRole('button', { name: 'Set your starting level' })).toBeNull();
   });
 
+  it('A12: the header shows the saved kit, and tapping the avatar opens Edit avatar', async () => {
+    mockProfile = {
+      status: 'ready',
+      profile: { ...profile, avatar_style: 'kit', avatar_kit_colour: 'kitSky', avatar_number: 11 },
+    };
+    await render(<ProfileScreen />);
+    expect(screen.getByLabelText('Ann Lee, shirt 11')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Edit avatar' }));
+    expect(router.push).toHaveBeenLastCalledWith('/edit-avatar');
+  });
+
+  it("A12: another player's card shows their kit but can't be edited", async () => {
+    mockLevel = { status: 'ready', level: null };
+    const other = { ...profile, avatar_style: 'kit', avatar_kit_colour: 'kitBlack', avatar_number: 5 };
+    await render(<ProfileCard profile={other as never} editable={false} />);
+    expect(screen.getByLabelText('Ann Lee, shirt 5')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit avatar' })).toBeNull();
+  });
+
   it('keeps the same navigation and sign out', async () => {
     mockProfile = { status: 'ready', profile: { ...profile, role: 'venue_owner' } };
     await render(<ProfileScreen />);

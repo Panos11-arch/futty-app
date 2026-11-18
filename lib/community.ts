@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { AvatarFields } from '@/lib/avatar';
 
 export type PlayerListing = {
   id: string;
@@ -6,7 +7,7 @@ export type PlayerListing = {
   full_name: string | null;
   /** Only present when the player has opted in via show_phone_publicly. */
   phone: string | null;
-};
+} & Partial<AvatarFields>;
 
 export type TeamListing = {
   id: string;

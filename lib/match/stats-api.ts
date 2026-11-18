@@ -5,6 +5,7 @@ import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { getPublicNames } from '@/lib/match/profile-api';
 import type { PlayerRecentMatchRow } from '@/lib/match/types';
 import { supabase } from '@/lib/supabase';
+import type { AvatarKit } from '@/lib/avatar';
 
 /** 'year' = a calendar year in Cyprus time; 'all' = all time (decision 1g.2). */
 export type SeasonChoice = { kind: 'year'; year: number } | { kind: 'all' };
@@ -51,6 +52,8 @@ export type LeaderboardRow = {
   motm: number;
   win_pct: number;
   rank: number;
+  /** A12: the player's kit avatar; null shows initials. */
+  kit?: AvatarKit | null;
 };
 
 /** One team of the week for all of Futty (decision 1g.4). */
@@ -65,6 +68,8 @@ export type PositionGroup = 'gk' | 'def' | 'mid' | 'fwd';
 export type TeamOfTheWeekPlayer = {
   profile_id: string;
   name: string;
+  /** A12: the player's kit avatar; null shows initials. */
+  kit?: AvatarKit | null;
   position_group: PositionGroup;
   sort: number;
   /** Average points per game that week, from the server. */
@@ -201,7 +206,7 @@ export async function getLeaderboard(scope: LeaderboardScope, year: number, boar
     .limit(limit);
   if (error) return { rows: [] as LeaderboardRow[], error };
   const raw = (data as unknown as LeaderboardRaw[] | null) ?? [];
-  const { names, error: namesError } = await getPublicNames(raw.map((r) => r.profile_id));
+  const { names, kits, error: namesError } = await getPublicNames(raw.map((r) => r.profile_id));
   const rows: LeaderboardRow[] = raw.map((r) => ({
     profile_id: r.profile_id,
     name: names[r.profile_id] ?? 'Player',
@@ -210,6 +215,7 @@ export async function getLeaderboard(scope: LeaderboardScope, year: number, boar
     motm: r.motm,
     win_pct: r.win_pct,
     rank: r[rank] ?? 0,
+    kit: kits[r.profile_id] ?? null,
   }));
   return { rows, error: namesError };
 }
@@ -233,9 +239,12 @@ export async function getTeamOfTheWeekPlayers(teamOfTheWeekId: string) {
     .eq('team_of_the_week_id', teamOfTheWeekId)
     .order('sort', { ascending: true });
   if (error) return { players: [] as TeamOfTheWeekPlayer[], error };
-  const raw = (data as Omit<TeamOfTheWeekPlayer, 'name'>[] | null) ?? [];
-  const { names, error: namesError } = await getPublicNames(raw.map((r) => r.profile_id));
-  return { players: raw.map((r) => ({ ...r, name: names[r.profile_id] ?? 'Player' })), error: namesError };
+  const raw = (data as Omit<TeamOfTheWeekPlayer, 'name' | 'kit'>[] | null) ?? [];
+  const { names, kits, error: namesError } = await getPublicNames(raw.map((r) => r.profile_id));
+  return {
+    players: raw.map((r) => ({ ...r, name: names[r.profile_id] ?? 'Player', kit: kits[r.profile_id] ?? null })),
+    error: namesError,
+  };
 }
 
 /** "8.4": a rating with one decimal, as the match page shows it. */

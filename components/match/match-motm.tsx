@@ -49,6 +49,9 @@ export function MatchMotm({ page, roster, onRetryRoster, viewerId, onVoted, now 
   }
 
   const view = motmView(page, roster?.status === 'ready' ? roster.roster : null, viewerId, now);
+  // Winners come from the match page; their kits come from the roster already loaded.
+  const kitOf = (profileId: string | null) =>
+    (profileId && roster?.status === 'ready' ? roster.roster.find((r) => r.profileId === profileId)?.kit : null) ?? null;
 
   switch (view.kind) {
     case 'none':
@@ -67,7 +70,7 @@ export function MatchMotm({ page, roster, onRetryRoster, viewerId, onVoted, now 
             <ListRow
               key={w.playerId}
               title={playerName(w)}
-              leading={{ avatar: { name: playerName(w) } }}
+              leading={{ avatar: { name: playerName(w), kit: kitOf(w.profileId) } }}
               trailing={
                 <Text variant="callout" tone="inkMuted" tabular>
                   {votesText(w.votes)}
@@ -123,7 +126,7 @@ export function MatchMotm({ page, roster, onRetryRoster, viewerId, onVoted, now 
               <ListRow
                 key={p.id}
                 title={p.name}
-                leading={{ avatar: { name: p.name } }}
+                leading={{ avatar: { name: p.name, kit: p.kit } }}
                 trailing={
                   picked === p.id ? (
                     <Text variant="callout" tone="brand">

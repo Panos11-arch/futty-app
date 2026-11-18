@@ -8,6 +8,7 @@ import type { Loadable } from '@/lib/match/use-match-result';
 import type { RosterPlayer } from '@/lib/match/page';
 import type { ResultMatch } from '@/lib/match/result';
 import type { Side } from '@/lib/match/types';
+import type { AvatarKit } from '@/lib/avatar';
 
 /** `public.player_levels` as the app shows it. */
 export type PlayerLevel = {
@@ -143,7 +144,7 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
   },
 ];
 
-export type RateablePlayer = { id: string; name: string; rated: boolean };
+export type RateablePlayer = { id: string; name: string; rated: boolean; kit?: AvatarKit | null };
 
 export type RatingsView =
   /** Not confirmed, or a forfeit: no ratings at all. */
@@ -169,7 +170,7 @@ export function ratingsView(ratings: MatchRatings, roster: RosterPlayer[] | null
   const rated = new Set(ratings.myRatings.map((r) => r.playerId));
   const players = roster
     .filter((p) => played(p) && p.profileId !== viewerId)
-    .map((p) => ({ id: p.id, name: p.name, rated: rated.has(p.id) }));
+    .map((p) => ({ id: p.id, name: p.name, rated: rated.has(p.id), kit: p.kit ?? null }));
   return { kind: 'rate', players, closesAt };
 }
 

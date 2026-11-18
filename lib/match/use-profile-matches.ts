@@ -11,6 +11,7 @@ import {
 } from '@/lib/match/profile-api';
 import type { FormResult, HeadToHeadRow, PlayerRecentMatchRow } from '@/lib/match/types';
 import { useLoad } from '@/lib/match/use-match-result';
+import type { AvatarKit } from '@/lib/avatar';
 
 export function usePlayerForm(profileId: string | null | undefined) {
   const { state, reload } = useLoad<{ form: FormResult[] }>(
@@ -65,16 +66,20 @@ export function useHeadToHead(teamId: string | null | undefined, opponentTeamId:
   return { ...state, reload };
 }
 
-export type NamedTeammate = Teammate & { name: string };
+export type NamedTeammate = Teammate & { name: string; kit?: AvatarKit | null };
 
 /** The signed-in player's "players you play with most", with names. */
 export function useMyTeammates(limit = 5) {
   const { state, reload } = useLoad<{ teammates: NamedTeammate[] }>(async () => {
     const { rows, error } = await getMyTeammates(limit);
     if (error) return { error: error.message };
-    const { names, error: namesError } = await getPublicNames(rows.map((r) => r.teammate_profile_id));
+    const { names, kits, error: namesError } = await getPublicNames(rows.map((r) => r.teammate_profile_id));
     if (namesError) return { error: namesError.message };
-    return { value: { teammates: rows.map((r) => ({ ...r, name: names[r.teammate_profile_id] ?? 'Player' })) } };
+    return { value: { teammates: rows.map((r) => ({
+          ...r,
+          name: names[r.teammate_profile_id] ?? 'Player',
+          kit: kits[r.teammate_profile_id] ?? null,
+        })) } };
   }, String(limit));
   return { ...state, reload };
 }

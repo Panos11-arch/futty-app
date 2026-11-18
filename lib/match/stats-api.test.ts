@@ -131,8 +131,8 @@ describe('leaderboards', () => {
     const scope: LeaderboardScope = { scope: 'city', scope_key: 'nicosia', scope_name: 'Nicosia' };
     const { rows } = await getLeaderboard(scope, 2026, 'win_rate');
     expect(rows).toEqual([
-      { profile_id: 'b', name: 'Player', appearances: 5, goals: 3, motm: 0, win_pct: 100, rank: 1 },
-      { profile_id: 'a', name: 'Ann', appearances: 6, goals: 3, motm: 1, win_pct: 80, rank: 2 },
+      { profile_id: 'b', name: 'Player', appearances: 5, goals: 3, motm: 0, win_pct: 100, rank: 1, kit: null },
+      { profile_id: 'a', name: 'Ann', appearances: 6, goals: 3, motm: 1, win_pct: 80, rank: 2, kit: null },
     ]);
     expect(mockCalls).toContainEqual(['order', 'win_rate_rank', { ascending: true }]);
     expect(mockCalls).toContainEqual(['eq', 'scope_key', 'nicosia']);

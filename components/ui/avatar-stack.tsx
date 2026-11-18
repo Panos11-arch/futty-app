@@ -3,8 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Text } from '@/components/ui/text';
 import { colors, radius, space } from '@/constants/futty-theme';
+import type { AvatarKit } from '@/lib/avatar';
 
-export type AvatarStackPerson = { id: string; name: string; photoUrl?: string | null };
+export type AvatarStackPerson = { id: string; name: string; photoUrl?: string | null; kit?: AvatarKit | null };
 
 export type AvatarStackProps = {
   people: AvatarStackPerson[];
@@ -21,7 +22,7 @@ export function AvatarStack({ people, max = 4, size = 32 }: AvatarStackProps) {
     <View accessible accessibilityLabel={label} style={styles.row}>
       {shown.map((person, i) => (
         <View key={person.id} style={i > 0 && styles.overlap}>
-          <Avatar name={person.name} photoUrl={person.photoUrl} size={size} ringed />
+          <Avatar name={person.name} photoUrl={person.photoUrl} kit={person.kit} size={size} ringed />
         </View>
       ))}
       {overflow > 0 ? (

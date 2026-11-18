@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { AvatarFields } from '@/lib/avatar';
 
 export const ROSTER_SIZE_PRESETS = [5, 7, 9, 11];
 
@@ -45,13 +46,14 @@ export function hasTeamPremium(team: Team, format: string) {
   return true;
 }
 
+/** get_team_roster: avatar fields added by A12 (pay_profile_avatar). */
 export type RosterMember = {
   profile_id: string;
   username: string | null;
   full_name: string | null;
   role: 'captain' | 'player' | 'substitute' | string;
   joined_at: string;
-};
+} & Partial<AvatarFields>;
 
 export async function createTeam(
   name: string,

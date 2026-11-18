@@ -71,7 +71,7 @@ export function LeaderboardList({
             testID="leaderboard-row"
             title={row.name}
             subtitle={games(row.appearances)}
-            leading={{ avatar: { name: row.name } }}
+            leading={{ avatar: { name: row.name, kit: row.kit } }}
             accessibilityLabel={`${row.rank}. ${row.name}, ${boardValue(row, board)}`}
             trailing={
               <View style={styles.trailing}>

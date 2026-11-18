@@ -148,45 +148,80 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
           }
         >
           <View
-            accessibilityLabel="Ann Lee"
-            accessibilityRole="image"
-            accessible={true}
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#F4F5F7",
-                  "borderRadius": 999,
-                  "justifyContent": "center",
-                  "overflow": "hidden",
-                },
-                {
-                  "height": 56,
-                  "width": 56,
-                },
-                false,
-              ]
+            accessibilityLabel="Edit avatar"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
             }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={false}
           >
-            <Text
-              allowFontScaling={false}
+            <View
+              accessibilityLabel="Ann Lee"
+              accessibilityRole="image"
+              accessible={true}
               style={
                 [
                   {
-                    "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "alignItems": "center",
+                    "backgroundColor": "#F4F5F7",
+                    "borderRadius": 999,
+                    "justifyContent": "center",
+                    "overflow": "hidden",
                   },
                   {
-                    "color": "#5B6470",
+                    "height": 56,
+                    "width": 56,
                   },
                   false,
-                  undefined,
                 ]
               }
             >
-              AL
-            </Text>
+              <Text
+                allowFontScaling={false}
+                style={
+                  [
+                    {
+                      "fontFamily": "Inter_500Medium",
+                      "fontSize": 12,
+                      "lineHeight": 16,
+                    },
+                    {
+                      "color": "#5B6470",
+                    },
+                    false,
+                    undefined,
+                  ]
+                }
+              >
+                AL
+              </Text>
+            </View>
           </View>
           <View
             style={

@@ -76,7 +76,7 @@ describe('getMatchRoster', () => {
     mockAnswers.match_attendance = { data: [{ profile_id: 'u1' }], error: null };
     mockAnswers.get_public_profiles = {
       data: [
-        { id: 'u1', username: 'one', full_name: 'User One' },
+        { id: 'u1', username: 'one', full_name: 'User One', avatar_style: 'kit', avatar_kit_colour: 'kitSky', avatar_number: 3 },
         { id: 'u3', username: 'three', full_name: null },
       ],
       error: null,
@@ -84,9 +84,9 @@ describe('getMatchRoster', () => {
     const { roster, error } = await getMatchRoster('m1');
     expect(error).toBeNull();
     expect(roster).toEqual([
-      { id: 'p1', side: 'a', profileId: 'u1', guestName: null, name: 'User One', leftAt: null, checkedIn: true },
-      { id: 'p2', side: 'a', profileId: null, guestName: 'Kostas', name: 'Kostas', leftAt: null, checkedIn: false },
-      { id: 'p3', side: 'b', profileId: 'u3', guestName: null, name: 'three', leftAt: '2026-11-14T17:00:00Z', checkedIn: false },
+      { id: 'p1', side: 'a', profileId: 'u1', guestName: null, name: 'User One', leftAt: null, checkedIn: true, kit: { colour: 'kitSky', number: 3 } },
+      { id: 'p2', side: 'a', profileId: null, guestName: 'Kostas', name: 'Kostas', leftAt: null, checkedIn: false, kit: null },
+      { id: 'p3', side: 'b', profileId: 'u3', guestName: null, name: 'three', leftAt: '2026-11-14T17:00:00Z', checkedIn: false, kit: null },
     ]);
     expect(mockCalls).toContainEqual(['rpc', 'get_public_profiles', { p_profile_ids: ['u1', 'u3'] }]);
   });

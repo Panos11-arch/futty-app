@@ -59,7 +59,7 @@ export function TeamOfTheWeekCard({
               testID="team-of-the-week-player"
               title={p.name}
               subtitle={`${POSITION_LABELS[p.position_group]} · ${pickLine(p)}`}
-              leading={{ avatar: { name: p.name } }}
+              leading={{ avatar: { name: p.name, kit: p.kit } }}
               accessibilityLabel={`${p.name}, ${POSITION_LABELS[p.position_group]}, ${pickLine(p)}, ${formatPoints(p.average_points)} per game`}
               trailing={
                 <Text variant="headline" tabular>

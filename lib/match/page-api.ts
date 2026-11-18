@@ -34,7 +34,7 @@ export async function getMatchRoster(matchId: string): Promise<{ roster: RosterP
   const rows = (players.data ?? []) as PlayerRow[];
   const checkedIn = new Set(((attendance.data ?? []) as { profile_id: string }[]).map((a) => a.profile_id));
   const ids = rows.map((r) => r.profile_id).filter((id): id is string => id !== null);
-  const { names, error: namesError } = await getPublicNames(ids);
+  const { names, kits, error: namesError } = await getPublicNames(ids);
   if (namesError) return { roster: [], error: namesError };
 
   return {
@@ -46,6 +46,7 @@ export async function getMatchRoster(matchId: string): Promise<{ roster: RosterP
       name: (r.profile_id ? names[r.profile_id] : r.guest_name) ?? 'Player',
       leftAt: r.left_at,
       checkedIn: r.profile_id !== null && checkedIn.has(r.profile_id),
+      kit: r.profile_id ? (kits[r.profile_id] ?? null) : null,
     })),
     error: null,
   };

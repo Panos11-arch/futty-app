@@ -23,6 +23,7 @@ import { supabase } from '@/lib/supabase';
 import { getTeamRoster, type RosterMember, type Team } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { xpTier } from '@/lib/xp-tier';
+import { avatarKit } from '@/lib/avatar';
 
 type State =
   | { status: 'loading' }
@@ -149,7 +150,7 @@ export default function TeamProfileScreen() {
                       <ListRow
                         key={member.profile_id}
                         title={name}
-                        leading={{ avatar: { name } }}
+                        leading={{ avatar: { name, kit: avatarKit(member) } }}
                         trailing={
                           <Text variant="caption" tone="inkMuted">
                             {capitalise(member.role)}
