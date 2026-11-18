@@ -31,14 +31,18 @@ function clean(text: string): string {
 }
 
 /** The page's text blocks (h2, p, li, div) inside <main>, in order. The h1 is
- *  the page title, which the app shows in its navigation bar instead. */
+ *  the page title, which the app shows in its navigation bar instead. The
+ *  privacy pages' "On this website" section (<section class="website-only">)
+ *  is about the website, not the app: it is left out here and checked below. */
 function sitePage(page: string): string {
   return readFileSync(join(__dirname, '..', '..', 'site', page, 'index.html'), 'utf8');
 }
 
 function siteBlocks(page: string): string[] {
   const source = sitePage(page);
-  const main = source.slice(source.indexOf('<main>'), source.indexOf('</main>'));
+  const main = source
+    .slice(source.indexOf('<main>'), source.indexOf('</main>'))
+    .replace(/<section class="website-only"[\s\S]*?<\/section>/, '');
   return [...main.matchAll(/<(h2|p|li|div)\b[^>]*>([\s\S]*?)<\/\1>/g)].map((m) =>
     clean(
       m[2]
@@ -122,6 +126,26 @@ describe('the English and Greek pages link to each other', () => {
   it('give support@futty.app as the contact', () => {
     for (const page of ['privacy', 'el/privacy', 'terms', 'el/terms']) {
       expect(sitePage(page)).toContain('<a href="mailto:support@futty.app">support@futty.app</a>');
+    }
+  });
+});
+
+describe('the website-only section', () => {
+  it.each([
+    ['privacy', 'On this website'],
+    ['el/privacy', 'Σε αυτόν τον ιστότοπο'],
+  ])('%s has it, naming the website data and its providers', (page, heading) => {
+    const section = sitePage(page).match(/<section class="website-only"[\s\S]*?<\/section>/)?.[0] ?? '';
+    expect(section).toContain(`<h2 id="on-this-website">${heading}</h2>`);
+    expect(section).toContain('Formspree');
+    expect(section).toContain('Google Analytics');
+    // Four rows of website data: waitlist, venue form, analytics with consent, browser settings.
+    expect(section.match(/<tr><td\b/g)).toHaveLength(4);
+  });
+
+  it('is on the privacy pages only', () => {
+    for (const page of ['terms', 'el/terms', 'support', 'cookies']) {
+      expect(sitePage(page)).not.toContain('website-only');
     }
   });
 });

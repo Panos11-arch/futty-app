@@ -1,117 +1,90 @@
-/* Futty site: mint (#00FF9C) on black. Plain CSS, no build step. */
+/* Futty site: the pages other than the homepage (privacy, terms, their Greek
+   versions, cookies, support). Header and footer match the homepage
+   (site/index.html, whose own styles are inline). Plain CSS, no build step.
+   Fonts are served from site/fonts: no font service is contacted. */
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-latin-wght-normal.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-latin-ext-wght-normal.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+1E00-1E9F,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url(/fonts/inter-greek-wght-normal.woff2) format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+
 :root {
-  --mint: #00FF9C;
-  --black: #000000;
-  --surface: #111111;
-  --line: #262626;
+  --green: #00FF9C;      /* the logo green */
+  --green-ink: #03140C;  /* text on the green */
+  --night: #05100B;
+  --surface: #0B1A13;
+  --line: rgba(255,255,255,.12);
   --text: #FFFFFF;
-  --muted: #A3A3A3;
+  --muted: rgba(255,255,255,.72);
 }
 
+[hidden] { display: none !important; }
 * { box-sizing: border-box; }
-
+html, body { margin: 0; }
 body {
-  margin: 0;
-  background: var(--black);
+  background: var(--night);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
+a { color: var(--green); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+img, svg { display: block; max-width: 100%; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 
-a { color: var(--mint); }
-a:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+/* Header, as on the homepage */
+.site-header { position: sticky; top: 0; z-index: 10; background: rgba(5,16,11,.92); border-bottom: 1px solid var(--line); backdrop-filter: blur(10px); }
+.site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+.brandmark { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 900; font-size: 22px; letter-spacing: -.01em; text-decoration: none; }
+.brandmark img { height: 32px; width: auto; }
+.site-nav { display: flex; align-items: center; gap: 24px; font-size: 15px; font-weight: 500; }
+.site-nav a { color: #fff; text-decoration: none; opacity: .9; }
+.site-nav a:hover { color: var(--green); opacity: 1; }
+@media (max-width: 760px) { .site-nav a.lnk { display: none; } }
 
-.site-header,
-main,
-.site-footer {
-  max-width: 760px;
-  margin: 0 auto;
-  padding-left: 20px;
-  padding-right: 20px;
-}
-
-.site-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--line);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text);
-  font-weight: 800;
-  font-size: 20px;
-  text-decoration: none;
-}
-.brand img { border-radius: 8px; }
-
-nav { display: flex; gap: 18px; }
-nav a { color: var(--text); text-decoration: none; font-weight: 600; }
-nav a:hover { color: var(--mint); }
-
-main { padding-top: 32px; padding-bottom: 64px; }
-
-h1 { font-size: 32px; line-height: 1.2; margin: 0 0 6px; }
-h2 { font-size: 20px; margin: 36px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+/* Page content */
+main { max-width: 780px; margin: 0 auto; padding: 40px 24px 72px; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; letter-spacing: -.02em; margin: 0 0 8px; }
+h2 { font-size: 21px; margin: 36px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .card h2 { margin-top: 0; border-bottom: 0; padding-bottom: 0; }
-
 .updated, .lead { color: var(--muted); }
 .updated { font-size: 14px; margin-bottom: 28px; }
 .lead { font-size: 18px; }
-
 ul { padding-left: 22px; }
 li { margin-bottom: 8px; }
-li::marker { color: var(--mint); }
-
-.note, .card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin: 16px 0;
-}
-.note { border-left: 4px solid var(--mint); }
-
-.button {
-  display: inline-block;
-  background: var(--mint);
-  color: var(--black);
-  text-decoration: none;
-  font-weight: 700;
-  padding: 12px 20px;
-  border-radius: 12px;
-}
-.button[aria-disabled="true"] { cursor: default; }
-
-details {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px 16px;
-  margin-bottom: 10px;
-}
+li::marker { color: var(--green); }
+.note, .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin: 16px 0; }
+.note { border-left: 4px solid var(--green); }
+.button { display: inline-block; background: var(--green); color: var(--green-ink); text-decoration: none; font-weight: 700; padding: 12px 20px; border-radius: 10px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 10px; }
 summary { cursor: pointer; font-weight: 600; }
-summary::marker { color: var(--mint); }
+summary::marker { color: var(--green); }
 details p { color: var(--muted); margin-bottom: 0; }
-
-.hero { text-align: center; padding: 24px 0 8px; }
-.hero img { border-radius: 26px; }
-.hero h1 { font-size: 44px; margin-top: 16px; color: var(--mint); }
-
-.features { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 24px; }
-.features .card { margin: 0; }
-
-.site-footer {
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
-  padding-bottom: 40px;
-  color: var(--muted);
-  font-size: 14px;
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; font-size: 15px; }
+th, td { border: 1px solid var(--line); padding: 10px; text-align: left; vertical-align: top; }
+th { background: var(--surface); }
+.website-only { margin-top: 36px; }
+/* On a phone, each table row is a card and every cell names its column. */
+@media (max-width: 600px) {
+  table, tbody, tr, td { display: block; width: 100%; }
+  table tr:first-child { display: none; }
+  tr { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; padding: 4px 14px; background: var(--surface); }
+  td { border: 0; padding: 8px 0; }
+  td + td { border-top: 1px solid var(--line); }
+  td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--green); }
 }
+
+/* Footer, as on the homepage */
+.site-footer { border-top: 1px solid var(--line); padding: 56px 0 48px; font-size: 14px; color: var(--muted); }
+.foot-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 36px 24px; align-items: start; }
+@media (max-width: 900px) { .foot-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .foot-grid { grid-template-columns: 1fr; } }
+.site-footer h3 { margin: 0 0 12px; font-size: 16px; font-weight: 800; color: #fff; }
+.foot-col { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.foot-link { display: inline-flex; align-items: center; min-height: 40px; color: var(--muted); text-decoration: none; font-size: 16px; }
+.foot-link:hover { color: #fff; text-decoration: underline; }
+.foot-brand { display: flex; flex-direction: column; gap: 18px; }
+.socials { display: flex; gap: 10px; }
+.socials a { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--green); color: var(--green-ink); }
+.foot-contact { margin-top: 20px !important; }
+.foot-copy { grid-column: 1 / -1; margin: 12px 0 0; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
