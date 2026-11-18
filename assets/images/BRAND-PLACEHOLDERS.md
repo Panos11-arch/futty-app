@@ -1,16 +1,16 @@
-# Placeholder app icon and splash
+# App icon and splash
 
-The app icon (a white "F" on brand green #0E5A3A) and the splash (the "Futty" wordmark in ink #0B1215 on canvas #F4F5F7) are **placeholders**. They stay until Dimitris finishes the brand work (the logo and wordmark): the Google Drive doc "Futty – Dimitris: Pitch Deck & Business Tasks", task 8 (brand basics and App Store listing).
-
-They were made in U6, set in Inter Bold. The files are:
+The real logo is in: the mint (#00FF9C) rounded "F" with a football, from "Futty logo – light mode (1024).png" in the Futty App Drive folder. These files replaced the U6 placeholders (white "F" on green, and the "Futty" wordmark).
 
 | File | Size | What it is |
 | --- | --- | --- |
-| `icon.png` | 1024 × 1024, opaque | iOS and store icon: white F on green |
-| `android-icon-foreground.png` | 512 × 512, transparent | Adaptive icon foreground: white F, inside the 66% safe zone |
-| `android-icon-background.png` | 512 × 512 | Adaptive icon background: solid green |
-| `android-icon-monochrome.png` | 432 × 432, transparent | Themed (monochrome) icon: the F shape |
-| `favicon.png` | 48 × 48 | Web favicon |
-| `splash-icon.png` | 1024 × 1024, transparent | Splash image: the wordmark only; the background colour comes from `app.json` |
+| `icon.png` | 1024 × 1024, opaque | iOS and store icon: the logo on white |
+| `android-icon-foreground.png` | 512 × 512, transparent | Adaptive icon foreground: the mint F, inside the 66% safe zone |
+| `android-icon-background.png` | 512 × 512 | Adaptive icon background: solid white |
+| `android-icon-monochrome.png` | 432 × 432, transparent | Themed (monochrome) icon: the F as a white silhouette |
+| `favicon.png` | 48 × 48 | Web favicon: the logo on white |
+| `splash-icon.png` | 1024 × 1024, transparent | Splash image: the mint F; the white background comes from `app.json` |
 
-**Swapping in the real brand later means replacing these PNGs only.** Keep the same file names and sizes. `app.json` points at these paths and doesn't need to change, unless the new splash or adaptive icon needs a different background colour (`expo-splash-screen` `backgroundColor`, `android.adaptiveIcon.backgroundColor`). New icons and a new splash need a new build.
+`app.json` sets white (#FFFFFF) as `android.adaptiveIcon.backgroundColor` and as the `expo-splash-screen` `backgroundColor`.
+
+The app's UI colours are unchanged: the app's brand green (#0E5A3A) and the logo's mint are an open decision for the founders. To change the icon again, replace these PNGs with the same names and sizes. New icons and a new splash need a new build.
