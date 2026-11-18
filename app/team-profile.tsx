@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FollowButton } from '@/components/match/follow-button';
 import { FormChips } from '@/components/match/form-chips';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
+import { RecentMatches } from '@/components/match/recent-matches';
+import { SeasonPicker, TeamSeasonStatsView, type SeasonPick } from '@/components/match/season-stats';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
@@ -14,7 +16,9 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
+import { cyprusYear } from '@/lib/match/stats-api';
 import { useTeamForm } from '@/lib/match/use-profile-matches';
+import { useTeamRecentMatches, useTeamSeasonStats } from '@/lib/match/use-stats';
 import { supabase } from '@/lib/supabase';
 import { getTeamRoster, type RosterMember, type Team } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
@@ -25,34 +29,22 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'ready'; team: Team; roster: RosterMember[] };
 
-function StatTile({ label, value }: { label: string; value: string | number }) {
-  return (
-    <Card style={styles.statTile}>
-      <View style={styles.statInner} accessible accessibilityLabel={`${label} ${value}`}>
-        <Text variant="headline" tabular>
-          {String(value)}
-        </Text>
-        <Text variant="caption" tone="inkMuted">
-          {label}
-        </Text>
-      </View>
-    </Card>
-  );
-}
-
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Read-only public stats for a team (item 5) — reachable by tapping a
  *  followed team in Community. teams and get_team_roster() are already
  *  public to any signed-in user (supabase/teams.sql). A3b-2b adds the team's
  *  form (team_form), a follow button for teams the viewer isn't in, and the
- *  head-to-head when the viewer captains another team. */
+ *  head-to-head when the viewer captains another team. A7 replaces the old
+ *  counters (teams.played/won/goals) with the season stats from confirmed
+ *  matches and adds the team's recent matches. */
 export default function TeamProfileScreen() {
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   const form = useTeamForm(teamId);
+  const recent = useTeamRecentMatches(teamId);
   const myTeams = useMyTeams();
 
   useEffect(() => {
@@ -122,14 +114,7 @@ export default function TeamProfileScreen() {
               ) : null}
             </View>
 
-            <View style={styles.statsGrid}>
-              <StatTile label="Played" value={state.team.played} />
-              <StatTile
-                label="Win rate"
-                value={state.team.played > 0 ? `${Math.round((state.team.won / state.team.played) * 100)}%` : '0%'}
-              />
-              <StatTile label="Goals" value={state.team.goals} />
-            </View>
+            <TeamSeason teamId={state.team.id} />
 
             <View style={styles.section}>
               <SectionHeader title="Form" />
@@ -139,6 +124,11 @@ export default function TeamProfileScreen() {
                 error={form.status === 'error'}
                 onRetry={form.reload}
               />
+            </View>
+
+            <View style={styles.section}>
+              <SectionHeader title="Recent matches" />
+              <RecentMatches state={recent} onRetry={recent.reload} />
             </View>
 
             {captainOf.length > 0 ? (
@@ -178,6 +168,22 @@ export default function TeamProfileScreen() {
   );
 }
 
+/** A7: the team's season (this year in Cyprus time, or all time), from team_season_stats. */
+function TeamSeason({ teamId }: { teamId: string }) {
+  const [pick, setPick] = useState<SeasonPick>('year');
+  const stats = useTeamSeasonStats(teamId, pick === 'year' ? { kind: 'year', year: cyprusYear() } : { kind: 'all' });
+  return (
+    <View style={styles.section} testID="team-season">
+      <SectionHeader title="Season" />
+      <SeasonPicker value={pick} onChange={setPick} />
+      <TeamSeasonStatsView
+        state={stats.status === 'ready' ? { status: 'ready', stats: stats.stats } : stats}
+        onRetry={stats.reload}
+      />
+    </View>
+  );
+}
+
 /** The viewer's team against this one; a captain of several teams picks which. */
 function HeadToHeadSection({ captainOf, opponent }: { captainOf: Team[]; opponent: Team }) {
   const [pickedId, setPickedId] = useState(captainOf[0].id);
@@ -209,12 +215,6 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   headerText: { flex: 1, gap: space.xs },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: space.sm,
-  },
-  statTile: { flex: 1 },
-  statInner: { alignItems: 'center', gap: 2 },
   section: { gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
 });
