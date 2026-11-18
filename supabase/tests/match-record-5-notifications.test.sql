@@ -254,12 +254,12 @@ begin
     'gipedo_pulled_out', 'gipedo_settled', 'booking_switched',
     'venue_new_booking', 'venue_booking_cancelled', 'venue_short_game', 'venue_daily_summary',
     'venue_player_offered', 'venue_player_withdrawn', 'venue_player_accepted', 'venue_player_declined',
-    'venue_player_removed', 'team_of_the_week', 'saved_search_match'
+    'venue_player_removed', 'team_of_the_week', 'saved_search_match', 'streak_badge'
   ] loop
     assert tests.mr_send(v_player, v_type, '{}') is null, format('%s is allowed', v_type);
   end loop;
-  assert (select count(*) from public.notification_types) = 47,
-    'exactly the 47 types of contract 4 (P12 added booking_switched; P6e the four venue_* staff types and the five venue_player_* types; A7 team_of_the_week; saved searches saved_search_match)';
+  assert (select count(*) from public.notification_types) = 48,
+    'exactly the 48 types of contract 4 (P12 added booking_switched; P6e the four venue_* staff types and the five venue_player_* types; A7 team_of_the_week; saved searches saved_search_match; A11 streak_badge)';
   assert (select array_agg(type order by type) from public.notification_types where always_sent) = array[
     'booking_cancelled', 'booking_cancelled_by_venue', 'booking_spot_released', 'booking_switched', 'cancellation_fee_failed',
     'cash_unpaid_prompt', 'debt_created', 'debt_settled', 'gipedo_no_opponent', 'gipedo_opponent_left', 'gipedo_pulled_out',
@@ -297,7 +297,7 @@ begin
   assert (select count(*) from public.notification_quiet_hours) = 1, 'and their own quiet hours';
   update public.notification_settings set enabled = true where profile_id = v_other;
   delete from public.notification_quiet_hours where profile_id = v_other;
-  assert (select count(*) from public.notification_types) = 47, 'everyone signed in reads the types';
+  assert (select count(*) from public.notification_types) = 48, 'everyone signed in reads the types';
   v_error := tests.error_of('select count(*) from public.notification_deliveries');
   assert v_error like 'permission denied%', format('deliveries are service_role only, got %s', v_error);
   v_error := tests.error_of(format('insert into public.notification_types values (%L, false)', 'mine'));

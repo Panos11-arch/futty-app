@@ -54,7 +54,7 @@ These rules were missing or ambiguous in the specs and were decided while writin
 ## 1d. Decisions (12 November, Anghelo, A3b-2b; to confirm with Panos)
 
 1. **Notification settings groups** (section 4.10). The settings screen lists each type a player can turn off under one of three groups:
-   - **Your games:** `match_reminder_24h`, `match_reminder_2h`, `match_after_game`, `match_result_submitted`, `match_result_confirmed`, `match_result_disputed`, `motm_vote_open`, `fixture_agreed`, `fixture_message`, `booking_invite`.
+   - **Your games:** `match_reminder_24h`, `match_reminder_2h`, `match_after_game`, `match_result_submitted`, `match_result_confirmed`, `match_result_disputed`, `motm_vote_open`, `team_of_the_week` (A7a), `streak_badge` (A11), `fixture_agreed`, `fixture_message`, `booking_invite`.
    - **Teams you follow:** `followed_team_match`, `followed_team_result`, `followed_team_opponent_wanted`.
    - **Community:** `squad_post`, `booking_slot`, `team_invite`, `saved_search_match` (added 18 November with saved searches).
    - Which types exist and which are always sent come from `notification_types`. A switchable type the app doesn't know yet shows under "Other", so it is never hidden. A new type is added to a group in the same PR that adds it.
@@ -166,6 +166,26 @@ WhatsApp reminders (05 section 13; set-up and templates in `whatsapp-templates.m
 3. **Which reminders.** The 24-hour and 2-hour reminders and "How did it go?" (`match_after_game`), each set to push, WhatsApp or both. The default is push. The booker's "unpaid spot" alert has no notification type yet, so it isn't included; the reminders already say who hasn't paid.
 4. **Never lost.** A player who chose WhatsApp but has no active number, or has opted out, gets push. Turning a type off turns it off on every channel. Quiet hours hold WhatsApp messages like pushes, and a held match reminder whose game has started is dropped.
 5. **Cost.** Every message's pricing category is logged from Meta's delivery report. Its cost comes from `whatsapp_prices` (integer micro-euros, by country code and category), which ships empty until the Cyprus price is checked. `whatsapp_costs_by_month` totals it.
+
+## 1i. Decisions (18 November, Anghelo, A11; to confirm with Panos)
+
+Weekly streaks and streak badges.
+
+1. **A streak** is Cyprus weeks (Monday to Sunday) in a row in which the player counted in at least one confirmed match (decisions 1b.2 and 1b.3). It counts **played weeks only**. It is worked out from the match record whenever it is read; only the badges are stored.
+2. **Missed weeks.** One missed week is allowed and adds nothing; two missed weeks in a row end the streak. The week in progress is never held against the player: it counts as soon as they have a counted match in it, and is judged only once it ends.
+3. **Cancelled games.** A cancelled game's week is its booking day's.
+   - **Broken:** a week where the player cancelled their own spot, or, as the booker, cancelled the whole booking, ends the streak.
+   - **The booker's cancellation and the other players:** a whole-booking cancellation breaks only the booker's streak. For the booking's other players that week is an ordinary missed week, so it uses their one allowed miss.
+   - **Forgiven:** a week where the venue cancelled the game (any venue cancellation, weather and blocks included), or a Gipedo Pano game was cancelled because no opponent took it on (the booker chose to cancel, or it was cancelled automatically), isn't held against the player. The week is skipped, counted neither as played nor as missed, so missed, forgiven, missed is still two misses in a row.
+   - **A counted match wins:** a week in which the player counted in a match is played, whatever else was cancelled that week.
+4. **Badges.** Bronze 2 weeks, Silver 4, Gold 8, Platinum 12, Diamond 20, Champion 30. Each is awarded once, to every player who reaches it, Premium or not.
+   - `match_jobs_tick` awards them once a week, from Monday 09:00 Cyprus time (as team of the week, 1g.4), from each player's **best** streak through the Sunday just ended. A match confirmed late still earns its badge the next Monday.
+   - The player is told with `streak_badge` (can be turned off; "Your games"). Premium players: "You've earned the Bronze streak badge"; basic players: "You've earned the Bronze streak badge. Go Premium to unlock it." The words depend on Premium at the time the badge is awarded.
+5. **What is shown.**
+   - Every player sees their own current and best streak (the Streak card on their profile), with all six badges: earned or not yet, with the weeks each needs.
+   - Badges are shown in colour only while the player is Premium (`profiles.is_premium`). Basic players see their earned badges greyed out, with "Go Premium to unlock streak badges".
+   - A badge stays earned when Premium ends, and is shown greyed out again until the player is Premium again.
+   - Other players' profiles show the badges that player has earned, greyed the same way, by that player's Premium status. A player's streak itself is read only by that player.
 
 ## 1j. Decisions (18 November, Anghelo, A10; to confirm with Panos)
 
@@ -335,6 +355,12 @@ Ties are shared (05 section 3). RLS: a voter can select their own vote; nobody c
 - `player_level_history`: `id`, `profile_id`, `match_id` (null only for `start`), `reason` (`start`, `result` or `ratings`), `level_before`, `level_after`, `created_at`; unique (`profile_id`, `match_id`, `reason`). Readable by everyone signed in (the level trend in A7).
 - `player_level_answers`: `profile_id` pk, `years_played`, `highest_level`, `play_frequency`, `position`, `self_rating`, `created_at`. Readable only by its owner.
 
+### 4.8a `streak_badge_levels`, `streak_badges` and `streak_badge_runs` (A11, decision 1i)
+
+- `streak_badge_levels`: `badge` pk (`bronze`, `silver`, `gold`, `platinum`, `diamond`, `champion`), `label`, `weeks` (2, 4, 8, 12, 20, 30), `sort`. Readable by everyone signed in; written only by migrations.
+- `streak_badges`: `profile_id`, `badge`, `awarded_at`; primary key (`profile_id`, `badge`), so each badge once per player. Readable by everyone signed in (shown on profiles), never by anon; written only by `streak_badges_tick`.
+- `streak_badge_runs`: `week_start` pk (a Monday), `awarded`, `ran_at`: one row per week the badge step has run. service_role only.
+
 ### 4.9 `match_lineups` (outline for A4)
 
 `match_id`, `side` (primary key together), `formation` (a preset for the match's `players_per_side`, from `match_formation_presets`, decision 1e.4), `positions` jsonb (position key → `match_players.id`; empty positions are left out), `updated_by`, `updated_at`. Written by that side's captain (or the booker, for either side of a pickup) before kickoff, through `set_match_lineup`, which also sets `match_players.position`. Cleared when `players_per_side` changes or a pickup becomes a named game (decisions 1e.5, 1e.7); a player who changes side or leaves is taken out (1e.7). RLS: select for match members, and for everyone once the match is confirmed (`match_page_visible`). `match_formation_presets` (`players_per_side`, `formation`, `sort`) is readable by everyone signed in; `match_formation_positions(formation)` returns its position keys.
@@ -421,6 +447,16 @@ A player who wasn't in the match gets `not_in_match` from both (A2 test). Answer
 | `apply_match_levels(p_match_id uuid, p_now timestamptz default now())` returns text | service_role | The update for one match (1f.3): `applied`, `skipped` (settled but moves nothing), `not_yet` or `already` |
 | `match_levels_tick(p_now timestamptz default now())` returns integer | service_role | Runs `apply_match_levels` for every confirmed match whose windows have closed. `match_jobs_tick` calls it and returns its count as `levels` |
 | `match_rating_for(p_match_id uuid, p_player_id uuid)` returns jsonb `{rating, count}`; `match_rater_weight`; `match_level_start` | service_role | Helpers for the rules above |
+
+### 5.6 Streaks (A11, decision 1i)
+
+| Function | Caller | What it does |
+| --- | --- | --- |
+| `get_my_streak()` returns jsonb | authenticated (`not_authenticated`) | The caller's own streak only: `current`, `best`, `isPremium`, `badges [{badge, label, weeks, earned, awardedAt}]` (all six levels, in order) |
+| `get_player_streak_badges(p_profile_id uuid)` returns jsonb | authenticated (`not_authenticated`) | `inColour` (that player's `is_premium`) and `badges [{badge, label, weeks, awardedAt}]`, earned badges only |
+| `player_streak_weeks(p_profile_id uuid, p_now timestamptz)` returns table (`week_start`, `state`) | service_role | Each week's `played`, `broken` or `forgiven` (1i.3) up to the week of `p_now`; missed weeks are the ones not listed |
+| `player_streak(p_profile_id uuid, p_now timestamptz default now())` returns table (`current_weeks`, `best_weeks`) | service_role | The streak at `p_now` (1i.1–1i.3) |
+| `streak_badges_tick(p_now timestamptz default now())` returns integer | service_role | The weekly badge step (1i.4): once a week from Monday 09:00 Cyprus time; returns how many badges it awarded. `match_jobs_tick` calls it and returns its count as `streak_badges` |
 
 ## 6. The contracts
 
@@ -533,6 +569,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `followed_team_opponent_wanted` | match (A3): "X want an opponent on Thursday" | |
 | `team_of_the_week` | match (A7): "You're in Futty's team of the week." | |
 | `saved_search_match` | payments (saved searches, spec 13): "A pitch you were looking for is free" / "A game you were looking for needs players" | |
+| `streak_badge` | match (A11): "You've earned the Bronze streak badge" (decision 1i) | |
 
 `booking_spot_released` replaces `spot_released` from the A1 prompt (decision 6): `spot_released` isn't allowed. A later prompt that needs a new type adds it to this list in the same PR.
 

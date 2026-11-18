@@ -59,6 +59,7 @@ jest.mock('@/components/ui/icon-symbol', () =>
 );
 jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
 jest.mock('@/components/match/player-level', () => ({ PlayerLevelSummary: () => null }));
+jest.mock('@/components/stats/streak-card', () => ({ StreakCard: () => null }));
 
 loadWithFile(Image);
 

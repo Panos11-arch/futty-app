@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { PlayerLevelSummary } from '@/components/match/player-level';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
+import { StreakCard } from '@/components/stats/streak-card';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
@@ -106,6 +107,9 @@ function ProfileStatus() {
       return (
         <>
           <ProfileCard profile={profile.profile} />
+
+          {/* A11: weekly streak and streak badges (match-record decision 1i). */}
+          <StreakCard />
 
           {/* A3b-2b: form, recent matches and "Players you play with most". */}
           <PlayerMatchSections profileId={profile.profile.id} own />
