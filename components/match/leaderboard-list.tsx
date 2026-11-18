@@ -55,9 +55,9 @@ export function LeaderboardList({
       <EmptyState
         icon="trophy.fill"
         message={
-          minAppearances
+          minAppearances && minAppearances > 1
             ? `Nobody has played ${minAppearances} confirmed games here this year yet`
-            : 'Nobody is on this leaderboard yet'
+            : 'No confirmed games here this year yet'
         }
       />
     );

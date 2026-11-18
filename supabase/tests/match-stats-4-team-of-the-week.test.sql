@@ -1,32 +1,16 @@
--- A7a (docs/specs/match-record.md section 7, decision 1g.4): team of the week.
---   From Monday 09:00 Cyprus time, once per week, for the week Monday to
---   Sunday before: one team per venue with 4 or more confirmed matches, one
---   per city for the other venues' matches, one per league. Five players:
---   the best keeper, defender, midfielder and forward, then the best of the
---   rest (not keepers). Best = average match rating that week (each match
---   rating needs 3 ratings); ties go to more men of the match, then more
---   goals. Each player picked gets a team_of_the_week notification.
+-- A7a (docs/specs/match-record.md section 7, decision 1g.4, agreed 18
+-- November): one team of the week for all of Futty.
+--   From Monday 09:00 Cyprus time, once per week, from every confirmed match
+--   of the week before. Points per match by position (no position counts as
+--   a midfielder): forward 3 per goal, 2 per assist; midfielder 3 per assist,
+--   2 per goal, 1 if their side scored 3 or more; defender 4 for a clean
+--   sheet, 2 per goal, 1 per assist, 1 if they conceded 1 or fewer; keeper 5
+--   for a clean sheet, 2 if they conceded 1 or fewer; everyone 1 for a win
+--   and 3 for man of the match. A forfeit is 3-0; the side that forfeited
+--   gets nothing. Score = average points per game. Team: the best keeper,
+--   defender, midfielder and forward, then the best other non-keeper. Ties:
+--   men of the match, then average rating, then goals.
 begin;
-
--- p_profile plays p_match on side a, checked in, at p_position, and is
--- rated p_score by three raters (or only twice when p_raters = 2).
-create function tests.a7_totw_player(p_match uuid, p_profile uuid, p_position text, p_score integer,
-                                     p_raters integer default 3)
-returns void
-language plpgsql
-as $$
-declare
-  i integer;
-begin
-  perform tests.form_player(p_match, p_profile, 'a', true, true);
-  update public.match_players set position = p_position where match_id = p_match and profile_id = p_profile;
-  for i in 1..p_raters loop
-    insert into public.match_ratings (match_id, rater_profile_id, rated_player_id, score)
-    values (p_match, tests.create_user(format('a7t-r-%s@futty.test', left(gen_random_uuid()::text, 8))),
-            tests.player_id(p_match, p_profile), p_score);
-  end loop;
-end;
-$$;
 
 create function tests.a7_tick(p_now timestamptz)
 returns integer
@@ -42,149 +26,152 @@ begin
 end;
 $$;
 
+-- p_profile plays p_match on p_side, checked in (or only holding a spot), at p_position.
+create function tests.a7_play(p_match uuid, p_profile uuid, p_side text, p_position text, p_checked_in boolean default true)
+returns void
+language plpgsql
+as $$
+begin
+  perform tests.form_player(p_match, p_profile, p_side, true, p_checked_in);
+  update public.match_players set position = p_position where match_id = p_match and profile_id = p_profile;
+end;
+$$;
+
+create function tests.a7_goal(p_match uuid, p_scorer uuid, p_assist uuid default null)
+returns void
+language sql
+as $$
+  insert into public.match_goals (match_id, side, sort, scorer_player_id, assist_player_id, entered_by)
+  select p_match, mp.side, (select count(*) + 1 from public.match_goals g where g.match_id = p_match), mp.id,
+         case when p_assist is not null then tests.player_id(p_match, p_assist) end, p_scorer
+  from public.match_players mp where mp.match_id = p_match and mp.profile_id = p_scorer;
+$$;
+
 do $$
 declare
-  -- The week of Monday 9 November 2026 (Cyprus is UTC+2 in November).
-  v_monday date := '2026-11-09';
-  v1 uuid := tests.create_venue();
-  v2 uuid := tests.create_venue();
-  k1 uuid := tests.create_user('a7t-k1@futty.test');
+  -- The week of Monday 2 March 2026 (Cyprus is UTC+2 then), far from the
+  -- seed's own games.
+  v_week date := '2026-03-02';
+  k uuid := tests.create_user('a7t-k@futty.test');
   k2 uuid := tests.create_user('a7t-k2@futty.test');
-  d1 uuid := tests.create_user('a7t-d1@futty.test');
+  k3 uuid := tests.create_user('a7t-k3@futty.test');
+  x uuid := tests.create_user('a7t-x@futty.test');
+  d uuid := tests.create_user('a7t-d@futty.test');
   d2 uuid := tests.create_user('a7t-d2@futty.test');
-  mid uuid := tests.create_user('a7t-m1@futty.test');
-  f1 uuid := tests.create_user('a7t-f1@futty.test');
+  m uuid := tests.create_user('a7t-m@futty.test');
+  o uuid := tests.create_user('a7t-o@futty.test');
+  f uuid := tests.create_user('a7t-f@futty.test');
   f2 uuid := tests.create_user('a7t-f2@futty.test');
-  o1 uuid := tests.create_user('a7t-o1@futty.test');
   late uuid := tests.create_user('a7t-late@futty.test');
-  g1 uuid := tests.create_user('a7t-g1@futty.test');
-  g2 uuid := tests.create_user('a7t-g2@futty.test');
-  few uuid := tests.create_user('a7t-few@futty.test');
-  m1 uuid := tests.form_match('2026-11-09 18:00+00', 'confirmed', 2, 1, p_venue => v1);
-  m2 uuid := tests.form_match('2026-11-11 18:00+00', 'confirmed', 2, 1, p_venue => v1);
-  m3 uuid := tests.form_match('2026-11-13 18:00+00', 'confirmed', 2, 1, p_venue => v1);
-  -- Sunday 23:30 in Cyprus: still this week.
-  m4 uuid := tests.form_match('2026-11-15 21:30+00', 'confirmed', 2, 1, p_venue => v1);
-  -- Monday 00:00 in Cyprus: next week.
-  m5 uuid := tests.form_match('2026-11-15 22:00+00', 'confirmed', 2, 1, p_venue => v1);
-  m6 uuid := tests.form_match('2026-11-12 18:00+00', 'confirmed', 1, 0, p_venue => v2);
-  v_league uuid;
-  v_fixture uuid;
-  v_t public.team_of_the_week;
+  z uuid := tests.create_user('a7t-z@futty.test');
+  m1 uuid := tests.form_match('2026-03-02 18:00+00', 'confirmed', 3, 0);
+  m2 uuid := tests.form_match('2026-03-04 18:00+00', 'confirmed', 1, 2);
+  -- m3: side b forfeits; Saturday.
+  m3 uuid := tests.form_match('2026-03-07 18:00+00', 'confirmed', null, null, tests.create_team('A7T A'),
+                              tests.create_team('A7T B'), 'b', 'pulled_out');
+  -- m4: Monday 00:00 in Cyprus, next week. m5: disputed.
+  m4 uuid := tests.form_match('2026-03-08 22:00+00', 'confirmed', 5, 0);
+  m5 uuid := tests.form_match('2026-03-05 18:00+00', 'disputed', 9, 0);
+  v_team public.team_of_the_week;
   v_players text[];
+  i integer;
+  v_rater uuid;
 begin
-  -- A made-up city, so the seed's venues (Nicosia) don't join in.
-  update public.venues set city = 'A7 Town' where id in (v1, v2);
-  insert into public.leagues (format, scope, capacity, name) values ('5-a-side', 'city', 8, 'Nicosia 5s')
-  returning id into v_league;
-  insert into public.league_fixtures (league_id) values (v_league) returning id into v_fixture;
-  update public.matches set league_fixture_id = v_fixture where id = m6;
-
-  -- v1 (4 matches this week).
-  perform tests.a7_totw_player(m1, k1, 'gk', 7);
-  perform tests.a7_totw_player(m1, d1, 'd1', 8);
-  perform tests.a7_totw_player(m1, f1, 'f1', 9);
-  perform tests.a7_totw_player(m2, k2, 'gk', 6);
-  perform tests.a7_totw_player(m2, d2, 'd2', 8);
-  perform tests.a7_totw_player(m2, f2, 'f1', 9);
-  perform tests.a7_totw_player(m3, mid, 'm1', 6);
-  perform tests.a7_totw_player(m3, o1, null, 8);
-  perform tests.a7_totw_player(m4, f2, 'f2', 8);
-  perform tests.a7_totw_player(m5, late, 'f1', 10);
-  -- d2 and d1 tie on 8.00: d2 was man of the match in m2.
+  -- m1, a 3-0 win: F scores twice (one set up by M); O (no position) scores, set up by M; F is man of the match.
+  perform tests.a7_play(m1, k, 'a', 'gk');
+  perform tests.a7_play(m1, d, 'a', 'd1');
+  perform tests.a7_play(m1, m, 'a', 'm1');
+  perform tests.a7_play(m1, f, 'a', 'f1');
+  perform tests.a7_play(m1, o, 'a', null);
+  perform tests.a7_play(m1, k2, 'b', 'gk');
+  perform tests.a7_goal(m1, f);
+  perform tests.a7_goal(m1, f, m);
+  perform tests.a7_goal(m1, o, m);
   insert into public.motm_votes (match_id, voter_profile_id, nominee_player_id)
-  values (m2, k2, tests.player_id(m2, d2));
-  -- v2 (1 match): pooled into A7 Town. g1 and g2 tie on rating and awards;
-  -- g1 scored. few has only 2 ratings.
-  perform tests.a7_totw_player(m6, g1, null, 7);
-  perform tests.a7_totw_player(m6, g2, null, 7);
-  perform tests.a7_totw_player(m6, few, 'gk', 10, 2);
-  insert into public.match_goals (match_id, side, sort, scorer_player_id, entered_by)
-  values (m6, 'a', 1, tests.player_id(m6, g1), g1);
+  values (m1, k2, tests.player_id(m1, f)), (m1, k, tests.player_id(m1, f));
+  -- K has a match rating of 7.
+  for i in 1..3 loop
+    v_rater := tests.create_user(format('a7t-r%s@futty.test', i));
+    insert into public.match_ratings (match_id, rater_profile_id, rated_player_id, score)
+    values (m1, v_rater, tests.player_id(m1, k), 7);
+  end loop;
+  -- m2, side a loses 1-2: F2 scores; D2 concedes 2; D plays for side b (a 2-1 win, conceded 1).
+  perform tests.a7_play(m2, d2, 'a', 'd1');
+  perform tests.a7_play(m2, f2, 'a', 'f1');
+  perform tests.a7_play(m2, d, 'b', 'd1');
+  perform tests.a7_goal(m2, f2);
+  -- m3, a forfeit: K3 held a spot on the winning side (counts, 1b.3); X on the side that forfeited.
+  perform tests.a7_play(m3, k3, 'a', 'gk', false);
+  perform tests.a7_play(m3, x, 'b', 'gk', false);
+  -- m4 (next week) and m5 (disputed) never count.
+  perform tests.a7_play(m4, late, 'a', 'f1');
+  perform tests.a7_goal(m4, late);
+  perform tests.a7_play(m5, z, 'a', 'f1');
+  perform tests.a7_goal(m5, z);
 
-  -- 1. Not before 09:00 on Monday.
-  assert tests.a7_tick('2026-11-16 06:59+00') = 0, '08:59 Monday: not yet';
-  assert not exists (select 1 from public.team_of_the_week_runs where week_start = v_monday), 'no run yet';
+  -- 1. Points per match.
+  perform tests.act_as_service_role();
+  assert (select array_agg(format('%s:%s', p.position_group, p.points) order by p.points desc, p.position_group)
+          from public.team_of_the_week_points p where p.match_id = m1 and p.profile_id <> k2)
+         = array['fwd:10', 'gk:8', 'mid:8', 'def:6', 'mid:4'],
+    format('m1: F 6+1+3, K 5+2+1, M 6+1+1, D 4+1+1, O (a midfielder) 2+1+1, got %s',
+           (select array_agg(format('%s:%s', p.position_group, p.points) order by p.points desc, p.position_group)
+            from public.team_of_the_week_points p where p.match_id = m1 and p.profile_id <> k2));
+  assert (select points from public.team_of_the_week_points where match_id = m1 and profile_id = k2) = 0, 'K2 conceded 3 and lost';
+  assert (select points from public.team_of_the_week_points where match_id = m2 and profile_id = d) = 2, 'D: conceded 1, won';
+  assert (select points from public.team_of_the_week_points where match_id = m2 and profile_id = d2) = 0, 'D2: conceded 2, lost';
+  assert (select points from public.team_of_the_week_points where match_id = m3 and profile_id = k3) = 8,
+    'K3: a forfeit is a 3-0 win: clean sheet 5 + 2 + win 1';
+  assert (select points from public.team_of_the_week_points where match_id = m3 and profile_id = x) = 0, 'X forfeited: nothing';
+  perform tests.act_as_postgres();
 
-  -- 2. Monday 09:00: v1, A7 Town (v2's match) and the league.
-  assert tests.a7_tick('2026-11-16 07:00+00') >= 3, 'three teams here (the seed may add its own)';
-  assert (select count(*) from public.team_of_the_week where week_start = v_monday
-          and (city_key = 'a7 town' or league_id = v_league)) = 3, 'v1, A7 Town and the league';
-  assert (select teams from public.team_of_the_week_runs where week_start = v_monday)
-         = (select count(*) from public.team_of_the_week where week_start = v_monday), 'run recorded';
+  -- 2. Not before 09:00 on Monday.
+  assert tests.a7_tick('2026-03-09 06:59+00') = 0, '08:59 Monday: not yet';
+  assert not exists (select 1 from public.team_of_the_week_runs where week_start = v_week), 'no run yet';
 
-  select * into v_t from public.team_of_the_week where week_start = v_monday and scope = 'venue';
-  assert v_t.venue_id = v1 and v_t.matches = 4, format('v1, 4 matches (m5 is next week), got %s', v_t);
-  assert v_t.city_key = 'a7 town', 'a venue team carries its city';
+  -- 3. Monday 09:00: one team.
+  assert tests.a7_tick('2026-03-09 07:00+00') = 1, 'one team';
+  select * into v_team from public.team_of_the_week where week_start = v_week;
+  assert v_team.matches = 3, format('m1, m2, m3 (not m4 next week, not the disputed m5), got %s', v_team.matches);
   select array_agg(format('%s:%s:%s', p.sort, p.position_group, p.profile_id) order by p.sort) into v_players
-  from public.team_of_the_week_players p where p.team_of_the_week_id = v_t.id;
-  assert v_players = array[format('1:gk:%s', k1), format('2:def:%s', d2), format('3:mid:%s', mid),
-                           format('4:fwd:%s', f1), format('5:fwd:%s', f2)],
-    format('keeper k1, defender d2 (award), midfielder, forward f1 (9.00), then f2 (8.50) over o1 and d1, got %s', v_players);
-  assert (select average_rating from public.team_of_the_week_players where team_of_the_week_id = v_t.id and profile_id = f2)
-         = 8.50 and (select rated_matches from public.team_of_the_week_players
-                     where team_of_the_week_id = v_t.id and profile_id = f2) = 2,
-    'f2: (9 + 8) / 2 over 2 matches; position from the latest (f2 = forward)';
-  assert not exists (select 1 from public.team_of_the_week_players where profile_id = late), 'm5 is next week';
+  from public.team_of_the_week_players p where p.team_of_the_week_id = v_team.id;
+  assert v_players = array[format('1:gk:%s', k), format('2:def:%s', d), format('3:mid:%s', m), format('4:fwd:%s', f),
+                           format('5:mid:%s', o)],
+    format('K (8, rated 7) over K3 (8, no rating); D (6 + 2 over 2 games = 4); M (8); F (10); then O (4) over F2 (3), got %s',
+           v_players);
+  assert (select (average_points, games, clean_sheets) from public.team_of_the_week_players
+          where team_of_the_week_id = v_team.id and profile_id = d) = (4.00, 2, 1), 'D: average per game';
+  assert (select (goals, assists, motm) from public.team_of_the_week_players
+          where team_of_the_week_id = v_team.id and profile_id = f) = (2, 0, 1), 'F''s week';
+  assert (select average_rating from public.team_of_the_week_players
+          where team_of_the_week_id = v_team.id and profile_id = k) = 7.00, 'K''s rating';
 
-  select * into v_t from public.team_of_the_week where week_start = v_monday and scope = 'city';
-  assert v_t.city_key = 'a7 town' and v_t.matches = 1, format('A7 Town: v2''s match only, got %s', v_t);
-  select array_agg(p.profile_id::text order by p.sort) into v_players
-  from public.team_of_the_week_players p where p.team_of_the_week_id = v_t.id;
-  assert v_players = array[g1::text, g2::text], format('g1 (a goal) before g2; few has 2 ratings, got %s', v_players);
+  -- 4. Notifications, once each.
+  assert tests.notified(k, 'team_of_the_week') = 1 and tests.notified(o, 'team_of_the_week') = 1, 'picked: told';
+  assert tests.notified(k3, 'team_of_the_week') = 0 and tests.notified(late, 'team_of_the_week') = 0
+         and tests.notified(z, 'team_of_the_week') = 0, 'not picked';
+  assert (tests.last_notification(f, 'team_of_the_week')).body = 'You''re in Futty''s team of the week.', 'the words';
 
-  select * into v_t from public.team_of_the_week where week_start = v_monday and scope = 'league';
-  assert v_t.league_id = v_league and v_t.name = 'Nicosia 5s', format('the league, got %s', v_t);
+  -- 5. Once per week.
+  assert tests.a7_tick('2026-03-09 07:15+00') = 0, 'again on Monday: nothing';
+  assert tests.a7_tick('2026-03-11 12:00+00') = 0, 'Wednesday: nothing';
+  assert tests.notified(k, 'team_of_the_week') = 1, 'no second notification';
 
-  -- 3. Notifications: one per team a player is in.
-  assert tests.notified(k1, 'team_of_the_week') = 1, 'k1 told once';
-  assert tests.notified(g1, 'team_of_the_week') = 2, 'g1: A7 Town and the league';
-  assert tests.notified(d1, 'team_of_the_week') = 0 and tests.notified(few, 'team_of_the_week') = 0, 'not picked';
-  assert (tests.last_notification(k1, 'team_of_the_week')).body
-         = format('You''re in the team of the week: %s.', (select name from public.venues where id = v1)),
-    format('the words, got %s', (tests.last_notification(k1, 'team_of_the_week')).body);
-
-  -- 4. Once per week.
-  assert tests.a7_tick('2026-11-16 07:15+00') = 0, 'again on Monday: nothing';
-  assert tests.a7_tick('2026-11-18 12:00+00') = 0, 'Wednesday: nothing';
-  assert tests.notified(k1, 'team_of_the_week') = 1, 'no second notification';
-
-  -- 5. The next week: m5 (Monday 00:00) is v1's only match, so A7 Town's.
-  perform tests.a7_tick('2026-11-23 07:00+00');
+  -- 6. The next week: m4's scorer alone, as a forward.
+  assert tests.a7_tick('2026-03-16 07:00+00') = 1, 'the week of 9 March';
   assert (select array_agg(p.profile_id) from public.team_of_the_week_players p
-          join public.team_of_the_week t on t.id = p.team_of_the_week_id
-          where t.week_start = '2026-11-16' and t.scope = 'city') = array[late], 'late, in A7 Town';
+          join public.team_of_the_week t on t.id = p.team_of_the_week_id where t.week_start = '2026-03-09') = array[late],
+    'late, alone';
 
-  -- A week where nobody here is rated: a run, no team.
-  perform tests.a7_tick('2026-12-07 07:00+00');
-  assert exists (select 1 from public.team_of_the_week_runs where week_start = '2026-11-30'), 'but it ran';
-  assert not exists (select 1 from public.team_of_the_week where week_start = '2026-11-30' and city_key = 'a7 town'),
-    'no empty teams';
+  -- 7. A week with no confirmed match: a run, no team.
+  assert tests.a7_tick('2026-02-23 07:00+00') = 0, 'the week of 16 February: no team';
+  assert exists (select 1 from public.team_of_the_week_runs where week_start = '2026-02-16'), 'but it ran';
+  assert not exists (select 1 from public.team_of_the_week where week_start = '2026-02-16'), 'no empty team';
 
-  -- 6. match_jobs_tick runs it.
+  -- 8. match_jobs_tick runs it.
   perform tests.act_as_service_role();
   assert public.match_jobs_tick() ? 'team_of_the_week', 'counted by match_jobs_tick';
   perform tests.act_as_postgres();
-end $$;
-
--- 7. A venue with no city still gets a team once it has 4 matches.
-do $$
-declare
-  v uuid := tests.create_venue();
-  p uuid := tests.create_user('a7t2-p@futty.test');
-  v_m uuid;
-  i integer;
-begin
-  for i in 1..4 loop
-    v_m := tests.form_match(make_timestamptz(2026, 11, 2 + i, 18, 0, 0, 'UTC'), 'confirmed', 1, 0, p_venue => v);
-    perform tests.a7_totw_player(v_m, p, 'gk', 7);
-  end loop;
-  perform tests.a7_tick('2026-11-09 07:00+00');
-  assert (select scope from public.team_of_the_week where week_start = '2026-11-02' and venue_id = v) = 'venue', 'by venue';
-  assert (select city_key from public.team_of_the_week where week_start = '2026-11-02' and venue_id = v) is null, 'no city';
-  assert (select average_rating from public.team_of_the_week_players p
-          join public.team_of_the_week t on t.id = p.team_of_the_week_id
-          where t.week_start = '2026-11-02' and t.venue_id = v) = 7.00, 'avg 7';
 end $$;
 
 rollback;

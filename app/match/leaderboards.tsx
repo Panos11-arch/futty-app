@@ -71,11 +71,11 @@ export default function LeaderboardsScreen() {
               ))}
             </View>
             <SegmentedControl options={BOARDS} value={board} onChange={setBoard} accessibilityLabel="Leaderboard" />
-            {min ? (
-              <Text variant="caption" tone="inkMuted">
-                {`${year} · players with ${min} or more confirmed games here`}
-              </Text>
-            ) : null}
+            <Text variant="caption" tone="inkMuted">
+              {min && min > 1
+                ? `${year} · players with ${min} or more confirmed games here`
+                : `${year} · everyone with a confirmed game here`}
+            </Text>
             <LeaderboardList
               state={rows.status === 'ready' ? { status: 'ready', rows: rows.rows } : rows}
               board={board}

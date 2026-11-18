@@ -38,6 +38,8 @@ describe('LeaderboardList', () => {
       <LeaderboardList state={{ status: 'ready', rows: [] }} board="goals" minAppearances={5} onRetry={onRetry} />,
     );
     expect(screen.getByText('Nobody has played 5 confirmed games here this year yet')).toBeTruthy();
+    await rerender(<LeaderboardList state={{ status: 'ready', rows: [] }} board="goals" minAppearances={1} onRetry={onRetry} />);
+    expect(screen.getByText('No confirmed games here this year yet')).toBeTruthy();
     await rerender(<LeaderboardList state={{ status: 'loading' }} board="goals" minAppearances={5} onRetry={onRetry} />);
     expect(screen.getByTestId('leaderboard-skeleton')).toBeTruthy();
     await rerender(<LeaderboardList state={{ status: 'error' }} board="goals" minAppearances={5} onRetry={onRetry} />);

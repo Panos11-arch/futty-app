@@ -1,6 +1,7 @@
-// A team of the week (A7, match-record.md decision 1g.4): its five players in
-// their slots, each with their position, average match rating that week and
-// rated matches, as the server picked them. A row opens the player's profile.
+// Futty's team of the week (A7, match-record.md decision 1g.4): five players
+// from every confirmed game of the week, each with their position, the numbers
+// behind the pick and their average points per game, as the server picked
+// them. A row opens the player's profile.
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
@@ -11,8 +12,9 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import {
-  formatRating,
+  formatPoints,
   formatWeekOf,
+  pickLine,
   POSITION_LABELS,
   type TeamOfTheWeek,
   type TeamOfTheWeekPlayer,
@@ -22,8 +24,6 @@ export type TeamOfTheWeekPlayersState =
   | { status: 'loading' }
   | { status: 'error'; message?: string }
   | { status: 'ready'; players: TeamOfTheWeekPlayer[] };
-
-const matches = (n: number) => (n === 1 ? '1 rated game' : `${n} rated games`);
 
 export function TeamOfTheWeekCard({
   team,
@@ -37,7 +37,7 @@ export function TeamOfTheWeekCard({
   return (
     <Card padded={false} testID="team-of-the-week-card">
       <View style={styles.header}>
-        <Text variant="headline">{team.name}</Text>
+        <Text variant="headline">Team of the week</Text>
         <Text variant="caption" tone="inkMuted">
           {`${formatWeekOf(team.week_start)} · ${team.matches === 1 ? '1 match' : `${team.matches} matches`}`}
         </Text>
@@ -58,12 +58,12 @@ export function TeamOfTheWeekCard({
               key={p.profile_id}
               testID="team-of-the-week-player"
               title={p.name}
-              subtitle={`${POSITION_LABELS[p.position_group]} · ${matches(p.rated_matches)}`}
+              subtitle={`${POSITION_LABELS[p.position_group]} · ${pickLine(p)}`}
               leading={{ avatar: { name: p.name } }}
-              accessibilityLabel={`${p.name}, ${POSITION_LABELS[p.position_group]}, rated ${formatRating(p.average_rating)}`}
+              accessibilityLabel={`${p.name}, ${POSITION_LABELS[p.position_group]}, ${pickLine(p)}, ${formatPoints(p.average_points)} per game`}
               trailing={
                 <Text variant="headline" tabular>
-                  {formatRating(p.average_rating)}
+                  {formatPoints(p.average_points)}
                 </Text>
               }
               chevron
