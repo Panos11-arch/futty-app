@@ -13,8 +13,8 @@
 //      fails nothing is deleted, so the user can retry. From Android or web
 //      (no Apple sheet, so no code) the account is deleted without the
 //      revoke, and that is logged (decided 13 November, for Panos to confirm).
-//   2. Deletes their saved cards (the Stripe customer), push tokens and
-//      follows/blocks.
+//   2. Deletes their saved cards (the Stripe customer), push tokens,
+//      follows/blocks and saved searches (links.ts).
 //   3. Clears every personal field on their profile. Match stats stay, under
 //      "Deleted player", so league tables and opponents' records don't
 //      change retroactively.
@@ -35,6 +35,7 @@ import { revokeAppleToken } from '../_shared/apple-sign-in.ts';
 import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { type Body, deleteAccount } from './handler.ts';
+import { deleteAccountLinks } from './links.ts';
 import { type Db, hasUpcomingGames } from './upcoming.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -95,10 +96,8 @@ Deno.serve(async (req) => {
       },
 
       async deleteLinks(id) {
-        await admin.from('push_tokens').delete().eq('profile_id', id);
-        await admin.from('user_follows').delete().eq('follower_id', id);
-        await admin.from('user_follows').delete().eq('target_type', 'player').eq('target_id', id);
-        await admin.from('blocked_users').delete().eq('blocker_id', id);
+        const failed = await deleteAccountLinks(admin, id);
+        if (failed.length > 0) console.error(`delete-account: links not deleted for ${id}: ${failed.join('; ')}`);
       },
 
       async scrubProfile(id) {

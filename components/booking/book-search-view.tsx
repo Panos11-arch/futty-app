@@ -52,6 +52,8 @@ export type BookSearchViewProps = {
    *  player is blocked; null or absent when they can book. */
   debtMessage?: string | null;
   onPayOwed?: () => void;
+  /** Saves the current search (day, start, length, format) for alerts. */
+  onSaveSearch?: (search: { day: string; start: string; minutes: number; format: string }) => void;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -98,6 +100,7 @@ function BookSearchReady({
   onRetryResults,
   debtMessage,
   onPayOwed,
+  onSaveSearch,
   now: nowOverride,
 }: Omit<BookSearchViewProps, 'options'> & { options: SearchOptions }) {
   const blocked = Boolean(debtMessage);
@@ -239,6 +242,16 @@ function BookSearchReady({
             </View>
           ))}
         </View>
+      ) : null}
+
+      {onSaveSearch && startTime && format ? (
+        <Button
+          label="Save this search"
+          variant="secondary"
+          accessibilityHint="We’ll tell you when a pitch like this frees up"
+          onPress={() => onSaveSearch({ day, start: startTime, minutes, format })}
+          fullWidth
+        />
       ) : null}
     </ScrollView>
   );

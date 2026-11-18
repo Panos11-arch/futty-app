@@ -28,6 +28,7 @@ export const SPEC_RULES: AppRules = {
   weather_wind_kmh: 40,
   weather_thunderstorms: true,
   weather_heat_c: 38,
+  saved_searches_max: 5,
 };
 
 /** Every rule changed, to check text follows the rules with no code change. */
@@ -50,6 +51,7 @@ export const CHANGED_RULES: AppRules = {
   gipedo_max_days: 3,
   gipedo_opponent_hours: 12,
   premium_price_label: '€4.49',
+  saved_searches_max: 3,
 };
 
 /** Prime the rules for a test; returns the rules primed. */

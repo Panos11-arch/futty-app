@@ -500,9 +500,23 @@ Spec 05 §10 and §12 item 7: the venue's no-show record. **No money moves:** a 
 - **No forfeit:** a whole side not showing isn't recorded as a forfeit here. Who may record a `no_show` forfeit stays open (match-record.md question 10.1), because in Gipedo Pano a forfeit decides who pays. The side that turned up can enter the result, and it stands at the deadline.
 - **No notifications** about no-shows, to players or staff.
 
+## Saved searches (decided 18 November)
+
+A player saves a search from the booking search and hears when it comes up. **Free for every player.**
+- **A search is:** one date or one weekday, a time window (Cyprus time), a game length (prefilled from the search screen), a format or any, and a whole city (every area in it), one exact area, or anywhere.
+- **At most 5 saved searches per player** (decided 18 November), checked on the server. The number lives in `app_rules` (`saved_searches_max`).
+- **A dated search is at most the player's own booking window ahead** (7 days, or 14 for Premium; `rule_window_days`), and is removed once its day has passed.
+- **What it hears about:**
+  - a bookable slot freeing up: a booking cancelled (an unpaid booking cancelled when its payment window closes counts like any other) or a block removed. It matches only when a free slot of the search's length and format fits inside both the freed range and the search's time window, and the day is inside the player's booking window;
+  - a game inside the search asking for players (a squad post).
+- **One notification per saved search per Cyprus day**, as `saved_search_match`, which the player can turn off ("Community"). Quiet hours hold its push.
+- **Never about something the player caused:** their own cancellation, block removal or squad post.
+- **The player can delete a saved search at any time.** Deleting the account deletes its searches.
+- **How it's built:** triggers on cancellations, block removals and new squad posts only queue the event; the 5-minute venue notifications job matches the queue. No booking, cancellation or block function changes.
+
 ## Rules in one place (decided 15 November)
 
-Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99) and the weather thresholds. The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
+Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99), the weather thresholds and the number of saved searches a player can keep (5). The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
 
 - **Only Futty changes a rule** (service role), and every change is kept with what it was before.
 - **A change applies at once.** Rules are read when they're used, so a new cutoff also applies to bookings already made. What a booking already stored (its pitch price and its service fee per player) doesn't change, and neither does a deadline already set: when a held share is taken, when the guarantee hold is placed, the deadline to choose venue credit, and when credit expires keep the value in force when they were set. A quote the player saw is checked again when they confirm, so nobody is charged on an old rule.

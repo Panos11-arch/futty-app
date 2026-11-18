@@ -209,4 +209,14 @@ describe('debt banner (spec 13, "Debt")', () => {
     await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
     expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
   });
+
+  it('saves the search once a time and a format are chosen (saved searches)', async () => {
+    const onSaveSearch = jest.fn();
+    await render(<BookSearchView {...props({ onSaveSearch })} />);
+    expect(screen.queryByRole('button', { name: 'Save this search' })).toBeNull();
+    await pickSlot();
+    await fireEvent.press(screen.getByRole('button', { name: '90 min' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Save this search' }));
+    expect(onSaveSearch).toHaveBeenCalledWith({ day: '2026-11-12', start: '19:00', minutes: 90, format: '5-a-side' });
+  });
 });

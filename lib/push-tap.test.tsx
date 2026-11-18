@@ -46,6 +46,16 @@ describe('routeForPushData', () => {
     ['bookingId', { type: 'booking_cancelled', bookingId: 'b1' }, { pathname: '/my-bookings', params: { bookingId: 'b1' } }],
     ['postId', { type: 'squad_post', postId: 'p1', postType: 'players' }, { pathname: '/join-squad-post', params: { postId: 'p1' } }],
     ['teamId', { type: 'team_invite', teamId: 't1' }, { pathname: '/play', params: { segment: 'teams', teamId: 't1' } }],
+    [
+      'a saved search’s freed slot',
+      { type: 'saved_search_match', kind: 'slot', venueId: 'v1', day: '2026-11-20', start: '19:00' },
+      { pathname: '/book', params: { venueId: 'v1' } },
+    ],
+    [
+      'a saved search’s game asking for players',
+      { type: 'saved_search_match', kind: 'squad_post', postId: 'p1', venueId: 'v1' },
+      { pathname: '/join-squad-post', params: { postId: 'p1' } },
+    ],
   ])('%s opens its screen', (_, data, href) => {
     expect(routeForPushData(data)).toEqual(href);
   });

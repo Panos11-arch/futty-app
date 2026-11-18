@@ -199,3 +199,17 @@ describe('team of the week notification type', () => {
     expect(notificationLabel('team_of_the_week')).toBe('You’re in the team of the week');
   });
 });
+
+describe('saved search notification type', () => {
+  it('goes under Community, after team invites, with its words (decision 1d.1)', () => {
+    const sections = groupSwitchableTypes([
+      { type: 'squad_post', always_sent: false },
+      { type: 'saved_search_match', always_sent: false },
+      { type: 'team_invite', always_sent: false },
+    ]);
+    expect(sections).toEqual([
+      { key: 'community', title: 'Community', types: ['squad_post', 'team_invite', 'saved_search_match'] },
+    ]);
+    expect(notificationLabel('saved_search_match')).toBe('Your saved searches');
+  });
+});

@@ -20,7 +20,8 @@ export type NotificationType =
   | 'venue_player_withdrawn'
   | 'venue_player_accepted'
   | 'venue_player_declined'
-  | 'venue_player_removed';
+  | 'venue_player_removed'
+  | 'saved_search_match';
 
 /** Sent to venue staff only (venue_notifications_tick, PR #99). They open the
  *  venue dashboard, never My Bookings, and only staff see them in settings. */
@@ -109,7 +110,7 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
     title: 'Teams you follow',
     types: ['followed_team_match', 'followed_team_result', 'followed_team_opponent_wanted'],
   },
-  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite'] },
+  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match'] },
   { key: 'venue', title: 'Venue', types: [...VENUE_NOTIFICATION_TYPES] },
 ];
 
@@ -133,6 +134,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   followed_team_opponent_wanted: 'They want an opponent',
   squad_post: 'New squad posts',
   booking_slot: 'Open spots in games',
+  saved_search_match: 'Your saved searches',
   team_invite: 'Invites to a team',
   booking_cancelled: 'A booking is cancelled',
   match_payment_due: 'Payment due for a game',

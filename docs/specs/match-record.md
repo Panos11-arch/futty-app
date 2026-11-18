@@ -56,7 +56,7 @@ These rules were missing or ambiguous in the specs and were decided while writin
 1. **Notification settings groups** (section 4.10). The settings screen lists each type a player can turn off under one of three groups:
    - **Your games:** `match_reminder_24h`, `match_reminder_2h`, `match_after_game`, `match_result_submitted`, `match_result_confirmed`, `match_result_disputed`, `motm_vote_open`, `fixture_agreed`, `fixture_message`, `booking_invite`.
    - **Teams you follow:** `followed_team_match`, `followed_team_result`, `followed_team_opponent_wanted`.
-   - **Community:** `squad_post`, `booking_slot`, `team_invite`.
+   - **Community:** `squad_post`, `booking_slot`, `team_invite`, `saved_search_match` (added 18 November with saved searches).
    - Which types exist and which are always sent come from `notification_types`. A switchable type the app doesn't know yet shows under "Other", so it is never hidden. A new type is added to a group in the same PR that adds it.
 2. **Always sent.** Every `always_sent` type is listed under "Always sent" with no switch and one shared reason: "About money or a cancelled game, so we always send these."
 3. **Profile preferences.** Position and preferred foot are the existing `profiles.position` and `profiles.preferred_foot`. Preferred days are `profiles.preferred_days text[]` (`mon` … `sun`) and preferred times `profiles.preferred_times text[]` (`morning`, `afternoon`, `evening`), each checked by a constraint and empty by default (migration `match_profile_prefs`). They are visible to their owner only: profiles' select policy shows a player only their own row, and `get_public_profile` and `get_public_profiles` don't return them. Later matching reads them on the server.
@@ -532,6 +532,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `followed_team_result` | match (A3): "Result: X 5–3 Y" | |
 | `followed_team_opponent_wanted` | match (A3): "X want an opponent on Thursday" | |
 | `team_of_the_week` | match (A7): "You're in Futty's team of the week." | |
+| `saved_search_match` | payments (saved searches, spec 13): "A pitch you were looking for is free" / "A game you were looking for needs players" | |
 
 `booking_spot_released` replaces `spot_released` from the A1 prompt (decision 6): `spot_released` isn't allowed. A later prompt that needs a new type adds it to this list in the same PR.
 

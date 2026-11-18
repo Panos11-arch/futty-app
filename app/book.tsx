@@ -86,6 +86,12 @@ export default function BookScreen() {
       onRetryResults={results.reload}
       debtMessage={debt.message}
       onPayOwed={() => router.push('/account/payments/owed')}
+      onSaveSearch={(s) =>
+        router.push({
+          pathname: '/saved-search',
+          params: { day: s.day, start: s.start, minutes: String(s.minutes), format: s.format },
+        })
+      }
     />
   );
 }
