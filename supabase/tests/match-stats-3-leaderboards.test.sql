@@ -19,9 +19,10 @@ declare
   i integer;
   v_row public.stats_leaderboards;
 begin
-  update public.venues set city = 'Nicosia' where id = v1;
-  update public.venues set city = ' nicosia ' where id = v2;
-  update public.venues set city = 'Limassol' where id = v3;
+  -- Made-up cities, so the seed's venues don't join in.
+  update public.venues set city = 'A7 Nicosia' where id = v1;
+  update public.venues set city = ' a7 nicosia ' where id = v2;
+  update public.venues set city = 'A7 Limassol' where id = v3;
 
   -- a: 5 matches at v1, 4 won, 3 goals.
   for i in 1..5 loop
@@ -69,20 +70,20 @@ begin
   assert v_row.scope_name = (select name from public.venues where id = v1), 'the venue''s name';
 
   -- Nicosia: a and b (b's 5 are across v1 and v2); tied on goals.
-  assert (select count(*) from public.stats_leaderboards where scope = 'city' and scope_key = 'nicosia'
+  assert (select count(*) from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 nicosia'
           and season_year = 2026) = 2, 'Nicosia 2026: a and b';
   select * into v_row from public.stats_leaderboards
-  where scope = 'city' and scope_key = 'nicosia' and season_year = 2026 and profile_id = b;
+  where scope = 'city' and scope_key = 'a7 nicosia' and season_year = 2026 and profile_id = b;
   assert (v_row.goals_rank, v_row.win_rate_rank, v_row.win_pct) = (1, 1, 100), format('b: joint top scorer, best win rate, got %s', v_row);
-  assert lower(v_row.scope_name) = 'nicosia', format('the city''s name, got %s', v_row.scope_name);
+  assert lower(v_row.scope_name) = 'a7 nicosia', format('the city''s name, got %s', v_row.scope_name);
   select * into v_row from public.stats_leaderboards
-  where scope = 'city' and scope_key = 'nicosia' and season_year = 2026 and profile_id = a;
+  where scope = 'city' and scope_key = 'a7 nicosia' and season_year = 2026 and profile_id = a;
   assert (v_row.goals_rank, v_row.win_rate_rank, v_row.motm_rank) = (1, 2, 1), format('a: joint top scorer, second on win rate, got %s', v_row);
 
   -- Limassol 2026: nobody; Limassol 2025: a.
-  assert not exists (select 1 from public.stats_leaderboards where scope = 'city' and scope_key = 'limassol'
+  assert not exists (select 1 from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 limassol'
                      and season_year = 2026), 'Limassol 2026: c has 1';
-  assert (select array_agg(profile_id) from public.stats_leaderboards where scope = 'city' and scope_key = 'limassol'
+  assert (select array_agg(profile_id) from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 limassol'
           and season_year = 2025) = array[a], 'Limassol 2025: a';
   perform tests.act_as_postgres();
 end $$;
