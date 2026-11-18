@@ -1,9 +1,9 @@
 // The futty.app website (site/): one header and footer on every page, links
-// by path, support@futty.app as the contact (mail@futty.app only where the
-// homepage talks to venues), no external scripts or fonts, no launch date,
-// and the Formspree and Google Analytics IDs in one place, with the forms
-// hidden and analytics off until they're set.
-import { existsSync, readFileSync } from 'node:fs';
+// by path, support@futty.app as the only contact address, https://futty.app/
+// as the primary domain, no external scripts or fonts, no launch date, and
+// the Formspree and Google Analytics IDs in one place, with the forms hidden
+// and analytics off until they're set.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
@@ -25,6 +25,31 @@ function markup(source: string): string {
 function hrefs(source: string): string[] {
   return [...markup(source).matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
 }
+
+/** Every text file under site/ (pages, stylesheet), by path. */
+function siteTextFiles(dir: string = SITE): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return siteTextFiles(path);
+    return /\.(html|css|js|json|txt|xml|svg|webmanifest)$/.test(entry.name) ? [path] : [];
+  });
+}
+
+describe('the whole site', () => {
+  const files = siteTextFiles();
+
+  it('has text files to check', () => {
+    expect(files.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(files.map((f) => [f.slice(SITE.length + 1)]))('%s never contains mail@futty.app', (file) => {
+    expect(readFileSync(join(SITE, file), 'utf8')).not.toContain('mail@futty.app');
+  });
+
+  it.each(files.map((f) => [f.slice(SITE.length + 1)]))('%s uses https://futty.app/, never www.futty.app', (file) => {
+    expect(readFileSync(join(SITE, file), 'utf8')).not.toContain('www.futty.app');
+  });
+});
 
 describe('every page', () => {
   it.each(PAGES)('%s has the shared header and footer', (page) => {
@@ -53,11 +78,6 @@ describe('every page', () => {
     expect(source).not.toMatch(/<script[^>]+src=/);
     expect(source).not.toMatch(/<link[^>]+rel="stylesheet"[^>]+href="https?:/);
     expect(source).not.toMatch(/fonts\.googleapis|fonts\.gstatic|@import/);
-  });
-
-  it.each(PAGES)('%s gives support@futty.app, never mail@futty.app', (page) => {
-    expect(read(page)).not.toContain('mail@futty.app"');
-    expect(read(page)).not.toContain('>mail@futty.app<');
   });
 
   it('every image and font the pages use is served from site/', () => {
@@ -96,12 +116,22 @@ describe('the homepage', () => {
     expect(home).toContain("var soon=T('· coming soon')");
   });
 
-  it('gives mail@futty.app only to venues', () => {
+  it('gives support@futty.app everywhere, venues included', () => {
     const page = markup(home);
-    expect(page.match(/mailto:mail@futty\.app/g)).toHaveLength(1);
     const venues = page.slice(page.indexOf('<section class="venues'), page.indexOf('</section>', page.indexOf('<section class="venues')));
-    expect(venues).toContain('<a href="mailto:mail@futty.app">mail@futty.app</a>');
+    expect(venues).toContain('<a href="mailto:support@futty.app">support@futty.app</a>');
     expect(page).toContain('More questions? <a href="mailto:support@futty.app">support@futty.app</a>');
+    expect(page.match(/href="mailto:[^"]*"/g)).toEqual(Array(3).fill('href="mailto:support@futty.app"'));
+    // A failed form send points to support@ too, in every language.
+    expect(home).toContain(".catch(function(){ formMsg(f,T('Something went wrong. Please try again or email support@futty.app.'),false); })");
+  });
+
+  it('names https://futty.app/ as its address: canonical, og:url and every hreflang', () => {
+    expect(home).toContain('<link rel="canonical" href="https://futty.app/">');
+    expect(home).toContain('<meta property="og:url" content="https://futty.app/">');
+    expect(home).toContain('<link rel="alternate" hreflang="x-default" href="https://futty.app/">');
+    expect(home).toContain('<link rel="alternate" hreflang="el" href="https://futty.app/?lang=el">');
+    expect(home.match(/hreflang="[a-z-]+" href="https:\/\/futty\.app\//g)).toHaveLength(15);
   });
 
   it('sets the Formspree and Google Analytics IDs in one place, empty until filled in', () => {
@@ -131,7 +161,7 @@ describe('the homepage', () => {
     const scripts = (home.match(/<script>[\s\S]*?<\/script>/g) ?? []).join('\n');
     const calledFromScript = [...scripts.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map((m) => m[1]);
     expect(new Set(calledFromScript)).toEqual(new Set(['formspree.io', 'www.googletagmanager.com']));
-    expect(external.filter((h) => !['www.futty.app', 'www.instagram.com', 'www.facebook.com'].includes(h))).toEqual(
+    expect(external.filter((h) => !['futty.app', 'www.instagram.com', 'www.facebook.com'].includes(h))).toEqual(
       calledFromScript,
     );
     // The tag is only added inside loadGA, which runs on Accept (or a stored yes) and needs an ID.
