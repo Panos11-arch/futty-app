@@ -29,6 +29,7 @@ export const SPEC_RULES: AppRules = {
   weather_wind_kmh: 40,
   weather_thunderstorms: true,
   weather_heat_c: 38,
+  saved_searches_max: 5,
 };
 
 export const CHANGED_RULES: AppRules = {
