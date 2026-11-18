@@ -29,13 +29,14 @@ import {
   type PostMatchStepName,
 } from '@/lib/match/post-match';
 import type { ResultMatch } from '@/lib/match/result';
+import type { AvatarKit } from '@/lib/avatar';
 
 export type PostMatchFlowProps = {
   match: ResultMatch;
   page: MatchPage | null;
   roster: RosterState | null;
   /** get_match_ratings with names; null before the match is confirmed. */
-  ratings: { ratings: MatchRatings; names: Record<string, string> } | null;
+  ratings: { ratings: MatchRatings; names: Record<string, string>; kits?: Record<string, AvatarKit | null> } | null;
   viewerId: string | null;
   captainTeamIds: Set<string>;
   /** After a save, or when the match moved on: reload the match, page, squad and ratings. */
@@ -131,6 +132,7 @@ export function PostMatchFlow(props: PostMatchFlowProps) {
         matchId={match.match.id}
         ratings={ratings.ratings}
         names={ratings.names}
+        kits={ratings.kits}
         roster={roster}
         onRetryRoster={onRetryRoster}
         viewerId={viewerId}

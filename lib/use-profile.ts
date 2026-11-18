@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import type { AvatarFields } from '@/lib/avatar';
 
 export const PREFERRED_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 export const PREFERRED_TIMES = ['morning', 'afternoon', 'evening'] as const;
@@ -37,7 +38,7 @@ export type Profile = {
   lost: number;
   goals: number;
   created_at: string;
-};
+} & AvatarFields;
 
 type EditableProfileFields = Pick<
   Profile,
@@ -53,6 +54,9 @@ type EditableProfileFields = Pick<
   | 'preferred_days'
   | 'preferred_times'
   | 'show_phone_publicly'
+  | 'avatar_style'
+  | 'avatar_kit_colour'
+  | 'avatar_number'
 >;
 
 type ProfileState =
@@ -76,7 +80,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, xp, played, won, drawn, lost, goals, created_at'
+        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number'
       )
       .eq('id', user.id)
       .maybeSingle();
@@ -103,7 +107,21 @@ export async function updateProfile(userId: string, fields: Partial<EditableProf
 
 export type PublicProfile = Pick<
   Profile,
-  'id' | 'username' | 'full_name' | 'city' | 'position' | 'preferred_foot' | 'xp' | 'played' | 'won' | 'drawn' | 'lost' | 'goals'
+  | 'id'
+  | 'username'
+  | 'full_name'
+  | 'city'
+  | 'position'
+  | 'preferred_foot'
+  | 'xp'
+  | 'played'
+  | 'won'
+  | 'drawn'
+  | 'lost'
+  | 'goals'
+  | 'avatar_style'
+  | 'avatar_kit_colour'
+  | 'avatar_number'
 >;
 
 /** Another user's public stats only (item 5) — via a security-definer RPC
@@ -143,5 +161,8 @@ export function publicProfileAsProfile(p: PublicProfile): Profile {
     lost: p.lost,
     goals: p.goals,
     created_at: '',
+    avatar_style: p.avatar_style ?? 'initials',
+    avatar_kit_colour: p.avatar_kit_colour ?? null,
+    avatar_number: p.avatar_number ?? null,
   };
 }

@@ -6,8 +6,11 @@ import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
+import type { AvatarKit } from '@/lib/avatar';
 
-export type ListRowLeading = { icon: IconSymbolName } | { avatar: { name: string; photoUrl?: string | null } };
+export type ListRowLeading =
+  | { icon: IconSymbolName }
+  | { avatar: { name: string; photoUrl?: string | null; kit?: AvatarKit | null } };
 
 export type ListRowProps = {
   title: string;
@@ -29,7 +32,7 @@ export function ListRow({ title, subtitle, leading, trailing, chevron, onPress, 
           <IconSymbol name={leading.icon} size={ICON.regular} color={colors.inkMuted} />
         </View>
       ) : null}
-      {leading && 'avatar' in leading ? <Avatar name={leading.avatar.name} photoUrl={leading.avatar.photoUrl} /> : null}
+      {leading && 'avatar' in leading ? <Avatar name={leading.avatar.name} photoUrl={leading.avatar.photoUrl} kit={leading.avatar.kit} /> : null}
       <View style={styles.text}>
         <Text variant="body">{title}</Text>
         {subtitle ? (

@@ -21,12 +21,15 @@ import { formatMatchWhen } from '@/lib/match/format';
 import { describeLevelError, STALE_LEVEL_ERRORS } from '@/lib/match/level-errors';
 import { formatLevel, ratingsView, type MatchRatings } from '@/lib/match/levels';
 import { rateMatchPlayer } from '@/lib/match/levels-api';
+import type { AvatarKit } from '@/lib/avatar';
 
 export type MatchRatingsProps = {
   matchId: string;
   ratings: MatchRatings;
   /** profile id → name, for the ratings the server returned. */
   names: Record<string, string>;
+  /** A12: kit avatars by profile id, from the same get_public_profiles call as the names. */
+  kits?: Record<string, AvatarKit | null>;
   roster: RosterState | null;
   onRetryRoster: () => void;
   viewerId: string | null;
@@ -35,7 +38,7 @@ export type MatchRatingsProps = {
 
 const SCORES = Array.from({ length: 10 }, (_, i) => i + 1);
 
-export function MatchRatingsPanel({ matchId, ratings, names, roster, onRetryRoster, viewerId, onRated }: MatchRatingsProps) {
+export function MatchRatingsPanel({ matchId, ratings, names, kits, roster, onRetryRoster, viewerId, onRated }: MatchRatingsProps) {
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
@@ -69,7 +72,7 @@ export function MatchRatingsPanel({ matchId, ratings, names, roster, onRetryRost
             <ListRow
               key={p.playerId}
               title={names[p.profileId] ?? 'Player'}
-              leading={{ avatar: { name: names[p.profileId] ?? 'Player' } }}
+              leading={{ avatar: { name: names[p.profileId] ?? 'Player', kit: kits?.[p.profileId] ?? null } }}
               trailing={
                 <Text variant="headline" tabular>
                   {formatLevel(p.rating)}
@@ -118,7 +121,7 @@ export function MatchRatingsPanel({ matchId, ratings, names, roster, onRetryRost
               <ListRow
                 key={p.id}
                 title={p.name}
-                leading={{ avatar: { name: p.name } }}
+                leading={{ avatar: { name: p.name, kit: p.kit } }}
                 trailing={
                   p.rated ? (
                     <Text variant="callout" tone="inkMuted">

@@ -169,6 +169,20 @@ describe('getPublicNames', () => {
     expect(mockCalls[0]).toEqual(['rpc', 'get_public_profiles', { p_profile_ids: ['a', 'b'] }]);
   });
 
+  it('A12: maps ids to kit avatars from the same call; initials and bad rows are null', async () => {
+    mockResponse = {
+      data: [
+        { id: 'a', username: 'andy', full_name: null, avatar_style: 'kit', avatar_kit_colour: 'kitOrange', avatar_number: 99 },
+        { id: 'b', username: 'bo', full_name: null, avatar_style: 'initials', avatar_kit_colour: null, avatar_number: null },
+        { id: 'c', username: 'cy', full_name: null, avatar_style: 'kit', avatar_kit_colour: 'kitPurple', avatar_number: 5 },
+      ],
+      error: null,
+    };
+    const { kits } = await getPublicNames(['a', 'b', 'c']);
+    expect(kits).toEqual({ a: { colour: 'kitOrange', number: 99 }, b: null, c: null });
+    expect(mockCalls).toHaveLength(1);
+  });
+
   it('skips the call with no ids', async () => {
     expect((await getPublicNames([])).names).toEqual({});
     expect(mockCalls).toEqual([]);

@@ -112,16 +112,20 @@ describe('getMatchRatings', () => {
       },
       error: null,
     };
-    mockAnswers.get_public_profiles = { data: [{ id: 'nikos', username: 'nik', full_name: 'Nikos Away' }], error: null };
-    const { ratings, names, error } = await getMatchRatings('m1');
+    mockAnswers.get_public_profiles = {
+      data: [{ id: 'nikos', username: 'nik', full_name: 'Nikos Away', avatar_style: 'kit', avatar_kit_colour: 'kitRed', avatar_number: 4 }],
+      error: null,
+    };
+    const { ratings, names, kits, error } = await getMatchRatings('m1');
     expect(error).toBeNull();
     expect(ratings?.players[0].rating).toBe(7.3);
     expect(names).toEqual({ nikos: 'Nikos Away' });
+    expect(kits).toEqual({ nikos: { colour: 'kitRed', number: 4 } });
     expect(mockCalls).toContainEqual(['rpc', 'get_match_ratings', { p_match_id: 'm1' }]);
   });
 
   it('an error comes back', async () => {
     mockAnswers.get_match_ratings = { data: null, error: { message: 'boom' } };
-    await expect(getMatchRatings('m1')).resolves.toEqual({ ratings: null, names: {}, error: { message: 'boom' } });
+    await expect(getMatchRatings('m1')).resolves.toEqual({ ratings: null, names: {}, kits: {}, error: { message: 'boom' } });
   });
 });

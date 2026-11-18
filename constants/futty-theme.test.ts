@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import * as theme from '@/constants/futty-theme';
-import { colors, mono, type } from '@/constants/futty-theme';
+import { colors, KIT_COLOUR_NAMES, kitColours, mono, type } from '@/constants/futty-theme';
 
 // WCAG 2.x relative luminance and contrast ratio, computed here rather than
 // trusted from a design tool.
@@ -77,6 +77,41 @@ describe('colour tokens', () => {
   it('computes contrast correctly (black on white is 21)', () => {
     expect(contrast('#000000', '#FFFFFF')).toBeCloseTo(21, 5);
   });
+});
+
+describe('kit colour tokens (A12)', () => {
+  it('has the 8 kit colours, in picker order', () => {
+    expect(KIT_COLOUR_NAMES).toEqual([
+      'kitRed',
+      'kitBlue',
+      'kitSky',
+      'kitGreen',
+      'kitYellow',
+      'kitOrange',
+      'kitBlack',
+      'kitWhite',
+    ]);
+    expect(Object.keys(kitColours).sort()).toEqual([...KIT_COLOUR_NAMES].sort());
+  });
+
+  it('has the agreed shirt colours', () => {
+    expect(Object.fromEntries(KIT_COLOUR_NAMES.map((n) => [n, kitColours[n].shirt]))).toEqual({
+      kitRed: '#C8102E',
+      kitBlue: '#1D428A',
+      kitSky: '#6CABDD',
+      kitGreen: '#00843D',
+      kitYellow: '#FFD100',
+      kitOrange: '#F57F20',
+      kitBlack: '#111111',
+      kitWhite: '#FFFFFF',
+    });
+  });
+
+  for (const name of KIT_COLOUR_NAMES) {
+    it(`the number on ${name} has a contrast ratio of at least 4.5`, () => {
+      expect(contrast(kitColours[name].label, kitColours[name].shirt)).toBeGreaterThanOrEqual(4.5);
+    });
+  }
 });
 
 describe('type scale', () => {

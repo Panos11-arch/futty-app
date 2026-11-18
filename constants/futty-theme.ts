@@ -35,6 +35,38 @@ export const colors = {
   logoBlack: '#000000',
 } as const;
 
+/**
+ * A12: the 8 kit colours a player can pick for their avatar shirt
+ * (components/ui/avatar.tsx). `label` is the shirt number's colour, tested
+ * at 4.5:1 or more against `shirt` (constants/futty-theme.test.ts). The
+ * names are what profiles.avatar_kit_colour stores; the database checks
+ * them (supabase/migrations/*_pay_profile_avatar.sql). Avatars only.
+ */
+export const kitColours = {
+  kitRed: { shirt: '#C8102E', label: '#FFFFFF' },
+  kitBlue: { shirt: '#1D428A', label: '#FFFFFF' },
+  kitSky: { shirt: '#6CABDD', label: '#0B1215' },
+  kitGreen: { shirt: '#00843D', label: '#FFFFFF' },
+  kitYellow: { shirt: '#FFD100', label: '#0B1215' },
+  kitOrange: { shirt: '#F57F20', label: '#0B1215' },
+  kitBlack: { shirt: '#111111', label: '#FFFFFF' },
+  kitWhite: { shirt: '#FFFFFF', label: '#0B1215' },
+} as const;
+
+export type KitColourName = keyof typeof kitColours;
+
+/** Picker order. */
+export const KIT_COLOUR_NAMES: readonly KitColourName[] = [
+  'kitRed',
+  'kitBlue',
+  'kitSky',
+  'kitGreen',
+  'kitYellow',
+  'kitOrange',
+  'kitBlack',
+  'kitWhite',
+];
+
 /** Inter families as registered with useFonts() in app/_layout.tsx. */
 const inter = {
   regular: 'Inter_400Regular',

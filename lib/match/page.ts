@@ -3,6 +3,7 @@
 // see; these rules only decide which controls the app shows. set_match_goals,
 // cast_motm_vote and set_match_lineup check every one of them again.
 import type { MatchKind, MatchSideRecord, MatchStatus, Side } from '@/lib/match/types';
+import type { AvatarKit } from '@/lib/avatar';
 
 /** A player as get_match_page returns one. */
 export type MatchPagePlayer = {
@@ -57,6 +58,8 @@ export type RosterPlayer = {
   name: string;
   leftAt: string | null;
   checkedIn: boolean;
+  /** A12: the player's kit avatar from get_public_profiles; guests have none. */
+  kit?: AvatarKit | null;
 };
 
 export const OWN_GOAL_OR_UNKNOWN = 'Own goal or unknown';

@@ -4,6 +4,7 @@
 import type { BalancedTeams, MatchRatings, PlayerLevel, StartingAnswers } from '@/lib/match/levels';
 import { getPublicNames } from '@/lib/match/profile-api';
 import { supabase } from '@/lib/supabase';
+import type { AvatarKit } from '@/lib/avatar';
 
 type ApiError = { message: string };
 
@@ -64,11 +65,16 @@ export async function balanceMatchTeams(matchId: string): Promise<{ result: Bala
 /** The ratings section, with names for the players the server returned (public profile names only). */
 export async function getMatchRatings(
   matchId: string
-): Promise<{ ratings: MatchRatings | null; names: Record<string, string>; error: ApiError | null }> {
+): Promise<{
+  ratings: MatchRatings | null;
+  names: Record<string, string>;
+  kits: Record<string, AvatarKit | null>;
+  error: ApiError | null;
+}> {
   const { data, error } = await supabase.rpc('get_match_ratings', { p_match_id: matchId });
-  if (error) return { ratings: null, names: {}, error };
+  if (error) return { ratings: null, names: {}, kits: {}, error };
   const ratings = data as MatchRatings;
-  const { names, error: namesError } = await getPublicNames(ratings.players.map((p) => p.profileId));
-  if (namesError) return { ratings: null, names: {}, error: namesError };
-  return { ratings, names, error: null };
+  const { names, kits, error: namesError } = await getPublicNames(ratings.players.map((p) => p.profileId));
+  if (namesError) return { ratings: null, names: {}, kits: {}, error: namesError };
+  return { ratings, names, kits, error: null };
 }

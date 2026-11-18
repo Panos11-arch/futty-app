@@ -10,6 +10,7 @@ import { useNeedsProfileSetup } from '@/lib/auth-providers';
 import { shouldOfferStartingLevel, type MatchRatings, type PlayerLevel } from '@/lib/match/levels';
 import { getMatchRatings, getPlayerLevel } from '@/lib/match/levels-api';
 import { useLoad } from '@/lib/match/use-match-result';
+import type { AvatarKit } from '@/lib/avatar';
 
 export function usePlayerLevel(profileId: string | null | undefined) {
   const { state, reload } = useLoad<{ level: PlayerLevel | null }>(
@@ -26,12 +27,12 @@ export function usePlayerLevel(profileId: string | null | undefined) {
 
 /** get_match_ratings with names; only loaded when `enabled`. */
 export function useMatchRatings(matchId: string | undefined, enabled: boolean) {
-  const { state, reload } = useLoad<{ ratings: MatchRatings; names: Record<string, string> }>(
+  const { state, reload } = useLoad<{ ratings: MatchRatings; names: Record<string, string>; kits: Record<string, AvatarKit | null> }>(
     enabled && matchId
       ? async () => {
-          const { ratings, names, error } = await getMatchRatings(matchId);
+          const { ratings, names, kits, error } = await getMatchRatings(matchId);
           if (error || !ratings) return { error: error?.message ?? 'match_not_found' };
-          return { value: { ratings, names } };
+          return { value: { ratings, names, kits } };
         }
       : null,
     `${matchId}|${enabled}`

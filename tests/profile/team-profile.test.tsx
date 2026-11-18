@@ -40,7 +40,14 @@ jest.mock('@/lib/supabase', () => {
   return { supabase: { from: () => query } };
 });
 jest.mock('@/lib/teams', () => ({
-  getTeamRoster: () => Promise.resolve({ data: [{ profile_id: 'a', username: 'ann', full_name: null, role: 'captain' }], error: null }),
+  getTeamRoster: () =>
+    Promise.resolve({
+      data: [
+        { profile_id: 'a', username: 'ann', full_name: null, role: 'captain', avatar_style: 'initials', avatar_kit_colour: null, avatar_number: null },
+        { profile_id: 'b', username: 'bea', full_name: 'Bea Kyprianou', role: 'player', avatar_style: 'kit', avatar_kit_colour: 'kitGreen', avatar_number: 7 },
+      ],
+      error: null,
+    }),
 }));
 jest.mock('@/lib/use-my-teams', () => ({ useMyTeams: () => mockMyTeams }));
 jest.mock('@/lib/use-follows', () => ({
@@ -96,6 +103,14 @@ async function renderReady() {
 }
 
 describe('Team profile', () => {
+  it('A12: the roster shows each player’s kit avatar, and initials for the rest', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    await render(<TeamProfileScreen />);
+    expect(await screen.findByLabelText('Bea Kyprianou, shirt 7')).toBeTruthy();
+    expect(screen.getAllByTestId('avatar-kit')).toHaveLength(1);
+    expect(screen.getByLabelText('ann')).toBeTruthy();
+  });
+
   it('shows the team’s form in the server’s order', async () => {
     mockMyTeams = { status: 'ready', teams: [] };
     await renderReady();

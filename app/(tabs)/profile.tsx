@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
@@ -15,12 +15,16 @@ import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
+import { avatarKit } from '@/lib/avatar';
 import { type Profile, useProfile } from '@/lib/use-profile';
 
 // A5b (docs/specs/match-record.md decision 1f.6): the skill level from
 // player_levels replaces the XP bar and tier. Games, wins and goals below are
 // real (supabase/scores.sql fans confirmed match results out to every player
 // on both rosters).
+
+/** 56 points: above the 44-point touch minimum, so the avatar is its own button. */
+const AVATAR_SIZE = space.xxl * 2 - space.sm;
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -42,7 +46,17 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
   return (
     <Card style={styles.card}>
       <View style={styles.cardHeader}>
-        <Avatar name={name} size={space.xxl * 2 - space.sm} />
+        {editable ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit avatar"
+            onPress={() => router.push('/edit-avatar')}
+            style={({ pressed }) => pressed && styles.pressed}>
+            <Avatar name={name} kit={avatarKit(profile)} size={AVATAR_SIZE} />
+          </Pressable>
+        ) : (
+          <Avatar name={name} kit={avatarKit(profile)} size={AVATAR_SIZE} />
+        )}
         <View style={styles.identity}>
           <Text variant="headline">{name}</Text>
           {profile.username && profile.full_name ? (
@@ -94,7 +108,7 @@ function ProfileStatus() {
       return (
         <Card testID="profile-skeleton" style={styles.card}>
           <View style={styles.cardHeader}>
-            <SkeletonBlock width={space.xxl * 2 - space.sm} height={space.xxl * 2 - space.sm} rounded="pill" />
+            <SkeletonBlock width={AVATAR_SIZE} height={AVATAR_SIZE} rounded="pill" />
             <View style={styles.identity}>
               <SkeletonText lines={3} />
             </View>
@@ -189,6 +203,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   identity: { flex: 1, gap: space.xs },
   statsRow: { flexDirection: 'row', gap: space.sm },
+  pressed: { opacity: 0.8 },
   statTile: {
     flex: 1,
     alignItems: 'center',

@@ -12,6 +12,7 @@ import type {
   Side,
   TeammateRow,
 } from '@/lib/match/types';
+import { avatarKit, type AvatarFields, type AvatarKit } from '@/lib/avatar';
 import { supabase } from '@/lib/supabase';
 
 type FormRows = { position: number; result: FormResult }[] | null;
@@ -72,15 +73,19 @@ export async function getMyTeammates(limit = 5) {
   return { rows: (data as Teammate[] | null) ?? [], error };
 }
 
-/** Display names for other players, from the public profile function (no private columns). */
+/** Display names and avatars for other players, from the public profile
+ *  function (no private columns): one call for the whole list. */
 export async function getPublicNames(ids: string[]) {
-  if (ids.length === 0) return { names: {} as Record<string, string>, error: null };
-  const { data, error } = await supabase.rpc('get_public_profiles', { p_profile_ids: ids });
   const names: Record<string, string> = {};
-  for (const p of (data as { id: string; username: string | null; full_name: string | null }[] | null) ?? []) {
+  const kits: Record<string, AvatarKit | null> = {};
+  if (ids.length === 0) return { names, kits, error: null };
+  const { data, error } = await supabase.rpc('get_public_profiles', { p_profile_ids: ids });
+  type Row = { id: string; username: string | null; full_name: string | null } & Partial<AvatarFields>;
+  for (const p of (data as Row[] | null) ?? []) {
     names[p.id] = p.full_name || p.username || 'Player';
+    kits[p.id] = avatarKit(p);
   }
-  return { names, error };
+  return { names, kits, error };
 }
 
 const other = (side: Side): Side => (side === 'a' ? 'b' : 'a');

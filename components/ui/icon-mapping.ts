@@ -62,6 +62,7 @@ export const MAPPING = {
   'crown.fill': 'workspace-premium',
   'checkmark': 'check',
   'plus': 'add',
+  'minus': 'remove',
   'ellipsis': 'more-horiz',
   'person.crop.circle.badge.plus': 'person-add',
   'chevron.down': 'expand-more',

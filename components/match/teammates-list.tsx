@@ -43,7 +43,7 @@ export function TeammatesList({ state, onRetry }: { state: TeammatesState; onRet
             testID="teammate-row"
             title={t.name}
             subtitle={together(t.matches_together)}
-            leading={{ avatar: { name: t.name } }}
+            leading={{ avatar: { name: t.name, kit: t.kit } }}
             chevron
             onPress={() => router.push({ pathname: '/player-profile', params: { profileId: t.teammate_profile_id } })}
           />
