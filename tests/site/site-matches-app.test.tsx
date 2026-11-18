@@ -3,7 +3,6 @@ import '../account/mocks';
 import { render, screen } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import PrivacyPolicyScreen from '@/app/account/privacy-policy';
 import TermsOfUseScreen from '@/app/account/terms';
@@ -40,12 +39,15 @@ function siteBlocks(page: string): string[] {
   );
 }
 
+/** The part of a rendered node (screen.toJSON()) the walk below reads. */
+type RenderedNode = { type: string; children: (RenderedNode | string)[] | null };
+
 /** Each piece of text the screen renders, in order. */
 function appBlocks(): string[] {
   const blocks: string[] = [];
-  const textOf = (node: ReactTestRendererJSON | string): string =>
+  const textOf = (node: RenderedNode | string): string =>
     typeof node === 'string' ? node : (node.children ?? []).map(textOf).join('');
-  const walk = (node: ReactTestRendererJSON | ReactTestRendererJSON[] | string | null) => {
+  const walk = (node: RenderedNode | RenderedNode[] | string | null) => {
     if (node === null || typeof node === 'string') return;
     if (Array.isArray(node)) return node.forEach(walk);
     if (node.type === 'Text') {
