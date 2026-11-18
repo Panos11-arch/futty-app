@@ -103,7 +103,7 @@ export default function PrivacyPolicyScreen() {
       <DocParagraph>If this policy changes materially, we&apos;ll update the date above.</DocParagraph>
 
       <DocHeading>Contact</DocHeading>
-      <DocEmailLink email="palepis@icloud.com" />
+      <DocEmailLink email="support@futty.app" />
     </DocScreen>
   );
 }

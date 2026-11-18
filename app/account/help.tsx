@@ -14,7 +14,7 @@ export default function HelpScreen() {
 
       <DocHeading>Need help, found a bug, or have feedback?</DocHeading>
       <DocParagraph>Email us and we&apos;ll get back to you as soon as we can.</DocParagraph>
-      <DocEmailLink email="palepis@icloud.com" subject="Futty Support" />
+      <DocEmailLink email="support@futty.app" subject="Futty Support" />
 
       <DocHeading>Common questions</DocHeading>
       <View style={styles.faqs}>
