@@ -187,3 +187,15 @@ describe('venue player notification types', () => {
     expect(notificationLabel(type)).toBe(label);
   });
 });
+
+// A7a: team of the week (supabase/migrations/20261118010100_match_team_of_the_week.sql).
+describe('team of the week notification type', () => {
+  it('goes under Your games, after man of the match voting, with its words', () => {
+    const sections = groupSwitchableTypes([
+      { type: 'motm_vote_open', always_sent: false },
+      { type: 'team_of_the_week', always_sent: false },
+    ]);
+    expect(sections).toEqual([{ key: 'games', title: 'Your games', types: ['motm_vote_open', 'team_of_the_week'] }]);
+    expect(notificationLabel('team_of_the_week')).toBe('You’re in the team of the week');
+  });
+});
