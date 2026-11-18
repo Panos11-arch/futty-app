@@ -592,6 +592,9 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
         </View>
       </View>
       <View
+        testID="streak-card-stub"
+      />
+      <View
         style={
           {
             "gap": 8,

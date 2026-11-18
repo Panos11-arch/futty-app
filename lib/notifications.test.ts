@@ -213,3 +213,15 @@ describe('saved search notification type', () => {
     expect(notificationLabel('saved_search_match')).toBe('Your saved searches');
   });
 });
+
+// A11: streak badges (supabase/migrations/20261118184516_match_streaks.sql).
+describe('streak badge notification type', () => {
+  it('goes under Your games, after team of the week, with its words', () => {
+    const sections = groupSwitchableTypes([
+      { type: 'team_of_the_week', always_sent: false },
+      { type: 'streak_badge', always_sent: false },
+    ]);
+    expect(sections).toEqual([{ key: 'games', title: 'Your games', types: ['team_of_the_week', 'streak_badge'] }]);
+    expect(notificationLabel('streak_badge')).toBe('Streak badges');
+  });
+});

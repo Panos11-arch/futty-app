@@ -100,11 +100,11 @@ begin
   from public.matches;
   select count(*)::text || v_snapshot into v_snapshot from public.notifications;
   v_second := tests.mr_tick();
-  -- (A3b adds the reminder counts, A5a the level update and A7 the team of
-  -- the week: also nothing the second time.)
+  -- (A3b adds the reminder counts, A5a the level update, A7 the team of
+  -- the week and A11 the streak badges: also nothing the second time.)
   assert v_second = jsonb_build_object('played', 0, 'confirmed', 0, 'no_result', 0, 'voided', 0,
                                        'reminder_24h', 0, 'reminder_2h', 0, 'followed_team_match', 0, 'after_game', 0,
-                                       'levels', 0, 'team_of_the_week', 0),
+                                       'levels', 0, 'team_of_the_week', 0, 'streak_badges', 0),
     format('nothing to do the second time, got %s', v_second);
   assert (select count(*)::text || string_agg(id || status || coalesce(confirmed_at::text, '') || updated_at, ',' order by id)
           from public.matches) is not null;

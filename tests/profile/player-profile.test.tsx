@@ -53,6 +53,14 @@ jest.mock('@/lib/match/use-stats', () => ({
     };
   },
 }));
+let mockStreakBadges: Record<string, unknown>;
+const mockStreakCalls: unknown[][] = [];
+jest.mock('@/lib/stats/use-streak', () => ({
+  usePlayerStreakBadges: (...args: unknown[]) => {
+    mockStreakCalls.push(args);
+    return mockStreakBadges;
+  },
+}));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -65,6 +73,15 @@ beforeEach(() => {
   mockForm = { status: 'ready', form: ['L_forfeit', 'W', 'W', 'D', 'L'], reload };
   mockRecent = { status: 'ready', rows: [], reload };
   mockTeammates = { status: 'ready', teammates: [], reload };
+  mockStreakCalls.length = 0;
+  mockStreakBadges = {
+    status: 'ready',
+    badges: {
+      inColour: false,
+      badges: [{ badge: 'bronze', label: 'Bronze', weeks: 2, awardedAt: '2026-11-16T07:00:00+00:00' }],
+    },
+    reload,
+  };
 });
 
 describe('Player profile', () => {
@@ -120,5 +137,34 @@ describe('Player profile', () => {
     await fireEvent.press(screen.getByText('Try again'));
     await waitFor(() => expect(screen.getByText('Form')).toBeTruthy());
     expect(mockGetPublicProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it('A11: another player’s streak badges, greyed while they aren’t Premium', async () => {
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Streak badges')).toBeTruthy());
+    expect(mockStreakCalls).toContainEqual(['p1']);
+    expect(screen.getByTestId('streak-badge-bronze-greyed')).toBeTruthy();
+  });
+
+  it('A11: a Premium player’s badges in colour', async () => {
+    mockStreakBadges = {
+      status: 'ready',
+      badges: {
+        inColour: true,
+        badges: [{ badge: 'bronze', label: 'Bronze', weeks: 2, awardedAt: '2026-11-16T07:00:00+00:00' }],
+      },
+      reload,
+    };
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByTestId('streak-badge-bronze-colour')).toBeTruthy());
+  });
+
+  it('A11: no badge row on the viewer’s own profile (their Streak card is on the Profile tab)', async () => {
+    mockProfileId = 'me';
+    mockGetPublicProfile.mockResolvedValue({ data: { id: 'me', username: 'me' }, error: null });
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Form')).toBeTruthy());
+    expect(screen.queryByText('Streak badges')).toBeNull();
+    expect(mockStreakCalls).toEqual([]);
   });
 });

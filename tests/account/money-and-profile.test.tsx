@@ -26,6 +26,10 @@ jest.mock('@/lib/use-venues', () => ({
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { email: 'ann@example.com' }, signOut: mockSignOut }) }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ ...mockProfile, reload: mockProfileReload }) }));
 jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
+jest.mock('@/components/stats/streak-card', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { StreakCard: () => <View testID="streak-card-stub" /> };
+});
 let mockLevel: Record<string, unknown> = { status: 'loading' };
 jest.mock('@/lib/match/use-levels', () => ({
   STARTING_LEVEL_ROUTE: '/starting-level',
@@ -159,6 +163,8 @@ describe('Profile', () => {
     expect(screen.getByLabelText('Games 10')).toBeTruthy();
     expect(screen.getByLabelText('Win rate 40%')).toBeTruthy();
     expect(screen.getByLabelText('Goals 7')).toBeTruthy();
+    // A11: the Streak card, under the profile card.
+    expect(screen.getByTestId('streak-card-stub')).toBeTruthy();
     // A5b: the level replaces XP and the tier.
     expect(screen.queryByText(/XP/)).toBeNull();
     expect(screen.queryByText(/tier/)).toBeNull();

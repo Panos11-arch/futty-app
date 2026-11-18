@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileCard } from '@/app/(tabs)/profile';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
+import { StreakBadges } from '@/components/stats/streak-badges';
 import { Banner } from '@/components/ui/banner';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { colors, space } from '@/constants/futty-theme';
@@ -61,6 +62,8 @@ export default function PlayerProfileScreen() {
         {state.status === 'ready' ? (
           <>
             <ProfileCard profile={publicProfileAsProfile(state.profile)} editable={false} />
+            {/* A11: their streak badges, greyed unless they are Premium. Your own are on your Profile tab. */}
+            {state.profile.id === user?.id ? null : <StreakBadges profileId={state.profile.id} />}
             <PlayerMatchSections profileId={state.profile.id} own={state.profile.id === user?.id} />
           </>
         ) : null}
