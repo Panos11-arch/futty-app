@@ -70,6 +70,9 @@ describe('routeForPushData', () => {
 
   it('the venue type wins over a match id too', () => {
     expect(routeForPushData({ type: 'venue_new_booking', matchId: 'm1', bookingId: 'b1' })).toBe('/venue-dashboard');
+    expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09' })).toBe(
+      '/match/team-of-the-week',
+    );
   });
 
   it.each([

@@ -29,6 +29,30 @@ jest.mock('@/lib/match/use-profile-matches', () => ({
   usePlayerRecentMatches: () => mockRecent,
   useMyTeammates: () => mockTeammates,
 }));
+const mockSeasonCalls: unknown[][] = [];
+jest.mock('@/lib/match/use-stats', () => ({
+  usePlayerSeasonStats: (...args: unknown[]) => {
+    mockSeasonCalls.push(args);
+    return {
+      status: 'ready',
+      stats: {
+        appearances: 24,
+        won: 15,
+        drawn: 3,
+        lost: 6,
+        win_pct: 63,
+        goals: 31,
+        assists: 7,
+        motm: 6,
+        average_rating: 7.94,
+        rated_matches: 20,
+        level_start: null,
+        level_end: null,
+      },
+      reload: jest.fn(),
+    };
+  },
+}));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -55,6 +79,19 @@ describe('Player profile', () => {
       'lost',
     ]);
     expect(screen.getByText('Recent matches')).toBeTruthy();
+  });
+
+  it('A7: the season stats, this year then all time, and a way to the leaderboards', async () => {
+    const { router } = jest.requireMock<{ router: { push: jest.Mock } }>('expo-router');
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Season')).toBeTruthy());
+    expect(screen.getByLabelText('Goals 31')).toBeTruthy();
+    expect(screen.getByLabelText('Avg rating 7.9')).toBeTruthy();
+    expect(mockSeasonCalls.at(-1)).toEqual(['p1', { kind: 'year', year: expect.any(Number) }]);
+    await fireEvent.press(screen.getByText('All time'));
+    expect(mockSeasonCalls.at(-1)).toEqual(['p1', { kind: 'all' }]);
+    await fireEvent.press(screen.getByText('Leaderboards'));
+    expect(router.push).toHaveBeenCalledWith('/match/leaderboards');
   });
 
   it('another player’s profile has no "Players you play with most"', async () => {

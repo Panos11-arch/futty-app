@@ -7,6 +7,7 @@ import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-car
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
 import { MatchResultPanel } from '@/components/match/result-panel';
+import { TeamOfTheWeekHome } from '@/components/match/team-of-the-week-home';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -637,6 +638,7 @@ export default function HomeScreen() {
         <QuickActions />
         <LogScoreSection onScored={recentResults.reload} />
         <RecentResultsSection recentResults={recentResults} />
+        <TeamOfTheWeekHome />
         <VenuesSection />
         <NeedPlayersSection />
         <PremiumSection />
