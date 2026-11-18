@@ -16,6 +16,10 @@ export type RecentResult = {
   awayScore: number;
   /** When the match kicked off, as an ISO instant. Show it in Cyprus time. */
   playedAt: string;
+  /** The row it came from, so Home can find its match (A10: the post-match flow). */
+  bookingId?: string;
+  friendlyMatchId?: string;
+  leagueFixtureId?: string;
 };
 
 type RecentResultsState =
@@ -87,6 +91,7 @@ export function useRecentResults(limit: number = DEFAULT_MAX_RESULTS) {
       .map((m) => ({
         key: `friendly:${m.id}`,
         kind: 'friendly' as const,
+        friendlyMatchId: m.id,
         homeTeamName: m.home_team?.name ?? 'Unknown team',
         awayTeamName: m.away_team?.name ?? 'Unknown team',
         homeScore: m.home_score as number,
@@ -101,6 +106,7 @@ export function useRecentResults(limit: number = DEFAULT_MAX_RESULTS) {
       .map((f) => ({
         key: `league:${f.id}`,
         kind: 'league' as const,
+        leagueFixtureId: f.id,
         homeTeamName: f.home_team?.name ?? 'Unknown team',
         awayTeamName: f.away_team?.name ?? 'Unknown team',
         homeScore: f.home_score as number,
@@ -113,6 +119,7 @@ export function useRecentResults(limit: number = DEFAULT_MAX_RESULTS) {
     const bookingResults: RecentResult[] = (bookings ?? []).map((b) => ({
       key: `booking:${b.id}`,
       kind: 'booking' as const,
+      bookingId: b.id,
       homeTeamName: 'You',
       awayTeamName: '',
       homeScore: b.result_goals_for as number,

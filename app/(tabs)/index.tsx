@@ -35,7 +35,7 @@ import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
 import { useNotifications } from '@/lib/use-notifications';
 import { debtBlockMessage, type Owed, owedBannerMessage, owedToName, useOwed, useReloadOnReturn } from '@/lib/use-owed';
 import { useProfile } from '@/lib/use-profile';
-import { useRecentResults } from '@/lib/use-recent-results';
+import { type RecentResult, useRecentResults } from '@/lib/use-recent-results';
 import { useSquadPosts } from '@/lib/use-squad-posts';
 import { useVenues } from '@/lib/use-venues';
 
@@ -387,6 +387,19 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
  *  logging a score in LogScoreSection must refresh this card at once, and
  *  only a shared parent can reload it. */
 function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typeof useRecentResults> }) {
+  const results = recentResults.status === 'ready' ? recentResults.results : [];
+  // A10 (match-record.md decision 1j): a game that has a match offers the post-match flow.
+  const matchLinks = useMatchLinks({
+    bookingIds: results.flatMap((r) => (r.bookingId ? [r.bookingId] : [])),
+    friendlyMatchIds: results.flatMap((r) => (r.friendlyMatchId ? [r.friendlyMatchId] : [])),
+    leagueFixtureIds: results.flatMap((r) => (r.leagueFixtureId ? [r.leagueFixtureId] : [])),
+  });
+  const matchIdOf = (r: RecentResult) =>
+    (r.bookingId && matchLinks.links.byBookingId.get(r.bookingId)) ||
+    (r.friendlyMatchId && matchLinks.links.byFriendlyMatchId.get(r.friendlyMatchId)) ||
+    (r.leagueFixtureId && matchLinks.links.byLeagueFixtureId.get(r.leagueFixtureId)) ||
+    null;
+
   if (recentResults.status === 'error') {
     return (
       <View style={styles.section}>
@@ -396,14 +409,15 @@ function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typ
     );
   }
 
-  if (recentResults.status !== 'ready' || recentResults.results.length === 0) return null;
+  if (results.length === 0) return null;
 
   return (
     <View style={styles.section}>
       <SectionHeader title="Previous game" action={{ label: 'See all', onPress: () => router.push('/previous-games') }} />
       <Card padded={false}>
-        {recentResults.results.map((result) => {
+        {results.map((result) => {
           const kind = result.kind === 'league' ? 'League' : result.kind === 'friendly' ? 'Friendly' : 'Pickup game';
+          const matchId = matchIdOf(result);
           return (
             <ListRow
               key={result.key}
@@ -414,6 +428,16 @@ function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typ
               }
               subtitle={result.playedAt ? `${kind} · ${formatMatchDate(result.playedAt)}` : kind}
               leading={{ icon: 'trophy.fill' }}
+              trailing={
+                matchId ? (
+                  <Button
+                    label="Add your stats"
+                    variant="plain"
+                    onPress={() => router.push({ pathname: '/match/after-game', params: { id: matchId } })}
+                    testID={`previous-game-stats-${result.key}`}
+                  />
+                ) : undefined
+              }
             />
           );
         })}

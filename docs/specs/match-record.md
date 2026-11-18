@@ -167,6 +167,29 @@ WhatsApp reminders (05 section 13; set-up and templates in `whatsapp-templates.m
 4. **Never lost.** A player who chose WhatsApp but has no active number, or has opted out, gets push. Turning a type off turns it off on every channel. Quiet hours hold WhatsApp messages like pushes, and a held match reminder whose game has started is dropped.
 5. **Cost.** Every message's pricing category is logged from Meta's delivery report. Its cost comes from `whatsapp_prices` (integer micro-euros, by country code and category), which ships empty until the Cyprus price is checked. `whatsapp_costs_by_month` totals it.
 
+## 1j. Decisions (18 November, Anghelo, A10; to confirm with Panos)
+
+The post-match flow: after a match, an optional, skippable walk through what a player can still add.
+
+1. **The steps, in order.**
+   1. The score. Anyone who can enter it (a captain; the booker in a pickup) or answer it (the other side's captain in a named game; any Non-bibs player in a pickup) does it with the result panel. Everyone else sees "Waiting for your captain".
+   2. Goals and assists. Captains only, as on the match page (decision 1e.1): in a pickup the booker writes both sides.
+   3. The man of the match vote.
+   4. Ratings.
+2. **It stores nothing new.** Each step uses the match page's existing functions, hooks and windows (sections 2, 5.2, 5.3 and 5.5), and the server checks every write again. There is no migration.
+3. **Which steps show.** A step is left out when its window has closed ("exactly at the deadline" counts as past it, section 2) or when this player has already done it:
+   - **Score:** the player's part is done once a score is in that they can't answer (it came from their own side), or once they have answered. A pickup player with no side has nothing to do.
+   - **Goals:** done once every side the captain writes has a goal row for each goal of its score. 0–0 has nothing to add.
+   - **Vote:** done once the player has voted.
+   - **Ratings:** done once the player has rated everyone they can.
+   - Forfeits, disputed and `no_result` matches have no goals, vote or ratings (decisions 1e.2 and 1f.4). A void match has no steps at all.
+4. **Not open yet.** Goals, the vote and ratings open only once the result is confirmed. While the result can still be entered or answered, they show with "This opens once the result is confirmed." and Skip. They show only to players who will be able to do them: a captain who writes a side for goals, and a player who has checked in for the vote and ratings.
+5. **Moving through.** An intro comes first, saying: "Add the result and your stats. You'll see them at the end of the week, and they put you in the running for team of the week." It has Start and Skip. Every step has Skip. The last step's Done (or Skip) returns to the match page. The steps are worked out once, when the flow opens. With nothing left to do, the flow says "Nothing to add for this match." and offers the match page.
+6. **Where it opens.**
+   - Tapping the `match_after_game`, `match_result_confirmed` or `motm_vote_open` push, when it carries a `matchId` (`lib/push-tap.tsx`). The confirmed and vote-open pushes bring players back when the vote and ratings actually open. Every other match type still opens the match page.
+   - The match page: "Add your stats", shown only while this player has at least one step left.
+   - Home's Previous game card: a game that has a match (a booking, friendly or league fixture linked to one) offers "Add your stats". This rarely shows for now. Previous game lists only old-style results (a friendly's agreed score, a league fixture's score, a booking's self-reported result). A match made since A2 appears there only if its booking, friendly or fixture also has one of those. Until Previous game reads the new match record, the pushes and the match page are the main ways in.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.

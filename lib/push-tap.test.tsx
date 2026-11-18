@@ -50,6 +50,34 @@ describe('routeForPushData', () => {
     expect(routeForPushData(data)).toEqual(href);
   });
 
+  // A10 (decision 1j): these open the post-match flow, so players land on it
+  // after the game and again when the vote and ratings open.
+  it.each(['match_after_game', 'match_result_confirmed', 'motm_vote_open'])('%s opens the post-match flow', (type) => {
+    expect(routeForPushData({ type, matchId: 'm1' })).toEqual({ pathname: '/match/after-game', params: { id: 'm1' } });
+  });
+
+  it.each(['match_reminder_24h', 'match_reminder_2h', 'match_result_submitted', 'match_result_disputed', 'followed_team_match'])(
+    '%s still opens the match',
+    (type) => {
+      expect(routeForPushData({ type, matchId: 'm1' })).toEqual({ pathname: '/match/[id]', params: { id: 'm1' } });
+    }
+  );
+
+  it('a post-match type without a match id falls through as before', () => {
+    expect(routeForPushData({ type: 'match_after_game' })).toBe('/notifications');
+    expect(routeForPushData({ type: 'motm_vote_open', bookingId: 'b1' })).toEqual({
+      pathname: '/my-bookings',
+      params: { bookingId: 'b1' },
+    });
+  });
+
+  it('a tapped match_after_game push opens the flow', async () => {
+    getLast.mockReturnValue(response({ type: 'match_after_game', matchId: 'm1', notificationId: 'row-9' }));
+    await render(<PushTapHandler />);
+    expect(push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
+    expect(markRead).toHaveBeenCalledWith('row-9');
+  });
+
   it('several ids: match, then booking, then post, then team', () => {
     expect(routeForPushData({ matchId: 'm1', bookingId: 'b1', postId: 'p1', teamId: 't1' })).toMatchObject({
       pathname: '/match/[id]',

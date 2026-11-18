@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 
 import HomeScreen from '@/app/(tabs)/index';
 import { mockResultMatch } from '@/lib/match/mock';
+import type { RecentResult } from '@/lib/use-recent-results';
 import { type Owed, type OwedDebt, type OwedPayment, paymentSentence } from '@/lib/use-owed';
 
 type HookState = { status: string; [key: string]: unknown };
@@ -27,6 +28,8 @@ let mockUnscored: { id: string; venue_id: string; booking_day: string; start_tim
 let mockFriendlies: Record<string, unknown>[] = [];
 let mockLinks: { bookings: Map<string, string>; friendlies: Map<string, string> } = { bookings: new Map(), friendlies: new Map() };
 let mockOpenMatches: unknown[] = [];
+let mockFixtureLinks = new Map<string, string>();
+let mockRecent: RecentResult[] = [];
 const nothingOwed: Owed = { blocked: false, debt_cents: 0, debts: [], payments: [] };
 let mockOwedState: { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Owed } = {
   status: 'ready',
@@ -56,7 +59,7 @@ jest.mock('@/lib/use-fixtures', () => ({
   useMyCaptainTeamIds: () => [],
 }));
 jest.mock('@/lib/use-recent-results', () => ({
-  useRecentResults: () => ({ status: 'ready', results: [], reload: mockReloads.results }),
+  useRecentResults: () => ({ status: 'ready', results: mockRecent, reload: mockReloads.results }),
 }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
 jest.mock('@/components/booking-result-form', () => {
@@ -73,7 +76,7 @@ jest.mock('@/lib/match/use-match-result', () => ({
   useOpenResultMatches: () => ({ status: 'ready', matches: mockOpenMatches, viewerId: 'booker', reload: jest.fn() }),
   useMatchLinks: () => ({
     status: 'ready',
-    links: { byBookingId: mockLinks.bookings, byFriendlyMatchId: mockLinks.friendlies, byLeagueFixtureId: new Map() },
+    links: { byBookingId: mockLinks.bookings, byFriendlyMatchId: mockLinks.friendlies, byLeagueFixtureId: mockFixtureLinks },
     reload: jest.fn(),
   }),
 }));
@@ -408,6 +411,64 @@ describe('Home score logging: new matches use A2, old ones the old form', () => 
     mockOpenMatches = [mockResultMatch({ submission: { submitted_by: 'x' }, mySide: 'b', sideACaptain: 'x' })];
     await render(<HomeScreen />);
     expect(screen.getByText('new result panel m1')).toBeTruthy();
+  });
+});
+
+describe('Home previous game: the post-match flow (A10, decision 1j)', () => {
+  const recent = (over: Partial<RecentResult>): RecentResult => ({
+    key: 'booking:b1',
+    kind: 'booking',
+    homeTeamName: 'You',
+    awayTeamName: '',
+    homeScore: 5,
+    awayScore: 3,
+    playedAt: '2026-11-14T17:00:00.000Z',
+    ...over,
+  });
+
+  beforeEach(() => {
+    mockBookings = { status: 'ready', bookings: [] };
+    mockVenues = { status: 'ready', venues: [venue] };
+    mockPosts = { status: 'ready', posts: [] };
+    mockLinks = { bookings: new Map(), friendlies: new Map() };
+    mockFixtureLinks = new Map();
+    mockRecent = [];
+    jest.mocked(router.push).mockClear();
+  });
+
+  afterAll(() => {
+    mockRecent = [];
+    mockLinks = { bookings: new Map(), friendlies: new Map() };
+    mockFixtureLinks = new Map();
+  });
+
+  it('a game with a match offers "Add your stats", which opens the flow', async () => {
+    mockRecent = [recent({ bookingId: 'b1' })];
+    mockLinks.bookings.set('b1', 'm1');
+    await render(<HomeScreen />);
+    await fireEvent.press(screen.getByTestId('previous-game-stats-booking:b1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
+  });
+
+  it('friendlies and league fixtures with a match offer it too', async () => {
+    mockRecent = [
+      recent({ key: 'friendly:f1', kind: 'friendly', homeTeamName: 'Home FC', awayTeamName: 'Away FC', friendlyMatchId: 'f1' }),
+      recent({ key: 'league:l1', kind: 'league', homeTeamName: 'Lions', awayTeamName: 'Tigers', leagueFixtureId: 'l1' }),
+    ];
+    mockLinks.friendlies.set('f1', 'm2');
+    mockFixtureLinks.set('l1', 'm3');
+    await render(<HomeScreen />);
+    await fireEvent.press(screen.getByTestId('previous-game-stats-friendly:f1'));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/match/after-game', params: { id: 'm2' } });
+    await fireEvent.press(screen.getByTestId('previous-game-stats-league:l1'));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/match/after-game', params: { id: 'm3' } });
+  });
+
+  it('a game recorded before A2 (no match) has no "Add your stats"', async () => {
+    mockRecent = [recent({ bookingId: 'old' })];
+    await render(<HomeScreen />);
+    expect(screen.getByText('You 5–3')).toBeTruthy();
+    expect(screen.queryByText('Add your stats')).toBeNull();
   });
 });
 
