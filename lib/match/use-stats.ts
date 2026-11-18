@@ -1,7 +1,7 @@
 // Hooks for A7's screens: each loads one read from lib/match/stats-api.ts and
 // gives loading, error (with reload) or ready.
 import {
-  getLatestTeamsOfTheWeek,
+  getLatestTeamOfTheWeek,
   getLeaderboard,
   getLeaderboardScopes,
   getMinAppearances,
@@ -88,10 +88,10 @@ export function useLeaderboard(scope: LeaderboardScope | null, year: number, boa
   return { ...state, reload };
 }
 
-export function useLatestTeamsOfTheWeek() {
-  const { state, reload } = useLoad<{ teams: TeamOfTheWeek[] }>(async () => {
-    const { teams, error } = await getLatestTeamsOfTheWeek();
-    return error ? { error: error.message } : { value: { teams } };
+export function useLatestTeamOfTheWeek() {
+  const { state, reload } = useLoad<{ team: TeamOfTheWeek | null }>(async () => {
+    const { team, error } = await getLatestTeamOfTheWeek();
+    return error ? { error: error.message } : { value: { team } };
   }, 'latest');
   return { ...state, reload };
 }

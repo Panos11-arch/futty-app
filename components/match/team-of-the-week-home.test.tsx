@@ -8,44 +8,30 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-let mockCity: string | null = 'Nicosia';
-let mockTeams: unknown = { status: 'loading', reload: jest.fn() };
-jest.mock('@/lib/use-profile', () => ({
-  useProfile: () => ({ status: 'ready', profile: { city: mockCity } }),
-}));
+let mockLatest: unknown = { status: 'loading', reload: jest.fn() };
 jest.mock('@/lib/match/use-stats', () => ({
-  useLatestTeamsOfTheWeek: () => mockTeams,
+  useLatestTeamOfTheWeek: () => mockLatest,
   useTeamOfTheWeekPlayers: () => ({ status: 'ready', players: [], reload: jest.fn() }),
 }));
 
-const nicosia = {
-  id: 'c',
-  week_start: '2026-11-09',
-  scope: 'city',
-  venue_id: null,
-  city_key: 'nicosia',
-  league_id: null,
-  name: 'Nicosia',
-  matches: 3,
-};
+const team = { id: 't', week_start: '2026-11-09', matches: 3 };
 
 describe('TeamOfTheWeekHome', () => {
-  it('shows the viewer’s city’s team', async () => {
-    mockTeams = { status: 'ready', teams: [nicosia], reload: jest.fn() };
+  it('shows Futty’s latest team', async () => {
+    mockLatest = { status: 'ready', team, reload: jest.fn() };
     await render(<TeamOfTheWeekHome />);
     expect(screen.getByTestId('home-team-of-the-week')).toBeTruthy();
-    expect(screen.getByText('See all')).toBeTruthy();
+    expect(screen.getByText('See how')).toBeTruthy();
   });
 
-  it('nothing while loading, or with no team for the city, or no city', async () => {
-    mockTeams = { status: 'loading', reload: jest.fn() };
+  it('nothing while loading, on an error, or before the first team', async () => {
+    mockLatest = { status: 'loading', reload: jest.fn() };
     const { rerender } = await render(<TeamOfTheWeekHome />);
     expect(screen.queryByTestId('home-team-of-the-week')).toBeNull();
-    mockTeams = { status: 'ready', teams: [{ ...nicosia, city_key: 'limassol' }], reload: jest.fn() };
+    mockLatest = { status: 'error', reload: jest.fn() };
     await rerender(<TeamOfTheWeekHome />);
     expect(screen.queryByTestId('home-team-of-the-week')).toBeNull();
-    mockCity = null;
-    mockTeams = { status: 'ready', teams: [nicosia], reload: jest.fn() };
+    mockLatest = { status: 'ready', team: null, reload: jest.fn() };
     await rerender(<TeamOfTheWeekHome />);
     expect(screen.queryByTestId('home-team-of-the-week')).toBeNull();
   });
