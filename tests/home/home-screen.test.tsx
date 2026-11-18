@@ -78,6 +78,8 @@ jest.mock('@/lib/match/use-match-result', () => ({
   }),
 }));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
+// A7's team of the week has its own tests (components/match/team-of-the-week-home.test.tsx).
+jest.mock('@/components/match/team-of-the-week-home', () => ({ TeamOfTheWeekHome: () => null }));
 const mockStartingLevelOffer = jest.fn();
 jest.mock('@/lib/match/use-levels', () => ({ useStartingLevelOffer: () => mockStartingLevelOffer() }));
 // Only the hook is faked: the banner's words come from the real helpers.

@@ -57,6 +57,30 @@ jest.mock('@/lib/match/use-profile-matches', () => ({
     };
   },
 }));
+const mockSeasonCalls: unknown[][] = [];
+jest.mock('@/lib/match/use-stats', () => ({
+  useTeamSeasonStats: (...args: unknown[]) => {
+    mockSeasonCalls.push(args);
+    return {
+      status: 'ready',
+      stats: {
+        played: 8,
+        won: 5,
+        drawn: 1,
+        lost: 2,
+        win_pct: 63,
+        goals_for: 11,
+        goals_against: 6,
+        clean_sheets: 2,
+        longest_win_run: 3,
+        motm: 1,
+        average_rating: 7,
+      },
+      reload: jest.fn(),
+    };
+  },
+  useTeamRecentMatches: () => ({ status: 'ready', rows: [], reload: jest.fn() }),
+}));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -80,6 +104,18 @@ describe('Team profile', () => {
       'lost by forfeit',
       'drew',
     ]);
+  });
+
+  it('A7: the season from team_season_stats, not the old counters; this year, then all time', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    await renderReady();
+    expect(screen.getByLabelText('Win rate 63%')).toBeTruthy();
+    expect(screen.getByLabelText('Best run 3 wins')).toBeTruthy();
+    expect(screen.queryByLabelText('Win rate 50%')).toBeNull();
+    expect(mockSeasonCalls.at(-1)).toEqual(['tigers', { kind: 'year', year: expect.any(Number) }]);
+    await fireEvent.press(screen.getByText('All time'));
+    expect(mockSeasonCalls.at(-1)).toEqual(['tigers', { kind: 'all' }]);
+    expect(screen.getByText('No confirmed matches yet')).toBeTruthy();
   });
 
   it('a viewer outside the team can follow it', async () => {

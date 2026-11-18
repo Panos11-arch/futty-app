@@ -42,6 +42,9 @@ export function routeForPushData(raw: unknown): Href {
   // The dashboard has no route for a given day or booking yet; it opens on today.
   if (isVenueNotificationType(data.type)) return '/venue-dashboard';
 
+  // A7: team of the week opens the week's teams.
+  if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
+
   const matchId = stringId(data, 'matchId');
   if (matchId) return { pathname: '/match/[id]', params: { id: matchId } };
 
