@@ -31,7 +31,7 @@ export default function TermsOfUseScreen() {
         : null}
 
       <DocHeading>Contact</DocHeading>
-      <DocEmailLink email="palepis@icloud.com" />
+      <DocEmailLink email="support@futty.app" />
     </DocScreen>
   );
 }

@@ -39,6 +39,10 @@ export default function PrivacyPolicyScreen() {
         the two captains involved.
       </DocBullet>
       <DocBullet>Follows — which players or teams you choose to follow.</DocBullet>
+      <DocBullet>
+        Futty AI chat — messages you type into the in-app assistant, used only to answer your
+        question.
+      </DocBullet>
 
       <DocHeading>Push notifications</DocHeading>
       <DocParagraph>
@@ -58,7 +62,8 @@ export default function PrivacyPolicyScreen() {
       <DocParagraph>
         Personal and Team Premium purchases are handled entirely by Apple (via the App Store) —
         Futty never sees or stores your card details, only confirmation that a purchase was made. Pitch booking payments (including each player&apos;s split share)
-        are processed by Stripe; Futty never stores your full card number.
+        are processed by Stripe; Futty never stores your full card number. We keep a record of
+        what you paid for, how much, and its status (held, charged, refunded).
       </DocParagraph>
 
       <DocHeading>Who your information is shared with</DocHeading>
@@ -96,7 +101,8 @@ export default function PrivacyPolicyScreen() {
       <DocBullet>
         You can delete your account at any time from Account &gt; Settings &gt; Delete account. This
         removes your login, profile details and saved cards. Match results you took part in stay in
-        league tables under &quot;Deleted player&quot;. You can also ask us to do this by email.
+        league tables under &quot;Deleted player&quot; so other teams&apos; records stay accurate. You
+        can also ask us to do this by email.
       </DocBullet>
 
       <DocHeading>Changes to this policy</DocHeading>
