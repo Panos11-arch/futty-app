@@ -1,8 +1,8 @@
 -- A7a (docs/specs/match-record.md section 7, decision 1g): a named team's
 -- season stats (team_season_stats) and recent matches (team_recent_matches).
 --   A team counts every confirmed match it played, whoever checked in (1b.3).
---   A forfeit is a loss for the side that forfeited and a win for the other,
---   with no goals and never a clean sheet (1g.3).
+--   A forfeit is a 3-0 win for the other side (1g.3): it counts in goals for
+--   and against and clean sheets.
 begin;
 
 do $$
@@ -21,10 +21,10 @@ declare
   t3 uuid := tests.form_match('2026-02-15 18:00+00', 'confirmed', 0, 1, o, t);
   t4 uuid := tests.form_match('2026-02-22 18:00+00', 'confirmed', 1, 1, t, o);
   t5 uuid := tests.form_match('2026-03-01 18:00+00', 'confirmed', 4, 2, t, o);
-  -- t6: the others forfeit (a win, no goals, not a clean sheet).
+  -- t6: the others forfeit (a 3-0 win and a clean sheet).
   t6 uuid := tests.form_match('2026-03-08 18:00+00', 'confirmed', null, null, t, o, 'b', 'no_show');
   t7 uuid := tests.form_match('2026-03-15 18:00+00', 'confirmed', 0, 2, t, o);
-  -- t8: the Lions forfeit.
+  -- t8: the Lions forfeit (a 0-3 loss).
   t8 uuid := tests.form_match('2026-03-22 18:00+00', 'confirmed', null, null, t, o, 'a', 'pulled_out');
   -- Not counted: disputed, no result, another year's.
   t9 uuid := tests.form_match('2026-03-29 18:00+00', 'disputed', 5, 0, t, o);
@@ -51,8 +51,9 @@ begin
   assert v.played = 8, format('8 matches (no player checked in for most: team form counts them), got %s', v.played);
   assert (v.won, v.drawn, v.lost) = (5, 1, 2), format('W5 D1 L2, got %s %s %s', v.won, v.drawn, v.lost);
   assert v.win_pct = 63, format('5 of 8 = 62.5%% rounds to 63, got %s', v.win_pct);
-  assert v.goals_for = 11 and v.goals_against = 6, format('11 for, 6 against, got %s, %s', v.goals_for, v.goals_against);
-  assert v.clean_sheets = 2, format('clean sheets in t1 and t3 (not the forfeit), got %s', v.clean_sheets);
+  assert v.goals_for = 14 and v.goals_against = 9,
+    format('11 + 3 (t6) for, 6 + 3 (t8) against, got %s, %s', v.goals_for, v.goals_against);
+  assert v.clean_sheets = 3, format('clean sheets in t1, t3 and the t6 forfeit, got %s', v.clean_sheets);
   assert v.longest_win_run = 3, format('t1 to t3, got %s', v.longest_win_run);
   assert v.motm = 1 and v.average_rating = 7.00, format('p''s award and rating, got %s, %s', v.motm, v.average_rating);
 

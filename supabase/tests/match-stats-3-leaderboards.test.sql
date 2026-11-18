@@ -1,7 +1,7 @@
 -- A7a (docs/specs/match-record.md section 7, decision 1g.1): leaderboards
 -- per venue and per city for a calendar year (stats_leaderboards).
---   Only players with stats_min_appearances() (5) or more appearances in that
---   venue or city count. A city is venues.city compared without case or
+--   No minimum (decided 18 November): stats_min_appearances() is 1, so every
+--   player with a counted match in that venue or city is listed. A city is venues.city compared without case or
 --   spaces. Ranks are shared on ties; the win-rate board breaks ties by
 --   appearances.
 begin;
@@ -57,32 +57,39 @@ begin
   end loop;
 
   perform tests.act_as(reader);
-  assert public.stats_min_appearances() = 5, 'decision 1g.1: 5 appearances';
+  assert public.stats_min_appearances() = 1, 'decision 1g.1: no minimum';
 
-  -- v1: only a has 5 appearances there.
-  assert (select array_agg(profile_id) from public.stats_leaderboards
-          where scope = 'venue' and scope_key = v1::text and season_year = 2026) = array[a],
-    'v1 2026: a only (b has 3, c has 4)';
+  -- v1: a (5), b (3) and c (4) all count.
+  assert (select array_agg(profile_id order by profile_id) from public.stats_leaderboards
+          where scope = 'venue' and scope_key = v1::text and season_year = 2026)
+         = (select array_agg(x order by x) from unnest(array[a, b, c]) x),
+    'v1 2026: everyone who played there';
+  assert (select appearances from public.stats_leaderboards
+          where scope = 'venue' and scope_key = v1::text and season_year = 2026 and profile_id = c) = 4, 'c: 4 at v1';
   select * into v_row from public.stats_leaderboards
   where scope = 'venue' and scope_key = v1::text and season_year = 2026 and profile_id = a;
-  assert (v_row.appearances, v_row.goals, v_row.won, v_row.win_pct, v_row.min_appearances) = (5, 3, 4, 80, 5),
+  assert (v_row.appearances, v_row.goals, v_row.won, v_row.win_pct, v_row.min_appearances) = (5, 3, 4, 80, 1),
     format('a at v1, got %s', v_row);
   assert v_row.scope_name = (select name from public.venues where id = v1), 'the venue''s name';
 
-  -- Nicosia: a and b (b's 5 are across v1 and v2); tied on goals.
+  -- Nicosia: a, b (across v1 and v2) and c (4 of their 5 there); a and b tie on goals.
   assert (select count(*) from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 nicosia'
-          and season_year = 2026) = 2, 'Nicosia 2026: a and b';
+          and season_year = 2026) = 3, 'Nicosia 2026: a, b and c';
   select * into v_row from public.stats_leaderboards
   where scope = 'city' and scope_key = 'a7 nicosia' and season_year = 2026 and profile_id = b;
-  assert (v_row.goals_rank, v_row.win_rate_rank, v_row.win_pct) = (1, 1, 100), format('b: joint top scorer, best win rate, got %s', v_row);
+  assert (v_row.goals_rank, v_row.win_rate_rank, v_row.win_pct) = (1, 1, 100),
+    format('b: joint top scorer; 100%% over 5 games beats c''s 100%% over 4, got %s', v_row);
   assert lower(v_row.scope_name) = 'a7 nicosia', format('the city''s name, got %s', v_row.scope_name);
   select * into v_row from public.stats_leaderboards
   where scope = 'city' and scope_key = 'a7 nicosia' and season_year = 2026 and profile_id = a;
-  assert (v_row.goals_rank, v_row.win_rate_rank, v_row.motm_rank) = (1, 2, 1), format('a: joint top scorer, second on win rate, got %s', v_row);
+  assert (v_row.goals_rank, v_row.win_rate_rank, v_row.motm_rank) = (1, 3, 1), format('a: joint top scorer, third on win rate, got %s', v_row);
+  assert (select (goals_rank, win_rate_rank) from public.stats_leaderboards
+          where scope = 'city' and scope_key = 'a7 nicosia' and season_year = 2026 and profile_id = c) = (3, 2),
+    'c: no goals (third), 100% over 4 (second)';
 
-  -- Limassol 2026: nobody; Limassol 2025: a.
-  assert not exists (select 1 from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 limassol'
-                     and season_year = 2026), 'Limassol 2026: c has 1';
+  -- Limassol 2026: c's one game is enough; Limassol 2025: a.
+  assert (select array_agg(profile_id) from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 limassol'
+          and season_year = 2026) = array[c], 'Limassol 2026: c, with 1 game';
   assert (select array_agg(profile_id) from public.stats_leaderboards where scope = 'city' and scope_key = 'a7 limassol'
           and season_year = 2025) = array[a], 'Limassol 2025: a';
   perform tests.act_as_postgres();

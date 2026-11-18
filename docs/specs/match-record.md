@@ -135,17 +135,27 @@ Skill level, ratings and competitive matches (05 section 4; 12 section 2, rows 2
 
 Season stats, leaderboards and team of the week (05 sections 3 and 8; 06 section 7, A7).
 
-1. **Leaderboard minimum: 5 appearances (to confirm with Panos).** A player is on a venue's or a city's leaderboard for a year only with 5 or more appearances there that year (`stats_min_appearances()`, shown in the app). Five is about a month of weekly games: enough that one lucky night doesn't top the table.
+1. **No leaderboard minimum** (agreed with the founders, 18 November). Every player with a confirmed, counted match at a venue or in a city that year is on its leaderboards. `stats_min_appearances()` is 1. The win-rate board breaks ties by more appearances, so a 100% record over 5 games ranks above one over 1 game.
 2. **Seasons.** The calendar year in Cyprus time for every confirmed match (league games included, so a player's year is complete); a league is also its own season; and all time. A match at 00:30 on 1 January in Cyprus belongs to the new year.
-3. **Forfeits in stats.** As in form (1b.3): the forfeiting side gets a loss and the other side a win, for every spot holder with or without a check-in, with no goals. A forfeit is never a clean sheet. Closes section 10, question 1, "whether a forfeit counts as a win in the winner's stats" (yes).
-4. **Team of the week.**
-   - Picked once a week by `match_jobs_tick`, from Monday 09:00 Cyprus time, for the week before (Monday 00:00 to Monday 00:00, Cyprus time). Sunday night's games count only if their ratings window has closed by then (`confirmed_at + 24 hours`).
-   - One team per venue with 4 or more confirmed matches that week; one per city (`venues.city`, compared without case or spaces) for the other venues' matches; one per league with matches that week. A venue with no city and fewer than 4 matches is left out. A scope where nobody has a match rating gets no team.
-   - Candidates: players with a match rating that week (3 or more ratings, 1f.4). Score: the average of their match ratings that week. Ties: more men of the match that week, then more goals, then a fixed order.
-   - A player's position is the one from their latest rated match that week: `gk` keeper, `d…` defender, `m…` midfielder, `f…` forward, none = outfield (1e.4).
-   - Five players, as in 5-a-side: the best keeper, the best defender, the best midfielder and the best forward (each only if there is one), then the best of the others who aren't keepers until there are five.
-   - Each player picked gets `team_of_the_week` (can be turned off; "Your games"), once per team they are in.
-5. **What is shown.** Season averages and team-of-the-week averages are aggregates of match ratings that the match page already shows to everyone signed in (1f.4); no individual rating or vote is ever shown.
+3. **Forfeits count as 3-0** (18 November). The forfeiting side gets a loss and the other side a win, for every spot holder with or without a check-in (as in form, 1b.3). The 3-0 counts in a team's goals for and against and clean sheets, but no player is credited with a goal. Closes section 10, question 1, "whether a forfeit counts as a win in the winner's stats" (yes, 3-0).
+4. **Team of the week** (agreed with the founders, 18 November).
+   - **One team for all of Futty**, picked once a week by `match_jobs_tick` from Monday 09:00 Cyprus time, from every confirmed match of the week before (Monday 00:00 to Monday 00:00, Cyprus time).
+   - **Points per match**, by the player's position in that match's lineup (1e.4; no position counts as a midfielder):
+
+     | Position | Points |
+     | --- | --- |
+     | Forward | 3 per goal, 2 per assist |
+     | Midfielder | 3 per assist, 2 per goal, 1 if their side scored 3 or more |
+     | Defender | 4 for a clean sheet, 2 per goal, 1 per assist, 1 if their side conceded 1 or fewer |
+     | Keeper | 5 for a clean sheet, 2 if their side conceded 1 or fewer |
+     | Everyone | 1 for a win, 3 for man of the match (once voting has closed) |
+
+     A forfeit counts as 3-0 (1g.3): the winners get the win, the clean sheet and "scored 3 or more", but no goals; the side that forfeited gets nothing.
+   - **Score:** a player's average points per game that week. Their position is the one from their latest match that week.
+   - **The team:** the best keeper, defender, midfielder and forward (each only if there is one), then the best other player who isn't a keeper. Ties go to more men of the match, then the higher average match rating, then more goals.
+   - Each player picked gets `team_of_the_week` (it can be turned off; it's in "Your games").
+   - **Later:** teams of the week for each level band, once there are enough rated games each week (about 12 or more at a venue).
+5. **What is shown.** Season averages are aggregates of match ratings that the match page already shows to everyone signed in (1f.4); no individual rating or vote is ever shown.
 
 ## 2. Time
 
@@ -488,7 +498,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `followed_team_match` | match (A3): "X play Y tonight" | |
 | `followed_team_result` | match (A3): "Result: X 5–3 Y" | |
 | `followed_team_opponent_wanted` | match (A3): "X want an opponent on Thursday" | |
-| `team_of_the_week` | match (A7): "You're in the team of the week: <venue, city or league>." | |
+| `team_of_the_week` | match (A7): "You're in Futty's team of the week." | |
 
 `booking_spot_released` replaces `spot_released` from the A1 prompt (decision 6): `spot_released` isn't allowed. A later prompt that needs a new type adds it to this list in the same PR.
 
@@ -524,8 +534,8 @@ The A7a views and tables (decision 1g; signed-in players read them, signed-out u
 | `team_season_stats` | `team_id`, `season_kind`, `season_year`, `league_id`, `played`, `won`, `drawn`, `lost`, `win_pct`, `goals_for`, `goals_against`, `clean_sheets`, `longest_win_run`, `motm`, `average_rating` |
 | `team_recent_matches` | as `player_recent_matches`, by `team_id` |
 | `stats_leaderboards` | `scope` (`venue`, `city`), `scope_key` (venue id or city), `scope_name`, `season_year`, `profile_id`, `appearances`, `goals`, `motm`, `won`, `win_pct`, `min_appearances`, `goals_rank`, `motm_rank`, `win_rate_rank` |
-| `team_of_the_week` | `id`, `week_start` (a Monday), `scope` (`venue`, `city`, `league`), `venue_id`, `city_key` (a city team's city, and a venue team's venue's city), `league_id`, `name`, `matches` |
-| `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `position_group`, `sort` (1–5), `average_rating`, `rated_matches`, `motm`, `goals` |
+| `team_of_the_week` | `id`, `week_start` (a Monday, unique: one team a week), `matches` |
+| `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `position_group` (`gk`, `def`, `mid`, `fwd`), `sort` (1–5), `average_points`, `games`, `goals`, `assists`, `clean_sheets`, `motm`, `average_rating` |
 
 `match_rating_shown(match, player)` returns a player's match rating once the match page shows it (null otherwise); `stats_min_appearances()` is decision 1g.1.
 
@@ -551,7 +561,7 @@ Each one is decided with Panos before the prompt that needs it, and written into
 1. **Forfeits:**
    - who may record a `no_show` forfeit (venue staff, the other captain, or both) and how it is proved (check-ins?);
    - whether a forfeit has a score (it is null for now);
-   - ~~whether a forfeit counts as a win in the winner's stats~~: decided 18 November, yes (decision 1g.3, to confirm with Panos);
+   - ~~whether a forfeit counts as a win in the winner's stats~~: decided 18 November, yes, as 3-0 (decision 1g.3);
    - what happens to the match when a Gipedo Pano team pulls out more than 6 hours before kickoff (13 takes €1 per player; is the match `void`?).
 2. ~~Check-in window~~: decided 10 November (decision 1a.4).
 3. ~~Ratings window~~: decided 17 November, 24 hours from `confirmed_at` (decision 1f.4).
