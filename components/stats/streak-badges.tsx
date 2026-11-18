@@ -3,7 +3,7 @@
 // Premium and greyed otherwise. Nothing at all while they have none.
 import { StyleSheet, View } from 'react-native';
 
-import { StreakBadge, streakBadgeLook } from '@/components/stats/streak-badge';
+import { StreakBadgeArt } from '@/components/stats/streak-badge-art';
 import { SectionHeader } from '@/components/ui/section-header';
 import { space } from '@/constants/futty-theme';
 import { usePlayerStreakBadges } from '@/lib/stats/use-streak';
@@ -16,12 +16,13 @@ export function StreakBadgesView({ badges }: { badges: PlayerStreakBadges | null
       <SectionHeader title="Streak badges" />
       <View style={styles.badges}>
         {badges.badges.map((b) => (
-          <StreakBadge
+          <StreakBadgeArt
             key={b.badge}
             badge={b.badge}
             label={b.label}
             weeks={b.weeks}
-            look={streakBadgeLook(true, badges.inColour)}
+            earned
+            inColour={badges.inColour}
           />
         ))}
       </View>
@@ -37,5 +38,5 @@ export function StreakBadges({ profileId }: { profileId: string }) {
 
 const styles = StyleSheet.create({
   section: { gap: space.sm },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
 });

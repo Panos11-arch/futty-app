@@ -7,7 +7,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { StreakBadge, streakBadgeLook } from '@/components/stats/streak-badge';
+import { StreakBadgeArt } from '@/components/stats/streak-badge-art';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -64,12 +64,13 @@ export function StreakCardView({
             </View>
             <View style={styles.badges}>
               {state.streak.badges.map((b) => (
-                <StreakBadge
+                <StreakBadgeArt
                   key={b.badge}
                   badge={b.badge}
                   label={b.label}
                   weeks={b.weeks}
-                  look={streakBadgeLook(b.earned, state.streak!.isPremium)}
+                  earned={b.earned}
+                  inColour={state.streak!.isPremium}
                 />
               ))}
             </View>
@@ -105,5 +106,5 @@ const styles = StyleSheet.create({
   body: { gap: space.lg },
   figures: { flexDirection: 'row', gap: space.xl },
   figure: { gap: space.xs },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
 });

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { GO_PREMIUM_BADGES, StreakCard, StreakCardView } from '@/components/stats/streak-card';
-import { colors } from '@/constants/futty-theme';
+import { DISABLED_OPACITY } from '@/components/ui/foundation';
 import type { MyStreak, StreakBadgeLevel } from '@/lib/stats/streaks';
 
 let mockStreak: unknown;
@@ -11,6 +11,10 @@ const mockPush = jest.fn();
 let mockFocusEffects: (() => void)[] = [];
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+jest.mock('react-native-svg/css', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { LocalSvg: (props: object) => <View {...props} /> };
+});
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -52,8 +56,8 @@ const ready = (s: MyStreak) => ({ status: 'ready' as const, streak: s });
 
 const view = (s: MyStreak) => render(<StreakCardView state={ready(s)} onRetry={jest.fn()} onGoPremium={mockPush} />);
 
-const background = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
-const textColour = (text: string) => StyleSheet.flatten(screen.getByText(text).props.style).color;
+const opacity = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).opacity;
+const art = (badge: string, file: 'colour' | 'greyed') => screen.getByTestId(`streak-badge-art-${badge}-${file}`);
 
 beforeEach(() => {
   mockPush.mockReset();
@@ -69,27 +73,26 @@ describe('StreakCardView', () => {
     expect(screen.getByLabelText('Best 9 weeks')).toBeTruthy();
   });
 
-  it('Premium: earned badges in their own colour, the rest locked with the weeks they need', async () => {
+  it('Premium: earned badges in their coloured art, the rest greyed art faded', async () => {
     await view(streak({ isPremium: true, badges: levels(3) }));
-    expect(background('streak-badge-bronze-colour')).toBe(colors.badgeBronze);
-    expect(background('streak-badge-silver-colour')).toBe(colors.badgeSilver);
-    expect(background('streak-badge-gold-colour')).toBe(colors.badgeGold);
-    expect(textColour('Bronze')).toBe(colors.badgeOnBronze);
-    expect(textColour('Silver')).toBe(colors.badgeOnSilver);
-    expect(textColour('Gold')).toBe(colors.badgeOnGold);
-    expect(screen.getByTestId('streak-badge-platinum-locked')).toBeTruthy();
-    expect(screen.getByText('12 weeks')).toBeTruthy();
-    expect(screen.getByText('30 weeks')).toBeTruthy();
+    for (const b of ['bronze', 'silver', 'gold']) expect(art(b, 'colour')).toBeTruthy();
+    for (const b of ['platinum', 'diamond', 'champion']) {
+      expect(art(b, 'greyed')).toBeTruthy();
+      expect(opacity(`streak-badge-${b}-locked`)).toBe(DISABLED_OPACITY);
+    }
+    expect(screen.getByLabelText('Platinum streak badge, 12 weeks in a row')).toBeTruthy();
+    expect(screen.getByLabelText('Champion streak badge, 30 weeks in a row')).toBeTruthy();
     expect(screen.queryByText(GO_PREMIUM_BADGES)).toBeNull();
   });
 
   it('basic: earned badges greyed, with "Go Premium to unlock streak badges"', async () => {
     await view(streak({ isPremium: false, badges: levels(2) }));
     expect(screen.queryByTestId('streak-badge-bronze-colour')).toBeNull();
-    expect(background('streak-badge-bronze-greyed')).toBe(colors.border);
-    expect(background('streak-badge-silver-greyed')).toBe(colors.border);
+    expect(screen.queryByTestId(/^streak-badge-art-.*-colour$/)).toBeNull();
+    expect(art('bronze', 'greyed')).toBeTruthy();
+    expect(art('silver', 'greyed')).toBeTruthy();
+    expect(opacity('streak-badge-bronze-greyed')).toBeUndefined();
     expect(screen.getByLabelText('Bronze streak badge, earned, shown in colour with Premium')).toBeTruthy();
-    expect(textColour('Bronze')).toBe(colors.inkMuted);
     expect(screen.getByText(GO_PREMIUM_BADGES)).toBeTruthy();
     fireEvent.press(screen.getByText(GO_PREMIUM_BADGES));
     expect(mockPush).toHaveBeenCalled();
@@ -97,28 +100,25 @@ describe('StreakCardView', () => {
 
   it('greyed differs from not yet earned', async () => {
     await view(streak({ isPremium: false, badges: levels(1) }));
-    const greyed = StyleSheet.flatten(screen.getByTestId('streak-badge-bronze-greyed').props.style);
-    const locked = StyleSheet.flatten(screen.getByTestId('streak-badge-silver-locked').props.style);
-    expect(greyed.backgroundColor).toBe(colors.border);
-    expect(locked.backgroundColor).toBe(colors.surface);
-    expect(locked.borderColor).toBe(colors.border);
-    expect(screen.getByText('4 weeks')).toBeTruthy();
-    expect(screen.queryByText('2 weeks')).toBeNull();
+    expect(art('bronze', 'greyed')).toBeTruthy();
+    expect(art('silver', 'greyed')).toBeTruthy();
+    expect(opacity('streak-badge-bronze-greyed')).toBeUndefined();
+    expect(opacity('streak-badge-silver-locked')).toBe(DISABLED_OPACITY);
+    expect(screen.getByLabelText('Silver streak badge, 4 weeks in a row')).toBeTruthy();
   });
 
   it('after Premium ends the badges stay earned but are greyed again', async () => {
     const earned = levels(6);
     const { rerender } = await view(streak({ isPremium: true, badges: earned }));
-    expect(background('streak-badge-champion-colour')).toBe(colors.badgeChampion);
-    expect(textColour('Champion')).toBe(colors.badgeOnChampion);
-    expect(textColour('Platinum')).toBe(colors.badgeOnPlatinum);
-    expect(textColour('Diamond')).toBe(colors.badgeOnDiamond);
+    for (const b of ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'champion']) expect(art(b, 'colour')).toBeTruthy();
     await rerender(
       <StreakCardView state={ready(streak({ isPremium: false, badges: earned }))} onRetry={jest.fn()} onGoPremium={mockPush} />,
     );
     for (const b of ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'champion']) {
       expect(screen.getByTestId(`streak-badge-${b}-greyed`)).toBeTruthy();
+      expect(art(b, 'greyed')).toBeTruthy();
     }
+    expect(screen.queryByTestId(/^streak-badge-art-.*-colour$/)).toBeNull();
     expect(screen.getByText(GO_PREMIUM_BADGES)).toBeTruthy();
   });
 

@@ -2,13 +2,16 @@ import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { StreakBadges, StreakBadgesView } from '@/components/stats/streak-badges';
-import { colors } from '@/constants/futty-theme';
 import type { PlayerStreakBadges } from '@/lib/stats/streaks';
 
 let mockState: unknown;
 const mockArgs: unknown[][] = [];
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+jest.mock('react-native-svg/css', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { LocalSvg: (props: object) => <View {...props} /> };
+});
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -24,24 +27,24 @@ const earned: PlayerStreakBadges['badges'] = [
   { badge: 'silver', label: 'Silver', weeks: 4, awardedAt: '2026-10-29T07:00:00+00:00' },
 ];
 
-const background = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).backgroundColor;
-const textColour = (text: string) => StyleSheet.flatten(screen.getByText(text).props.style).color;
+const opacity = (testID: string) => StyleSheet.flatten(screen.getByTestId(testID).props.style).opacity;
 
 describe('StreakBadgesView (another player’s profile)', () => {
   it('a Premium player’s badges in colour', async () => {
     await render(<StreakBadgesView badges={{ inColour: true, badges: earned }} />);
     expect(screen.getByText('Streak badges')).toBeTruthy();
-    expect(background('streak-badge-bronze-colour')).toBe(colors.badgeBronze);
-    expect(background('streak-badge-silver-colour')).toBe(colors.badgeSilver);
-    expect(textColour('Bronze')).toBe(colors.badgeOnBronze);
-    expect(textColour('Silver')).toBe(colors.badgeOnSilver);
+    expect(screen.getByTestId('streak-badge-art-bronze-colour')).toBeTruthy();
+    expect(screen.getByTestId('streak-badge-art-silver-colour')).toBeTruthy();
+    expect(screen.getByText('Bronze')).toBeTruthy();
+    expect(opacity('streak-badge-bronze-colour')).toBeUndefined();
   });
 
   it('a basic player’s badges greyed, with no upsell on someone else’s profile', async () => {
     await render(<StreakBadgesView badges={{ inColour: false, badges: earned }} />);
-    expect(background('streak-badge-bronze-greyed')).toBe(colors.border);
-    expect(background('streak-badge-silver-greyed')).toBe(colors.border);
-    expect(textColour('Bronze')).toBe(colors.inkMuted);
+    expect(screen.getByTestId('streak-badge-art-bronze-greyed')).toBeTruthy();
+    expect(screen.getByTestId('streak-badge-art-silver-greyed')).toBeTruthy();
+    expect(screen.queryByTestId(/^streak-badge-art-.*-colour$/)).toBeNull();
+    expect(opacity('streak-badge-bronze-greyed')).toBeUndefined();
     expect(screen.queryByText(/Go Premium/)).toBeNull();
   });
 

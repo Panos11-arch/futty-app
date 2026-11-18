@@ -26,7 +26,7 @@ const find = (pattern: RegExp, text: string) => text.match(new RegExp(pattern.so
 describe('components/stats uses tokens only', () => {
   it('finds the component files', () => {
     expect(sources.map(([f]) => f)).toEqual(
-      expect.arrayContaining(['streak-badge.tsx', 'streak-badges.tsx', 'streak-card.tsx']),
+      expect.arrayContaining(['streak-badge-art.tsx', 'streak-badges.tsx', 'streak-card.tsx']),
     );
   });
 
