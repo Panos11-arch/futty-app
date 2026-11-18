@@ -147,6 +147,16 @@ Season stats, leaderboards and team of the week (05 sections 3 and 8; 06 section
    - Each player picked gets `team_of_the_week` (can be turned off; "Your games"), once per team they are in.
 5. **What is shown.** Season averages and team-of-the-week averages are aggregates of match ratings that the match page already shows to everyone signed in (1f.4); no individual rating or vote is ever shown.
 
+## 1h. Decisions (18 November, Anghelo, A9; to confirm with Panos)
+
+WhatsApp reminders (05 section 13; set-up and templates in `whatsapp-templates.md`).
+
+1. **Off until switched on.** `whatsapp_settings.enabled` is false until the business account, the templates and the Cyprus price are in place. While it is off, players can't opt in or choose WhatsApp, and everything goes by push.
+2. **Opting in.** A player adds their WhatsApp number (E.164; the app adds +357 to an 8-digit Cyprus number). A number can be active on one account only. They can stop in the app, or by replying STOP (or ΣΤΟΠ) on WhatsApp.
+3. **Which reminders.** The 24-hour and 2-hour reminders and "How did it go?" (`match_after_game`), each set to push, WhatsApp or both. The default is push. The booker's "unpaid spot" alert has no notification type yet, so it isn't included; the reminders already say who hasn't paid.
+4. **Never lost.** A player who chose WhatsApp but has no active number, or has opted out, gets push. Turning a type off turns it off on every channel. Quiet hours hold WhatsApp messages like pushes, and a held match reminder whose game has started is dropped.
+5. **Cost.** Every message's pricing category is logged from Meta's delivery report. Its cost comes from `whatsapp_prices` (integer micro-euros, by country code and category), which ships empty until the Cyprus price is checked. `whatsapp_costs_by_month` totals it.
+
 ## 2. Time
 
 - Every time rule uses Cyprus time (Asia/Nicosia). SQL compares against `now()` and builds timestamps with `at time zone 'Asia/Nicosia'`. Edge Functions use `supabase/functions/_shared/cyprus-time.ts`. Booking days and times are never compared against UTC.
@@ -445,7 +455,7 @@ The signature is the one the stub already has (`supabase/migrations/202611090100
   2. writes **one** `notifications` row, always, whatever the settings;
   3. for a type the player turned off (section 4.10), stops there;
   4. otherwise sends **one push per push token** of that profile, recording a `notification_deliveries` row for each. During the player's quiet hours the push is held (`held_quiet_hours`) and sent when the quiet hours end; a held `match_reminder_24h` or `match_reminder_2h` whose match has kicked off by then is dropped (`dropped`) instead (decision 1a.6);
-  5. WhatsApp comes later (A9) as a second channel chosen per type; the signature doesn't change.
+  5. WhatsApp (A9, decision 1h): for a WhatsApp-capable type the player set to WhatsApp or both, with an active number and WhatsApp switched on, one WhatsApp delivery (`channel = 'whatsapp'`, the number in `phone_e164`) instead of, or as well as, the pushes. The signature doesn't change. `notify-send-whatsapp` sends them with `whatsapp_deliveries_due` and `whatsapp_delivery_result`; `whatsapp-webhook` records delivery reports and STOP replies.
 - **Failures:** a failed push never fails the caller; it is recorded in `notification_deliveries`.
 
 The allowed types. **Always sent** = can't be turned off (decision 4).

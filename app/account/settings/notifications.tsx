@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { WhatsAppSection } from '@/components/notifications/whatsapp-section';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -314,6 +315,8 @@ export default function NotificationSettingsScreen() {
                 </Card>
               </View>
             ) : null}
+
+            <WhatsAppSection />
 
             <QuietHoursSection saved={s.quietHours} onSave={s.saveQuietHours} />
           </>
