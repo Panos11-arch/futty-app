@@ -9,6 +9,7 @@ import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
+import { FuttyLogo } from '@/components/ui/futty-logo';
 import { IconButton } from '@/components/ui/icon-button';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -158,9 +159,12 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header">
-            Profile
-          </Text>
+          <View style={styles.titleRow}>
+            <FuttyLogo />
+            <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header">
+              Profile
+            </Text>
+          </View>
           <Text variant="callout" tone="inkMuted">
             {user?.email}
           </Text>
@@ -180,6 +184,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   header: { gap: space.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   card: { gap: space.lg },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   identity: { flex: 1, gap: space.xs },

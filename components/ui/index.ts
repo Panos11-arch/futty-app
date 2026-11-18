@@ -6,6 +6,7 @@ export { Button, type ButtonVariant } from './button';
 export { Card } from './card';
 export { Chip } from './chip';
 export { EmptyState } from './empty-state';
+export { FuttyLogo } from './futty-logo';
 export { IconButton } from './icon-button';
 export { IconSymbol, type IconSymbolName } from './icon-symbol';
 export { ListRow } from './list-row';

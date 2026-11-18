@@ -121,6 +121,19 @@ describe('Go Premium list', () => {
       expect(router.push).toHaveBeenCalledWith({ pathname: '/premium-plan', params: { plan: 'personal', teamId: '' } })
     );
   });
+
+  it('shows the basic logo to a basic player (U9)', async () => {
+    await render(<GoPremiumScreen />);
+    expect(screen.getByTestId('futty-logo-basic')).toBeTruthy();
+    expect(screen.queryByTestId('futty-logo-premium')).toBeNull();
+  });
+
+  it('shows the Premium logo to a Premium player (U9)', async () => {
+    mockProfile = { status: 'ready', profile: { is_premium: true } };
+    await render(<GoPremiumScreen />);
+    expect(screen.getByTestId('futty-logo-premium')).toBeTruthy();
+    expect(screen.queryByTestId('futty-logo-basic')).toBeNull();
+  });
 });
 
 describe('Premium plan: manage and double taps', () => {
