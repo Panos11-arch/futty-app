@@ -107,6 +107,9 @@ begin
   perform tests.pay_ago((tests.player(v_spot.id, 0)).id, 'pi_vn_c2');
   perform tests.pay_ago((tests.player(v_spot.id, 1)).id, 'pi_vn_c2b');
   perform tests.pay_ago((tests.player(v_by_venue.id, 0)).id, 'pi_vn_c3');
+  -- P6e audit: staff hear of a cancellation only for a booking they were
+  -- told about, so the job runs once before the cancellations.
+  perform public.venue_notifications_tick(tests.kickoff_of(v_team.id) - interval '1 day');
 
   perform tests.cancel(v_team.id, 'whole_team', v_booker);
   perform tests.cancel(v_spot.id, 'my_spot', (tests.player(v_spot.id, 1)).profile_id);
