@@ -75,7 +75,7 @@
         "expo-calendar",
         {
           "calendarPermission": "Allow $(PRODUCT_NAME) to add your Futty games to your calendar and keep them up to date when a booking moves or is cancelled.",
-          "remindersPermission": false
+          "remindersPermission": "Futty only adds your games to your calendar. It never reads or changes your reminders."
         }
       ],
       [
