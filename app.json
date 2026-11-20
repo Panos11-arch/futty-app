@@ -75,7 +75,7 @@
         "expo-calendar",
         {
           "calendarPermission": "Allow $(PRODUCT_NAME) to add your Futty games to your calendar and keep them up to date when a booking moves or is cancelled.",
-          "remindersPermission": false
+          "remindersPermission": "Futty doesn't use your reminders. iOS asks every calendar app to include this line."
         }
       ],
       [
