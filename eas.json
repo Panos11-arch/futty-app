@@ -27,9 +27,9 @@
       "env": {
         "EXPO_ROUTER_IMPORT_MODE": "sync",
         "EXPO_PUBLIC_E2E": "1",
-        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_STAGING_URL",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_STAGING_ANON_KEY",
-        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "REPLACE_PK_TEST"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://wpxgnoilipnvbyodalmg.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_F-7zJVdKPC4CmT8FP_dpkw_Z-EA9frY",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51U0hT3BWtI1rZBOJJFyV8CinAtdenqdnFxqdOgDB00lNk2WQnIJrMpJeIEMtMk2B4iQn4unAW8voVe7JaX2i2YRn00L0eTwMlp"
       }
     },
     "production": {
