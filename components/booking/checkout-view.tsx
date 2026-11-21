@@ -184,10 +184,24 @@ function CheckoutReady({
           <SegmentedControl<Who>
             accessibilityLabel="Who pays"
             options={[
-              { value: 'pay_all', label: `Pay for everyone: ${formatEuros(quote.pay_all.card_cents)}` },
-              { value: 'each_pays', label: `Each pays: ${formatEuros(quote.each_pays.player_cents)} each` },
+              {
+                value: 'pay_all',
+                label: `Pay for everyone: ${formatEuros(quote.pay_all.card_cents)}`,
+                testID: 'checkout-who-pay-all',
+              },
+              {
+                value: 'each_pays',
+                label: `Each pays: ${formatEuros(quote.each_pays.player_cents)} each`,
+                testID: 'checkout-who-each-pays',
+              },
               ...(teams.length > 0
-                ? [{ value: 'gipedo_pano' as const, label: `Gipedo Pano: ${formatEuros(quote.gipedo_pano.hold_cents)} held` }]
+                ? [
+                    {
+                      value: 'gipedo_pano' as const,
+                      label: `Gipedo Pano: ${formatEuros(quote.gipedo_pano.hold_cents)} held`,
+                      testID: 'checkout-who-gipedo',
+                    },
+                  ]
                 : []),
             ]}
             value={(who ?? '') as Who}
@@ -222,8 +236,8 @@ function CheckoutReady({
               <SegmentedControl<Each>
                 accessibilityLabel="Who covers an unpaid spot"
                 options={[
-                  { value: 'each_pays_responsible', label: "I'm responsible for the team" },
-                  { value: 'each_pays_own_spot', label: 'Just my spot' },
+                  { value: 'each_pays_responsible', label: "I'm responsible for the team", testID: 'checkout-each-responsible' },
+                  { value: 'each_pays_own_spot', label: 'Just my spot', testID: 'checkout-each-own-spot' },
                 ]}
                 value={(each ?? '') as Each}
                 onChange={choose(setEach)}
@@ -276,9 +290,14 @@ function CheckoutReady({
 
         <CancellationRules terms={quote.cancellation} />
 
-        {error ? <Banner tone="danger" message={error} /> : null}
+        {error ? (
+          <View testID="checkout-error">
+            <Banner tone="danger" message={error} />
+          </View>
+        ) : null}
       </ScrollView>
       <StickyActionBar
+        actionTestID="checkout-pay"
         totalCents={amounts?.totalCents}
         totalLabel={totalLabel}
         actionLabel={actionLabel}

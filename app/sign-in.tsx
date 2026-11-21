@@ -141,6 +141,7 @@ export default function SignInScreen() {
       </AuthSubtitle>
 
       <TextField
+        testID="sign-in-email"
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -181,6 +182,7 @@ export default function SignInScreen() {
       ) : null}
 
       <TextField
+        testID="sign-in-password"
         label="Password"
         value={password}
         onChangeText={setPassword}
@@ -211,9 +213,14 @@ export default function SignInScreen() {
         />
       </View>
 
-      {error ? <AuthError>{error}</AuthError> : null}
+      {error ? (
+        <View testID="sign-in-error">
+          <AuthError>{error}</AuthError>
+        </View>
+      ) : null}
 
       <Button
+        testID="sign-in-submit"
         label={isSignUp ? 'Sign up' : 'Sign in'}
         onPress={submit}
         disabled={!canSubmit}

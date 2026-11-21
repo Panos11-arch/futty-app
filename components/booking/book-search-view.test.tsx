@@ -220,3 +220,25 @@ describe('debt banner (spec 13, "Debt")', () => {
     expect(onSaveSearch).toHaveBeenCalledWith({ day: '2026-11-12', start: '19:00', minutes: 90, format: '5-a-side' });
   });
 });
+
+describe('BookSearchView: testIDs for the Maestro tests (.maestro)', () => {
+  it('names each day, time, length and format by its value, and each venue card and its info button', async () => {
+    const p = props({ results: { status: 'ready', data: [nuevo] } });
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-day-2026-11-14'));
+    await fireEvent.press(screen.getByTestId('book-time-1900'));
+    await fireEvent.press(screen.getByTestId('book-length-90'));
+    await fireEvent.press(screen.getByTestId('book-format-5-a-side'));
+    expect(p.onQueryChange).toHaveBeenLastCalledWith({
+      day: '2026-11-14',
+      start: '19:00',
+      minutes: 90,
+      format: '5-a-side',
+      playersPerSide: 5,
+    });
+    await fireEvent.press(screen.getByTestId('free-venue-v1'));
+    expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
+    await fireEvent.press(screen.getByTestId('free-venue-v1-info'));
+    expect(p.onVenueInfo).toHaveBeenCalledWith('v1');
+  });
+});

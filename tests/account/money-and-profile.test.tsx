@@ -141,6 +141,13 @@ describe('Profile', () => {
     expect(screen.getByTestId('futty-logo-premium')).toBeTruthy();
   });
 
+  it('My bookings has a testID for the Maestro tests (.maestro)', async () => {
+    mockProfile = { status: 'ready', profile };
+    await render(<ProfileScreen />);
+    await fireEvent.press(screen.getByTestId('profile-my-bookings'));
+    expect(router.push).toHaveBeenCalledWith('/my-bookings');
+  });
+
   it('missing profile says so', async () => {
     mockProfile = { status: 'missing' };
     await render(<ProfileScreen />);

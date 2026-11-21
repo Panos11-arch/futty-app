@@ -252,3 +252,12 @@ describe('VenuePageView', () => {
     expect(p.onRetry).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('VenuePageView: testIDs for the Maestro tests (.maestro)', () => {
+  it('names the Book button', async () => {
+    const p = props();
+    await render(<VenuePageView state={ready(full)} {...p} />);
+    await fireEvent.press(screen.getByTestId('venue-book'));
+    expect(p.onBook).toHaveBeenCalledTimes(1);
+  });
+});

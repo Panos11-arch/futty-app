@@ -62,3 +62,12 @@ describe('MyBookingsView', () => {
     expect(screen.getByText('No upcoming bookings. Book a pitch to see it here.')).toBeTruthy();
   });
 });
+
+describe('MyBookingsView: testIDs for the Maestro tests (.maestro)', () => {
+  it('names the list and the empty state', async () => {
+    await render(<MyBookingsView {...props()} />);
+    expect(screen.getByTestId('my-bookings-list')).toBeTruthy();
+    await render(<MyBookingsView {...props({ bookings: { status: 'ready', bookings: [], reload: jest.fn() } })} />);
+    expect(screen.getByTestId('my-bookings-empty')).toBeTruthy();
+  });
+});

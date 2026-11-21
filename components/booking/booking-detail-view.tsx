@@ -261,12 +261,25 @@ function BookingDetailReady({
           <Text variant="body" tone="inkMuted">
             {`${booking.format} · ${booking.players_per_side} v ${booking.players_per_side}`}
           </Text>
-          {bookingPill ? <StatusPill status={bookingPill} /> : null}
+          {bookingPill ? (
+            // The status as a testID for the Maestro tests.
+            <View testID={`booking-detail-status-${booking.status}`}>
+              <StatusPill status={bookingPill} />
+            </View>
+          ) : null}
         </View>
 
-        {cancelled ? <Banner tone="info" message="This booking was cancelled." /> : null}
+        {cancelled ? (
+          <View testID="booking-detail-cancelled">
+            <Banner tone="info" message="This booking was cancelled." />
+          </View>
+        ) : null}
         {!cancelled && !meActive && !isBooker ? <Banner tone="info" message="You're no longer in this game." /> : null}
-        {notice ? <Banner tone="info" message={notice} /> : null}
+        {notice ? (
+          <View testID="booking-detail-notice">
+            <Banner tone="info" message={notice} />
+          </View>
+        ) : null}
 
         {countdown ? <ListRow title={countdown} leading={{ icon: 'clock.fill' }} /> : null}
 
@@ -426,10 +439,22 @@ function BookingDetailReady({
         {live && (detail.can_cancel.my_spot || detail.can_cancel.whole_team) ? (
           <View style={styles.section}>
             {detail.can_cancel.my_spot && !legacy ? (
-              <Button label="Cancel my spot" variant="destructive" onPress={() => startCancel('my_spot')} fullWidth />
+              <Button
+                testID="booking-detail-cancel-my-spot"
+                label="Cancel my spot"
+                variant="destructive"
+                onPress={() => startCancel('my_spot')}
+                fullWidth
+              />
             ) : null}
             {detail.can_cancel.whole_team ? (
-              <Button label="Cancel whole team" variant="destructive" onPress={() => startCancel('whole_team')} fullWidth />
+              <Button
+                testID="booking-detail-cancel-whole-team"
+                label="Cancel whole team"
+                variant="destructive"
+                onPress={() => startCancel('whole_team')}
+                fullWidth
+              />
             ) : null}
             {legacy ? null : (
               <Text variant="caption" tone="inkMuted">
@@ -445,25 +470,33 @@ function BookingDetailReady({
         onClose={closeSheet}
         title={sheetTitle}
         primaryAction={
-          asking?.step === 'quote' ? { label: confirmLabel, onPress: confirm, loading: confirming } : undefined
+          asking?.step === 'quote'
+            ? { label: confirmLabel, onPress: confirm, loading: confirming, testID: 'cancel-confirm' }
+            : undefined
         }
-        secondaryAction={{ label: keepLabel, disabled: confirming }}>
+        secondaryAction={{ label: keepLabel, disabled: confirming, testID: 'cancel-keep' }}>
         {asking?.step === 'loading' ? <SkeletonText lines={3} variant="body" /> : null}
         {asking?.step === 'error' ? <Banner tone="danger" message={asking.message} /> : null}
         {asking?.step === 'quote' && asking.changed ? (
           <Banner tone="warning" message="What happens to the money has changed. Check it again before you confirm." />
         ) : null}
-        {asking?.step === 'quote' && asking.quote
-          ? describeQuote(asking.quote, venue.name).map((line) => (
-              <Text key={line} variant="body">
+        {asking?.step === 'quote' && asking.quote ? (
+          <View testID="cancel-quote" style={styles.quoteLines}>
+            {describeQuote(asking.quote, venue.name).map((line, i) => (
+              <Text key={line} testID={`cancel-quote-line-${i}`} variant="body">
                 {line}
               </Text>
-            ))
-          : null}
+            ))}
+          </View>
+        ) : null}
         {asking?.step === 'quote' && !asking.quote ? (
           <Text variant="body">{OLD_RULES_WORDS}</Text>
         ) : null}
-        {confirmError ? <Banner tone="danger" message={confirmError} /> : null}
+        {confirmError ? (
+          <View testID="cancel-error">
+            <Banner tone="danger" message={confirmError} />
+          </View>
+        ) : null}
       </Sheet>
     </View>
   );
@@ -476,4 +509,7 @@ const styles = StyleSheet.create({
   list: { gap: space.xs },
   trailing: { alignItems: 'flex-end', gap: space.xs },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  // The quote's lines share one View (for its testID), spaced as the sheet
+  // spaces its content (components/ui/sheet.tsx, content).
+  quoteLines: { gap: space.md },
 });

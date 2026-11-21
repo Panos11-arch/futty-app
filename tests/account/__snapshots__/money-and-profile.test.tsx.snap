@@ -692,6 +692,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
                 false,
               ]
             }
+            testID="profile-my-bookings"
           >
             <View
               testID="icon-sportscourt.fill"

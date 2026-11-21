@@ -151,6 +151,11 @@ describe('Home', () => {
     expect(screen.getByRole('header', { name: 'Home' })).toBeTruthy();
   });
 
+  it('has a testID for the Maestro tests (.maestro)', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-screen')).toBeTruthy();
+  });
+
   it('offers the starting-level questions from Home (A5b)', async () => {
     mockStartingLevelOffer.mockClear();
     await render(<HomeScreen />);

@@ -22,6 +22,7 @@ export function MenuRow({
   onPress,
   destructive,
   iconColor,
+  testID,
 }: {
   icon: IconName;
   label: string;
@@ -30,11 +31,14 @@ export function MenuRow({
   /** Danger label/icon — used only for Log out. */
   destructive?: boolean;
   iconColor?: string;
+  /** For the Maestro tests (.maestro). */
+  testID?: string;
 }) {
   const tint = destructive ? colors.danger : (iconColor ?? colors.inkMuted);
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={sublabel ? `${label}, ${sublabel}` : label}
       onPress={onPress}

@@ -196,6 +196,7 @@ export function VenuePageView({ state, onRetry, onDirections, onBook, weather }:
       </ScrollView>
 
       <StickyActionBar
+        actionTestID="venue-book"
         actionLabel={data.bookable ? 'Book' : 'Not taking bookings yet'}
         onPress={onBook}
         disabled={!data.bookable}
