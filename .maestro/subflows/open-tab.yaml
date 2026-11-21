@@ -1,0 +1,7 @@
+# Taps a tab in the tab bar: TAB is home, book, play or profile
+# (app/(tabs)/_layout.tsx, tabBarButtonTestID). Book opens the booking
+# wizard over the current tab.
+appId: com.panosalepis.futtyapp
+---
+- tapOn:
+    id: tab-${TAB}

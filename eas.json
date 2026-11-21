@@ -15,6 +15,22 @@
       },
       "channel": "preview"
     },
+    "e2e-test": {
+      "distribution": "internal",
+      "withoutCredentials": true,
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_ROUTER_IMPORT_MODE": "sync",
+        "EXPO_PUBLIC_SUPABASE_URL": "REPLACE_STAGING_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REPLACE_STAGING_ANON_KEY",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "REPLACE_PK_TEST"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production"
