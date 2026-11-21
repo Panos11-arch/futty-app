@@ -18,6 +18,7 @@ function tabIcon(name: IconSymbolName) {
 // Four tabs (docs/specs/15-design.md section 4). Team, Leagues and Community
 // live inside Play now; their routes stay (hidden from the bar) and redirect
 // to the matching Play segment so old links and notifications still work.
+// Each tab's button has a testID for the Maestro tests (.maestro).
 export default function TabLayout() {
   return (
     <Tabs
@@ -33,10 +34,10 @@ export default function TabLayout() {
           borderTopWidth: hairline,
         },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('house.fill') }} />
+      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('house.fill'), tabBarButtonTestID: 'tab-home' }} />
       <Tabs.Screen
         name="book"
-        options={{ title: 'Book', tabBarIcon: tabIcon('calendar') }}
+        options={{ title: 'Book', tabBarIcon: tabIcon('calendar'), tabBarButtonTestID: 'tab-book' }}
         listeners={({ navigation }) => ({
           // Book opens the booking wizard as a pushed screen, as before, over
           // whichever tab you're on.
@@ -46,8 +47,8 @@ export default function TabLayout() {
           },
         })}
       />
-      <Tabs.Screen name="play" options={{ title: 'Play', tabBarIcon: tabIcon('sportscourt.fill') }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person.fill') }} />
+      <Tabs.Screen name="play" options={{ title: 'Play', tabBarIcon: tabIcon('sportscourt.fill'), tabBarButtonTestID: 'tab-play' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person.fill'), tabBarButtonTestID: 'tab-profile' }} />
       <Tabs.Screen name="team" options={{ href: null }} />
       <Tabs.Screen name="leagues" options={{ href: null }} />
       <Tabs.Screen name="community" options={{ href: null }} />

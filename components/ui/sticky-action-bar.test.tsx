@@ -26,6 +26,13 @@ describe('StickyActionBar', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  it('puts an optional testID on the action button, for end-to-end tests', async () => {
+    const onPress = jest.fn();
+    await render(<StickyActionBar actionLabel="Pay €6.80" actionTestID="checkout-pay" onPress={onPress} />);
+    await fireEvent.press(screen.getByTestId('checkout-pay'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
   it('pads for the home indicator', async () => {
     await render(<StickyActionBar actionLabel="Book" onPress={() => {}} />);
     // The mock reports a 34 pt bottom inset, like an iPhone home indicator.

@@ -170,6 +170,22 @@ describe.each([false, true])('Sheet (Reduce Motion %s)', (reduceMotion) => {
     expect(screen.getByText('Your €6.80 is released.')).toBeTruthy();
   });
 
+  it('puts optional testIDs on its actions, for end-to-end tests', async () => {
+    const onPrimary = jest.fn();
+    await render(
+      <Sheet
+        visible
+        onClose={() => {}}
+        title="Cancel my spot?"
+        primaryAction={{ label: 'Confirm', onPress: onPrimary, testID: 'cancel-confirm' }}
+        secondaryAction={{ label: 'Keep my spot', testID: 'cancel-keep' }}
+      />,
+    );
+    expect(screen.getByTestId('cancel-keep')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cancel-confirm'));
+    expect(onPrimary).toHaveBeenCalledTimes(1);
+  });
+
   it('does not close on the primary action by itself', async () => {
     await render(<Harness />);
     await fireEvent.press(screen.getAllByRole('button', { name: 'Cancel my spot' })[0]);

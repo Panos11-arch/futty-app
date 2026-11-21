@@ -14,6 +14,8 @@ export type StickyActionBarProps = {
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  /** For end-to-end tests (.maestro): the action button's testID. */
+  actionTestID?: string;
 };
 
 /** Pinned to the bottom of a screen, above the home indicator. */
@@ -24,6 +26,7 @@ export function StickyActionBar({
   onPress,
   loading,
   disabled,
+  actionTestID,
 }: StickyActionBarProps) {
   const insets = useSafeAreaInsets();
   return (
@@ -39,7 +42,14 @@ export function StickyActionBar({
         </View>
       ) : null}
       <View style={styles.action}>
-        <Button label={actionLabel} onPress={onPress} loading={loading} disabled={disabled} fullWidth />
+        <Button
+          testID={actionTestID}
+          label={actionLabel}
+          onPress={onPress}
+          loading={loading}
+          disabled={disabled}
+          fullWidth
+        />
       </View>
     </View>
   );

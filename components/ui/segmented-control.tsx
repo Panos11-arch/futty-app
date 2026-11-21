@@ -4,7 +4,8 @@ import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
 import { colors, radius, space } from '@/constants/futty-theme';
 
-export type SegmentedOption<T extends string> = { value: T; label: string };
+/** testID: for end-to-end tests (.maestro). */
+export type SegmentedOption<T extends string> = { value: T; label: string; testID?: string };
 
 export type SegmentedControlProps<T extends string> = {
   options: SegmentedOption<T>[];
@@ -27,6 +28,7 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={option.value}
+            testID={option.testID}
             accessibilityRole="tab"
             accessibilityLabel={option.label}
             accessibilityState={{ selected }}
