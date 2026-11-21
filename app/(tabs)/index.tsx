@@ -651,7 +651,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={styles.screen}>
+    <View testID="home-screen" style={styles.screen}>
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
         <HomeHeader />
       </SafeAreaView>

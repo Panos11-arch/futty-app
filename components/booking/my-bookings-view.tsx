@@ -45,11 +45,15 @@ export function MyBookingsView({ bookings, venues, linkedBooking, onOpen }: MyBo
     );
   }
   if (bookings.bookings.length === 0) {
-    return <EmptyState icon="sportscourt.fill" message="No upcoming bookings. Book a pitch to see it here." />;
+    return (
+      <View testID="my-bookings-empty">
+        <EmptyState icon="sportscourt.fill" message="No upcoming bookings. Book a pitch to see it here." />
+      </View>
+    );
   }
 
   return (
-    <View style={styles.list}>
+    <View testID="my-bookings-list" style={styles.list}>
       {bookings.bookings.map((booking) => {
         const venue = venues.find((v) => v.id === booking.venue_id);
         const when = `${dayLabel(dateKeyToDate(booking.booking_day))} · ${booking.start_time.slice(0, 5)}–${booking.end_time.slice(0, 5)}`;

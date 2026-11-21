@@ -1,0 +1,40 @@
+# Starts the app from nothing and signs in as EMAIL / PASSWORD, ending on
+# Home. The seeded logins have a username, so no profile setup; the
+# starting-level questions (offered once per device, and clearState makes a
+# new device) are skipped when they show.
+appId: com.panosalepis.futtyapp
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions:
+      all: deny
+- extendedWaitUntil:
+    visible:
+      id: sign-in-email
+    timeout: 60000
+- tapOn:
+    id: sign-in-email
+- inputText: ${EMAIL}
+- tapOn:
+    id: sign-in-password
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: sign-in-submit
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: starting-level-skip
+    timeout: 8000
+    optional: true
+- tapOn:
+    id: starting-level-skip
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 10000

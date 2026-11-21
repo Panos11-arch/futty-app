@@ -1,0 +1,104 @@
+# Journey b: book E2E Arena for the seeded slot, the booker paying for
+# everyone, pay with Stripe's test card, wait for the webhook to confirm the
+# booking, and find it in My bookings.
+#
+# The amount is spec 13's worked example: a €60 5-a-side, the booker paying
+# for everyone, is €60 + 10 x €0.55 = €65.50 ("Prices and fees").
+# MAESTRO_E2E_DAY and MAESTRO_E2E_START come from the seed (the slot two
+# days ahead in Cyprus; 1900 on iOS, 2000 on Android).
+appId: com.panosalepis.futtyapp
+name: book-and-pay
+tags:
+  - e2e
+  - booking
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  DAY: ${MAESTRO_E2E_DAY}
+  START: ${MAESTRO_E2E_START.replace(':', '')}
+  VENUE_ID: e2e00000-0000-4000-8000-000000000001
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# ---- Book: day, time, length, format, then the venue --------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: book
+- extendedWaitUntil:
+    visible:
+      id: book-day-${DAY}
+    timeout: 30000
+- tapOn:
+    id: book-day-${DAY}
+- scrollUntilVisible:
+    element:
+      id: book-time-${START}
+    direction: DOWN
+- tapOn:
+    id: book-time-${START}
+- scrollUntilVisible:
+    element:
+      id: book-length-60
+    direction: DOWN
+- tapOn:
+    id: book-length-60
+- scrollUntilVisible:
+    element:
+      id: book-format-5-a-side
+    direction: DOWN
+- tapOn:
+    id: book-format-5-a-side
+- scrollUntilVisible:
+    element:
+      id: free-venue-${VENUE_ID}
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- tapOn:
+    id: free-venue-${VENUE_ID}
+
+# ---- Checkout: the booker pays for everyone ------------------------------
+- extendedWaitUntil:
+    visible:
+      id: checkout-who-pay-all
+    timeout: 30000
+- tapOn:
+    id: checkout-who-pay-all
+- assertVisible:
+    id: checkout-pay
+    text: 'Pay €65\.50'
+    enabled: true
+- tapOn:
+    id: checkout-pay
+- runFlow:
+    file: ../subflows/stripe-test-card.yaml
+    env:
+      PAY_LABEL: 'Pay €65\.50'
+
+# ---- Confirmed by the webhook --------------------------------------------
+# Paying opens the booking. Its status turns confirmed only when Stripe's
+# webhook says the payment is held, so open it again from My bookings until
+# it does: up to 6 tries, about 3 minutes.
+- extendedWaitUntil:
+    visible:
+      id: 'booking-detail-status-.*'
+    timeout: 60000
+- assertNotVisible:
+    id: checkout-error
+- retry:
+    maxRetries: 6
+    commands:
+      - runFlow: ../subflows/open-my-booking.yaml
+      - extendedWaitUntil:
+          visible:
+            id: booking-detail-status-confirmed
+          timeout: 15000
+- assertVisible:
+    id: booking-detail-cancel-whole-team
+- takeScreenshot: book-and-pay-${PLATFORM}

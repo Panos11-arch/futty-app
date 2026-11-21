@@ -316,3 +316,22 @@ describe('CheckoutView: weather (P11)', () => {
     expect(screen.queryByTestId('checkout-weather')).toBeNull();
   });
 });
+
+describe('CheckoutView: testIDs for the Maestro tests (.maestro)', () => {
+  it('names the who-pays choices and the pay button', async () => {
+    const p = props();
+    await render(<CheckoutView {...p} />);
+    await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+    await fireEvent.press(screen.getByTestId('checkout-each-own-spot'));
+    expect(screen.getByTestId('checkout-each-responsible')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(screen.getByTestId('checkout-pay').props.accessibilityLabel).toBe('Pay €65.50');
+    await fireEvent.press(screen.getByTestId('checkout-pay'));
+    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'pay_all' }));
+  });
+
+  it('names the error message', async () => {
+    await render(<CheckoutView {...props(quoteFixture(), { error: 'Your card was declined.' })} />);
+    expect(within(screen.getByTestId('checkout-error')).getByText('Your card was declined.')).toBeTruthy();
+  });
+});

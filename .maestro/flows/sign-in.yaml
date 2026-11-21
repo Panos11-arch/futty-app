@@ -1,0 +1,24 @@
+# Journey a: sign in with email and password and land on Home.
+# MAESTRO_E2E_PLATFORM (ios or android) picks that platform's seeded login,
+# so iOS and Android can run at the same time.
+appId: com.panosalepis.futtyapp
+name: sign-in
+tags:
+  - e2e
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- assertVisible:
+    id: tab-book
+- assertNotVisible:
+    id: sign-in-email
+- takeScreenshot: sign-in-${PLATFORM}

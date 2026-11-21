@@ -1,0 +1,14 @@
+# Maestro workspace (docs/testing/maestro.md). Run the whole folder:
+#   maestro test .maestro -e MAESTRO_E2E_PLATFORM=android -e MAESTRO_E2E_PASSWORD=... \
+#     -e MAESTRO_E2E_DAY=2026-11-23 -e MAESTRO_E2E_START=2000
+# The Expo workflow (.eas/workflows/e2e.yml) passes the same values as
+# environment variables. Subflows are steps, not tests: only flows/ runs.
+flows:
+  - 'flows/*'
+executionOrder:
+  # cancel needs the booking book-and-pay made, so stop at the first failure.
+  continueOnFailure: false
+  flowsOrder:
+    - sign-in
+    - book-and-pay
+    - cancel

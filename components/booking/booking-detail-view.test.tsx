@@ -454,3 +454,36 @@ describe('BookingDetailView: venue players', () => {
     expect(screen.queryByText(/\bhe\b/i)).toBeNull();
   });
 });
+
+describe('BookingDetailView: testIDs for the Maestro tests (.maestro)', () => {
+  it('names the booking status, the cancel buttons, the quote lines and the confirm', async () => {
+    const p = props(bookerDetail());
+    await render(<BookingDetailView {...p} />);
+    expect(screen.getByTestId(`booking-detail-status-${bookerDetail().booking.status}`)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('booking-detail-cancel-whole-team'));
+    expect(await screen.findByTestId('cancel-quote-line-0')).toBeTruthy();
+    expect(within(screen.getByTestId('cancel-quote')).getByText(/costs €6\.00/)).toBeTruthy();
+    expect(screen.getByTestId('cancel-keep')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('cancel-confirm'));
+    expect(p.onConfirmCancel).toHaveBeenCalledWith({ scope: 'whole_team', quote: 'q2' });
+  });
+
+  it('names my-spot cancel, the notice and the cancelled message', async () => {
+    await render(<BookingDetailView {...props(playerDetail(), { notice: 'Your spot is cancelled.' })} />);
+    expect(screen.getByTestId('booking-detail-cancel-my-spot')).toBeTruthy();
+    expect(within(screen.getByTestId('booking-detail-notice')).getByText('Your spot is cancelled.')).toBeTruthy();
+    const detail = bookerDetail();
+    await render(<BookingDetailView {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } })} />);
+    expect(screen.getByTestId('booking-detail-cancelled')).toBeTruthy();
+    // No pill for a cancelled booking, so no status wrapper either.
+    expect(screen.queryByTestId('booking-detail-status-cancelled')).toBeNull();
+  });
+
+  it('names a refused cancellation', async () => {
+    const p = props(playerDetail(), { onConfirmCancel: jest.fn(async () => ({ status: 'error' as const, message: 'Too late.' })) });
+    await render(<BookingDetailView {...p} />);
+    await fireEvent.press(screen.getByTestId('booking-detail-cancel-my-spot'));
+    await fireEvent.press(await screen.findByTestId('cancel-confirm'));
+    expect(within(await screen.findByTestId('cancel-error')).getByText('Too late.')).toBeTruthy();
+  });
+});

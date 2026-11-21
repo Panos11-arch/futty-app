@@ -1,0 +1,73 @@
+# Journey c: cancel the booking book-and-pay just made, and see exactly
+# what the app says happens to the money.
+#
+# The booker paid for everyone a few minutes ago, more than 6 hours before
+# kickoff, so this is inside the free hour (spec 13, "Cancellations and
+# refunds": "Within 1 hour of paying ... the hold is cancelled"; "A booker
+# who paid for everyone can only cancel the whole booking"). The server's
+# quote releases the whole €65.50 hold, and the app words it as below
+# (lib/booking-detail.ts describeQuote and cancelledMessage). Run straight
+# after book-and-pay: an hour later the quote, and so this flow, differ.
+appId: com.panosalepis.futtyapp
+name: cancel
+tags:
+  - e2e
+  - booking
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- runFlow: ../subflows/open-my-booking.yaml
+- extendedWaitUntil:
+    visible:
+      id: booking-detail-status-confirmed
+    timeout: 20000
+
+# ---- The quote first ------------------------------------------------------
+- scrollUntilVisible:
+    element:
+      id: booking-detail-cancel-whole-team
+    direction: DOWN
+- tapOn:
+    id: booking-detail-cancel-whole-team
+- extendedWaitUntil:
+    visible:
+      id: cancel-quote-line-0
+    timeout: 20000
+- assertVisible:
+    id: cancel-quote-line-0
+    text: 'The booking is cancelled and the pitch is released\.'
+- assertVisible:
+    id: cancel-quote-line-1
+    text: 'You get €65\.50 back\. The hold on your card is released\.'
+- assertNotVisible:
+    id: cancel-quote-line-2
+
+# ---- Then the second tap ---------------------------------------------------
+- tapOn:
+    id: cancel-confirm
+- extendedWaitUntil:
+    visible:
+      id: booking-detail-notice
+    timeout: 30000
+- assertVisible:
+    id: booking-detail-notice
+    containsDescendants:
+      - text: 'The booking is cancelled\.'
+- extendedWaitUntil:
+    visible:
+      id: booking-detail-cancelled
+    timeout: 30000
+- assertVisible:
+    id: booking-detail-cancelled
+    containsDescendants:
+      - text: 'This booking was cancelled\.'
+- assertNotVisible:
+    id: cancel-error
+- takeScreenshot: cancel-${PLATFORM}

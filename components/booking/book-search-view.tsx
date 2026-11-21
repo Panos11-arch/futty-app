@@ -153,7 +153,13 @@ function BookSearchReady({
         <SectionHeader title="Day" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
           {days.map((d) => (
-            <Chip key={d} label={dayChipLabel(d, options.today)} selected={d === day} onPress={() => setDay(d)} />
+            <Chip
+              key={d}
+              testID={`book-day-${d}`}
+              label={dayChipLabel(d, options.today)}
+              selected={d === day}
+              onPress={() => setDay(d)}
+            />
           ))}
         </ScrollView>
       </View>
@@ -167,7 +173,14 @@ function BookSearchReady({
         ) : (
           <View style={styles.wrap}>
             {times.map((t) => (
-              <Chip key={t} label={t} tabular selected={t === startTime} onPress={() => setStart(t)} />
+              <Chip
+                key={t}
+                testID={`book-time-${t.replace(':', '')}`}
+                label={t}
+                tabular
+                selected={t === startTime}
+                onPress={() => setStart(t)}
+              />
             ))}
           </View>
         )}
@@ -177,7 +190,14 @@ function BookSearchReady({
         <SectionHeader title="Length" />
         <View style={styles.wrap}>
           {GAME_LENGTHS.map((m) => (
-            <Chip key={m} label={`${m} min`} tabular selected={m === minutes} onPress={() => setMinutes(m)} />
+            <Chip
+              key={m}
+              testID={`book-length-${m}`}
+              label={`${m} min`}
+              tabular
+              selected={m === minutes}
+              onPress={() => setMinutes(m)}
+            />
           ))}
         </View>
       </View>
@@ -186,7 +206,7 @@ function BookSearchReady({
         <SectionHeader title="Format" />
         <View style={styles.wrap}>
           {PITCH_FORMATS.map((f) => (
-            <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
+            <Chip key={f} testID={`book-format-${f}`} label={f} selected={f === format} onPress={() => setFormat(f)} />
           ))}
         </View>
         {showSides ? (
@@ -238,7 +258,12 @@ function BookSearchReady({
                   onTimePress={(t) => choose(v, t)}
                 />
               </View>
-              <Button label="Venue info" variant="plain" onPress={() => onVenueInfo(v.venue_id)} />
+              <Button
+                testID={`free-venue-${v.venue_id}-info`}
+                label="Venue info"
+                variant="plain"
+                onPress={() => onVenueInfo(v.venue_id)}
+              />
             </View>
           ))}
         </View>

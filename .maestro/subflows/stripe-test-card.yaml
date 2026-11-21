@@ -1,0 +1,30 @@
+# Pays in Stripe's own payment sheet with the test card 4242 4242 4242 4242,
+# expiry 12/34, CVC 123 (Stripe test mode only). The sheet is Stripe's, so
+# it has no testIDs of ours: it is driven by its own labels. PAY_LABEL is
+# the sheet's button, e.g. 'Pay €65\.50' (a regular expression).
+appId: com.panosalepis.futtyapp
+---
+- extendedWaitUntil:
+    visible: '.*Card number.*'
+    timeout: 30000
+- tapOn: '.*Card number.*'
+# Focus moves on by itself once each field is complete.
+- inputText: '4242424242424242'
+- inputText: '1234'
+- inputText: '123'
+# A postal code shows only for some countries (the simulator's region).
+- runFlow:
+    when:
+      visible: '.*(ZIP|Postal).*'
+    commands:
+      - tapOn: '.*(ZIP|Postal).*'
+      - inputText: '10001'
+- hideKeyboard
+# The checkout's own button reads the same and sits under the sheet; the
+# sheet is on top, so the tap lands on Stripe's button.
+- tapOn:
+    text: ${PAY_LABEL}
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    notVisible: '.*Card number.*'
+    timeout: 60000

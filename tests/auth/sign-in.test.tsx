@@ -15,6 +15,16 @@ beforeEach(() => {
 });
 
 describe('Sign in', () => {
+  it('names the fields, the button and the error for the Maestro tests (.maestro)', async () => {
+    mockAuth.signIn.mockRejectedValue(new Error('Invalid login credentials'));
+    await render(<SignInScreen />);
+    await fireEvent.changeText(screen.getByTestId('sign-in-email'), 'e2e-ios-1@e2e.futty.app');
+    await fireEvent.changeText(screen.getByTestId('sign-in-password'), 'secret-password');
+    await fireEvent.press(screen.getByTestId('sign-in-submit'));
+    expect(mockAuth.signIn).toHaveBeenCalledWith('e2e-ios-1@e2e.futty.app', 'secret-password');
+    expect(await screen.findByTestId('sign-in-error')).toBeTruthy();
+  });
+
   it('shows the wordmark, labelled fields and one primary button', async () => {
     await render(<SignInScreen />);
     expect(screen.getByRole('header', { name: 'Futty' })).toBeTruthy();
