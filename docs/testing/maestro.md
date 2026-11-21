@@ -41,7 +41,7 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
 - **Logins:** four confirmed logins with the password from `STAGING_E2E_PASSWORD`: `e2e-ios-1`, `e2e-ios-2`, `e2e-android-1` and `e2e-android-2` @e2e.futty.app. Each platform uses its own `-1` login.
 - **Venue:** "E2E Arena" with a fixed id, live, open 07:00 to midnight every day.
   - Two 5-a-side pitches.
-  - One price, €60, with no peak or weekend price. That's spec 13's €60 5-a-side.
+  - One price, €60. That's spec 13's €60 5-a-side.
 - **Stripe:** a Stripe TEST connected account for the venue, created like `connect-onboarding` creates one (an Express account with the same parameters and idempotency key), and kept once it exists.
 - **The slot:** two days after today in Cyprus (Asia/Nicosia), at 19:00 on iOS and 20:00 on Android. That is more than 6 hours ahead (so there is a free hour) and inside the 7-day booking window. iOS and Android use separate logins and separate hours, so both can run at once. `book_slot` picks the pitch, and two pitches leave room if a run left a booking behind.
 

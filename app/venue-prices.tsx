@@ -1,4 +1,4 @@
-// The venue dashboard's setup screen for prices an hour per format, with peak and weekend prices (P6e).
+// The venue dashboard's setup screen for each format's one price an hour, the same on every day and at every hour (P6e).
 import { PricesView } from '@/components/venue/prices-view';
 import { VenueScreen } from '@/components/venue/venue-screen';
 

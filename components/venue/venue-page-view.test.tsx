@@ -65,7 +65,7 @@ const full: VenuePageData = {
       is_open: true,
     },
   ],
-  prices: [{ format: '5-a-side', hour_cents: 6000, peak_hour_cents: 7000, weekend_hour_cents: null }],
+  prices: [{ format: '5-a-side', hour_cents: 6000 }],
   offers: [
     {
       id: 'o1',
@@ -142,7 +142,7 @@ describe('VenuePageView', () => {
     expect(screen.getByText('Pitch 1')).toBeTruthy();
     expect(screen.getByText('5-a-side · Artificial grass · Outdoor · 5-a-side')).toBeTruthy();
     expect(screen.getByText('€60.00 per hour')).toBeTruthy();
-    expect(screen.getByText('Peak €70.00')).toBeTruthy();
+    expect(screen.queryByText(/peak|weekend/i)).toBeNull();
 
     expect(screen.getByText(/Cancel within 1 hour of paying/)).toBeTruthy();
     expect(screen.getByText(/€1\.00 is kept/)).toBeTruthy();

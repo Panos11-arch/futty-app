@@ -293,12 +293,12 @@ Plan first.
 Read docs/specs/13-payments-bookings.md (6 v 6, blocking pitches) and docs/specs/05-product.md section 12. Replace the pooled base_pitches model with real pitches, as new migrations (pay_venue_model):
 
 - pitches: venue_id, name, size (5/6/7/9/11-a-side), surface, indoor, formats it hosts, combinable_with, is_open.
-- opening_hours per weekday; closures (date ranges); price_rules per format with peak, off-peak and weekend prices in cents.
+- opening_hours per weekday; closures (date ranges); price_rules per format with one price in cents, the same on every day and at every hour (decided 19 November).
 - venue_blocks: venue staff block pitches for a day or a time range on a day. A block stops NEW bookings only; existing bookings stay and their players are notified through send_notification (type venue_closed_new_bookings).
 - A real 6-a-side pitch (English School Central Park) is its own pitch size with its own price; allows_6v6_on_5s (from P2) only applies to 5-a-side pitches.
 - Rewrite book_slot and availability on real pitches with automatic pitch assignment (staff can move it later). Keep everything P2 enforces and the fee logic from P4a's spec.
 
-Tests: overlapping bookings refused; combined pitches; closures and blocks hide slots but don't cancel existing bookings; a blocked slot can't be booked; price rules pick the right price at peak, off-peak and weekend.
+Tests: overlapping bookings refused; combined pitches; closures and blocks hide slots but don't cancel existing bookings; a blocked slot can't be booked; price rules give one price per format at every hour and on every day.
 
 Plan first.
 ```

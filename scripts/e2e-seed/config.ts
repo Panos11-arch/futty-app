@@ -37,8 +37,8 @@ export const E2E_PITCHES = [
 ] as const;
 
 /** Spec 13, "What this is": every worked example is a €60 5-a-side (5 v 5,
- *  10 players). One price per format, the same at every hour ("Pitch
- *  prices"), so no peak or weekend price. The app then shows €65.50 for the
+ *  10 players). One price per format, the same on every day and at every
+ *  hour ("Pitch prices"). The app then shows €65.50 for the
  *  booker paying for everyone and €6.80 each when each pays (the table in
  *  "Prices and fees"). */
 export const E2E_FORMAT = '5-a-side';

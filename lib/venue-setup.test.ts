@@ -2,7 +2,6 @@ import {
   addPitchCombination,
   addVenueClosure,
   closureLabel,
-  daysLabel,
   deletePitch,
   describeSetupError,
   fetchVenueSetup,
@@ -62,27 +61,12 @@ describe('server calls', () => {
     expect(mockRpc).toHaveBeenCalledWith('remove_venue_closure', { p_closure_id: 'c1' });
   });
 
-  it('set_price_rule sends every price in cents and the bands', async () => {
-    await setPriceRule('v1', {
-      format: '5-a-side',
-      priceCents: 6050,
-      peakCents: null,
-      weekendCents: 5500,
-      peakWeekdays: [1, 2, 3, 4, 5],
-      peakStarts: '17:00',
-      peakEnds: null,
-      weekendWeekdays: [6, 7],
-    });
+  it('set_price_rule sends the one price in cents, nothing else', async () => {
+    await setPriceRule('v1', { format: '5-a-side', priceCents: 6050 });
     expect(mockRpc).toHaveBeenCalledWith('set_price_rule', {
       p_venue_id: 'v1',
       p_format: '5-a-side',
       p_price_cents: 6050,
-      p_peak_cents: null,
-      p_weekend_cents: 5500,
-      p_peak_weekdays: [1, 2, 3, 4, 5],
-      p_peak_starts: '17:00',
-      p_peak_ends: null,
-      p_weekend_weekdays: [6, 7],
     });
   });
 
@@ -188,10 +172,6 @@ describe('words', () => {
   it('labels hours, days, closures and prices', () => {
     expect(hoursLabel({ weekday: 1, opens: '08:00', closes: '24:00' })).toBe('08:00–midnight');
     expect(hoursLabel(undefined)).toBe('Closed');
-    expect(daysLabel([1, 2, 3, 4, 5])).toBe('Mon–Fri');
-    expect(daysLabel([6, 7])).toBe('Sat–Sun');
-    expect(daysLabel([1, 3])).toBe('Mon, Wed');
-    expect(daysLabel([])).toBe('No days');
     expect(closureLabel({ id: 'c', starts_on: '2026-12-24', ends_on: '2026-12-26', reason: null })).toBe(
       'Thu 24 Dec 2026 – Sat 26 Dec 2026',
     );
@@ -199,9 +179,7 @@ describe('words', () => {
       'Thu 31 Dec 2026',
     );
     const [five, seven] = venueSetup().prices;
-    expect(priceSummary(five)).toBe(
-      '€50.00 an hour · peak €60.00 (Mon–Fri 17:00–closing) · weekend €55.00 (Sat–Sun)',
-    );
+    expect(priceSummary(five)).toBe('€50.00 an hour');
     expect(priceSummary(seven)).toBe('€70.00 an hour');
   });
 });

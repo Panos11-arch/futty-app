@@ -48,7 +48,8 @@ export type VenuePageData = {
     description: string | null;
     is_open: boolean;
   }[];
-  prices: { format: string; hour_cents: number; peak_hour_cents: number | null; weekend_hour_cents: number | null }[];
+  /** One price per format, the same on every day and at every hour. */
+  prices: { format: string; hour_cents: number }[];
   hours: { weekday: number; opens: string; closes: string }[];
   offers: {
     id: string;

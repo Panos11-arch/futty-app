@@ -29,7 +29,7 @@ begin
 
   -- The owner drops the price to €50 and closes the game's day.
   perform tests.act_as(v_owner);
-  perform public.set_price_rule(v_venue, '5-a-side', 5000, null, null, null, null, null, null);
+  perform public.set_price_rule(v_venue, '5-a-side', 5000);
   perform public.add_venue_closure(v_venue, v_day, v_day, 'Works');
   perform tests.act_as_postgres();
 
@@ -86,7 +86,7 @@ begin
   select * into v_post from public.squad_posts where venue_booking_id = v_booking.id and type = 'opposition';
 
   perform tests.act_as(v_owner);
-  perform public.set_price_rule(v_venue, '5-a-side', 5000, null, null, null, null, null, null);
+  perform public.set_price_rule(v_venue, '5-a-side', 5000);
   perform public.add_venue_closure(v_venue, v_day, v_day, 'Works');
 
   perform tests.act_as(v_away);

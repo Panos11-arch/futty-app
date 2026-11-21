@@ -115,7 +115,7 @@ const SECTIONS = [
 const SETUP = [
   { label: 'Opening hours', subtitle: 'Your hours each day of the week', icon: 'clock.fill', pathname: '/venue-hours' },
   { label: 'Closures', subtitle: 'Days closed to new bookings', icon: 'calendar', pathname: '/venue-closures' },
-  { label: 'Prices', subtitle: 'Per format, with peak and weekend prices', icon: 'creditcard.fill', pathname: '/venue-prices' },
+  { label: 'Prices', subtitle: 'One price an hour per format', icon: 'creditcard.fill', pathname: '/venue-prices' },
   { label: 'Pitches', subtitle: 'Add, edit, close and combine pitches', icon: 'sportscourt.fill', pathname: '/venue-pitches' },
   { label: 'Photos', subtitle: 'The first one is the cover', icon: 'photo', pathname: '/venue-photos' },
   { label: 'Amenities', subtitle: 'Parking, showers and more', icon: 'checkmark.circle.fill', pathname: '/venue-amenities' },

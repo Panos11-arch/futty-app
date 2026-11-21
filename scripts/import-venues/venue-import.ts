@@ -8,7 +8,8 @@
 //   - blank cells stay empty; a price, a time or a day list that can't be
 //     read is left empty and reported, never guessed;
 //   - no pitches and no prices: the sheet has no named pitches, and
-//     price_peak / price_offpeak aren't used yet (peak pricing isn't decided);
+//     the sheet's price columns aren't imported: a venue has one price per
+//     format, which its staff set in the dashboard;
 //   - a close of "00:00" is the end of that day (23:59:59); a close after
 //     midnight isn't supported yet, so that day is skipped and reported;
 //   - photos only when photo_permission_given is yes; the venue is imported
@@ -295,7 +296,7 @@ export function buildImport(input: ImportInput): ImportPlan {
     if (other) venue.amenities.push({ kind: 'other', note: other });
 
     if (text(row.price_peak_eur_per_hour) || text(row.price_offpeak_eur_per_hour) || text(row.peak_hours)) {
-      report.push(`${key}: price columns not imported (peak pricing isn't decided); no price, so it can't be booked`);
+      report.push(`${key}: price columns not imported (staff set the venue's one price per format); no price, so it can't be booked`);
     }
     const pitchFields = ['pitch_name', 'surface', 'indoor_or_outdoor', 'max_format', 'combines_with'].filter((c) => text(row[c]));
     if (pitchFields.length > 0) report.push(`${key}: no pitches imported (${pitchFields.join(', ')} kept in the sheet only)`);

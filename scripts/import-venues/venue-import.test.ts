@@ -224,7 +224,7 @@ describe('buildImport', () => {
   it('doesn\'t import the price columns and says so', () => {
     const plan = buildImport(input({ venues: [venueRow({ price_peak_eur_per_hour: '50', price_offpeak_eur_per_hour: '40' })] }));
     expect(JSON.stringify(plan.venues)).not.toMatch(/5000|4000|price_peak|price_offpeak/);
-    expect(plan.report).toContain("V001: price columns not imported (peak pricing isn't decided); no price, so it can't be booked");
+    expect(plan.report).toContain("V001: price columns not imported (staff set the venue's one price per format); no price, so it can't be booked");
   });
 
   it('uses the mapping file to update an existing venue, never matching by name', () => {

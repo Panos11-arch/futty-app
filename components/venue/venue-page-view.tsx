@@ -131,7 +131,6 @@ export function VenuePageView({ state, onRetry, onDirections, onBook, weather }:
                 <ListRow
                   key={p.format}
                   title={p.format}
-                  subtitle={priceExtras(p)}
                   trailing={
                     <Text variant="body" tabular>
                       {`${formatEuros(p.hour_cents)} per hour`}
@@ -203,14 +202,6 @@ export function VenuePageView({ state, onRetry, onDirections, onBook, weather }:
       />
     </View>
   );
-}
-
-function priceExtras(p: VenuePageData['prices'][number]): string | undefined {
-  const extras = [
-    p.peak_hour_cents !== null ? `Peak ${formatEuros(p.peak_hour_cents)}` : null,
-    p.weekend_hour_cents !== null ? `Weekend ${formatEuros(p.weekend_hour_cents)}` : null,
-  ].filter(Boolean);
-  return extras.length > 0 ? extras.join(' · ') : undefined;
 }
 
 function Gallery({ name, urls }: { name: string; urls: string[] }) {

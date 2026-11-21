@@ -17,22 +17,10 @@ export function venueSetup(overrides: Partial<VenueSetup> = {}): VenueSetup {
       {
         format: '5-a-side',
         price_cents: 5000,
-        peak_cents: 6000,
-        weekend_cents: 5500,
-        peak_weekdays: [1, 2, 3, 4, 5],
-        peak_starts: '17:00',
-        peak_ends: null,
-        weekend_weekdays: [6, 7],
       },
       {
         format: '7-a-side',
         price_cents: 7000,
-        peak_cents: null,
-        weekend_cents: null,
-        peak_weekdays: [1, 2, 3, 4, 5],
-        peak_starts: '17:00',
-        peak_ends: null,
-        weekend_weekdays: [6, 7],
       },
     ],
     pitches: [

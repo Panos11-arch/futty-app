@@ -360,7 +360,6 @@ Deno.test('availability without a time: each live venue\'s free times, and the s
     city: 'Nicosia',
     free_start_times: ['18:00', '18:30'],
     price_per_player_at_first_time: '€6.80',
-    note: 'Prices can differ at peak and weekend hours; checkout shows the price for the chosen time.',
   }]);
   deepStrictEqual(f.db.callsTo('venue_free_slots')[0].args, {
     p_venue_id: 'v1', p_day: '2026-11-18', p_format: '5-a-side', p_minutes: 90, p_players_per_side: 6,

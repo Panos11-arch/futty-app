@@ -87,25 +87,24 @@ as $$
   returning id;
 $$;
 
--- Price per hour for a format, in cents: the venue's one price, plus an
--- optional peak and weekend price (null = the venue has none).
+-- Price per hour for a format, in cents: the venue's one price, the same on
+-- every day and at every hour (spec 13 "Pitch prices", 19 November).
 drop function if exists tests.set_price(uuid, text, integer, integer, integer);
+drop function if exists tests.set_price(uuid, text, integer);
 create function tests.set_price(
   p_venue uuid,
   p_format text,
-  p_price integer,
-  p_peak integer default null,
-  p_weekend integer default null
+  p_price integer
 )
 returns void
 language sql
 security definer
 set search_path = ''
 as $$
-  insert into public.price_rules (venue_id, format, price_cents, peak_cents, weekend_cents)
-  values (p_venue, p_format, p_price, p_peak, p_weekend)
+  insert into public.price_rules (venue_id, format, price_cents)
+  values (p_venue, p_format, p_price)
   on conflict (venue_id, format) do update
-    set price_cents = excluded.price_cents, peak_cents = excluded.peak_cents, weekend_cents = excluded.weekend_cents;
+    set price_cents = excluded.price_cents;
 $$;
 
 
@@ -1062,5 +1061,5 @@ $$;
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
-revoke all on function tests.set_price(uuid, text, integer, integer, integer) from public;
+revoke all on function tests.set_price(uuid, text, integer) from public;
 grant execute on all functions in schema tests to anon, authenticated, service_role;
