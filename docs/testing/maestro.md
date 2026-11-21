@@ -17,6 +17,7 @@ Three user journeys run as [Maestro](https://docs.maestro.dev) flows on an iPhon
 - **Never production.** `lib/e2e-guard.ts` throws if a Supabase URL contains production's project ref (`ospztpemchfpvvostisw`), if a legacy JWT key belongs to production, or if a Stripe key starts with `sk_live_`, `pk_live_` or `rk_live_`. The seed calls it before it connects to anything. The workflow's first job runs the same checks on eas.json's `e2e-test` profile. `lib/e2e-guard.test.ts` checks that profile in every CI run.
 - **No secret in the repo.** The staging URL, its anon key (a legacy anon JWT or a new `sb_publishable_` key) and the `pk_test_` key are public values, and they go in eas.json. The service-role key (a legacy `service_role` JWT or a new `sb_secret_` key), the `sk_test_` key and the e2e password exist only as secret variables in Expo.
 - **Only e2e data.** The seed selects only the four `@e2e.futty.app` logins and their own bookings at the "E2E Arena" venue. Leftover bookings are cancelled through the app's own path (`cancellation_quote`, then `cancel-booking`, signed in as their booker), so Stripe and the money ledger stay right. Money rows are never deleted.
+- **A guard inside the app.** The `e2e-test` profile sets `EXPO_PUBLIC_E2E=1`. With that flag, `lib/supabase.ts` throws before it creates the client if the Supabase URL is production's or the Stripe publishable key is `pk_live_`. So an e2e build can't talk to production even if Expo's preview environment overrides the values in eas.json. Other builds don't have the flag, so nothing changes for them. The workflow's first job fails if the profile doesn't set the flag.
 - **A second safety net.** The e2e logins exist only on staging. If a build ever pointed at production, the sign-in flow would fail before anything could be booked.
 
 ## What each flow checks
@@ -56,8 +57,7 @@ Panos does all of this. Nothing in this repo runs a command against a remote pro
    - `STAGING_STRIPE_SECRET_KEY`
    - `STAGING_E2E_PASSWORD` (at least 8 characters)
 4. **eas.json:** in the `e2e-test` profile, replace `REPLACE_STAGING_URL`, `REPLACE_STAGING_ANON_KEY` and `REPLACE_PK_TEST` with staging's public values. Until then the workflow stops at its first job and says which placeholder is left.
-5. **Check the first build points at staging.** Build profiles also load the variables of their EAS environment. Make sure the preview environment's own `EXPO_PUBLIC_SUPABASE_URL` doesn't override the profile's (the [environment variables docs](https://docs.expo.dev/eas/environment-variables/) explain which value wins). If it did, the sign-in flow would fail, because the e2e logins exist only on staging.
-6. **Pull requests:** connect the GitHub repository to the Expo project so pull requests start the workflow.
+5. **Check the first build points at staging.** Build profiles also load the variables of their EAS environment. Make sure the preview environment's own `EXPO_PUBLIC_SUPABASE_URL` doesn't override the profile's (the [environment variables docs](https://docs.expo.dev/eas/environment-variables/) explain which value wins). If it overrode it with production's, the app's runtime guard stops it at launch. If it overrode it with another project, sign-in fails, because the e2e logins exist only on staging.
 
 The `e2e-test` profile builds a simulator app for iOS and an APK for Android, with internal distribution, no update channel and no credentials. It adds no native code, so no new development build is needed.
 
@@ -69,7 +69,7 @@ The `e2e-test` profile builds a simulator app for iOS and an APK for Android, wi
 eas workflow:run .eas/workflows/e2e.yml
 ```
 
-It also runs on every pull request into master. The jobs run in this order:
+It runs only by hand, never on a pull request or a push. The jobs run in this order:
 
 1. `check_config` checks the e2e-test profile.
 2. `seed` (resets staging's e2e data) runs alongside `build_ios` and `build_android`.
@@ -120,7 +120,7 @@ These are the places most likely to need tuning on the first runs:
 - **Stripe's sheet** (`subflows/stripe-test-card.yaml`): its field labels differ by Stripe SDK version and the simulator's region (the postal code field). The checkout's own "Pay €65.50" button sits under the sheet with the same words, and the flow relies on the sheet being on top.
 - **The webhook:** if staging's webhook endpoint or signing secret is wrong, the booking never turns confirmed, and `book-and-pay` fails after about 3 minutes.
 - **A leftover booking:** if a run stopped after paying, the next seed cancels that booking as its booker. If it can't, the seed stops and names the booking.
-- **Two runs at once** from different pull requests share the e2e logins, so one can cancel the other's booking. A newer push to the same pull request cancels its older run.
+- **Two runs at once** from different branches share the e2e logins, so one can cancel the other's booking. Start one run at a time. A newer run from the same branch cancels the older one.
 
 ## Cost
 
@@ -135,4 +135,4 @@ Prices are from [expo.dev/pricing](https://expo.dev/pricing), read on 21 Novembe
 | `check_config`, `seed` | `linux-medium` | $0.018 a minute | ~5 min, $0.10 |
 | **Total** | | | **about $4.65 a run** |
 
-Every push to a pull request into master runs it. To spend less, run it only by hand, or only on a label (`pull_request_labeled`). Build credit included in the Expo plan is used first.
+It runs only when someone starts it, so nothing is spent on ordinary pull requests. Run it before a release, or on a PR that changes a journey. Build credit included in the Expo plan is used first.

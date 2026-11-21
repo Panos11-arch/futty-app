@@ -116,4 +116,16 @@ describe('check-profile: the workflow’s first job', () => {
       .replace('REPLACE_PK_TEST', 'pk_test_abc');
     expect(checkProfile(filled)).toEqual([]);
   });
+
+  it('requires EXPO_PUBLIC_E2E=1, which switches on lib/supabase.ts’s runtime guard', () => {
+    const filled = eas
+      .replace('REPLACE_STAGING_URL', 'https://stagingref123.supabase.co')
+      .replace('REPLACE_STAGING_ANON_KEY', 'sb_publishable_abc')
+      .replace('REPLACE_PK_TEST', 'pk_test_abc');
+    const json = JSON.parse(filled);
+    delete json.build['e2e-test'].env.EXPO_PUBLIC_E2E;
+    expect(checkProfile(JSON.stringify(json)).join(' ')).toMatch(/EXPO_PUBLIC_E2E/);
+    json.build['e2e-test'].env.EXPO_PUBLIC_E2E = '0';
+    expect(checkProfile(JSON.stringify(json)).join(' ')).toMatch(/EXPO_PUBLIC_E2E/);
+  });
 });

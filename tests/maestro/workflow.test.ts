@@ -20,9 +20,9 @@ const workflow = load(text) as { on: Record<string, unknown>; jobs: Record<strin
 const { jobs } = workflow;
 
 describe('the e2e workflow', () => {
-  it('runs by hand and on pull requests into master', () => {
-    expect(Object.keys(workflow.on).sort()).toEqual(['pull_request', 'workflow_dispatch']);
-    expect(workflow.on.pull_request).toEqual({ branches: ['master'] });
+  it('runs only by hand (eas workflow:run .eas/workflows/e2e.yml), never on a pull request or push', () => {
+    expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch']);
+    expect(text).not.toMatch(/^\s*(pull_request|push|schedule)\w*:/m);
   });
 
   it('never loads the production environment, and names no production project or live key', () => {

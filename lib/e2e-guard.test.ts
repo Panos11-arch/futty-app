@@ -92,6 +92,11 @@ describe('the e2e-test profile in eas.json', () => {
     expect(profile.distribution).toBe('internal');
     expect(profile.channel).toBeUndefined();
     expect(profile.env.EXPO_ROUTER_IMPORT_MODE).toBe('sync');
+    // Switches on lib/supabase.ts's runtime guard.
+    expect(profile.env.EXPO_PUBLIC_E2E).toBe('1');
+    for (const other of ['development', 'preview', 'production']) {
+      expect(eas.build[other].env?.EXPO_PUBLIC_E2E).toBeUndefined();
+    }
     expect(Object.keys(eas.build).sort()).toEqual(['development', 'e2e-test', 'preview', 'production']);
   });
 
@@ -99,6 +104,7 @@ describe('the e2e-test profile in eas.json', () => {
     build: { 'e2e-test': { ios: { simulator: true }, android: { buildType: 'apk' }, env, ...extra } },
   });
   const good = {
+    EXPO_PUBLIC_E2E: '1',
     EXPO_PUBLIC_SUPABASE_URL: STAGING_URL,
     EXPO_PUBLIC_SUPABASE_ANON_KEY: 'sb_publishable_abc',
     EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_abc',
@@ -153,5 +159,46 @@ describe('lib/supabase.ts takes either kind of anon key', () => {
       const { supabase } = require('@/lib/supabase') as typeof import('@/lib/supabase');
       expect(supabase).toBeDefined();
     });
+  });
+});
+
+describe('lib/supabase.ts: an e2e build (EXPO_PUBLIC_E2E=1) never talks to production', () => {
+  const saved = { ...process.env };
+  afterEach(() => {
+    process.env = { ...saved };
+    jest.resetModules();
+  });
+
+  const PROD_URL = `https://${PRODUCTION_PROJECT_REF}.supabase.co`;
+  const load = () =>
+    jest.isolateModules(() => {
+      require('@/lib/supabase');
+    });
+  function env(vars: Record<string, string | undefined>) {
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'sb_publishable_abc123';
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+
+  it('throws with the production URL', () => {
+    env({ EXPO_PUBLIC_E2E: '1', EXPO_PUBLIC_SUPABASE_URL: PROD_URL, EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_abc' });
+    expect(load).toThrow(/production/i);
+  });
+
+  it('throws with a live Stripe publishable key', () => {
+    env({ EXPO_PUBLIC_E2E: '1', EXPO_PUBLIC_SUPABASE_URL: STAGING_URL, EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_live_abc' });
+    expect(load).toThrow(/live Stripe/i);
+  });
+
+  it('passes staging with a test key', () => {
+    env({ EXPO_PUBLIC_E2E: '1', EXPO_PUBLIC_SUPABASE_URL: STAGING_URL, EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_test_abc' });
+    expect(load).not.toThrow();
+  });
+
+  it.each([undefined, '0', ''])('no effect without the flag (%p): production and preview builds unchanged', (flag) => {
+    env({ EXPO_PUBLIC_E2E: flag, EXPO_PUBLIC_SUPABASE_URL: PROD_URL, EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'pk_live_abc' });
+    expect(load).not.toThrow();
   });
 });

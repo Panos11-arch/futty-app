@@ -2,8 +2,9 @@
 # iPhone simulator and an Android emulator, against the STAGING Supabase
 # project with Stripe in TEST mode. Never production.
 #
-# Run by hand:  eas workflow:run .eas/workflows/e2e.yml
-# Also runs on every pull request into master.
+# Runs only by hand (each run builds both apps, about $4.65):
+#   eas workflow:run .eas/workflows/e2e.yml
+# Never on a pull request or a push.
 #
 # Secrets: STAGING_SUPABASE_URL, STAGING_SUPABASE_SERVICE_ROLE_KEY,
 # STAGING_STRIPE_SECRET_KEY and STAGING_E2E_PASSWORD are secret variables
@@ -15,10 +16,8 @@ name: E2E (Maestro, staging)
 
 on:
   workflow_dispatch: {}
-  pull_request:
-    branches: ['master']
 
-# A newer push to the same pull request replaces the run in progress.
+# A newer run from the same branch replaces the one in progress.
 concurrency:
   group: ${{ workflow.filename }}-${{ github.ref }}
   cancel_in_progress: true

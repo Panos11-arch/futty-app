@@ -26,6 +26,25 @@ export function assertStagingTarget(url: string | undefined, stripeKey: string |
   }
 }
 
+/** The app's runtime guard (lib/supabase.ts): in an e2e build
+ *  (EXPO_PUBLIC_E2E=1, set only by eas.json's e2e-test profile) a
+ *  production Supabase URL or a live Stripe publishable key throws before
+ *  any client exists, even if an Expo environment overrode the profile.
+ *  Without the flag it does nothing. */
+export function assertE2eAppTarget(
+  e2eFlag: string | undefined,
+  supabaseUrl: string | undefined,
+  stripePublishableKey: string | undefined,
+): void {
+  if (e2eFlag !== '1') return;
+  if ((supabaseUrl ?? '').toLowerCase().includes(PRODUCTION_PROJECT_REF)) {
+    throw new Error('e2e build: EXPO_PUBLIC_SUPABASE_URL is the PRODUCTION project. An e2e build only talks to staging.');
+  }
+  if ((stripePublishableKey ?? '').trim().startsWith('pk_live_')) {
+    throw new Error('e2e build: EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is a live Stripe key. An e2e build only uses Stripe test mode.');
+  }
+}
+
 export type SupabaseKeyKind = 'secret' | 'publishable' | 'service_role_jwt' | 'anon_jwt' | 'unknown';
 
 /** What kind of Supabase API key this is: the new sb_secret_ / sb_publishable_
@@ -126,6 +145,9 @@ export function e2eProfileProblems(eas: EasJson, { allowPlaceholders }: { allowP
   }
   if (url && !url.startsWith('REPLACE_') && !/^https:\/\/[a-z0-9]+\.supabase\.co\/?$/.test(url)) {
     problems.push('EXPO_PUBLIC_SUPABASE_URL must look like https://<project-ref>.supabase.co.');
+  }
+  if (env.EXPO_PUBLIC_E2E !== '1') {
+    problems.push('EXPO_PUBLIC_E2E must be "1" in the e2e-test profile (it switches on the runtime guard in lib/supabase.ts).');
   }
   if ('channel' in profile) problems.push('The e2e-test profile must not have a channel (no OTA updates into test builds).');
   if ((profile.ios as { simulator?: unknown } | undefined)?.simulator !== true) problems.push('e2e-test needs ios.simulator true.');
