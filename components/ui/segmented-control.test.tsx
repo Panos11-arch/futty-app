@@ -33,4 +33,18 @@ describe('SegmentedControl', () => {
     await fireEvent.press(screen.getByRole('tab', { name: 'Each pays' }));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('puts an option’s optional testID on its tab, for end-to-end tests', async () => {
+    const onChange = jest.fn();
+    await render(
+      <SegmentedControl
+        accessibilityLabel="Who pays"
+        options={[{ ...options[0], testID: 'checkout-who-pay-all' }, options[1]]}
+        value="each"
+        onChange={onChange}
+      />,
+    );
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(onChange).toHaveBeenCalledWith('everyone');
+  });
 });

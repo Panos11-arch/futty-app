@@ -19,7 +19,8 @@ export function shouldCloseOnSwipe(dy: number, vy: number): boolean {
   return dy > SWIPE_CLOSE_DISTANCE || (dy > 0 && vy > SWIPE_CLOSE_VELOCITY);
 }
 
-export type SheetAction = { label: string; onPress?: () => void; loading?: boolean; disabled?: boolean };
+/** testID: for end-to-end tests (.maestro). */
+export type SheetAction = { label: string; onPress?: () => void; loading?: boolean; disabled?: boolean; testID?: string };
 
 export type SheetProps = {
   visible: boolean;
@@ -126,6 +127,7 @@ export function Sheet({ visible, onClose, title, children, primaryAction, second
             <View style={styles.actions}>
               {primaryAction ? (
                 <Button
+                  testID={primaryAction.testID}
                   label={primaryAction.label}
                   onPress={primaryAction.onPress}
                   loading={primaryAction.loading}
@@ -135,6 +137,7 @@ export function Sheet({ visible, onClose, title, children, primaryAction, second
               ) : null}
               {secondaryAction ? (
                 <Button
+                  testID={secondaryAction.testID}
                   label={secondaryAction.label}
                   variant="secondary"
                   onPress={runSecondary}
