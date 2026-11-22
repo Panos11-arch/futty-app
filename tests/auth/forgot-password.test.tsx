@@ -1,5 +1,6 @@
 import { mockAuth, pending } from './mocks';
 
+import { AuthApiError } from '@supabase/supabase-js';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import ForgotPasswordScreen from '@/app/forgot-password';
@@ -48,5 +49,25 @@ describe('Forgot password', () => {
     expect(mockAuth.requestPasswordReset).toHaveBeenCalledTimes(1);
     expect(screen.getByText('If that address has an account, a reset link is on its way.')).toBeTruthy();
     expect(screen.getByText(/You can request another link in \d+s\./)).toBeTruthy();
+  });
+
+  it('the email rate limit counts as sent, with the cooldown and no error message', async () => {
+    mockAuth.requestPasswordReset.mockRejectedValue(
+      new AuthApiError('email rate limit exceeded', 429, 'over_email_send_rate_limit')
+    );
+    // The cooldown is module-level on purpose (it outlives the screen), so step
+    // past the one an earlier test may have started.
+    const later = Date.now() + 10 * 60 * 1000;
+    const now = jest.spyOn(Date, 'now').mockReturnValue(later);
+    try {
+      await render(<ForgotPasswordScreen />);
+      await fireEvent.changeText(screen.getByLabelText('Email'), 'player@futty.cy');
+      await fireEvent.press(button('Send reset link'));
+      expect(await screen.findByText('If that address has an account, a reset link is on its way.')).toBeTruthy();
+      expect(screen.getByText(/You can request another link in \d+s\./)).toBeTruthy();
+      expect(screen.queryByText(/couldn't send the email/)).toBeNull();
+    } finally {
+      now.mockRestore();
+    }
   });
 });

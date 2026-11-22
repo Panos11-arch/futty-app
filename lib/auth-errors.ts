@@ -36,13 +36,15 @@ export function describeAuthError(cause: unknown) {
     // something the client can retry its way out of.
     if (isAuthRetryableFetchError(cause)) {
       return cause.status === 0
-        ? 'Could not reach Supabase. Check your internet connection and try again.'
-        : "Supabase's servers had a problem handling that request. Check that the project isn't paused and that SMTP/email settings are configured correctly, then try again.";
+        ? "Can't reach Futty. Check your connection and try again."
+        : 'Something went wrong on our side. Try again soon.';
     }
 
     switch (cause.code) {
       case 'over_email_send_rate_limit':
-        return "Too many emails sent from this project. Supabase's built-in mail service allows only a couple per hour — wait, or set up custom SMTP to lift the cap.";
+        // Forgot password treats this code as sent-with-a-cooldown, so this
+        // shows on sign-up and resend only.
+        return "We couldn't send the email right now. Try again in a few minutes.";
       case 'over_request_rate_limit':
         return 'Too many attempts. Wait a moment and try again.';
       case 'email_not_confirmed':
