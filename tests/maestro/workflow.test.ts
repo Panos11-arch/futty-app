@@ -10,6 +10,7 @@ type Job = {
   needs?: string[];
   environment?: string;
   runs_on?: string;
+  image?: string;
   params?: Record<string, unknown>;
   env?: Record<string, string>;
   steps?: { run?: string; uses?: string }[];
@@ -45,6 +46,18 @@ describe('the e2e workflow', () => {
     expect(jobs.maestro_android.needs).toEqual(['build_android', 'seed']);
     expect(jobs.maestro_ios.env?.MAESTRO_E2E_START).toBe('${{ needs.seed.outputs.ios_start }}');
     expect(jobs.maestro_android.env?.MAESTRO_E2E_START).toBe('${{ needs.seed.outputs.android_start }}');
+  });
+
+  it('runs the seed and the profile check on Node 22 (supabase-js needs it), and only those jobs', () => {
+    // Expo's Infrastructure page: the Linux sdk-57 image has Node 22. The
+    // default ('auto') follows the project's SDK 55, whose image has Node 20.
+    for (const name of ['check_config', 'seed']) {
+      expect([name, jobs[name].image]).toEqual([name, 'sdk-57']);
+      expect(jobs[name].steps?.[1]?.run).toMatch(/process\.versions\.node.*< *22/);
+    }
+    // Not workflow-wide: the builds and the Maestro jobs keep their own images.
+    expect((workflow as { defaults?: unknown }).defaults).toBeUndefined();
+    for (const name of ['build_ios', 'build_android', 'maestro_ios', 'maestro_android']) expect(jobs[name].image).toBeUndefined();
   });
 
   it('builds both platforms with the e2e-test profile', () => {
