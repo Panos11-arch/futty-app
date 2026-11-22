@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { TextField } from '@/components/ui/text-field';
 import { flatStyle } from '@/components/ui/test-utils';
-import { colors } from '@/constants/futty-theme';
+import { colors, type } from '@/constants/futty-theme';
 
 describe('TextField', () => {
   it('shows its label and helper and passes typing through', async () => {
@@ -15,6 +15,18 @@ describe('TextField', () => {
     expect(onChangeText).toHaveBeenCalledWith('Larnaca Lions');
     expect(flatStyle(input).borderColor).toBe(colors.border);
     expect(flatStyle(input).minHeight).toBeGreaterThanOrEqual(44);
+  });
+
+  // iOS: a lineHeight larger than the font's own pushes single-line text and
+  // the placeholder down until they clip (RN's iOS TextInput adds a baseline
+  // offset for it). Multiline text still needs the line spacing.
+  it('sets no lineHeight on a single-line field, and keeps it on a multiline one', async () => {
+    await render(<TextField label="Email" />);
+    expect(flatStyle(screen.getByLabelText('Email')).lineHeight).toBeUndefined();
+    expect(flatStyle(screen.getByLabelText('Email')).fontSize).toBe(type.body.fontSize);
+
+    await render(<TextField label="Notes" multiline />);
+    expect(flatStyle(screen.getByLabelText('Notes')).lineHeight).toBe(type.body.lineHeight);
   });
 
   it('shows an error in place of the helper', async () => {

@@ -22,7 +22,12 @@ export function TextField({ label, helper, error, editable = true, ...rest }: Te
         accessibilityState={{ disabled: !editable }}
         editable={editable}
         placeholderTextColor={colors.inkMuted}
-        style={[styles.input, { borderColor: error ? colors.danger : colors.border }, !editable && styles.readOnly]}
+        style={[
+          styles.input,
+          rest.multiline && styles.multiline,
+          { borderColor: error ? colors.danger : colors.border },
+          !editable && styles.readOnly,
+        ]}
         {...rest}
       />
       {note ? (
@@ -36,8 +41,12 @@ export function TextField({ label, helper, error, editable = true, ...rest }: Te
 
 const styles = StyleSheet.create({
   wrap: { gap: space.xs },
+  // No lineHeight on a single-line field: on iOS a lineHeight larger than the
+  // font's own adds a baseline offset that pushes the text and placeholder
+  // down until they clip. Multiline text keeps it for its line spacing.
   input: {
-    ...type.body,
+    fontSize: type.body.fontSize,
+    fontFamily: type.body.fontFamily,
     color: colors.ink,
     minHeight: MIN_TOUCH,
     paddingHorizontal: space.md,
@@ -46,5 +55,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     backgroundColor: colors.surface,
   },
+  multiline: { lineHeight: type.body.lineHeight },
   readOnly: { backgroundColor: colors.canvas },
 });
