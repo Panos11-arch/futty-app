@@ -4,7 +4,7 @@
 --   EUR 60 5 v 5: each pays 680; pay for everyone 6550
 --   6 v 6 on a 5-a-side pitch: each pays 580; pay for everyone 6660
 --   Premium: own share 600; paying for everyone 6495
---   one price EUR 50: 580; crossing into peak (EUR 50 / EUR 60): 630
+--   one price EUR 50: 580
 --   EUR 50 credit on a EUR 60 pitch, paying for everyone: 1550 by card
 -- Plus: the non-refundable notice at 5h59m and not at 6h01m, cash refused
 -- to a player in debt, and the same refusals as book_slot.
@@ -62,23 +62,18 @@ begin
   perform tests.act_as_postgres();
 end $$;
 
--- One price, and crossing into peak (weekday 16:30-17:30, peak from 17:00).
+-- One price (EUR 50, the same at every hour).
 do $$
 declare
-  v_player uuid := tests.create_user('quote-peak@futty.test');
+  v_player uuid := tests.create_user('quote-one-price@futty.test');
   v_one uuid := tests.create_venue(p_pitches => 1);
-  v_peak uuid := tests.create_venue(p_pitches => 1);
   v_weekday date := tests.next_weekday(2);
   q jsonb;
 begin
   perform tests.set_price(v_one, '5-a-side', 5000);
-  perform tests.set_price(v_peak, '5-a-side', 5000, 6000);
   perform tests.act_as(v_player);
   q := public.booking_quote(v_one, v_weekday, '19:00', '20:00', '5-a-side', 5);
   assert (q -> 'each_pays' ->> 'player_cents')::int = 580, format('one price EUR 50: 580 each, got %s', q -> 'each_pays');
-  q := public.booking_quote(v_peak, v_weekday, '16:30', '17:30', '5-a-side', 5);
-  assert (q ->> 'pitch_cents')::int = 5500, 'half off-peak, half peak: 5500';
-  assert (q -> 'each_pays' ->> 'player_cents')::int = 630, format('crossing into peak: 630 each, got %s', q -> 'each_pays');
   perform tests.act_as_postgres();
 end $$;
 

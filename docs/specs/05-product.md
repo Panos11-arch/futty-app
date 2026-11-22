@@ -117,7 +117,7 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 ## 11\. Specs to write before code
 
 1. **Payment flow (Panos)**: done as 13 Payments & Bookings Spec (7 November); every screen's text follows 15 Design Brief  
-2. **Venue model (Panos, from Dimitris's venue discovery answers)**: named pitches and sizes, which combine, hours per weekday, peak and off-peak prices, cancellation window, photos, address  
+2. **Venue model (Panos, from Dimitris's venue discovery answers)**: named pitches and sizes, which combine, hours per weekday, one price per format (the same on every day and at every hour, decided 19 November), cancellation window, photos, address  
 3. **Booking flow (Panos)**: date → time → format → venues free then, with price, photo and area; 1h, 1.5h or 2h; total and cancellation rule before paying; guests by name; invite link  
 4. **Match record and stats** (Panos, prompt A1 in 14): sections 2 to 8 turned into exact rules for each screen  
 5. **Home screen** (Panos, prompt U3 in 17): next game with who's in and who hasn't paid; "Find a team to play" above "Book"  
@@ -150,7 +150,7 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 32. Launch version (before the December visits):  
 33. 1\. Today and this week: a calendar of every booking and block per pitch; tap a booking to see the players, who has paid, who has checked in.  
 34. 2\. Pitches: add or edit named pitches (size, surface, which combine), open or close a pitch for maintenance, holiday closures.  
-35. 3\. Opening hours per weekday, and prices: peak, off-peak and weekend, per format.  
+35. 3\. Opening hours per weekday, and one price per format, the same on every day and at every hour.  
 36. 4\. Block slots and recurring blocks (academy training, regular customers).  
 37. 5\. Walk-in and phone bookings: add a booking by hand so the app never double-books; mark it cash or card at the counter.  
 38. 6\. Weather and maintenance: flag "conditions may be unsuitable" for a day or slot (players are notified and can cancel under the normal rules); block pitches so nobody can book them (existing games stay on); cancel a booking (every player gets their whole share back by card or venue credit, their choice, and the venue pays Stripe's fee). A nudge when the forecast for a booked slot is bad, at least 12 hours before kickoff (13).  

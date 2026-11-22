@@ -41,7 +41,7 @@ begin
     format($q$select public.venue_setup(%L)$q$, v_venue_a),
     format($q$select public.set_venue_hours(%L, '[]')$q$, v_venue_a),
     format($q$select public.add_venue_closure(%L, %L, %L, null)$q$, v_venue_a, v_day, v_day),
-    format($q$select public.set_price_rule(%L, '5-a-side', 1, null, null, null, null, null, null)$q$, v_venue_a),
+    format($q$select public.set_price_rule(%L, '5-a-side', 1)$q$, v_venue_a),
     format($q$select public.remove_price_rule(%L, '5-a-side')$q$, v_venue_a),
     format($q$select public.save_pitch(%L, null, 'Sneaky', '5-a-side', array['5-a-side'], null, false, null, 0)$q$, v_venue_a),
     format($q$select public.save_pitch(%L, %L, 'Sneaky', '5-a-side', array['5-a-side'], null, false, null, 0)$q$,

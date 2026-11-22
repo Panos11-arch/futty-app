@@ -17,11 +17,9 @@ The venue always gets its full pitch price; Futty adds a service fee per player 
 - **Premium players** pay no service fee.
 - **Paying with venue credit:** no service fee. If the credit doesn't cover the whole share, the rest is paid by card **plus the normal €0.80**.
 - **It's a service fee, not a card fee.** It's charged the same whatever the payment method; card surcharges on consumer cards are banned in the EU.
-- **Pitch prices (decided 9 November):** by default a venue has **one price per format, the same at every hour**. Peak and weekend prices are optional and apply only when the venue's data provides them; a venue without them charges its one price for every slot.
-  - **When a venue has them:** its peak and weekend hours are stored with its price rules. Unless its data sets other hours, **peak** is Monday to Friday from 17:00 until closing and **weekend** is Saturday and Sunday all day. Every other hour is **off-peak**, at the venue's one price.
-  - **A game is priced half hour by half hour,** each half hour at its own price.
+- **Pitch prices (decided 19 November, Panos):** a venue has **one price per format, the same on every day and at every hour**. There are no peak, off-peak or weekend prices.
+  - **A game costs that hourly price for its length,** half hour by half hour: a 90-minute game is one and a half times the price.
   - **Example, one price:** a 5-a-side at €50 an hour costs €50 at any hour, any day: €50 ÷ 10 = €5.00 + €0.80 = **€5.80 each**.
-  - **Example, crossing into peak:** the same venue with a €60 peak price. A weekday game from 16:30 to 17:30 is half off-peak and half peak: €25 + €30 = €55, so €55 ÷ 10 = €5.50 + €0.80 = **€6.30 each**.
 
 | Booking                                        | Each player pays | Stripe takes                | Futty keeps per player     |
 |------------------------------------------------|------------------|-----------------------------|----------------------------|
@@ -364,7 +362,6 @@ Venues are loaded from the Futty Venue Data sheet by an import script (`scripts/
   - anything else (e.g. "equipment rental listed") is skipped and reported.
 - **Pitches:** the sheet's free-text pitch description is kept for Futty's own use only. It isn't shown, and no pitches are shown until real ones are entered.
 - **No price, no booking:** a venue with no price can't be booked.
-- **Peak prices:** the `price_peak` / `price_offpeak` columns aren't used yet, because peak pricing isn't decided. They stay in the sheet and aren't imported.
 - **Food and drink:** items are imported with their price, offer price and dietary tags.
 - **Same result every time:** the import is idempotent, keyed on `venue_id` (V001...). An existing venue is matched only through an optional mapping file (`venue_id` -> existing venue id), never by name.
 - **A re-import never changes `is_live`:** a venue the import creates is not live, but a venue that already exists (already imported, or named in the mapping file) keeps its setting. Re-running the import never switches a live venue off, or on.
@@ -426,7 +423,7 @@ The dashboard (P6) records the money a venue takes in person, so revenue by sour
 
 Staff edit their venue's opening hours, closures, prices and pitches from the dashboard (P6e). Only that venue's staff can, and only through the server's setup functions: the app can't write these tables directly. Games already booked are never changed.
 
-- **Prices:** staff can change a format's price, and its peak and weekend prices and hours, at any time. The new price applies to new bookings and quotes only. A game already booked keeps the price it was booked at, and so does every player who joins it later. Removing a format's price means that format can't be booked there ("No price, no booking"). Every price is more than €0: the main price, and the peak and weekend prices when the venue has them. A €0 price would make free games by mistake.
+- **Prices:** staff can change a format's one price ("Pitch prices") at any time. The new price applies to new bookings and quotes only. A game already booked keeps the price it was booked at, and so does every player who joins it later. Removing a format's price means that format can't be booked there ("No price, no booking"). Every price is more than €0. A €0 price would make free games by mistake. *(19 November, Panos: one price per format replaces the peak and weekend prices and hours this section allowed on 17 November.)*
 - **Closures and opening hours:** a closure (a range of days) or shorter hours stop new bookings only (unlike a block since 18 November, which cancels or moves the games it clashes with). Games already booked stay on, and every player still in them is told that the venue has closed new bookings, with the same message as for a block. Removing a closure reopens new bookings only, as removing a block does. A closure that ended before today can't be added.
 - **Told once per change:** a block tells its players once per block. In the same way, players are told once per closure, once per hours change and once per pitch closure. A new closure over the same game tells them again, even after an earlier one was removed. An hours change tells the players of each game it newly puts outside the hours, so saving the same hours again tells nobody. Closing a pitch again after reopening it tells them again.
 - **Pitches:** a pitch that holds a game (past or future; a cancelled game holds none) can't be deleted, only closed. A closed pitch gets no new bookings, alone or combined; games already on it stay on, and every player still in a game on it that hasn't ended is told, with the same message as for a block. Its size and formats can't change while it holds a game that hasn't ended. Its name, surface, indoor or outdoor, description and order can always change. Deleting an unused pitch removes the combinations it was part of. Removing a combination never moves a game already booked.

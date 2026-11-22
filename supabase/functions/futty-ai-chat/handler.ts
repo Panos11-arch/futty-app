@@ -142,7 +142,6 @@ export async function checkAvailability(deps: ChatDeps, raw: AvailabilityInput):
       city: venue.city,
       free_start_times: slots.map((s) => hhmm(s.start_time)),
       price_per_player_at_first_time: Number.isInteger(playerCents) ? euros(playerCents!) : null,
-      note: 'Prices can differ at peak and weekend hours; checkout shows the price for the chosen time.',
     });
   }
   return { day, format, duration_hours: duration, players_per_side: playersPerSide, venues: results };

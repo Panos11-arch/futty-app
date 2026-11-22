@@ -54,7 +54,7 @@ Running it again gives the same data: venues are keyed on `venue_id` (V001...).
 ## What it never does
 
 - **Makes a venue live.** A venue it creates is not live, and it never changes `is_live` on an existing venue.
-- **Sets a price or a pitch.** The sheet has no named pitches, and `price_peak` / `price_offpeak` aren't used yet. A venue with no price can't be booked.
+- **Sets a price or a pitch.** The sheet has no named pitches, and its price columns aren't imported: a venue has one price per format, the same on every day and at every hour, which its staff set in the dashboard. A venue with no price can't be booked.
 - **Fills a blank cell.**
 
 Tests: `npx jest scripts/import-venues` (the CSV mapping) and `supabase/tests/pay-venue-pages-1.test.sql` (`import_venue`).

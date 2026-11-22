@@ -21,14 +21,8 @@ export type Closure = { id: string; starts_on: string; ends_on: string; reason: 
 
 export type PriceRule = {
   format: string;
+  /** The one price an hour, the same on every day and at every hour. */
   price_cents: number;
-  peak_cents: number | null;
-  weekend_cents: number | null;
-  peak_weekdays: number[];
-  peak_starts: string;
-  /** Null: until closing. */
-  peak_ends: string | null;
-  weekend_weekdays: number[];
 };
 
 export type SetupPitch = {
@@ -111,15 +105,6 @@ export function removeVenueClosure(closureId: string) {
 export type PriceInput = {
   format: string;
   priceCents: number;
-  /** Null: no peak price. */
-  peakCents: number | null;
-  /** Null: no weekend price. */
-  weekendCents: number | null;
-  peakWeekdays: number[];
-  peakStarts: string;
-  /** Null: until closing. */
-  peakEnds: string | null;
-  weekendWeekdays: number[];
 };
 
 export function setPriceRule(venueId: string, input: PriceInput) {
@@ -127,12 +112,6 @@ export function setPriceRule(venueId: string, input: PriceInput) {
     p_venue_id: venueId,
     p_format: input.format,
     p_price_cents: input.priceCents,
-    p_peak_cents: input.peakCents,
-    p_weekend_cents: input.weekendCents,
-    p_peak_weekdays: input.peakWeekdays,
-    p_peak_starts: input.peakStarts,
-    p_peak_ends: input.peakEnds,
-    p_weekend_weekdays: input.weekendWeekdays,
   });
 }
 
@@ -215,8 +194,6 @@ export function describeSetupError(code: string): string {
       return 'Pick a format.';
     case 'invalid_price':
       return 'Every price must be more than €0.';
-    case 'invalid_peak_hours':
-      return 'Peak and weekend can’t share a day, and peak must end after it starts.';
     case 'price_rule_not_found':
       return 'That price is already gone.';
     case 'invalid_pitch':
@@ -246,32 +223,11 @@ export function hoursLabel(day: DayHours | undefined): string {
   return day ? `${day.opens}–${time(day.closes)}` : 'Closed';
 }
 
-function shortDay(weekday: number): string {
-  return WEEKDAYS.find((d) => d.weekday === weekday)?.short ?? '';
-}
-
-/** "Mon–Fri" for a run of three or more days in a row, else "Mon, Wed". */
-export function daysLabel(weekdays: number[]): string {
-  if (weekdays.length === 0) return 'No days';
-  const sorted = [...weekdays].sort((a, b) => a - b);
-  const inARow = sorted.every((d, i) => i === 0 || d === sorted[i - 1] + 1);
-  if (inARow && sorted.length >= 2) return `${shortDay(sorted[0])}–${shortDay(sorted[sorted.length - 1])}`;
-  return sorted.map(shortDay).join(', ');
-}
-
 export function closureLabel(c: Closure): string {
   return c.starts_on === c.ends_on ? formatDay(c.starts_on) : `${formatDay(c.starts_on)} – ${formatDay(c.ends_on)}`;
 }
 
-/** The server's prices, each shown unchanged. */
+/** The server's one price, shown unchanged. */
 export function priceSummary(rule: PriceRule): string {
-  const parts = [`${formatEuros(rule.price_cents)} an hour`];
-  if (rule.peak_cents !== null) {
-    const until = rule.peak_ends === null ? 'closing' : time(rule.peak_ends);
-    parts.push(`peak ${formatEuros(rule.peak_cents)} (${daysLabel(rule.peak_weekdays)} ${rule.peak_starts}–${until})`);
-  }
-  if (rule.weekend_cents !== null) {
-    parts.push(`weekend ${formatEuros(rule.weekend_cents)} (${daysLabel(rule.weekend_weekdays)})`);
-  }
-  return parts.join(' · ');
+  return `${formatEuros(rule.price_cents)} an hour`;
 }

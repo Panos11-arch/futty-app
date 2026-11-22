@@ -242,7 +242,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
   check(
     await admin
       .from('price_rules')
-      .upsert({ venue_id: E2E_VENUE.id, format: E2E_FORMAT, price_cents: E2E_PRICE_CENTS, peak_cents: null, weekend_cents: null }),
+      .upsert({ venue_id: E2E_VENUE.id, format: E2E_FORMAT, price_cents: E2E_PRICE_CENTS }),
     'writing the E2E price',
   );
   log(`venue: ${E2E_VENUE.name} (${E2E_VENUE.id}), ${E2E_PITCHES.length} pitches, ${E2E_FORMAT} at ${E2E_PRICE_CENTS} cents`);
