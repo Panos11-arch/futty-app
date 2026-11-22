@@ -11,6 +11,11 @@ import {
   type MatchLinks,
 } from '@/lib/match/results-api';
 
+/** Home shows one line per failing read; the cause goes to the log. */
+function logReadError(what: string, error: { message: string; code?: string }) {
+  console.warn(`Could not load ${what}:`, error.code ?? '', error.message);
+}
+
 export type Loadable<T> = { status: 'loading' } | { status: 'error'; message: string } | ({ status: 'ready' } & T);
 
 /** Runs `load` on mount and on reload(); a superseded response is dropped. */
@@ -71,6 +76,7 @@ export function useOpenResultMatches() {
     viewerId
       ? async () => {
           const { matches, error } = await listMyOpenResultMatches(viewerId);
+          if (error) logReadError('open result matches', error);
           return error ? { error: error.message } : { value: { matches } };
         }
       : null,
@@ -92,6 +98,7 @@ export function useMatchLinks(candidates: MatchLinkCandidates) {
 
   const { state, reload } = useLoad<{ links: MatchLinks }>(async () => {
     const { links, error } = await findMatchLinks(candidatesRef.current);
+    if (error) logReadError('match links', error);
     return error ? { error: error.message } : { value: { links } };
   }, key);
 

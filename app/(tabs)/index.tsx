@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -242,8 +242,14 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
   const oldFriendlies = friendlyMatches.status === 'ready' ? friendlyMatches.matches.filter(isReadyToScore) : [];
   const oldFixtures =
     fixtures.status === 'ready' ? fixtures.fixtures.filter((f) => canLogFixtureScore(f, myCaptainTeamIds)) : [];
+  // Every refocus reloads the past bookings, which go back to loading for a
+  // moment; asking with the last ids meanwhile keeps the match links (and
+  // Home) from flipping to [] and back on each return to Home.
+  const lastBookingIds = useRef<string[]>([]);
+  if (unscoredBookings.status === 'ready') lastBookingIds.current = unscoredBookings.bookings.map((b) => b.id);
+  else if (unscoredBookings.status === 'error') lastBookingIds.current = [];
   const matchLinks = useMatchLinks({
-    bookingIds: unscoredBookings.status === 'ready' ? unscoredBookings.bookings.map((b) => b.id) : [],
+    bookingIds: lastBookingIds.current,
     friendlyMatchIds: oldFriendlies.map((m) => m.id),
     leagueFixtureIds: oldFixtures.map((f) => f.id),
   });
@@ -302,10 +308,10 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
       ? { key: 'unscored', message: 'Could not load past bookings.', retry: unscoredBookings.reload }
       : null,
     openResults.status === 'error'
-      ? { key: 'results', message: 'Could not load your matches.', retry: openResults.reload }
+      ? { key: 'results', message: 'Could not load your games waiting for a score.', retry: openResults.reload }
       : null,
     matchLinks.status === 'error'
-      ? { key: 'links', message: 'Could not load your matches.', retry: matchLinks.reload }
+      ? { key: 'links', message: 'Could not check which games have a match record.', retry: matchLinks.reload }
       : null,
   ].filter((e) => e !== null);
 
@@ -656,10 +662,12 @@ export default function HomeScreen() {
         <HomeHeader />
       </SafeAreaView>
 
+      {/* The quick actions come first: nothing that loads sits above them, so
+          they never move under a finger (a moved Pressable drops the tap). */}
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+        <QuickActions />
         <OwedBanner />
         <NextGameSection />
-        <QuickActions />
         <LogScoreSection onScored={recentResults.reload} />
         <RecentResultsSection recentResults={recentResults} />
         <TeamOfTheWeekHome />
