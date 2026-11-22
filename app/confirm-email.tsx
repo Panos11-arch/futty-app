@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { ActivityIndicator } from 'react-native';
 
 import {
   AuthError,
@@ -12,17 +13,30 @@ import {
 } from '@/components/auth-form';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { useAuth } from '@/lib/auth';
+import { colors } from '@/constants/futty-theme';
+import { signInHref, useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
 
 export default function ConfirmEmailScreen() {
   const { email } = useLocalSearchParams<{ email?: string }>();
-  const { resendConfirmation } = useAuth();
+  const { session, resendConfirmation } = useAuth();
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sendCount, setSendCount] = useState(0);
+
+  // The link in the email signs the user in (lib/auth.tsx). Once the session
+  // lands, the root layout's guards take this screen away and route the user
+  // on to choose-username or Home; until then, show that it's happening.
+  if (session) {
+    return (
+      <AuthScreen>
+        <AuthWordmark />
+        <ActivityIndicator color={colors.brand} accessibilityLabel="Signing you in" />
+      </AuthScreen>
+    );
+  }
 
   // No artificial cooldown — resend as often as you like. The button is only
   // disabled while a request is in flight, to stop a double tap sending twice.
@@ -50,8 +64,8 @@ export default function ConfirmEmailScreen() {
       <AuthWordmark />
       <AuthTitle>Check your inbox</AuthTitle>
       <AuthSubtitle>
-        We sent a confirmation link to{' '}
-        <Text variant="headline">{email ?? 'your email address'}</Text>. Click it, then come back and sign in.
+        We sent a link to <Text variant="headline">{email ?? 'your email'}</Text>. Open it on this
+        phone.
       </AuthSubtitle>
 
       {error ? <AuthError>{error}</AuthError> : null}
@@ -63,22 +77,24 @@ export default function ConfirmEmailScreen() {
       ) : null}
 
       <Button
-        label="I've confirmed, sign in"
-        onPress={() => router.replace('/sign-in')}
-        disabled={busy}
-        fullWidth
-      />
-
-      <Button
-        label="Resend confirmation email"
-        variant="secondary"
+        label="Resend email"
         onPress={resend}
         disabled={!email}
         loading={busy}
         fullWidth
       />
 
-      <AuthLink label="Use a different email" onPress={() => router.replace('/sign-in')} />
+      <AuthLink
+        label="Use a different email"
+        onPress={() => router.replace(signInHref('sign-up', email))}
+        disabled={busy}
+      />
+
+      <AuthLink
+        label="Opened it on another device? Sign in"
+        onPress={() => router.replace(signInHref('sign-in', email))}
+        disabled={busy}
+      />
     </AuthScreen>
   );
 }

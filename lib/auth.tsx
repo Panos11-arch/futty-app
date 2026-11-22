@@ -11,6 +11,11 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 
+import {
+  EmailTakenError,
+  LINK_EXPIRED_MESSAGE,
+  LINK_FAILED_MESSAGE,
+} from '@/lib/auth-errors';
 import { clearHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
@@ -55,6 +60,10 @@ type AuthContextValue = {
   isRecovering: boolean;
   /** Set when a native recovery deep link is expired or already used. */
   recoveryError: string | null;
+  /** Set when a native sign-up or email-change link is expired, used or fails.
+   *  Shown on the sign-in screen with a way to resend. */
+  linkError: string | null;
+  clearLinkError: () => void;
   signUp: (params: SignUpParams) => Promise<SignUpResult>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -69,12 +78,75 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 /** The path Google sign-in redirects back to (lib/auth-providers.ts). That
- *  flow reads its own redirect, so the recovery-link handler below skips it. */
+ *  flow reads its own redirect, so the email-link handler below skips it. */
 export const OAUTH_CALLBACK_PATH = 'auth/callback';
 
 /** True for futtyapp://auth/callback and the exp://…/--/auth/callback dev form. */
 export function isOAuthCallbackUrl(url: string) {
   return new RegExp(`(^|/)${OAUTH_CALLBACK_PATH}$`).test(url.split(/[?#]/)[0]);
+}
+
+/** Email-link types that sign the user in (the guards then route them on). */
+const SIGN_IN_LINK_TYPES = new Set(['signup', 'email_change']);
+
+export type AuthLink =
+  | { kind: 'none' }
+  | { kind: 'session'; type: string; accessToken: string; refreshToken: string }
+  | { kind: 'error'; code: string | null; description: string; forRecovery: boolean };
+
+/**
+ * Reads an emailed Supabase link (implicit flow: tokens in the fragment).
+ * Google's auth/callback is not an email link and reads its own redirect, so
+ * it is 'none' here. An error on the reset-password path belongs to the
+ * reset screen; any other error belongs to the sign-in screen.
+ */
+export function parseAuthLink(url: string): AuthLink {
+  if (isOAuthCallbackUrl(url)) return { kind: 'none' };
+
+  const hashIndex = url.indexOf('#');
+  if (hashIndex === -1) return { kind: 'none' };
+  const params = parseFragment(url.slice(hashIndex + 1));
+
+  if (params.error_description || params.error) {
+    return {
+      kind: 'error',
+      code: params.error_code || null,
+      description: params.error_description || params.error,
+      forRecovery: /(^|\/)reset-password$/.test(url.slice(0, hashIndex).split('?')[0]),
+    };
+  }
+
+  if (!params.access_token || !params.refresh_token || !params.type) return { kind: 'none' };
+  return {
+    kind: 'session',
+    type: params.type,
+    accessToken: params.access_token,
+    refreshToken: params.refresh_token,
+  };
+}
+
+type SignInMode = 'sign-in' | 'sign-up';
+
+/** The confirm-email screen's email, handed to sign-in in memory on web so it
+ *  never lands in the address bar or browser history. */
+let handedOff: string | null = null;
+
+export function handedOffEmail() {
+  return handedOff;
+}
+
+export function clearHandedOffEmail() {
+  handedOff = null;
+}
+
+/** The sign-in route in a given mode with the email filled in. Native passes
+ *  the email as a route param; web keeps it out of the URL. */
+export function signInHref(mode: SignInMode, email?: string) {
+  if (Platform.OS === 'web') {
+    handedOff = email ?? null;
+    return { pathname: '/sign-in' as const, params: { mode } };
+  }
+  return { pathname: '/sign-in' as const, params: email ? { mode, email } : { mode } };
 }
 
 /** Where Supabase should send the user after they click an emailed link. */
@@ -110,49 +182,64 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [isRecovering, setIsRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
 
-  // Native companion to `detectSessionInUrl`. Supabase returns recovery tokens
-  // in the deep link's URL fragment; supabase-js reads those off
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Native companion to `detectSessionInUrl`. Supabase sends emailed links
+  // back with tokens in the URL fragment; supabase-js reads those off
   // `window.location` on web, but there is no such URL on native, so exchange
   // them for a session by hand. Lives here — always mounted — rather than in
-  // the reset-password screen itself: that screen only renders once the route
-  // guards let it through, and while the app-lock screen is up (see
-  // app/_layout.tsx) nothing under it mounts, so a hook parked in the screen
-  // would never see the link and the user would fall back into their old
-  // session after unlocking instead of landing on the reset flow.
-  const recoveryUrl = Linking.useURL();
-
+  // a screen: the screens only render once the route guards let them
+  // through, and while the app-lock screen is up (see app/_layout.tsx)
+  // nothing under it mounts, so a hook parked in a screen would never see the
+  // link.
+  //
+  // The URL is read with getInitialURL and the 'url' event, not useURL, so it
+  // and its tokens live only in this call and are never kept in React state.
+  // Nothing here logs a URL or a token.
   useEffect(() => {
-    if (Platform.OS === 'web' || !recoveryUrl) return;
-    // A Google sign-in's tokens are not a recovery link.
-    if (isOAuthCallbackUrl(recoveryUrl)) return;
+    if (Platform.OS === 'web') return;
+    let active = true;
 
-    const hashIndex = recoveryUrl.indexOf('#');
-    if (hashIndex === -1) return;
+    function handle(url: string | null) {
+      if (!active || !url) return;
+      const link = parseAuthLink(url);
 
-    const params = parseFragment(recoveryUrl.slice(hashIndex + 1));
+      if (link.kind === 'error') {
+        // Supabase reports expired or already-used links this way.
+        if (link.forRecovery) setRecoveryError(link.description);
+        else setLinkError(LINK_EXPIRED_MESSAGE);
+        return;
+      }
+      if (link.kind !== 'session') return;
 
-    // Supabase reports expired or already-used links this way.
-    if (params.error_description) {
-      setRecoveryError(params.error_description);
-      return;
+      const isRecovery = link.type === 'recovery';
+      // Only type=recovery is a password reset. Anything else that isn't a
+      // sign-in link is ignored rather than guessed at.
+      if (!isRecovery && !SIGN_IN_LINK_TYPES.has(link.type)) return;
+
+      // Set before the exchange: the moment a session lands the route guards
+      // re-evaluate, and without it they would treat a recovery as a normal
+      // sign-in and drop the user straight into the app.
+      if (isRecovery) setIsRecovering(true);
+      else setLinkError(null);
+
+      supabase.auth
+        .setSession({ access_token: link.accessToken, refresh_token: link.refreshToken })
+        .then(({ error: sessionError }) => {
+          if (!sessionError || !active) return;
+          if (isRecovery) setRecoveryError(sessionError.message);
+          else setLinkError(LINK_FAILED_MESSAGE);
+        });
     }
 
-    if (!params.access_token || !params.refresh_token) return;
+    Linking.getInitialURL().then(handle, () => {});
+    const subscription = Linking.addEventListener('url', (event) => handle(event.url));
 
-    // Set this before the exchange: the moment a session lands the route
-    // guards re-evaluate, and without it they would treat this as a normal
-    // sign-in and drop the user straight into the app.
-    setIsRecovering(true);
-
-    supabase.auth
-      .setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      })
-      .then(({ error: sessionError }) => {
-        if (sessionError) setRecoveryError(sessionError.message);
-      });
-  }, [recoveryUrl]);
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -185,6 +272,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const beginRecovery = useCallback(() => setIsRecovering(true), []);
   const endRecovery = useCallback(() => setIsRecovering(false), []);
+  const clearLinkError = useCallback(() => setLinkError(null), []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -193,6 +281,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
       initializing,
       isRecovering,
       recoveryError,
+      linkError,
+      clearLinkError,
       beginRecovery,
       endRecovery,
 
@@ -212,6 +302,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
           },
         });
         if (error) throw error;
+
+        // An email that already has a confirmed account: Supabase answers
+        // with a user that has no identities and sends no email.
+        if (data.user && !data.session && data.user.identities?.length === 0) {
+          throw new EmailTakenError();
+        }
 
         // Only reachable with confirmation disabled, where a session comes back
         // immediately and RLS will accept the write.
@@ -263,7 +359,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return data === true;
       },
     }),
-    [session, initializing, isRecovering, recoveryError, beginRecovery, endRecovery]
+    [
+      session,
+      initializing,
+      isRecovering,
+      recoveryError,
+      linkError,
+      clearLinkError,
+      beginRecovery,
+      endRecovery,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

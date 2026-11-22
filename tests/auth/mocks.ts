@@ -63,6 +63,8 @@ jest.mock('@/lib/preferences', () => ({
 export const mockAuth = {
   session: null as null | { user: { email: string } },
   recoveryError: null as string | null,
+  linkError: null as string | null,
+  clearLinkError: jest.fn(),
   signIn: jest.fn(),
   signUp: jest.fn(),
   signOut: jest.fn(),
@@ -72,10 +74,16 @@ export const mockAuth = {
   updatePassword: jest.fn(),
   endRecovery: jest.fn(),
 };
-jest.mock('@/lib/auth', () => ({
-  useAuth: () => mockAuth,
-  OAUTH_CALLBACK_PATH: jest.requireActual<typeof import('@/lib/auth')>('@/lib/auth').OAUTH_CALLBACK_PATH,
-}));
+jest.mock('@/lib/auth', () => {
+  const actual = jest.requireActual<typeof import('@/lib/auth')>('@/lib/auth');
+  return {
+    useAuth: () => mockAuth,
+    OAUTH_CALLBACK_PATH: actual.OAUTH_CALLBACK_PATH,
+    signInHref: actual.signInHref,
+    handedOffEmail: actual.handedOffEmail,
+    clearHandedOffEmail: actual.clearHandedOffEmail,
+  };
+});
 
 /** A promise the test settles by hand, to hold a request in flight. */
 export function pending<T = void>() {

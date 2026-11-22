@@ -1,9 +1,12 @@
 import { mockApple, mockAuth, mockGoogleFlow, mockSupabase, mockWebBrowser, pending } from './mocks';
 
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Platform } from 'react-native';
 
 import SignInScreen from '@/app/sign-in';
+import { clearHandedOffEmail, signInHref } from '@/lib/auth';
+import { EmailTakenError } from '@/lib/auth-errors';
 
 const button = (name: string) => screen.getByRole('button', { name });
 
@@ -12,6 +15,8 @@ beforeEach(() => {
   mockAuth.signIn.mockResolvedValue(undefined);
   mockAuth.isUsernameAvailable.mockResolvedValue(true);
   mockAuth.signUp.mockResolvedValue({ needsEmailConfirmation: true });
+  mockAuth.linkError = null;
+  (useLocalSearchParams as jest.Mock).mockReturnValue({});
 });
 
 describe('Sign in', () => {
@@ -115,6 +120,85 @@ describe('Sign up', () => {
       fullName: '',
     });
     expect(router.push).toHaveBeenCalledWith({ pathname: '/confirm-email', params: { email: 'new@futty.cy' } });
+  });
+});
+
+describe('Sign up with an email that already has an account', () => {
+  it('shows the message, switches to Sign in with the email kept, and stays here', async () => {
+    mockAuth.signUp.mockRejectedValue(new EmailTakenError());
+    await render(<SignInScreen />);
+    await fireEvent.press(button('No account yet? Sign up'));
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'taken@futty.cy');
+    await fireEvent.changeText(screen.getByLabelText('Username'), 'new_player');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'long enough');
+    await fireEvent.press(button('Sign up'));
+
+    expect(await screen.findByText('An account with this email already exists. Sign in instead.')).toBeTruthy();
+    expect(screen.getByTestId('sign-in-error')).toBeTruthy();
+    expect(button('Sign in')).toBeTruthy();
+    expect(screen.queryByLabelText('Username')).toBeNull();
+    expect(screen.getByLabelText('Email').props.value).toBe('taken@futty.cy');
+    expect(screen.getByLabelText('Password').props.value).toBe('');
+    expect(router.push).not.toHaveBeenCalled();
+  });
+});
+
+describe('An expired or used email link', () => {
+  it('shows the link error with a way to resend', async () => {
+    mockAuth.linkError = 'This link has expired. Request a new one.';
+    mockAuth.resendConfirmation.mockResolvedValue(undefined);
+    await render(<SignInScreen />);
+    expect(screen.getByText('This link has expired. Request a new one.')).toBeTruthy();
+
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'new@futty.cy');
+    await fireEvent.press(button('Resend confirmation email'));
+    await act(async () => {});
+    expect(mockAuth.resendConfirmation).toHaveBeenCalledWith('new@futty.cy');
+    expect(mockAuth.clearLinkError).toHaveBeenCalled();
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/confirm-email', params: { email: 'new@futty.cy' } });
+  });
+
+  it('resend without a valid email asks for one', async () => {
+    mockAuth.linkError = 'This link has expired. Request a new one.';
+    await render(<SignInScreen />);
+    await fireEvent.press(button('Resend confirmation email'));
+    expect(screen.getByText('Enter your email, then tap resend.')).toBeTruthy();
+    expect(mockAuth.resendConfirmation).not.toHaveBeenCalled();
+  });
+});
+
+describe('Opened from confirm email', () => {
+  it('native: the route params pick the mode and fill the email', async () => {
+    (useLocalSearchParams as jest.Mock).mockReturnValue({ mode: 'sign-up', email: 'new@futty.cy' });
+    await render(<SignInScreen />);
+    expect(button('Sign up')).toBeTruthy();
+    expect(screen.getByLabelText('Email').props.value).toBe('new@futty.cy');
+  });
+
+  it('native: signInHref puts the email in the params', () => {
+    expect(signInHref('sign-in', 'new@futty.cy')).toEqual({
+      pathname: '/sign-in',
+      params: { mode: 'sign-in', email: 'new@futty.cy' },
+    });
+  });
+
+  describe('web', () => {
+    const original = Platform.OS;
+    beforeEach(() => {
+      Platform.OS = 'web';
+    });
+    afterEach(() => {
+      Platform.OS = original;
+      clearHandedOffEmail();
+    });
+
+    it('keeps the email out of the URL and hands it over in memory', async () => {
+      const href = signInHref('sign-in', 'new@futty.cy');
+      expect(href).toEqual({ pathname: '/sign-in', params: { mode: 'sign-in' } });
+      (useLocalSearchParams as jest.Mock).mockReturnValue(href.params);
+      await render(<SignInScreen />);
+      expect(screen.getByLabelText('Email').props.value).toBe('new@futty.cy');
+    });
   });
 });
 
