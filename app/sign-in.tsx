@@ -1,6 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import {
@@ -17,8 +17,8 @@ import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { colors, radius, space } from '@/constants/futty-theme';
-import { useAuth } from '@/lib/auth';
-import { describeAuthError } from '@/lib/auth-errors';
+import { clearHandedOffEmail, handedOffEmail, useAuth } from '@/lib/auth';
+import { describeAuthError, EmailTakenError, RESEND_NEEDS_EMAIL_MESSAGE } from '@/lib/auth-errors';
 import { signInWithApple, signInWithGoogle, useAppleSignInAvailable } from '@/lib/auth-providers';
 import { emailError, passwordError, usernameError, useTouched } from '@/lib/auth-fields';
 import { getPasswordLengthError } from '@/lib/password';
@@ -28,12 +28,18 @@ import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
 type Mode = 'sign-in' | 'sign-up';
 
 export default function SignInScreen() {
-  const { signIn, signUp, isUsernameAvailable } = useAuth();
+  const { signIn, signUp, isUsernameAvailable, resendConfirmation, linkError, clearLinkError } =
+    useAuth();
+  // Set by confirm-email (lib/auth.tsx signInHref). On web the email comes
+  // through memory instead, so it never sits in the address bar.
+  const params = useLocalSearchParams<{ mode?: string; email?: string }>();
 
   const rememberedEmail = preferences.getRememberedEmail();
 
-  const [mode, setMode] = useState<Mode>('sign-in');
-  const [email, setEmail] = useState(rememberedEmail ?? '');
+  const [mode, setMode] = useState<Mode>(params.mode === 'sign-up' ? 'sign-up' : 'sign-in');
+  const [email, setEmail] = useState(
+    () => params.email ?? handedOffEmail() ?? rememberedEmail ?? ''
+  );
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -42,6 +48,10 @@ export default function SignInScreen() {
   const [error, setError] = useState<string | null>(null);
   const { touch, shown, reset } = useTouched<'email' | 'username' | 'password'>();
   const appleAvailable = useAppleSignInAvailable();
+
+  useEffect(() => {
+    clearHandedOffEmail();
+  }, []);
 
   const isSignUp = mode === 'sign-up';
   const passwordLengthError = isSignUp ? getPasswordLengthError(password) : null;
@@ -54,7 +64,30 @@ export default function SignInScreen() {
   function switchMode() {
     setMode(isSignUp ? 'sign-in' : 'sign-up');
     setError(null);
+    clearLinkError();
     reset();
+  }
+
+  // An expired or used email link (lib/auth.tsx): send a fresh one.
+  async function resendLink() {
+    if (busy) return;
+    const address = email.trim();
+    if (emailError(address)) {
+      setError(RESEND_NEEDS_EMAIL_MESSAGE);
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await resendConfirmation(address);
+      clearLinkError();
+      router.push({ pathname: '/confirm-email', params: { email: address } });
+    } catch (cause) {
+      setError(describeAuthError(cause));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit() {
@@ -62,6 +95,7 @@ export default function SignInScreen() {
 
     setBusy(true);
     setError(null);
+    clearLinkError();
 
     // Written before the request: a successful sign-in unmounts this screen via
     // the route guards, so anything after the await may never run.
@@ -109,6 +143,13 @@ export default function SignInScreen() {
       // On success the auth listener updates the session and the root layout
       // swaps this screen out, so there is nothing to navigate here.
     } catch (cause) {
+      // Already registered: Supabase sent nothing, so there is nothing to
+      // confirm. Offer sign-in with the same email instead.
+      if (cause instanceof EmailTakenError) {
+        setMode('sign-in');
+        setPassword('');
+        reset();
+      }
       setError(describeAuthError(cause));
     } finally {
       setBusy(false);
@@ -213,10 +254,14 @@ export default function SignInScreen() {
         />
       </View>
 
-      {error ? (
+      {error || linkError ? (
         <View testID="sign-in-error">
-          <AuthError>{error}</AuthError>
+          <AuthError>{error ?? linkError}</AuthError>
         </View>
+      ) : null}
+
+      {linkError ? (
+        <AuthLink label="Resend confirmation email" onPress={resendLink} disabled={busy} />
       ) : null}
 
       <Button
