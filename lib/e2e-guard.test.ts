@@ -81,8 +81,9 @@ describe('Supabase key kinds (legacy JWTs and the new sb_ keys)', () => {
 describe('the e2e-test profile in eas.json', () => {
   const eas = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'eas.json'), 'utf8'));
 
-  it('never points at production or uses a live Stripe key (placeholders allowed until Panos fills them in)', () => {
-    expect(e2eProfileProblems(eas, { allowPlaceholders: true })).toEqual([]);
+  it('has the staging values: no placeholder, no production project, no live Stripe key', () => {
+    // The problems name no key value, so a failure here prints none of eas.json's keys.
+    expect(e2eProfileProblems(eas, { allowPlaceholders: false })).toEqual([]);
   });
 
   it('builds a simulator app and an APK with no update channel, and leaves the other profiles alone', () => {
@@ -117,7 +118,14 @@ describe('the e2e-test profile in eas.json', () => {
   });
 
   it('the workflow check fails while a placeholder remains', () => {
-    const problems = e2eProfileProblems(eas, { allowPlaceholders: false });
+    // An in-memory copy of the real profile with the three placeholders put back.
+    const copy = JSON.parse(JSON.stringify(eas));
+    Object.assign(copy.build['e2e-test'].env, {
+      EXPO_PUBLIC_SUPABASE_URL: 'REPLACE_STAGING_URL',
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: 'REPLACE_STAGING_ANON_KEY',
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'REPLACE_PK_TEST',
+    });
+    const problems = e2eProfileProblems(copy, { allowPlaceholders: false });
     expect(problems).toEqual(
       expect.arrayContaining([expect.stringContaining('REPLACE_STAGING_URL'), expect.stringContaining('REPLACE_PK_TEST')]),
     );

@@ -105,24 +105,26 @@ describe('check-profile: the workflow’s first job', () => {
   const { checkProfile } = require('./check-profile') as typeof import('./check-profile');
   const eas = fs.readFileSync(path.join(__dirname, '../../eas.json'), 'utf8');
 
-  it('fails on today’s eas.json, which still has the placeholders', () => {
-    expect(checkProfile(eas).join('\n')).toMatch(/REPLACE_STAGING_URL/);
+  it('passes on today’s eas.json, which has the staging values', () => {
+    // The problems name no key value, so a failure here prints none of eas.json's keys.
+    expect(checkProfile(eas)).toEqual([]);
   });
 
-  it('passes once the staging values are in', () => {
-    const filled = eas
-      .replace('REPLACE_STAGING_URL', 'https://stagingref123.supabase.co')
-      .replace('REPLACE_STAGING_ANON_KEY', 'sb_publishable_abc')
-      .replace('REPLACE_PK_TEST', 'pk_test_abc');
-    expect(checkProfile(filled)).toEqual([]);
+  it('fails while a placeholder remains, naming it', () => {
+    // An in-memory copy of the real profile with the three placeholders put back.
+    const json = JSON.parse(eas);
+    Object.assign(json.build['e2e-test'].env, {
+      EXPO_PUBLIC_SUPABASE_URL: 'REPLACE_STAGING_URL',
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: 'REPLACE_STAGING_ANON_KEY',
+      EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'REPLACE_PK_TEST',
+    });
+    const problems = checkProfile(JSON.stringify(json)).join('\n');
+    expect(problems).toMatch(/REPLACE_STAGING_URL/);
+    expect(problems).toMatch(/REPLACE_PK_TEST/);
   });
 
   it('requires EXPO_PUBLIC_E2E=1, which switches on lib/supabase.ts’s runtime guard', () => {
-    const filled = eas
-      .replace('REPLACE_STAGING_URL', 'https://stagingref123.supabase.co')
-      .replace('REPLACE_STAGING_ANON_KEY', 'sb_publishable_abc')
-      .replace('REPLACE_PK_TEST', 'pk_test_abc');
-    const json = JSON.parse(filled);
+    const json = JSON.parse(eas);
     delete json.build['e2e-test'].env.EXPO_PUBLIC_E2E;
     expect(checkProfile(JSON.stringify(json)).join(' ')).toMatch(/EXPO_PUBLIC_E2E/);
     json.build['e2e-test'].env.EXPO_PUBLIC_E2E = '0';
