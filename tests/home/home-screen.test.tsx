@@ -29,6 +29,13 @@ let mockFriendlies: Record<string, unknown>[] = [];
 let mockLinks: { bookings: Map<string, string>; friendlies: Map<string, string> } = { bookings: new Map(), friendlies: new Map() };
 let mockOpenMatches: unknown[] = [];
 let mockFixtureLinks = new Map<string, string>();
+let mockUnscoredStatus: 'ready' | 'loading' | 'error' = 'ready';
+let mockOpenStatus: 'ready' | 'error' = 'ready';
+let mockLinksStatus: 'ready' | 'error' = 'ready';
+const mockReloadOpen = jest.fn();
+const mockReloadLinks = jest.fn();
+/** Every candidate list Home passed to useMatchLinks, in render order. */
+let mockLinkCandidates: { bookingIds?: string[] }[] = [];
 let mockRecent: RecentResult[] = [];
 const nothingOwed: Owed = { blocked: false, debt_cents: 0, debts: [], payments: [] };
 let mockOwedState: { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Owed } = {
@@ -47,7 +54,10 @@ jest.mock('expo-router', () => {
 jest.mock('@/lib/use-notifications', () => ({ useNotifications: () => ({ unreadCount: 0 }) }));
 jest.mock('@/lib/use-my-bookings', () => ({
   useMyBookings: () => ({ ...mockBookings, reload: mockReloads.bookings }),
-  useMyUnscoredBookings: () => ({ status: 'ready', bookings: mockUnscored, reload: mockReloads.unscored }),
+  useMyUnscoredBookings: () =>
+    mockUnscoredStatus === 'ready'
+      ? { status: 'ready', bookings: mockUnscored, reload: mockReloads.unscored }
+      : { status: mockUnscoredStatus, message: 'offline', reload: mockReloads.unscored },
 }));
 jest.mock('@/lib/use-venues', () => ({ useVenues: () => ({ ...mockVenues, cities: [], reload: mockReloads.venues }) }));
 jest.mock('@/lib/use-squad-posts', () => ({ useSquadPosts: () => ({ ...mockPosts, reload: mockReloads.posts }) }));
@@ -73,12 +83,18 @@ jest.mock('@/components/match/result-panel', () => {
   };
 });
 jest.mock('@/lib/match/use-match-result', () => ({
-  useOpenResultMatches: () => ({ status: 'ready', matches: mockOpenMatches, viewerId: 'booker', reload: jest.fn() }),
-  useMatchLinks: () => ({
-    status: 'ready',
-    links: { byBookingId: mockLinks.bookings, byFriendlyMatchId: mockLinks.friendlies, byLeagueFixtureId: mockFixtureLinks },
-    reload: jest.fn(),
-  }),
+  useOpenResultMatches: () =>
+    mockOpenStatus === 'ready'
+      ? { status: 'ready', matches: mockOpenMatches, viewerId: 'booker', reload: mockReloadOpen }
+      : { status: 'error', message: 'PGRST201', viewerId: 'booker', reload: mockReloadOpen },
+  useMatchLinks: (candidates: { bookingIds?: string[] }) => {
+    mockLinkCandidates.push(candidates);
+    return {
+      status: mockLinksStatus,
+      links: { byBookingId: mockLinks.bookings, byFriendlyMatchId: mockLinks.friendlies, byLeagueFixtureId: mockFixtureLinks },
+      reload: mockReloadLinks,
+    };
+  },
 }));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
 // A7's team of the week has its own tests (components/match/team-of-the-week-home.test.tsx).
@@ -234,6 +250,33 @@ describe('Home', () => {
     await render(<HomeScreen />);
     expect(screen.getByText('Could not load games looking for players.')).toBeTruthy();
   });
+
+  it('each Book a pitch opens /book exactly once per tap', async () => {
+    await render(<HomeScreen />);
+    const buttons = screen.getAllByRole('button', { name: 'Book a pitch' });
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      jest.mocked(router.push).mockClear();
+      await fireEvent.press(button);
+      expect(router.push).toHaveBeenCalledTimes(1);
+      expect(router.push).toHaveBeenCalledWith('/book');
+    }
+  });
+
+  // A tap is lost when the button moves under the finger (Pressable cancels
+  // the press). Nothing that loads may sit above the quick actions: they come
+  // first, then the owed banner, then the next game.
+  it('the quick actions come first, above the owed banner and the loading next game', async () => {
+    mockBookings = { status: 'loading' };
+    mockOwedState = { status: 'ready', data: { ...nothingOwed, payments: [{ kind: 'payment_due', booking_id: 'b1', share_id: null, venue_name: 'English School', booking_day: '2026-11-20', start_time: '19:00:00', amount_cents: 680 }] } };
+    await render(<HomeScreen />);
+    const tree = JSON.stringify(screen.toJSON());
+    const quick = tree.indexOf('"Book a pitch"');
+    expect(quick).toBeGreaterThan(-1);
+    expect(quick).toBeLessThan(tree.indexOf('"owed-banner"'));
+    expect(tree.indexOf('"owed-banner"')).toBeLessThan(tree.indexOf('"next-game-skeleton"'));
+    mockOwedState = { status: 'ready', data: nothingOwed };
+  });
 });
 
 describe('Home owed banner (contract 6)', () => {
@@ -364,12 +407,74 @@ describe('Home score logging: new matches use A2, old ones the old form', () => 
     mockFriendlies = [];
     mockLinks = { bookings: new Map(), friendlies: new Map() };
     mockOpenMatches = [];
+    mockUnscoredStatus = 'ready';
+    mockOpenStatus = 'ready';
+    mockLinksStatus = 'ready';
+    mockLinkCandidates = [];
+    mockReloadOpen.mockClear();
+    mockReloadLinks.mockClear();
   });
 
   afterAll(() => {
     mockUnscored = [];
     mockFriendlies = [];
     mockOpenMatches = [];
+    mockUnscoredStatus = 'ready';
+    mockOpenStatus = 'ready';
+    mockLinksStatus = 'ready';
+  });
+
+  it('open results failing has its own words and retries only itself', async () => {
+    mockOpenStatus = 'error';
+    await render(<HomeScreen />);
+    expect(screen.getByText('Could not load your games waiting for a score.')).toBeTruthy();
+    expect(screen.queryByText('Could not check which games have a match record.')).toBeNull();
+    // Home's focus effect reloads on mount; only the button counts here.
+    mockReloadOpen.mockClear();
+    mockReloadLinks.mockClear();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(mockReloadOpen).toHaveBeenCalled();
+    expect(mockReloadLinks).not.toHaveBeenCalled();
+  });
+
+  it('match links failing has its own words and retries only itself', async () => {
+    mockLinksStatus = 'error';
+    await render(<HomeScreen />);
+    expect(screen.getByText('Could not check which games have a match record.')).toBeTruthy();
+    expect(screen.queryByText('Could not load your games waiting for a score.')).toBeNull();
+    // Home's focus effect reloads on mount; only the button counts here.
+    mockReloadOpen.mockClear();
+    mockReloadLinks.mockClear();
+    // LogScoreSection's Try again (the previous-game section has no error here).
+    await fireEvent.press(screen.getAllByRole('button', { name: 'Try again' })[0]);
+    expect(mockReloadLinks).toHaveBeenCalled();
+    expect(mockReloadOpen).not.toHaveBeenCalled();
+  });
+
+  it('both failing show both lines, each with Try again', async () => {
+    mockOpenStatus = 'error';
+    mockLinksStatus = 'error';
+    await render(<HomeScreen />);
+    expect(screen.getByText('Could not load your games waiting for a score.')).toBeTruthy();
+    expect(screen.getAllByText('Could not check which games have a match record.').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Could not load your matches.')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Try again' }).length).toBeGreaterThanOrEqual(2);
+  });
+
+  // Every refocus reloads the past bookings, which go back to loading; the
+  // match-link ids must not flip to [] and back (two extra requests and
+  // re-renders on Home each time).
+  it('past bookings reloading keeps the last match-link ids', async () => {
+    mockUnscored = [pastBooking('a'), pastBooking('b')];
+    await render(<HomeScreen />);
+    mockUnscoredStatus = 'loading';
+    mockLinkCandidates = [];
+    await screen.rerender(<HomeScreen />);
+    // Each render calls useMatchLinks twice: LogScoreSection, then the
+    // previous-game section (no recent results here, so always []).
+    const logScoreCalls = mockLinkCandidates.filter((_, i) => i % 2 === 0);
+    expect(logScoreCalls.length).toBeGreaterThan(0);
+    for (const c of logScoreCalls) expect(c.bookingIds).toEqual(['a', 'b']);
   });
 
   it('a booking recorded before A2 keeps the old form', async () => {

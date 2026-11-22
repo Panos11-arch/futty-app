@@ -9,10 +9,13 @@ import { supabase } from '@/lib/supabase';
 const MATCH_COLUMNS =
   'id, booking_id, venue_id, friendly_match_id, league_fixture_id, kind, format, players_per_side, kickoff_at, ends_at, status, result_deadline_at, side_a_score, side_b_score, forfeit_side, forfeit_reason, confirmed_at, confirmed_via, competitive, is_competitive, created_at, updated_at';
 
+// match_players names its foreign key: match_ratings (A5a) references both
+// matches and match_players, so PostgREST also sees a path through it and
+// refuses a plain "match_players (...)" embed with PGRST201.
 const RESULT_SELECT = `${MATCH_COLUMNS},
   match_sides (match_id, side, team_id, label, captain_profile_id),
   match_result_submissions (id, match_id, side, side_a_score, side_b_score, submitted_by, submitted_at, response, responded_by, responded_at),
-  match_players (id, side, profile_id, left_at),
+  match_players!match_players_match_id_fkey (id, side, profile_id, left_at),
   venue:venues (name)`;
 
 type ResultRow = MatchRecord & {
@@ -92,22 +95,38 @@ export const emptyMatchLinks = (): MatchLinks => ({
   byLeagueFixtureId: new Map(),
 });
 
+/** Ids per request. Every id goes in the URL (about 37 characters each); one
+ *  URL with a few hundred is over the gateway's limit (HTTP 414 "URI too
+ *  long" at about 8 KB), so a player with many past games is asked in parts. */
+export const MATCH_LINK_CHUNK = 50;
+
+type LinkRow = Pick<MatchRecord, 'id' | 'booking_id' | 'friendly_match_id' | 'league_fixture_id'>;
+
+function chunks(ids: string[]) {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += MATCH_LINK_CHUNK) out.push(ids.slice(i, i + MATCH_LINK_CHUNK));
+  return out;
+}
+
 export async function findMatchLinks(candidates: MatchLinkCandidates) {
+  const columns = [
+    ['booking_id', candidates.bookingIds ?? []],
+    ['friendly_match_id', candidates.friendlyMatchIds ?? []],
+    ['league_fixture_id', candidates.leagueFixtureIds ?? []],
+  ] as const;
+  const requests = columns.flatMap(([column, ids]) =>
+    chunks(ids).map((chunk) =>
+      supabase.from('matches').select('id, booking_id, friendly_match_id, league_fixture_id').in(column, chunk)
+    )
+  );
   const links = emptyMatchLinks();
-  const filters = [
-    candidates.bookingIds?.length ? `booking_id.in.(${candidates.bookingIds.join(',')})` : null,
-    candidates.friendlyMatchIds?.length ? `friendly_match_id.in.(${candidates.friendlyMatchIds.join(',')})` : null,
-    candidates.leagueFixtureIds?.length ? `league_fixture_id.in.(${candidates.leagueFixtureIds.join(',')})` : null,
-  ].filter((f): f is string => f !== null);
-  if (filters.length === 0) return { links, error: null };
+  if (requests.length === 0) return { links, error: null };
 
-  const { data, error } = await supabase
-    .from('matches')
-    .select('id, booking_id, friendly_match_id, league_fixture_id')
-    .or(filters.join(','));
-  if (error) return { links, error };
+  const answers = await Promise.all(requests);
+  const failed = answers.find((a) => a.error);
+  if (failed) return { links, error: failed.error };
 
-  for (const row of (data ?? []) as Pick<MatchRecord, 'id' | 'booking_id' | 'friendly_match_id' | 'league_fixture_id'>[]) {
+  for (const row of answers.flatMap((a) => (a.data ?? []) as LinkRow[])) {
     if (row.booking_id) links.byBookingId.set(row.booking_id, row.id);
     if (row.friendly_match_id) links.byFriendlyMatchId.set(row.friendly_match_id, row.id);
     if (row.league_fixture_id) links.byLeagueFixtureId.set(row.league_fixture_id, row.id);
