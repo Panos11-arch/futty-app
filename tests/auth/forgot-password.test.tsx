@@ -3,6 +3,7 @@ import { mockAuth, pending } from './mocks';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import ForgotPasswordScreen from '@/app/forgot-password';
+import { flatStyle } from '@/components/ui/test-utils';
 
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
 
@@ -18,6 +19,21 @@ describe('Forgot password', () => {
     expect(button('Send reset link').props.accessibilityState).toMatchObject({ disabled: true });
     await fireEvent.changeText(screen.getByLabelText('Email'), 'nope');
     expect(screen.getByText('Enter a valid email address.')).toBeTruthy();
+  });
+
+  // iPhone dev build: the field showed "Enter your email." the moment it was
+  // tapped and would not take typing.
+  it('Email: focusing keeps the same editable field, shows no error, and typing goes in', async () => {
+    await render(<ForgotPasswordScreen />);
+    const field = screen.getByLabelText('Email');
+    await fireEvent(field, 'focus');
+    expect(screen.getByLabelText('Email')).toBe(field);
+    expect(field.props.editable).toBe(true);
+    expect(screen.queryByText('Enter your email.')).toBeNull();
+    await fireEvent.changeText(field, 'player@futty.cy');
+    expect(screen.getByLabelText('Email')).toBe(field);
+    expect(field.props.value).toBe('player@futty.cy');
+    expect(flatStyle(field).lineHeight).toBeUndefined();
   });
 
   it('sends once with loading, then shows the sent state and the cooldown', async () => {

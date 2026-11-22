@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Platform } from 'react-native';
 
 import SignInScreen from '@/app/sign-in';
+import { flatStyle } from '@/components/ui/test-utils';
 import { clearHandedOffEmail, signInHref } from '@/lib/auth';
 import { EmailTakenError } from '@/lib/auth-errors';
 
@@ -46,6 +47,19 @@ describe('Sign in', () => {
     expect(screen.getByText('Enter your email.')).toBeTruthy();
     expect(screen.getByText('Enter your password.')).toBeTruthy();
     expect(button('Sign in').props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it('Email: focusing keeps the same editable field, shows no error, and typing goes in', async () => {
+    await render(<SignInScreen />);
+    const field = screen.getByTestId('sign-in-email');
+    await fireEvent(field, 'focus');
+    expect(screen.getByTestId('sign-in-email')).toBe(field);
+    expect(field.props.editable).toBe(true);
+    expect(screen.queryByText('Enter your email.')).toBeNull();
+    await fireEvent.changeText(field, 'player@futty.cy');
+    expect(screen.getByTestId('sign-in-email')).toBe(field);
+    expect(field.props.value).toBe('player@futty.cy');
+    expect(flatStyle(field).lineHeight).toBeUndefined();
   });
 
   it('an invalid email: inline error on blur', async () => {
