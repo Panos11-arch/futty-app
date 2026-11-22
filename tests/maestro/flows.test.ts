@@ -35,7 +35,7 @@ const read = (f: string) => fs.readFileSync(f, 'utf8');
 /** Every id: the flows use, as written (with ${VARS} and regex). */
 function flowIds(): { file: string; id: string }[] {
   return flowFiles.flatMap((file) =>
-    [...read(file).matchAll(/^\s*(?:-\s*)?id:\s*'?([^'\n]+?)'?\s*$/gm)].map((m) => ({ file: path.relative(root, file), id: m[1] })),
+    [...read(file).matchAll(/^\s*(?:-\s*)?id:\s*'?([^'\r\n]+?)'?\s*$/gm)].map((m) => ({ file: path.relative(root, file), id: m[1] })),
   );
 }
 
@@ -157,7 +157,8 @@ describe('what the flows expect is what the app shows', () => {
 
     const lines = describeQuote(quote, E2E_VENUE.name);
     expect(lines).toEqual(['The booking is cancelled and the pitch is released.', 'You get €65.50 back. The hold on your card is released.']);
-    expect(expected('flows/cancel.yaml', /id: cancel-quote-line-\d+\n\s+text: '([^']+)'/g)).toEqual(lines);
+    // \r?\n: a Windows checkout (core.autocrlf=true) has CRLF line endings.
+    expect(expected('flows/cancel.yaml', /id: cancel-quote-line-\d+\r?\n\s+text: '([^']+)'/g)).toEqual(lines);
     expect(read(path.join(maestroDir, 'flows/cancel.yaml'))).toContain(`id: cancel-quote-line-${lines.length}`);
 
     const notice = cancelledMessage('whole_team', { cancelled: true, fee: null });
