@@ -157,17 +157,33 @@ describe('taps wait for the weather strip', () => {
 describe("Stripe's payment sheet on iOS", () => {
   // The card fields use the number pad, which has no key that closes it, so
   // Maestro's hideKeyboard fails on iOS ("Couldn't hide the keyboard",
-  // preview run, 23 November). iOS shows a Done button over the pad instead.
+  // preview run, 23 November), and Maestro can't find iOS's Done over the
+  // pad either. Stripe's sheet ends editing on a tap anywhere that isn't a
+  // control (BottomSheetViewController.didTapAnywhere), so tap its heading.
   const steps = () => loadAll(read(path.join(maestroDir, 'subflows', 'stripe-test-card.yaml')))[1] as Record<string, unknown>[];
 
-  it('hides the keyboard only on Android, and taps Done on iOS', () => {
+  it('hides the keyboard only on Android, and taps the sheet\'s heading on iOS', () => {
     expect(steps().some((s) => 'hideKeyboard' in s)).toBe(false);
     const byPlatform = steps()
       .filter((s) => 'runFlow' in s)
       .map((s) => s.runFlow as { when?: { platform?: string }; commands?: unknown[] })
       .filter((f) => f.when?.platform);
     expect(byPlatform.find((f) => f.when!.platform === 'Android')?.commands).toEqual(['hideKeyboard']);
-    expect(byPlatform.find((f) => f.when!.platform === 'iOS')?.commands).toEqual([{ tapOn: 'Done' }]);
+    expect(byPlatform.find((f) => f.when!.platform === 'iOS')).toEqual({ when: { platform: 'iOS' }, commands: [{ tapOn: 'Card information' }] });
+  });
+
+  // On Android the sheet lists the ways to pay (Card, Amazon Pay, Satispay)
+  // and opens the card form only after "Card" (preview run, 23 November).
+  it('opens the card form from the list of ways to pay, when the sheet shows one', () => {
+    const list = steps()
+      .map((s) => s.runFlow as { when?: { visible?: string }; commands?: unknown[] } | undefined)
+      .find((f) => f?.when?.visible === 'Card');
+    expect(list?.commands).toEqual([{ tapOn: 'Card' }]);
+    const names = steps().map((s) => JSON.stringify(s));
+    const openCard = names.findIndex((n) => n.includes('"tapOn":"Card"'));
+    const typed = names.findIndex((n) => n.includes('inputText'));
+    expect(openCard).toBeGreaterThan(-1);
+    expect(openCard).toBeLessThan(typed);
   });
 
   it("scrolls to the sheet's Pay button before tapping it", () => {
