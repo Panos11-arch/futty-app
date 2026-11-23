@@ -30,6 +30,10 @@ import { colors, hairline, radius, space } from '@/constants/futty-theme';
  * Look (U7, docs/specs/15-design.md): surface header with a hairline, a
  * headline title, 44 pt icon buttons, canvas body.
  */
+/** The header's height (its min height): what a KeyboardAvoidingView in the
+ *  body adds, with the top safe area, as keyboardVerticalOffset. */
+export const POPUP_HEADER_HEIGHT = MIN_TOUCH + space.md;
+
 export function PopupModal({
   visible,
   onClose,
@@ -115,7 +119,7 @@ const styles = StyleSheet.create({
     gap: space.sm,
     paddingHorizontal: space.sm,
     paddingVertical: space.xs,
-    minHeight: MIN_TOUCH + space.md,
+    minHeight: POPUP_HEADER_HEIGHT,
     // Belt-and-braces: guarantees this row draws and is hit-tested above
     // the body's ScrollView/FlatList, on top of the real (gesture-handler)
     // fix above. zIndex alone orders siblings on Android too; no elevation,
