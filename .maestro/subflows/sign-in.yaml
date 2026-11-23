@@ -1,6 +1,6 @@
 # Starts the app from nothing and signs in as EMAIL / PASSWORD, ending on
-# Home. The seeded logins have a username, so no profile setup; the
-# starting-level questions (offered once per device, and clearState makes a
+# Home, past iOS's "Save Password?". The seeded logins have a username, so
+# no profile setup; the starting-level questions (offered once per device, and clearState makes a
 # new device) are skipped if they show.
 appId: com.panosalepis.futtyapp
 ---
@@ -22,6 +22,16 @@ appId: com.panosalepis.futtyapp
 - hideKeyboard
 - tapOn:
     id: sign-in-submit
+# iOS asks "Save Password?" over Home after a password sign-in, and Maestro
+# can't see Home under it. Android doesn't ask, so both steps are optional.
+- extendedWaitUntil:
+    visible:
+      text: 'Not Now'
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: 'Not Now'
+    optional: true
 - extendedWaitUntil:
     visible:
       id: home-screen
