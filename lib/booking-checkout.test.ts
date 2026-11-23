@@ -110,6 +110,31 @@ describe('payShare', () => {
   });
 });
 
+describe('payForSlot: Booking v2 (B2)', () => {
+  it('books the chosen pitch and kind, then pays the booker’s share', async () => {
+    const outcome = await payForSlot(
+      { slot, mode: 'pay_all', kind: 'whole', pitchIds: ['p2'], pay: card, bookingId: null },
+      sheet(),
+    );
+    expect(mockBookSlot).toHaveBeenCalledWith({ ...slot, mode: 'pay_all', kind: 'whole', pitchIds: ['p2'] });
+    expect(outcome).toEqual({ status: 'paid', bookingId: 'b1' });
+  });
+
+  it('a pitch taken just now: "Pitch 2 is no longer free. Pick another." and the list must reload', async () => {
+    mockBookSlot.mockResolvedValue({ data: null, error: { message: 'pitch_not_free', details: 'Pitch 2' } });
+    const outcome = await payForSlot(
+      { slot, mode: 'pay_all', kind: 'whole', pitchIds: ['p2'], pay: card, bookingId: null },
+      sheet(),
+    );
+    expect(outcome).toEqual({
+      status: 'error',
+      message: 'Pitch 2 is no longer free. Pick another.',
+      bookingId: null,
+      pitchTaken: true,
+    });
+  });
+});
+
 describe('payForSlot: Gipedo Pano (P8)', () => {
   it('books for the chosen team, then holds the captain’s card', async () => {
     const s = sheet();

@@ -3,13 +3,13 @@ import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 
-import { CheckoutView } from '@/components/booking/checkout-view';
+import { CheckoutView, type CheckoutPayChoice } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
 import { WeatherStrip } from '@/components/venue/weather-strip';
-import type { PaymentMode } from '@/lib/booking-actions';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
 import { afterPayment } from '@/lib/booking-navigation';
-import { fetchBookingQuote, fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
+import { fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
+import { fetchCheckoutData, fetchFreePitches } from '@/lib/booking-v2';
 import { useReloadOnReturn } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
 import { useGameWeather } from '@/lib/use-weather';
@@ -68,28 +68,40 @@ function failed() {
 }
 
 function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; sheet: PaymentSheet }) {
-  const load = useCallback(() => fetchBookingQuote(slot), [slot]);
-  const quote = useLoad(JSON.stringify(slot), load);
+  const key = JSON.stringify(slot);
+  // Booking v2 (B2): every amount from booking_quote_v2 (credit from
+  // booking_quote), and the free pitches from venue_free_pitches.
+  const loadQuote = useCallback(() => fetchCheckoutData(slot), [slot]);
+  const quote = useLoad(key, loadQuote);
+  const loadPitches = useCallback(() => fetchFreePitches(slot), [slot]);
+  const pitches = useLoad(key, loadPitches);
   // Back from "Pay what I owe": price it again, only if the debt blocked it.
-  useReloadOnReturn(quote.reload, quote.state.status === 'ready' && quote.state.data.in_debt);
+  useReloadOnReturn(quote.reload, quote.state.status === 'ready' && quote.state.data.quote.in_debt);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // P11: the forecast for the game's hours.
   const weather = useGameWeather(slot.venueId, { day: slot.day, start: slot.start, end: slot.end });
 
-  async function pay({ mode, teamId, pay }: { mode: PaymentMode; teamId?: string; pay: PayOptions }) {
+  async function pay({ mode, kind, pitchIds, pay }: CheckoutPayChoice) {
     setPaying(true);
     setError(null);
-    const outcome = await payForSlot({ slot, mode, teamId, pay, bookingId }, sheet);
+    const outcome = await payForSlot({ slot, mode, kind, pitchIds, pay, bookingId }, sheet);
     setPaying(false);
     setBookingId(outcome.bookingId);
     if (outcome.status === 'paid') paid(outcome.bookingId);
     else if (outcome.status === 'error') {
       failed();
       setError(outcome.message);
+      // "Pitch 2 is no longer free. Pick another.": the list without it.
+      if (outcome.pitchTaken) pitches.reload();
     }
   }
+
+  const retry = () => {
+    quote.reload();
+    pitches.reload();
+  };
 
   return (
     <>
@@ -97,7 +109,8 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
       <CheckoutView
         venueName={venueName}
         quote={quote.state}
-        onRetry={quote.reload}
+        pitches={pitches.state}
+        onRetry={retry}
         onPay={pay}
         paying={paying}
         error={error}

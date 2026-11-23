@@ -1,12 +1,16 @@
-// Checkout (spec 15 section 5; spec 13 "Booking modes", "Cash at the
-// venue", "Venue credit"). Every amount is booking_quote's, shown as it is:
-// the two prices, the breakdown, the total. The player only chooses.
+// Checkout, Booking v2 (B2; spec 13 "Booking modes (Booking v2)", "How each
+// side pays"; spec 15 Words rules; the agreed 04-payment-sheet design). The
+// pitch list, whole or half pitch, the ways to pay, cash, credit, the
+// cancellation line and Pay. Every amount is the server's (booking_quote_v2,
+// venue_free_pitches; credit from booking_quote), shown as it is. The player
+// only chooses; the app never sends a price.
 import { type ReactNode, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { ChoiceCard, PitchRow } from '@/components/booking/checkout-choice';
 import {
-  CancellationRules,
   cashSentence,
+  checkoutCancellationLines,
   DEBT_LINE,
   NonRefundableNotice,
   payLabel,
@@ -18,39 +22,51 @@ import {
   EmptyState,
   PriceBreakdown,
   SectionHeader,
-  SegmentedControl,
+  Sheet,
   SkeletonBlock,
   SkeletonText,
   StickyActionBar,
   Text,
 } from '@/components/ui';
 import { colors, space } from '@/constants/futty-theme';
+import { timeToMin } from '@/lib/booking';
 import type { PaymentMode } from '@/lib/booking-actions';
 import type { PayOptions } from '@/lib/booking-checkout';
-import { describeBookingErrorMessage } from '@/lib/booking-errors';
-import { gipedoModeSentence } from '@/lib/booking-gipedo';
+import { cyprusDateLabel, showNonRefundable, useNow, type LoadState } from '@/lib/booking-search';
 import {
-  checkoutAmounts,
-  cyprusDateLabel,
-  showNonRefundable,
-  slotLabel,
-  useNow,
-  type BookingQuote,
-  type LoadState,
-} from '@/lib/booking-search';
+  cashOffered,
+  checkoutAmountsV2,
+  checkoutCancellationLine,
+  creditOffered,
+  guaranteeCents,
+  guaranteeLine,
+  KIND_LINES,
+  modeForWay,
+  pitchDetails,
+  wayLine,
+  wayPriceLabel,
+  type BookingKind,
+  type CheckoutData,
+  type FreePitch,
+  type WayToPay,
+} from '@/lib/booking-v2';
 import { formatEuros } from '@/lib/money/format';
-import { hoursText, minutesText, ruleText } from '@/lib/rules';
+import { minutesText, ruleText } from '@/lib/rules';
+
+export type CheckoutPayChoice = { mode: PaymentMode; kind: BookingKind; pitchIds: string[]; pay: PayOptions };
 
 export type CheckoutViewProps = {
   venueName: string;
-  quote: LoadState<BookingQuote>;
+  quote: LoadState<CheckoutData>;
+  /** venue_free_pitches for the slot; reloaded when a pitch is taken. */
+  pitches: LoadState<FreePitch[]>;
   onRetry: () => void;
-  onPay: (choice: { mode: PaymentMode; teamId?: string; pay: PayOptions }) => void;
+  onPay: (choice: CheckoutPayChoice) => void;
   paying: boolean;
   error: string | null;
   /** Opens "Pay what I owe" from the debt line. */
   onPayOwed?: () => void;
-  /** A booking is already held for this checkout, so who pays is fixed. */
+  /** A booking is already held for this checkout, so the choices are fixed. */
   bookingHeld: boolean;
   /** For tests; the screen uses the clock. */
   now?: Date;
@@ -58,37 +74,32 @@ export type CheckoutViewProps = {
   weather?: ReactNode;
 };
 
-type Who = 'pay_all' | 'each_pays' | 'gipedo_pano';
-type Each = 'each_pays_responsible' | 'each_pays_own_spot';
-
-// Spec 13, "Booking modes": who pays, and who covers a spot nobody paid.
-// Built at each render: the hours come from the rules (lib/rules.ts).
-export function modeSentences(): Record<Exclude<Who, 'gipedo_pano'> | Each, string> {
-  return {
-    pay_all: 'You pay for the whole pitch in one payment.',
-    each_pays: 'Each player pays their own share, by card or cash.',
-    each_pays_responsible:
-      "I'm responsible for the team: each player pays their own share. " +
-      ruleText(
-        (r) => `Any spot still unpaid is taken from your guarantee hold ${hoursText(r.collection_delay_hours)} after the match.`,
-        'Any spot still unpaid is taken from your guarantee hold after the match.',
-      ),
-    each_pays_own_spot:
-      "Just my spot: each player pays their own share. A player who doesn't pay owes the venue themselves.",
-  };
+/** "Thu 26 Nov · 20:00" (a Cyprus calendar day, read as such). */
+export function dayTimeLabel(day: string, start: string): string {
+  const [y, m, d] = day.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+  return `${date.replace(',', '')} · ${start.slice(0, 5)}`;
 }
 
 // Spec 13, "When money is held and taken" rule 5: an unpaid booking is
 // released when the payment window (app_rules.payment_window_minutes) ends.
 export function heldLine(): string {
-  return (
-    'Who pays is fixed once payment starts. ' +
-    ruleText(
-      (r) => `If you don't finish paying, the booking is released after ${minutesText(r.payment_window_minutes)}.`,
-      "If you don't finish paying in time, the booking is released.",
-    )
+  return ruleText(
+    (r) => `Your choices are fixed. Finish paying within ${minutesText(r.payment_window_minutes)} of booking.`,
+    'Your choices are fixed. Finish paying soon, or the booking is released.',
   );
 }
+
+const WAYS: { way: WayToPay; title: string; testID: string }[] = [
+  // These testIDs are the ones .maestro/flows have always used.
+  { way: 'pay_all', title: 'Pay for everyone', testID: 'checkout-who-pay-all' },
+  { way: 'pay_for_myself', title: 'Pay for myself', testID: 'checkout-who-each-pays' },
+];
 
 export function CheckoutView(props: CheckoutViewProps) {
   const { quote } = props;
@@ -97,7 +108,7 @@ export function CheckoutView(props: CheckoutViewProps) {
       <View style={styles.screen}>
         <View style={styles.content}>
           <SkeletonText lines={2} variant="headline" />
-          <SkeletonBlock width="100%" height={48} rounded="control" />
+          <SkeletonBlock width="100%" height={56} rounded="control" />
           <SkeletonBlock width="100%" height={120} />
         </View>
       </View>
@@ -110,12 +121,14 @@ export function CheckoutView(props: CheckoutViewProps) {
       </View>
     );
   }
-  return <CheckoutReady {...props} quote={quote.data} />;
+  return <CheckoutReady {...props} data={quote.data} />;
 }
 
 function CheckoutReady({
   venueName,
-  quote,
+  data,
+  pitches,
+  onRetry,
   onPay,
   paying,
   error,
@@ -123,55 +136,54 @@ function CheckoutReady({
   bookingHeld,
   now: nowOverride,
   weather,
-}: Omit<CheckoutViewProps, 'quote' | 'onRetry'> & { quote: BookingQuote }) {
+}: Omit<CheckoutViewProps, 'quote'> & { data: CheckoutData }) {
+  const { quote } = data;
   const clock = useNow();
   const now = nowOverride ?? clock;
 
-  const [who, setWho] = useState<Who | null>(null);
-  const [each, setEach] = useState<Each | null>(null);
+  const [pitchKey, setPitchKey] = useState<string | null>(null);
+  const [kindChoice, setKind] = useState<BookingKind>('whole');
+  const [way, setWay] = useState<WayToPay | null>(null);
   const [credit, setCredit] = useState(false);
   const [cash, setCash] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
-  // Gipedo Pano (P8): offered only to a captain, for one of their teams; the
-  // server says whether this slot allows it. Card only.
-  const teams = quote.captain_teams;
-  const [team, setTeam] = useState<string | null>(teams.length === 1 ? teams[0].id : null);
-  const gipedo = who === 'gipedo_pano';
-  const gipedoBlocked = gipedo && !quote.gipedo_pano.available;
+  // The chosen pitch, or the first free one (also when the chosen one was taken).
+  const free = pitches.status === 'ready' ? pitches.data : [];
+  const pitch = free.find((p) => p.pitch_ids.join(',') === pitchKey) ?? free[0] ?? null;
+  // Half only while the server offers it.
+  const kind: BookingKind = quote.half.available ? kindChoice : 'whole';
 
-  const mode: PaymentMode | null =
-    who === 'pay_all' ? 'pay_all' : who === 'each_pays' ? each : gipedo && !gipedoBlocked ? 'gipedo_pano' : null;
-  const creditSplit =
-    mode === 'pay_all' ? quote.pay_all.with_credit : mode && !gipedo ? quote.each_pays.mine.with_credit : null;
-  const creditOn = credit && creditSplit !== null;
-  // Cash only in the each-pays modes, where the server allows it, never with credit.
-  const cashOffered = who === 'each_pays' && quote.cash_allowed && !creditOn;
-  const cashOn = cash && cashOffered;
-  const amounts = checkoutAmounts(quote, { mode, cash: cashOn, credit: creditOn });
+  const creditOn = credit && creditOffered(data.credit, { kind, way });
+  const cashShown = cashOffered(quote, { kind, way }) && !creditOn;
+  const cashOn = cash && cashShown;
+  const choice = { kind, way, cash: cashOn, credit: creditOn };
+  const amounts = checkoutAmountsV2(data, choice);
+  const guarantee = guaranteeCents(quote, choice);
   const nonRefundable = showNonRefundable(quote, now);
   const totalLabel = amounts && (amounts.cashCents !== null || creditOn) ? 'By card now' : 'Total';
 
   const canPay =
-    mode !== null && amounts !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying && (!gipedo || team !== null);
-  const actionLabel = amounts ? (gipedo ? `Hold ${formatEuros(amounts.totalCents)}` : payLabel(amounts.totalCents)) : 'Choose who pays';
+    way !== null && amounts !== null && pitch !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying;
+  const actionLabel = amounts ? payLabel(amounts.totalCents) : 'Choose who pays';
 
   const choose = <T,>(set: (v: T) => void) => (v: T) => {
     if (!bookingHeld) set(v);
   };
 
+  const minutes = timeToMin(quote.end_time) - timeToMin(quote.start_time);
+  const subtitle = [venueName, pitch?.label, quote.format, `${minutes} min`].filter(Boolean).join(' · ');
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <Text variant="title" accessibilityRole="header">
-            {venueName}
-          </Text>
-          <Text variant="body" tone="inkMuted" tabular>
-            {slotLabel(quote.day, quote.start_time, quote.end_time)}
+        <View style={styles.header}>
+          <Text variant="title" accessibilityRole="header" tabular>
+            {dayTimeLabel(quote.day, quote.start_time)}
           </Text>
           <Text variant="body" tone="inkMuted">
-            {`${quote.format} · ${quote.players_per_side} v ${quote.players_per_side}`}
+            {subtitle}
           </Text>
         </View>
 
@@ -180,75 +192,106 @@ function CheckoutReady({
         {weather ? <View testID="checkout-weather">{weather}</View> : null}
 
         <View style={styles.section}>
-          <SectionHeader title="Who pays" />
-          <SegmentedControl<Who>
-            accessibilityLabel="Who pays"
-            options={[
-              {
-                value: 'pay_all',
-                label: `Pay for everyone: ${formatEuros(quote.pay_all.card_cents)}`,
-                testID: 'checkout-who-pay-all',
-              },
-              {
-                value: 'each_pays',
-                label: `Each pays: ${formatEuros(quote.each_pays.player_cents)} each`,
-                testID: 'checkout-who-each-pays',
-              },
-              ...(teams.length > 0
-                ? [
-                    {
-                      value: 'gipedo_pano' as const,
-                      label: `Gipedo Pano: ${formatEuros(quote.gipedo_pano.hold_cents)} held`,
-                      testID: 'checkout-who-gipedo',
-                    },
-                  ]
-                : []),
-            ]}
-            value={(who ?? '') as Who}
-            onChange={choose(setWho)}
-          />
-          {who && who !== 'gipedo_pano' ? (
-            <Text variant="callout" tone="inkMuted">
-              {modeSentences()[who]}
-            </Text>
-          ) : null}
-          {gipedo ? (
-            <>
-              <Text variant="callout" tone="inkMuted">
-                {gipedoModeSentence(quote.gipedo_pano.hold_cents)}
+          <SectionHeader title="Pitch" />
+          {pitches.status === 'loading' ? (
+            <SkeletonBlock width="100%" height={56} rounded="control" />
+          ) : pitches.status === 'error' ? (
+            <Banner tone="danger" message={pitches.message} action={{ label: 'Try again', onPress: onRetry }} />
+          ) : free.length === 0 ? (
+            <View testID="checkout-pitches-empty">
+              <Text variant="body" tone="inkMuted">
+                No pitch is free at this time. Pick another time.
               </Text>
-              {gipedoBlocked && quote.gipedo_pano.unavailable_reason ? (
-                <Banner tone="warning" message={describeBookingErrorMessage(quote.gipedo_pano.unavailable_reason)} />
-              ) : teams.length === 1 ? (
-                <Text variant="callout">{`For ${teams[0].name}`}</Text>
-              ) : (
-                <SegmentedControl<string>
-                  accessibilityLabel="Your team"
-                  options={teams.map((t) => ({ value: t.id, label: t.name }))}
-                  value={team ?? ''}
-                  onChange={choose(setTeam)}
-                />
-              )}
-            </>
-          ) : null}
-          {who === 'each_pays' ? (
-            <>
-              <SegmentedControl<Each>
-                accessibilityLabel="Who covers an unpaid spot"
-                options={[
-                  { value: 'each_pays_responsible', label: "I'm responsible for the team", testID: 'checkout-each-responsible' },
-                  { value: 'each_pays_own_spot', label: 'Just my spot', testID: 'checkout-each-own-spot' },
-                ]}
-                value={(each ?? '') as Each}
-                onChange={choose(setEach)}
+            </View>
+          ) : (
+            free.map((p, i) => (
+              <PitchRow
+                key={p.pitch_ids.join(',')}
+                testID={`checkout-pitch-${i + 1}`}
+                label={p.label}
+                details={pitchDetails(p)}
+                price={formatEuros(p.price_cents)}
+                selected={p === pitch}
+                locked={bookingHeld}
+                onPress={() => choose(setPitchKey)(p.pitch_ids.join(','))}
               />
+            ))
+          )}
+        </View>
+
+        <View style={styles.row}>
+          <ChoiceCard
+            testID="checkout-kind-whole"
+            title="Whole pitch"
+            line={KIND_LINES.whole}
+            selected={kind === 'whole'}
+            locked={bookingHeld}
+            onPress={() => choose(setKind)('whole')}
+          />
+          {quote.half.available ? (
+            <ChoiceCard
+              testID="checkout-kind-half"
+              title="Half pitch"
+              line={KIND_LINES.half}
+              selected={kind === 'half'}
+              locked={bookingHeld}
+              onPress={() => choose(setKind)('half')}
+            />
+          ) : null}
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title="Who pays" />
+          <View style={styles.row}>
+            {WAYS.map((w) => (
+              <ChoiceCard
+                key={w.way}
+                testID={w.testID}
+                title={w.title}
+                price={wayPriceLabel(quote, kind, w.way)}
+                line={wayLine(kind, w.way)}
+                selected={way === w.way}
+                locked={bookingHeld}
+                onPress={() => choose(setWay)(w.way)}
+              />
+            ))}
+          </View>
+          {guarantee !== null ? (
+            <View testID="checkout-guarantee">
               <Text variant="callout" tone="inkMuted">
-                {modeSentences().each_pays_responsible}
+                {guaranteeLine(guarantee)}
               </Text>
-              <Text variant="callout" tone="inkMuted">
-                {modeSentences().each_pays_own_spot}
+            </View>
+          ) : null}
+          {cashShown ? (
+            <View style={styles.switchRow}>
+              <Text variant="body" style={styles.switchLabel}>
+                Pay the pitch in cash
               </Text>
-            </>
+              <Switch
+                testID="checkout-cash"
+                accessibilityLabel="Pay the pitch in cash"
+                value={cashOn}
+                onValueChange={setCash}
+                trackColor={{ true: colors.brand, false: colors.border }}
+                thumbColor={colors.surface}
+              />
+            </View>
+          ) : null}
+          {creditOffered(data.credit, { kind, way }) && !cashOn ? (
+            <View style={styles.option}>
+              <Chip
+                testID="checkout-credit"
+                label={`Use my ${formatEuros(data.credit!.available_cents)} credit`}
+                selected={creditOn}
+                onPress={() => setCredit((c) => !c)}
+              />
+              {data.credit!.expires_at ? (
+                <Text variant="caption" tone="inkMuted">
+                  {`Credit at this venue. The first of it expires on ${cyprusDateLabel(data.credit!.expires_at)}.`}
+                </Text>
+              ) : null}
+            </View>
           ) : null}
           {bookingHeld ? (
             <Text variant="callout" tone="inkMuted">
@@ -258,25 +301,7 @@ function CheckoutReady({
         </View>
 
         {amounts ? (
-          <View style={styles.section}>
-            <SectionHeader title="Price" />
-            {creditSplit && quote.credit.available_cents > 0 ? (
-              <View style={styles.option}>
-                <Chip
-                  label={`Use my ${formatEuros(quote.credit.available_cents)} credit`}
-                  selected={creditOn}
-                  onPress={() => setCredit((c) => !c)}
-                />
-                {quote.credit.expires_at ? (
-                  <Text variant="caption" tone="inkMuted">
-                    {`Credit at this venue. The first of it expires on ${cyprusDateLabel(quote.credit.expires_at)}.`}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-            {cashOffered ? (
-              <Chip label="Pay the pitch in cash at the venue" selected={cashOn} onPress={() => setCash((c) => !c)} />
-            ) : null}
+          <View style={styles.section} testID="checkout-price">
             <PriceBreakdown lines={amounts.lines} totalCents={amounts.totalCents} totalLabel={totalLabel} />
             {amounts.cashCents !== null ? (
               <Text variant="callout">{cashSentence(amounts.totalCents, amounts.cashCents)}</Text>
@@ -288,7 +313,21 @@ function CheckoutReady({
           <NonRefundableNotice terms={quote.cancellation} accepted={accepted} onToggle={() => setAccepted((a) => !a)} />
         ) : null}
 
-        <CancellationRules terms={quote.cancellation} />
+        <View style={styles.cancelRow} testID="checkout-cancellation">
+          <Text variant="callout" tone="inkMuted" style={styles.cancelLine}>
+            {checkoutCancellationLine(quote.cancellation)}
+          </Text>
+          <Pressable
+            testID="checkout-rules"
+            accessibilityRole="link"
+            accessibilityLabel="Rules"
+            hitSlop={space.md}
+            onPress={() => setRulesOpen(true)}>
+            <Text variant="callout" tone="brand">
+              Rules
+            </Text>
+          </Pressable>
+        </View>
 
         {error ? (
           <View testID="checkout-error">
@@ -304,11 +343,22 @@ function CheckoutReady({
         loading={paying}
         disabled={!canPay}
         onPress={() => {
-          if (!canPay || !mode) return;
-          const pay = { method: cashOn ? ('cash' as const) : ('card' as const), acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn };
-          onPay(gipedo && team ? { mode, teamId: team, pay } : { mode, pay });
+          if (!canPay || !way || !pitch) return;
+          onPay({
+            mode: modeForWay(way),
+            kind,
+            pitchIds: pitch.pitch_ids,
+            pay: { method: cashOn ? 'cash' : 'card', acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn },
+          });
         }}
       />
+      <Sheet visible={rulesOpen} onClose={() => setRulesOpen(false)} title="Cancelling">
+        {checkoutCancellationLines(quote.cancellation).map((line) => (
+          <Text key={line} variant="body">
+            {line}
+          </Text>
+        ))}
+      </Sheet>
     </View>
   );
 }
@@ -316,6 +366,12 @@ function CheckoutReady({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
+  header: { gap: space.xs },
   section: { gap: space.md },
+  row: { flexDirection: 'row', gap: space.md },
   option: { gap: space.xs },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  switchLabel: { flex: 1 },
+  cancelRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+  cancelLine: { flex: 1 },
 });

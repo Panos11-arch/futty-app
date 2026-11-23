@@ -1,5 +1,5 @@
-# Journey b: book E2E Arena for the seeded slot, the booker paying for
-# everyone, pay with Stripe's test card, wait for the webhook to confirm the
+# Journey b: book E2E Arena for the seeded slot (its first free pitch, the
+# whole pitch), the booker paying for everyone, pay with Stripe's test card, wait for the webhook to confirm the
 # booking, and find it in My bookings.
 #
 # The amount is spec 13's worked example: a €60 5-a-side, the booker paying
@@ -63,12 +63,21 @@ env:
 - tapOn:
     id: free-venue-${VENUE_ID}
 
-# ---- Checkout: the booker pays for everyone ------------------------------
+# ---- Checkout (Booking v2): the first free pitch, the whole pitch, the
+# booker paying for everyone -------------------------------------------------
 - extendedWaitUntil:
     visible:
-      id: checkout-who-pay-all
+      id: checkout-pitch-1
     timeout: 30000
 - runFlow: ../subflows/weather-settled.yaml
+- tapOn:
+    id: checkout-pitch-1
+- tapOn:
+    id: checkout-kind-whole
+- scrollUntilVisible:
+    element:
+      id: checkout-who-pay-all
+    direction: DOWN
 - tapOn:
     id: checkout-who-pay-all
 - assertVisible:

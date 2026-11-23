@@ -15,6 +15,13 @@ export type BookSlotParams = {
   /** Gipedo Pano only: the team the captain books for (spec 13, "Gipedo
    *  Pano"). The server checks they captain it; other modes send no team. */
   teamId?: string;
+  /** Booking v2 (B2): the pitch or combination the player chose from
+   *  venue_free_pitches. The server checks it's the venue's, fits the
+   *  format and is free. */
+  pitchIds?: string[];
+  /** Booking v2: a whole or a half pitch. Naming it makes this a Booking v2
+   *  booking on the server. */
+  kind?: 'whole' | 'half';
 };
 
 export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot' | 'gipedo_pano';
@@ -39,6 +46,8 @@ export async function bookSlot(params: BookSlotParams) {
     p_players_per_side: params.playersPerSide ?? 5,
     p_mode: params.mode,
     ...(params.mode === 'gipedo_pano' && params.teamId ? { p_team_id: params.teamId } : {}),
+    ...(params.pitchIds ? { p_pitch_ids: params.pitchIds } : {}),
+    ...(params.kind ? { p_kind: params.kind } : {}),
   });
 }
 
