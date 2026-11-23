@@ -7,13 +7,17 @@
 -- row it makes is tagged and deleted at the end, pass or fail.
 create extension if not exists dblink with schema extensions;
 
+-- The server's own address as this connection sees it: inside Supabase's
+-- container that's the container's address, where Postgres asks for the
+-- password (dblink needs one for a role that isn't a superuser); 127.0.0.1
+-- would be trusted without one and refused.
 create or replace function tests.b1a_conninfo()
 returns text
 language sql
 stable
 as $$
-  select format('dbname=%s user=postgres password=postgres host=127.0.0.1 port=%s',
-                current_database(), current_setting('port'));
+  select format('dbname=%s user=postgres password=postgres host=%s port=%s',
+                current_database(), coalesce(host(inet_server_addr()), '127.0.0.1'), current_setting('port'));
 $$;
 
 -- Runs book_slot as p_user on connection p_conn inside an open transaction
