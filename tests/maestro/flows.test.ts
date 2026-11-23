@@ -217,6 +217,25 @@ describe('book-and-pay ends on the confirmed booking', () => {
   });
 });
 
+describe('cancel checks the words on screen', () => {
+  // On the iPhone the cancelled booking showed "The booking is cancelled."
+  // inside booking-detail-notice, yet containsDescendants didn't find it:
+  // the text isn't a child of that view in iOS's tree (preview run,
+  // 23 November). The flow checks the words themselves instead.
+  const steps = () => loadAll(read(path.join(maestroDir, 'flows', 'cancel.yaml')))[1] as Record<string, unknown>[];
+
+  it('uses no containsDescendants', () => {
+    expect(JSON.stringify(steps())).not.toContain('containsDescendants');
+  });
+
+  it('asserts both cancelled messages by their text', () => {
+    const texts = steps()
+      .filter((s) => 'assertVisible' in s)
+      .map((s) => (s.assertVisible as { text?: string }).text);
+    expect(texts).toEqual(expect.arrayContaining(['The booking is cancelled\\.', 'This booking was cancelled\\.']));
+  });
+});
+
 describe('what the flows expect is what the app shows', () => {
   const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
   const expected = (file: string, pattern: RegExp) =>
@@ -274,6 +293,6 @@ describe('what the flows expect is what the app shows', () => {
 
     const notice = cancelledMessage('whole_team', { cancelled: true, fee: null });
     expect(notice).toBe('The booking is cancelled.');
-    expect(expected('flows/cancel.yaml', /- text: '(The booking is cancelled\\\.)'/g)).toEqual([notice]);
+    expect(expected('flows/cancel.yaml', /text: '(The booking is cancelled\\\.)'/g)).toEqual([notice]);
   });
 });
