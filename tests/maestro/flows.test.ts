@@ -191,8 +191,29 @@ describe("Stripe's payment sheet on iOS", () => {
     const scroll = names.lastIndexOf('scrollUntilVisible');
     const tap = names.lastIndexOf('tapOn');
     expect(scroll).toBeGreaterThan(-1);
-    expect((steps()[scroll].scrollUntilVisible as { element: { text: string } }).element.text).toBe('${PAY_LABEL}');
+    const scrollStep = steps()[scroll].scrollUntilVisible as { element: { text: string }; visibilityPercentage?: number };
+    expect(scrollStep.element.text).toBe('${PAY_LABEL}');
+    // Android's Pay sits at the very bottom of the screen and never counts
+    // as 100% visible (the default), so scrollUntilVisible gave up with
+    // "No visible element found" (preview run, 23 November).
+    expect(scrollStep.visibilityPercentage).toBe(50);
     expect(tap).toBeGreaterThan(scroll);
+  });
+});
+
+describe('book-and-pay ends on the confirmed booking', () => {
+  // "Cancel" sits under the players and the invite, below the first screen;
+  // assertVisible doesn't scroll, so the iPhone run failed on a confirmed
+  // booking (preview run, 23 November).
+  it('scrolls to Cancel after the weather strip settles, instead of only asserting it', () => {
+    const steps = loadAll(read(path.join(maestroDir, 'flows', 'book-and-pay.yaml')))[1] as Record<string, unknown>[];
+    const confirmed = steps.findIndex((s) => 'retry' in s);
+    const after = steps.slice(confirmed + 1).map((s) => JSON.stringify(s));
+    expect(after.some((s) => s.includes('assertVisible') && s.includes('booking-detail-cancel-whole-team'))).toBe(false);
+    const settled = after.findIndex((s) => s.includes('weather-settled.yaml'));
+    const scroll = after.findIndex((s) => s.includes('scrollUntilVisible') && s.includes('booking-detail-cancel-whole-team'));
+    expect(settled).toBeGreaterThan(-1);
+    expect(scroll).toBeGreaterThan(settled);
   });
 });
 
