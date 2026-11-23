@@ -48,7 +48,8 @@ Futty's figures are before Stripe Connect payout costs. UK and non-European card
 
 ### Two kinds of booking
 - **Whole pitch:** the booker's game; both teams are the booker's players.
-- **Half pitch:** the booker's team is **side A** and pays half the pitch; an opposing team, **side B**, pays the other half. **An odd cent goes to side A** (a €45.55 pitch: side A €22.78, side B €22.77).
+- **Half pitch:** the booker's team is **side A** and pays half the pitch; an opposing team, **side B**, pays the other half.
+- **Odd cents (decided by Panos, 23 November):** when money is split 50/50 (a half pitch, or a Losers pay draw or dispute) and there's an odd cent, **each side pays its half rounded down and Futty absorbs the cent**: the venue still gets the full pitch price, and the cent comes off Futty's fee. A €45.55 pitch: each side €22.77, the venue €45.55, Futty €0.01 less. This holds for every Booking v2 booking, including automatic matches, where neither team made the booking first.
 - The booker is side A's captain (the captain and the booker are the same person). Side B's captain is the first captain to accept (see Invites).
 
 ### How each side pays
@@ -57,9 +58,9 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 | Way to pay | Who pays | Fee per player | Who covers an unpaid spot |
 | :-- | :-- | :-- | :-- |
 | **Pay for everyone** | The captain, one payment for the booking (whole) or for his side (half) | €0.55 per player covered | Nobody needs to: the venue is already paid |
-| **Pay for myself** | Each player their own share, by card | €0.80 | That side's captain: his guarantee hold, taken 2 hours after the match (today's "Each pays, booker responsible") |
+| **Pay for myself** | Each player their own share, by card | €0.80 | That side's captain: his guarantee hold, taken 2 hours after the match (today's "Each pays, booker responsible"). The hold is the pitch price on a whole pitch, and **his side's half on a half pitch, capped there** (decided 23 November) |
 | **Losers pay** (half pitch only, chosen by the booker) | See "Losers pay" below | | |
-| **Cash at the venue** (whole pitch only) | As today: only the service fee is paid in the app | | |
+| **Cash at the venue** (whole pitch only) | Each player, as today (decided 23 November): €0.80 in the app and their pitch part in cash at the venue | €0.80 | The booker's guarantee: unticked cash is taken from it 2 hours after the match |
 
 - **"Just my spot" is removed for new bookings.** The server refuses it.
 - **Premium:** no service fee on the player's own spot, as today.
@@ -71,6 +72,7 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
   - **The first captain to accept becomes side B's captain.** The server decides with a row lock; everyone else sees "Opposition found".
   - He then chooses how side B pays, pays or holds his part, and invites his own players.
 - **No side B by 24 hours before kickoff:** the booker chooses **"Pay the whole pitch and play"** (side A pays the other half too, at the same per-player fee as its way to pay) or **"Cancel free"** (everything refunded, holds released). **No choice by 6 hours before kickoff = cancelled free.** Same timing as Gipedo Pano's decision 1.
+  - **"Pay the whole pitch and play" is one card payment by the booker, at once** (decided 23 November): the other half plus 5 × that way to pay's fee. Paying for everyone: €20.00 + 5 × €0.55 = €22.75. Paying for myself: €20.00 + 5 × €0.80 = €24.00.
 
 ### Publish game
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.
@@ -88,12 +90,14 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 | :-- | :-- | :-- | :-- | :-- |
 | 1 | Whole pitch, **pay for everyone** | Booker: €40.00 + 10 × €0.55 = **€45.50**, one payment | €40.00 | €5.50 |
 | 2 | Whole pitch, **pay for myself** | Each player **€4.80** (€4.00 + €0.80). Booker's guarantee: **€40.00** held for unpaid spots. 8 of 10 pay: **€9.60** (2 × €4.80) is taken from the hold 2 hours after the match, pitch money first (€8.00), then fees (€1.60) | €40.00 | €8.00 |
-| 3 | Whole pitch, **cash** | ⚠️ **To confirm (question 1).** Reading A, as today: each player pays **€0.80** in the app and **€4.00** in cash at the venue; unticked cash is taken from the booker's €40.00 hold. Reading B, "Pay the pitch in cash" with pay for everyone: the booker pays **€5.50** in the app (10 × €0.55) and **€40.00** in cash | €40.00 (in cash) | €8.00 (A) or €5.50 (B) |
+| 3 | Whole pitch, **cash** | Each player pays **€0.80** in the app and **€4.00** in cash at the venue. Unticked cash is taken from the booker's **€40.00** guarantee 2 hours after the match: 2 players don't pay their cash, so **€8.00** is taken | €40.00 (in cash, or from the guarantee) | €8.00 |
 | 4 | Half pitch, **both sides pay for everyone** | Side A's captain: €20.00 + 5 × €0.55 = **€22.75**. Side B's captain: **€22.75** | €40.00 | €5.50 |
-| 5 | Half pitch, **side A pays for everyone, side B pays for myself** | Side A's captain **€22.75**. Each side B player **€4.80**. Side B's captain: guarantee held for side B's unpaid spots, ⚠️ **€20.00 (his side's half), to confirm (question 2)** | €40.00 | €2.75 + €4.00 = €6.75 |
-| 6 | Half pitch, **no opponent, "pay the whole pitch"** (side A paid for everyone) | Side A's captain pays the other half at his side's fee: €20.00 + 5 × €0.55 = **€22.75** more, **€45.50** in all, the same as example 1. ⚠️ Side A paying for myself: question 3 | €40.00 | €5.50 |
+| 5 | Half pitch, **side A pays for everyone, side B pays for myself** | Side A's captain **€22.75**. Each side B player **€4.80**. Side B's captain: guarantee of **€20.00** (his side's half) for side B's unpaid spots | €40.00 | €2.75 + €4.00 = €6.75 |
+| 6a | Half pitch, **no opponent, "pay the whole pitch"**, side A paid for everyone | The booker pays the other half at once: €20.00 + 5 × €0.55 = **€22.75** more, **€45.50** in all, the same as example 1 | €40.00 | €5.50 |
+| 6b | Same, side A **paid for myself** | Side A's players paid **€4.80** each. The booker pays the other half at once: €20.00 + 5 × €0.80 = **€24.00** | €40.00 | €8.00 |
 | 7a | **Losers pay, both sides pay for everyone**, side B loses | Each captain's card held for €40.00 + 10 × €0.55 = **€45.50** (today's Gipedo Pano hold). Side B's **€45.50** taken; side A's released | €40.00 | €5.50 |
 | 7b | Same, **draw or dispute** | Half of every hold: **€22.75** from each captain; the rest released | €40.00 | €5.50 |
+| 7c | Same draw, **Premium captain on side B** (held €44.95) | Half of each hold rounded down: side A **€22.75**, side B **€22.47**; together **€45.22**. Futty absorbs the odd cent | €40.00 | €5.22 |
 | 8a | **Losers pay, both sides pay for myself**, side B loses | Each player's card held for twice their share with the fee: 2 × €4.80 = **€9.60**. Side B's five holds taken: **€48.00**; side A's released | €40.00 | €8.00 |
 | 8b | Same, **draw or dispute** | Half of every hold: **€4.80** from each of the 10 players (**€48.00** in all) | €40.00 | €8.00 |
 | 9a | **Losers pay, mixed:** side A pays for everyone, side B pays for myself; **side A loses** | Side A's captain held **€45.50**, side B's players **€9.60** each. Side A's **€45.50** taken; side B's released | €40.00 | €5.50 |
@@ -113,12 +117,12 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 - **Settlement as today:** the losing side's holds are taken in full (players' holds first, then the captain's guarantee for missing spots); the winning side's are released; a draw or dispute takes half of every hold and releases the rest. The venue always receives the full pitch price.
 - **Side B sees "Losers pay" and its hold amount before accepting.** The button reads **"Accept Losers pay"**; there's no way to accept without it.
 
-### Questions for Panos before B1 (the server)
-1. **Cash (example 3):** is "Pay the pitch in cash" (a) today's per-player cash, with each player paying €0.80 in the app and their €4.00 in cash, or (b) the booker paying the whole pitch in cash, with only the fees in the app? With (b) and pay for myself, who pays what?
-2. **Pay for myself on half a pitch (example 5):** is the captain's guarantee hold his side's half of the pitch (€20.00), and capped at that, as the whole pitch's guarantee is capped at the pitch price?
-3. **No opponent, side A paying for myself (example 6):** "side A pays the other half too, at the same per-player fee" means €20.00 + 5 × €0.80 = €24.00. Who pays it: the booker in one payment, or taken from his guarantee?
-4. **Draw with a Premium player in Losers pay:** with pay for everyone, today's decision 4 puts the odd cent on side A. With pay for myself, half of an €8.00 hold is €4.00 and half of €9.60 is €4.80, so no odd cent arises on a €40 pitch. Should every odd cent in a 50/50 split go to side A, for any price?
-5. **Venue credit:** can it still pay a "pay for myself" share in Booking v2 (today: yes, by card for the rest plus €0.80)? It stays excluded from Losers pay holds.
+### Answered on 23 November (Panos)
+1. **Cash:** each player, as today: €0.80 in the app and their pitch part in cash; unticked cash comes from the booker's guarantee (example 3).
+2. **Pay for myself on half a pitch:** the captain's guarantee is his side's half, capped there (example 5).
+3. **No opponent, "Pay the whole pitch and play":** one card payment by the booker, at once (examples 6a and 6b).
+4. **Odd cents:** each side pays its half rounded down and Futty absorbs the cent, for every Booking v2 booking (example 7c).
+5. **Venue credit (assumed, Panos to confirm):** a "Pay for myself" share can still be paid with venue credit as today (credit first, the rest by card plus €0.80); never for Losers pay holds or cash.
 
 ### Where the old modes are still used (to change in B1–B5)
 - **App:** `components/booking/checkout-view.tsx` (including the "Just my spot" text), `lib/booking-actions.ts`, `lib/booking-search.ts`, `lib/booking-detail.ts`, `lib/use-owed.ts`, `lib/rules.ts`, `lib/terms.ts`, `lib/terms-el.ts`, `lib/squads.ts`, `app/squads.tsx`.
@@ -295,7 +299,7 @@ If fewer players join than the booking is for, the players who joined split the 
 Debt and credit are between the player and the venue, and the venue manages them in its dashboard. Futty records them and enforces the rules. **Agreed.**
 
 ### Cash at the venue
-- **Booking v2 (20 November):** cash is offered on a whole-pitch booking only, as a "Pay the pitch in cash" switch; only the service fee is paid in the app. How it works with each way to pay is question 1 under "Booking modes". The rules below are today's, and still apply to bookings made before Booking v2.
+- **Booking v2 (20 November; answered 23 November):** cash is offered on a whole-pitch booking only, as a "Pay the pitch in cash" switch. It works per player, as today: each player pays the €0.80 service fee in the app and their pitch part in cash at the venue, and unticked cash is taken from the booker's guarantee 2 hours after the match. The rules below are today's, and still apply to bookings made before Booking v2.
 - A player who picks cash still **pays the €0.80 service fee by card** when joining.
 - The venue dashboard lists every player in each booking with their payment choice and status: *paid in app*, *cash – not yet paid*, *cash – paid*. Staff tick cash players as they pay in person.
 - After the match, an unticked cash player gets: **"Pay €6.00 by card now, or remain in debt to \[venue\]."**
