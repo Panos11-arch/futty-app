@@ -66,9 +66,15 @@ export type FreePitch = {
   price_cents: number;
 };
 
-/** Venue credit for "pay for myself" on a whole pitch, from booking_quote:
- *  what's left to pay by card with it (null when there's no credit). */
-export type CheckoutCredit = { available_cents: number; expires_at: string | null; with_credit: CreditSplit | null };
+/** Venue credit on a whole pitch, from booking_quote, as today's checkout:
+ *  for each way to pay, what's left to pay by card with it (pay_all.
+ *  with_credit and each_pays.mine.with_credit), null when the server gives
+ *  no split. */
+export type CheckoutCredit = {
+  available_cents: number;
+  expires_at: string | null;
+  with_credit: Record<WayToPay, CreditSplit | null>;
+};
 
 export type CheckoutData = { quote: BookingQuoteV2; credit: CheckoutCredit | null };
 
@@ -107,9 +113,10 @@ export function cashOffered(quote: BookingQuoteV2, choice: Pick<CheckoutChoiceV2
   return choice.kind === 'whole' && choice.way === 'pay_for_myself' && quote.cash_allowed;
 }
 
-/** Credit is offered where the server priced it: paying for myself on a whole pitch. */
+/** Credit is offered where the server priced it: on a whole pitch, paying
+ *  for everyone or for myself. booking_quote_v2 has no half-pitch split yet. */
 export function creditOffered(credit: CheckoutCredit | null, choice: Pick<CheckoutChoiceV2, 'kind' | 'way'>): boolean {
-  return choice.kind === 'whole' && choice.way === 'pay_for_myself' && !!credit?.with_credit && credit.available_cents > 0;
+  return choice.kind === 'whole' && choice.way !== null && !!credit && credit.available_cents > 0 && !!credit.with_credit[choice.way];
 }
 
 export type CheckoutAmountsV2 = { lines: PriceLine[]; totalCents: number; cashCents: number | null };
@@ -121,6 +128,18 @@ export function checkoutAmountsV2(data: CheckoutData, choice: CheckoutChoiceV2):
   if (!choice.way) return null;
   if (choice.way === 'pay_all') {
     const all = quote[choice.kind].pay_all;
+    if (choice.credit && creditOffered(data.credit, choice)) {
+      const split = data.credit!.with_credit.pay_all!;
+      return {
+        lines: [
+          { label: 'Pitch', cents: all.pitch_cents },
+          { label: 'Your credit', cents: -split.credit_cents },
+          { label: 'Service fee', cents: split.fee_cents },
+        ],
+        totalCents: split.card_cents,
+        cashCents: null,
+      };
+    }
     return {
       lines: [
         { label: choice.kind === 'whole' ? 'Pitch' : "Your team's half", cents: all.pitch_cents },
@@ -132,7 +151,7 @@ export function checkoutAmountsV2(data: CheckoutData, choice: CheckoutChoiceV2):
   }
   const mine = quote[choice.kind].pay_for_myself;
   if (choice.credit && creditOffered(data.credit, choice)) {
-    const split = data.credit!.with_credit!;
+    const split = data.credit!.with_credit.pay_for_myself!;
     return {
       lines: [
         { label: 'Your part of the pitch', cents: mine.pitch_cents },
@@ -174,10 +193,11 @@ export function guaranteeLine(cents: number): string {
   );
 }
 
-/** The cancellation rule in one line, from the server's numbers; "Rules"
- *  shows all three (checkoutCancellationLines). */
+/** Spec 13's free hour in one line, from the server's numbers: free within
+ *  the free minutes of paying, only when booked more than the cutoff before
+ *  kickoff. "Rules" shows all three lines (checkoutCancellationLines). */
 export function checkoutCancellationLine(terms: CancellationTerms): string {
-  return `Free cancellation for ${minutesText(terms.free_minutes)} after paying, until ${hoursText(terms.refund_cutoff_hours)} before kickoff.`;
+  return `Free to cancel for ${minutesText(terms.free_minutes)} after paying, if it's more than ${hoursText(terms.refund_cutoff_hours)} before kickoff.`;
 }
 
 /** "Outdoor · Artificial grass": what the server knows of the pitch. */
@@ -220,7 +240,11 @@ export async function fetchCheckoutData(slot: Slot): Promise<CheckoutData> {
   if (v2.error) fail(v2.error.message);
   const credit =
     old && old.credit.available_cents > 0
-      ? { available_cents: old.credit.available_cents, expires_at: old.credit.expires_at, with_credit: old.each_pays.mine.with_credit }
+      ? {
+          available_cents: old.credit.available_cents,
+          expires_at: old.credit.expires_at,
+          with_credit: { pay_all: old.pay_all.with_credit, pay_for_myself: old.each_pays.mine.with_credit },
+        }
       : null;
   return { quote: v2.data as BookingQuoteV2, credit };
 }

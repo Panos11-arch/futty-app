@@ -4,6 +4,7 @@ import {
   guaranteeLine,
   KIND_LINES,
   checkoutCancellationLine,
+  creditOffered,
   modeForWay,
   pitchDetails,
   wayLine,
@@ -94,24 +95,50 @@ describe('Booking v2 checkout amounts (spec 13 worked examples, €40 5-a-side)'
     expect(wayPriceLabel(data.quote, 'whole', 'pay_all')).toBe('€44.95');
   });
 
-  it('credit: the old quote’s split, on a whole pitch paying for myself only', () => {
+  describe('credit: booking_quote’s split, on a whole pitch, as today', () => {
     const data = checkoutDataFixture(quoteV2Fixture(), {
-      available_cents: 300,
+      available_cents: 3000,
       expires_at: '2027-11-01T10:00:00Z',
-      with_credit: { credit_cents: 300, fee_cents: 80, card_cents: 180 },
+      with_credit: {
+        pay_all: { credit_cents: 3000, fee_cents: 550, card_cents: 1550 },
+        pay_for_myself: { credit_cents: 400, fee_cents: 0, card_cents: 0 },
+      },
     });
-    expect(checkoutAmountsV2(data, { ...whole, way: 'pay_for_myself', credit: true })).toEqual({
-      lines: [
-        { label: 'Your part of the pitch', cents: 400 },
-        { label: 'Your credit', cents: -300 },
-        { label: 'Service fee', cents: 80 },
-      ],
-      totalCents: 180,
-      cashCents: null,
+
+    it('paying for everyone: the pitch, the credit as a minus line, the fee, and the card part', () => {
+      expect(checkoutAmountsV2(data, { ...whole, way: 'pay_all', credit: true })).toEqual({
+        lines: [
+          { label: 'Pitch', cents: 4000 },
+          { label: 'Your credit', cents: -3000 },
+          { label: 'Service fee', cents: 550 },
+        ],
+        totalCents: 1550,
+        cashCents: null,
+      });
     });
-    // Never for everyone or on a half pitch: the server sends no split for those.
-    expect(checkoutAmountsV2(data, { ...whole, way: 'pay_all', credit: true })?.totalCents).toBe(4550);
-    expect(checkoutAmountsV2(data, { ...half, way: 'pay_for_myself', credit: true })?.totalCents).toBe(480);
+
+    it('paying for myself: no fee when credit covers the share (spec 13 "Paying with venue credit")', () => {
+      expect(checkoutAmountsV2(data, { ...whole, way: 'pay_for_myself', credit: true })).toEqual({
+        lines: [
+          { label: 'Your part of the pitch', cents: 400 },
+          { label: 'Your credit', cents: -400 },
+          { label: 'Service fee', cents: 0 },
+        ],
+        totalCents: 0,
+        cashCents: null,
+      });
+    });
+
+    it('never on a half pitch, and never when the server sent no split for that way', () => {
+      expect(checkoutAmountsV2(data, { ...half, way: 'pay_all', credit: true })?.totalCents).toBe(2275);
+      expect(checkoutAmountsV2(data, { ...half, way: 'pay_for_myself', credit: true })?.totalCents).toBe(480);
+      const noSplit = checkoutDataFixture(quoteV2Fixture(), {
+        ...data.credit!,
+        with_credit: { pay_all: null, pay_for_myself: data.credit!.with_credit.pay_for_myself },
+      });
+      expect(creditOffered(noSplit.credit, { kind: 'whole', way: 'pay_all' })).toBe(false);
+      expect(creditOffered(noSplit.credit, { kind: 'whole', way: 'pay_for_myself' })).toBe(true);
+    });
   });
 
   it('no way to pay chosen: nothing to show', () => {
@@ -144,9 +171,12 @@ describe('Booking v2 checkout words (spec 15 Words rules)', () => {
     expect(pitchDetails({ indoor: null, surface: null })).toBe('');
   });
 
-  it('the cancellation line, from the server’s numbers', () => {
+  it('the cancellation line: spec 13’s free hour, with the server’s numbers', () => {
     expect(checkoutCancellationLine({ fee_cents: 100, free_minutes: 60, refund_cutoff_hours: 6 })).toBe(
-      'Free cancellation for 1 hour after paying, until 6 hours before kickoff.',
+      "Free to cancel for 1 hour after paying, if it's more than 6 hours before kickoff.",
+    );
+    expect(checkoutCancellationLine({ fee_cents: 100, free_minutes: 90, refund_cutoff_hours: 8 })).toBe(
+      "Free to cancel for 90 minutes after paying, if it's more than 8 hours before kickoff.",
     );
   });
 
