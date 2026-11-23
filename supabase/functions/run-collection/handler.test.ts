@@ -61,7 +61,7 @@ Deno.test('€60 5 v 5 played 4 v 4: a 150 top-up for each of the 8, off-session
   const summary = await runCollection(deps);
 
   strictEqual(summary.collected, 1);
-  deepStrictEqual(db.callsTo('start_collection')[0].args, { p_booking_id: 'b1' });
+  deepStrictEqual(db.callsTo('start_collection')[0].args, { p_booking_id: 'b1', p_side: null });
   const creates = stripe.callsTo('paymentIntents.create');
   strictEqual(creates.length, 8);
   creates.forEach((call, n) => {
@@ -258,4 +258,13 @@ Deno.test('one booking failing never stops the others', async () => {
   const summary = await runCollection(deps);
   strictEqual(summary.failed, 1);
   strictEqual(summary.collected, 1);
+});
+
+// Booking v2 (B1c part 2d): a half pitch is collected side by side.
+Deno.test('a half pitch starts each side\'s collection with its side', async () => {
+  const { db, deps } = setup({ due: [{ booking_id: 'b1', collection_id: null, side: 'b' }] });
+
+  await runCollection(deps);
+
+  deepStrictEqual(db.callsTo('start_collection')[0].args, { p_booking_id: 'b1', p_side: 'b' });
 });

@@ -176,7 +176,7 @@ declare
   v_fn text;
 begin
   foreach v_fn in array array[
-    'public.collection_amounts(uuid)', 'public.start_collection(uuid)', 'public.collections_due()',
+    'public.collection_amounts(uuid)', 'public.start_collection(uuid, text)', 'public.collections_due()',
     'public.collection_open_intents(uuid)', 'public.collection_top_ups_due(uuid)',
     'public.collection_top_up_paid(uuid, text, integer, integer)', 'public.collection_top_up_failed(uuid, text, text)',
     'public.collection_top_up_errored(uuid, text, text)', 'public.settle_collection(uuid)',

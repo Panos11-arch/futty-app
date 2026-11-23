@@ -33,7 +33,8 @@ import { errorText, releaseIntent, releaseOrQueue, stripeFeeCents } from '../_sh
 
 export type Deps = { stripe: Stripe; db: Db };
 
-type Due = { booking_id: string; collection_id: string | null };
+// side: on a half pitch (Booking v2) each side is collected on its own; null otherwise.
+type Due = { booking_id: string; collection_id: string | null; side?: string | null };
 type OpenIntent = { share_id: string; kind: 'payment' | 'setup' | 'cash'; intent_id: string };
 type TopUp = {
   item_id: string;
@@ -99,7 +100,10 @@ async function collectBooking(deps: Deps, due: Due): Promise<Outcome> {
   let collectionId = due.collection_id;
   if (!collectionId) {
     if (!(await closeOpenPayments(deps, due.booking_id))) return 'waiting';
-    const started = await rpc<{ collection_id: string }>(deps.db, 'start_collection', { p_booking_id: due.booking_id });
+    const started = await rpc<{ collection_id: string }>(deps.db, 'start_collection', {
+      p_booking_id: due.booking_id,
+      p_side: due.side ?? null,
+    });
     collectionId = started.collection_id;
   }
 
