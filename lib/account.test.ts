@@ -18,7 +18,8 @@ jest.mock('@/lib/auth-providers', () => ({
 }));
 
 jest.mock('@/lib/edge-functions', () => ({
-  describeFunctionError: (error: { message: string }) => error.message,
+  readFunctionError: (error: { message: string; body?: Record<string, unknown> }) =>
+    Promise.resolve({ message: error.message, body: error.body ?? null }),
 }));
 
 function userWith(...providers: string[]) {
@@ -54,14 +55,14 @@ describe('deleteMyAccount', () => {
   it('cancelling the Apple sheet deletes nothing', async () => {
     mockGetUser.mockResolvedValue(userWith('apple'));
     mockGetAppleDeletionCode.mockResolvedValue(null);
-    await expect(deleteMyAccount()).resolves.toBe('Confirm with Apple to delete your account.');
+    await expect(deleteMyAccount()).resolves.toEqual({ message: 'Confirm with Apple to delete your account.', fix: null });
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   it('an Apple error deletes nothing and is shown', async () => {
     mockGetUser.mockResolvedValue(userWith('apple'));
     mockGetAppleDeletionCode.mockRejectedValue(new Error('Apple is unavailable'));
-    await expect(deleteMyAccount()).resolves.toBe('Apple is unavailable');
+    await expect(deleteMyAccount()).resolves.toEqual({ message: 'Apple is unavailable', fix: null });
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
@@ -78,16 +79,17 @@ describe('deleteMyAccount', () => {
 
   it('the account cannot be read (offline): a network error, and nothing is sent', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: new Error('Network request failed') });
-    await expect(deleteMyAccount()).resolves.toBe(
-      'Could not reach Futty. Check your internet connection and try again.'
-    );
+    await expect(deleteMyAccount()).resolves.toEqual({
+      message: 'Could not reach Futty. Check your internet connection and try again.',
+      fix: null,
+    });
     expect(mockGetAppleDeletionCode).not.toHaveBeenCalled();
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   it('getUser throwing is the same network error', async () => {
     mockGetUser.mockRejectedValue(new TypeError('Network request failed'));
-    await expect(deleteMyAccount()).resolves.toMatch(/Could not reach Futty/);
+    expect((await deleteMyAccount())?.message).toMatch(/Could not reach Futty/);
     expect(mockInvoke).not.toHaveBeenCalled();
   });
 
@@ -116,6 +118,25 @@ describe('deleteMyAccount', () => {
   it("the server's error is shown", async () => {
     mockGetUser.mockResolvedValue(userWith('google'));
     mockInvoke.mockResolvedValue({ data: null, error: { message: 'You still have upcoming games.' } });
-    await expect(deleteMyAccount()).resolves.toBe('You still have upcoming games.');
+    await expect(deleteMyAccount()).resolves.toEqual({ message: 'You still have upcoming games.', fix: null });
+  });
+
+  it('upcoming games: the message plus a way to My bookings', async () => {
+    mockGetUser.mockResolvedValue(userWith('google'));
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message: 'You still have upcoming games.', body: { reason: 'upcoming_games' } },
+    });
+    await expect(deleteMyAccount()).resolves.toEqual({ message: 'You still have upcoming games.', fix: 'bookings' });
+  });
+
+  it("money owed: the server's message with its amount, plus a way to Payments", async () => {
+    mockGetUser.mockResolvedValue(userWith('google'));
+    const message = 'You owe €6.80. Pay it from Payments, then try again.';
+    mockInvoke.mockResolvedValue({
+      data: null,
+      error: { message, body: { reason: 'money_owed', owed_cents: 680 } },
+    });
+    await expect(deleteMyAccount()).resolves.toEqual({ message, fix: 'payments' });
   });
 });

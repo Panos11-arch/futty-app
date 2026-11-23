@@ -1,46 +1,59 @@
 import { Platform } from 'react-native';
 
 import { getAppleDeletionCode } from '@/lib/auth-providers';
-import { describeFunctionError } from '@/lib/edge-functions';
+import { readFunctionError } from '@/lib/edge-functions';
 import { clearHasUsername } from '@/lib/profile-setup-flag';
 import { supabase } from '@/lib/supabase';
 
 const NETWORK_ERROR = 'Could not reach Futty. Check your internet connection and try again.';
 
+/** Why the account wasn't deleted, and where the player can sort it out:
+ *  'bookings' for upcoming games (My bookings), 'payments' for money owed
+ *  (Payments), from the server's `reason` (spec 13 "Deleting an account"). */
+export type DeleteFailure = { message: string; fix: 'bookings' | 'payments' | null };
+
+function failure(message: string, fix: DeleteFailure['fix'] = null): DeleteFailure {
+  return { message, fix };
+}
+
 /** Permanently deletes the signed-in user's account
- *  (supabase/functions/delete-account). Resolves to an error message, or
- *  null on success.
+ *  (supabase/functions/delete-account). Resolves to why it wasn't deleted,
+ *  or null on success.
  *
  *  An account that uses Sign in with Apple confirms with Apple once more
  *  first on iOS: the server needs that fresh code to revoke the user's Apple
  *  token, as App Review requires (P13). Android and web can't show the Apple
  *  sheet, so there the account is deleted without the revoke, which the
  *  server logs (decided 13 November, for Panos to confirm). */
-export async function deleteMyAccount(): Promise<string | null> {
+export async function deleteMyAccount(): Promise<DeleteFailure | null> {
   let usesApple: boolean;
   let userId: string;
   try {
     const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return NETWORK_ERROR;
+    if (error || !data.user) return failure(NETWORK_ERROR);
     userId = data.user.id;
     usesApple = data.user.identities?.some((identity) => identity.provider === 'apple') ?? false;
   } catch {
-    return NETWORK_ERROR;
+    return failure(NETWORK_ERROR);
   }
 
   const body: { platform: string; appleAuthorizationCode?: string } = { platform: Platform.OS };
   if (usesApple && Platform.OS === 'ios') {
     try {
       const code = await getAppleDeletionCode();
-      if (!code) return 'Confirm with Apple to delete your account.';
+      if (!code) return failure('Confirm with Apple to delete your account.');
       body.appleAuthorizationCode = code;
     } catch (cause) {
-      return cause instanceof Error ? cause.message : 'Could not confirm with Apple. Try again.';
+      return failure(cause instanceof Error ? cause.message : 'Could not confirm with Apple. Try again.');
     }
   }
 
   const { error } = await supabase.functions.invoke<{ deleted: boolean }>('delete-account', { body });
-  if (error) return describeFunctionError(error);
+  if (error) {
+    const { message, body } = await readFunctionError(error);
+    const reason = body?.reason;
+    return failure(message, reason === 'upcoming_games' ? 'bookings' : reason === 'money_owed' ? 'payments' : null);
+  }
   // The account is gone: this device must not remember it as having a username.
   await clearHasUsername(userId);
   return null;

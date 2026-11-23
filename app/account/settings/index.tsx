@@ -4,7 +4,8 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
-import { deleteMyAccount } from '@/lib/account';
+import { Button } from '@/components/ui/button';
+import { type DeleteFailure, deleteMyAccount } from '@/lib/account';
 import { useAuth } from '@/lib/auth';
 import { Text } from '@/components/ui/text';
 import { colors, space } from '@/constants/futty-theme';
@@ -12,7 +13,7 @@ import { colors, space } from '@/constants/futty-theme';
 export default function SettingsScreen() {
   const { signOut } = useAuth();
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<DeleteFailure | null>(null);
 
   async function runDelete() {
     setDeleting(true);
@@ -58,8 +59,16 @@ export default function SettingsScreen() {
         {deleting ? <ActivityIndicator /> : null}
         {error ? (
           <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
-            {error}
+            {error.message}
           </Text>
+        ) : null}
+        {error?.fix ? (
+          <Button
+            variant="secondary"
+            testID="settings-delete-fix"
+            label={error.fix === 'payments' ? 'Go to Payments' : 'Go to My bookings'}
+            onPress={() => router.push(error.fix === 'payments' ? '/account/payments/owed' : '/my-bookings')}
+          />
         ) : null}
       </ScrollView>
     </SafeAreaView>
