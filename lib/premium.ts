@@ -39,6 +39,30 @@ export function personalPremiumPriceLabel(rules: AppRules | null, livePrice?: st
   return price ? `${price}/mo` : '';
 }
 
+/** Whether the store's live price and the rules' label are different
+ *  amounts. Only the digits are compared, so "4,99 €" and "€4.99" match. */
+export function premiumPriceMismatch(livePrice: string | null | undefined, rulesLabel: string | null | undefined): boolean {
+  if (!livePrice || !rulesLabel) return false;
+  const digits = (price: string) => price.replace(/\D/g, '');
+  return digits(livePrice) !== digits(rulesLabel);
+}
+
+/** In development builds only: a console warning when App Store Connect's
+ *  price and app_rules.premium_price_label disagree (they did: €3.99 vs
+ *  5,99 €), so the founders fix one of them. Players always see the store's
+ *  price once it loads (personalPremiumPriceLabel). */
+export function warnIfPremiumPriceDiffers(
+  livePrice: string | null | undefined,
+  rulesLabel: string | null | undefined,
+  isDev: boolean = __DEV__
+): void {
+  if (isDev && premiumPriceMismatch(livePrice, rulesLabel)) {
+    console.warn(
+      `Personal Premium: the store's price (${livePrice}) differs from app_rules.premium_price_label (${rulesLabel}). Fix App Store Connect or the rule.`
+    );
+  }
+}
+
 /** What Personal Premium gives, from the rules: the booking window and the
  *  service fee on the player's own spot (spec 13), and nothing else. Without
  *  rules yet, none: both perks carry a number from the rules. */

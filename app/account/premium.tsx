@@ -11,6 +11,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, hairline, space } from '@/constants/futty-theme';
 import { personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
+import { usePremiumStorePrice } from '@/lib/use-premium-store-price';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useRules } from '@/lib/use-rules';
@@ -33,6 +34,9 @@ export default function GoPremiumScreen() {
   const myTeams = useMyTeams();
   // The Premium price label is a rule (P10); blank until the rules are loaded.
   const rulesState = useRules().state;
+  const rules = rulesState.status === 'ready' ? rulesState.rules : null;
+  // The store's live price once it loads, as on the plan sheet (F6).
+  const storePrice = usePremiumStorePrice(rules?.premium_price_label);
 
   if (profile.status === 'loading' || myTeams.status === 'loading') {
     return (
@@ -57,7 +61,7 @@ export default function GoPremiumScreen() {
       plan: 'personal',
       icon: 'star.fill',
       title: 'Personal Premium',
-      priceLabel: personalPremiumPriceLabel(rulesState.status === 'ready' ? rulesState.rules : null),
+      priceLabel: personalPremiumPriceLabel(rules, storePrice),
       active: profile.status === 'ready' && profile.profile.is_premium,
     },
     {
