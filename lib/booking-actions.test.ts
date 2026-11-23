@@ -41,6 +41,34 @@ describe('bookSlot', () => {
   );
 });
 
+describe('bookSlot: Booking v2 (B2)', () => {
+  it('sends the chosen pitch or combination and the kind; never a price', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+    await bookSlot({
+      venueId: 'v1',
+      day: '2026-11-26',
+      start: '20:00',
+      end: '21:00',
+      format: '5-a-side',
+      mode: 'each_pays_responsible',
+      pitchIds: ['p1', 'p2'],
+      kind: 'half',
+    });
+    expect(mockRpc).toHaveBeenCalledWith('book_slot', {
+      p_venue_id: 'v1',
+      p_day: '2026-11-26',
+      p_start: '20:00',
+      p_end: '21:00',
+      p_pitches: 1,
+      p_format: '5-a-side',
+      p_players_per_side: 5,
+      p_mode: 'each_pays_responsible',
+      p_pitch_ids: ['p1', 'p2'],
+      p_kind: 'half',
+    });
+  });
+});
+
 describe('getCancellationQuote', () => {
   it('asks the server what cancelling would do, for this booking and scope', async () => {
     mockRpc.mockResolvedValue({ data: { quote: 'q1' }, error: null });

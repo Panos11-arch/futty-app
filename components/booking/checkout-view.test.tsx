@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { CheckoutView, type CheckoutViewProps } from '@/components/booking/checkout-view';
-import { quoteFixture } from '@/lib/booking-search.fixtures';
-import type { BookingQuote } from '@/lib/booking-search';
-import { CHANGED_RULES, primeRules } from '@/lib/rules.fixtures';
+import type { CheckoutData, FreePitch } from '@/lib/booking-v2';
+import { checkoutDataFixture, pitchesFixture, premiumQuoteV2Fixture, quoteV2Fixture } from '@/lib/booking-v2.fixtures';
+import { primeRules } from '@/lib/rules.fixtures';
 
 // Spec 13's rules as the migration's defaults (P10): the text below reads them.
 beforeEach(() => {
@@ -19,13 +19,13 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-const now = new Date('2026-11-16T08:00:00Z');
-const at = (minutes: number) => new Date(now.getTime() + minutes * 60_000).toISOString();
+const now = new Date('2026-11-23T08:00:00Z');
 
-function props(quote: BookingQuote = quoteFixture(), overrides: Partial<CheckoutViewProps> = {}): CheckoutViewProps {
+function props(data: CheckoutData = checkoutDataFixture(), overrides: Partial<CheckoutViewProps> = {}): CheckoutViewProps {
   return {
-    venueName: 'Nuevo Campo',
-    quote: { status: 'ready', data: quote },
+    venueName: 'Kamares Sports Centre',
+    quote: { status: 'ready', data },
+    pitches: { status: 'ready', data: pitchesFixture() },
     onRetry: jest.fn(),
     onPay: jest.fn(),
     paying: false,
@@ -38,300 +38,311 @@ function props(quote: BookingQuote = quoteFixture(), overrides: Partial<Checkout
 
 const payButton = () => within(screen.getByTestId('sticky-action-bar')).getByRole('button');
 const isDisabled = () => payButton().props.accessibilityState?.disabled === true;
+const selected = (testID: string) => screen.getByTestId(testID).props.accessibilityState?.selected === true;
+const card = { method: 'card' as const, acceptNonRefundable: false, useCredit: false };
 
-describe('CheckoutView', () => {
-  it('shows both prices exactly as the server sent them (6550 → €65.50, 680 → €6.80)', async () => {
+describe('CheckoutView (Booking v2)', () => {
+  it('heads with the day and time, then the venue, the chosen pitch, the format and the length', async () => {
     await render(<CheckoutView {...props()} />);
-    expect(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Each pays: €6.80 each' })).toBeTruthy();
+    expect(screen.getByText('Thu 26 Nov · 20:00')).toBeTruthy();
+    expect(screen.getByText('Kamares Sports Centre · Pitch 2 · 5-a-side · 60 min')).toBeTruthy();
   });
 
-  it('Pay is disabled until who pays is chosen (there is no default mode)', async () => {
-    await render(<CheckoutView {...props()} />);
-    expect(isDisabled()).toBe(true);
-  });
+  describe('the pitch list', () => {
+    it('lists the free pitches with name, indoor or outdoor, surface and the server’s price; the first is preselected', async () => {
+      await render(<CheckoutView {...props()} />);
+      const first = within(screen.getByTestId('checkout-pitch-1'));
+      expect(first.getByText('Pitch 2')).toBeTruthy();
+      expect(first.getByText('Outdoor · Artificial grass')).toBeTruthy();
+      expect(first.getByText('€40.00')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-pitch-2')).getByText('Indoor · Artificial grass')).toBeTruthy();
+      expect(selected('checkout-pitch-1')).toBe(true);
+      expect(selected('checkout-pitch-2')).toBe(false);
+    });
 
-  it('pay for everyone: the breakdown and the sticky total are the server’s', async () => {
-    const p = props();
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-    expect(screen.getByText('€60.00')).toBeTruthy();
-    expect(screen.getByText('€5.50')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Pay €65.50' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay €65.50' }));
-    expect(p.onPay).toHaveBeenCalledWith({
-      mode: 'pay_all',
-      pay: { method: 'card', acceptNonRefundable: false, useCredit: false },
+    it('tapping another pitch chooses it, and that pitch is booked', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-pitch-2'));
+      expect(selected('checkout-pitch-2')).toBe(true);
+      expect(screen.getByText('Kamares Sports Centre · Pitch 3 · 5-a-side · 60 min')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      await fireEvent.press(payButton());
+      expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', kind: 'whole', pitchIds: ['p3'], pay: card });
+    });
+
+    it('a combination is listed by its venue name ("Pitch 1 + 2")', async () => {
+      const combo: FreePitch = { pitch_ids: ['p1', 'p2'], label: 'Pitch 1 + 2', kind: 'combination', surface: null, indoor: false, price_cents: 9000 };
+      await render(<CheckoutView {...props(undefined, { pitches: { status: 'ready', data: [combo] } })} />);
+      expect(within(screen.getByTestId('checkout-pitch-1')).getByText('Pitch 1 + 2')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-pitch-1')).getByText('€90.00')).toBeTruthy();
+    });
+
+    it('a pitch taken since is gone when the list comes back, and the first free one is chosen', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      expect(selected('checkout-pitch-1')).toBe(true);
+      await screen.rerender(
+        <CheckoutView
+          {...p}
+          pitches={{ status: 'ready', data: pitchesFixture().slice(1) }}
+          error="Pitch 2 is no longer free. Pick another."
+        />,
+      );
+      expect(screen.queryByText('Pitch 2')).toBeNull();
+      expect(within(screen.getByTestId('checkout-pitch-1')).getByText('Pitch 3')).toBeTruthy();
+      expect(selected('checkout-pitch-1')).toBe(true);
+      expect(within(screen.getByTestId('checkout-error')).getByText('Pitch 2 is no longer free. Pick another.')).toBeTruthy();
+    });
+
+    it('no free pitch: says so, and Pay stays off', async () => {
+      await render(<CheckoutView {...props(undefined, { pitches: { status: 'ready', data: [] } })} />);
+      expect(within(screen.getByTestId('checkout-pitches-empty')).getByText('No pitch is free at this time. Pick another time.')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      expect(isDisabled()).toBe(true);
     });
   });
 
-  it('each pays needs "responsible" or "just my spot", each with its sentence', async () => {
-    const p = props();
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-    expect(isDisabled()).toBe(true);
-    expect(screen.getByText(/taken from your guarantee hold 2 hours after the match/)).toBeTruthy();
-    expect(screen.getByText(/owes the venue themselves/)).toBeTruthy();
-    await fireEvent.press(screen.getByRole('tab', { name: 'Just my spot' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay €6.80' }));
-    expect(p.onPay).toHaveBeenCalledWith({
-      mode: 'each_pays_own_spot',
-      pay: { method: 'card', acceptNonRefundable: false, useCredit: false },
+  describe('whole or half pitch', () => {
+    it('two big choices with one line each; whole pitch to start with', async () => {
+      await render(<CheckoutView {...props()} />);
+      expect(within(screen.getByTestId('checkout-kind-whole')).getByText('Whole pitch')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-kind-whole')).getByText('You bring both teams.')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-kind-half')).getByText('Half pitch')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-kind-half')).getByText('Opponents pay half.')).toBeTruthy();
+      expect(selected('checkout-kind-whole')).toBe(true);
+    });
+
+    it('"Half pitch" is hidden while the server says half pitches aren’t available', async () => {
+      const quote = quoteV2Fixture({ half: { ...quoteV2Fixture().half, available: false } });
+      await render(<CheckoutView {...props(checkoutDataFixture(quote))} />);
+      expect(screen.queryByTestId('checkout-kind-half')).toBeNull();
+      expect(screen.queryByText('Half pitch')).toBeNull();
+      expect(screen.getByTestId('checkout-kind-whole')).toBeTruthy();
     });
   });
 
-  it('the responsible mode reaches onPay', async () => {
-    const p = props();
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-    await fireEvent.press(screen.getByRole('tab', { name: "I'm responsible for the team" }));
-    await fireEvent.press(payButton());
-    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'each_pays_responsible' }));
-  });
-
-  it('cash: the fee by card now and the pitch part at the venue, from the server', async () => {
-    const p = props();
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-    await fireEvent.press(screen.getByRole('tab', { name: 'Just my spot' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay the pitch in cash at the venue' }));
-    expect(screen.getByText('You pay the €0.80 service fee by card now and €6.00 in cash at the venue.')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay €0.80' }));
-    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ pay: expect.objectContaining({ method: 'cash' }) }));
-  });
-
-  it('no cash when the server doesn’t allow it, or when paying for everyone', async () => {
-    await render(<CheckoutView {...props(quoteFixture({ cash_allowed: false }))} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-    expect(screen.queryByRole('button', { name: 'Pay the pitch in cash at the venue' })).toBeNull();
-    await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-    expect(screen.queryByRole('button', { name: 'Pay the pitch in cash at the venue' })).toBeNull();
-  });
-
-  it('credit: the server’s amounts with credit, and no cash alongside it', async () => {
-    const quote = quoteFixture({
-      pay_all: { pitch_cents: 6000, fee_cents: 550, card_cents: 6550, with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 } },
-      each_pays: {
-        ...quoteFixture().each_pays,
-        mine: { pitch_cents: 600, fee_cents: 80, card_cents: 680, with_credit: { credit_cents: 600, fee_cents: 0, card_cents: 0 } },
-      },
-      credit: { available_cents: 5000, expires_at: '2027-11-01T10:00:00Z' },
+  describe('the ways to pay, each with its server price', () => {
+    it('example 1: whole pitch, pay for everyone, €45.50', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      const all = within(screen.getByTestId('checkout-who-pay-all'));
+      expect(all.getByText('Pay for everyone')).toBeTruthy();
+      expect(all.getByText('€45.50')).toBeTruthy();
+      expect(all.getByText('You pay the whole pitch now.')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      expect(within(screen.getByTestId('checkout-price')).getByText('€40.00')).toBeTruthy();
+      expect(within(screen.getByTestId('checkout-price')).getByText('€5.50')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Pay €45.50' })).toBeTruthy();
+      await fireEvent.press(payButton());
+      expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', kind: 'whole', pitchIds: ['p2'], pay: card });
     });
-    const p = props(quote);
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Use my €50.00 credit' }));
-    expect(screen.getByText('-€50.00')).toBeTruthy();
-    // The sticky bar's label follows the breakdown: credit means "By card now".
-    expect(within(screen.getByTestId('sticky-action-bar')).getByText('By card now')).toBeTruthy();
-    expect(within(screen.getByTestId('sticky-action-bar')).queryByText('Total')).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay €15.50' }));
-    expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', pay: { method: 'card', acceptNonRefundable: false, useCredit: true } });
 
-    await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-    await fireEvent.press(screen.getByRole('tab', { name: 'Just my spot' }));
-    expect(screen.queryByRole('button', { name: 'Pay the pitch in cash at the venue' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Book and save my card' })).toBeTruthy();
+    it('example 2: whole pitch, pay for myself, €4.80 each, and one line about the €40.00 hold', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      const mine = within(screen.getByTestId('checkout-who-each-pays'));
+      expect(mine.getByText('Pay for myself')).toBeTruthy();
+      expect(mine.getByText('€4.80 each')).toBeTruthy();
+      expect(mine.getByText('You pay your share. You cover unpaid spots.')).toBeTruthy();
+      expect(screen.queryByTestId('checkout-guarantee')).toBeNull();
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(within(screen.getByTestId('checkout-guarantee')).getByText(
+        'We hold €40.00 on your card for unpaid spots, taken 2 hours after the game.',
+      )).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €4.80' }));
+      expect(p.onPay).toHaveBeenCalledWith({ mode: 'each_pays_responsible', kind: 'whole', pitchIds: ['p2'], pay: card });
+    });
+
+    it('example 4: half pitch, pay for everyone, €22.75 for your team’s half', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+      const all = within(screen.getByTestId('checkout-who-pay-all'));
+      expect(all.getByText('€22.75')).toBeTruthy();
+      expect(all.getByText("You pay your team's half now.")).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €22.75' }));
+      expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', kind: 'half', pitchIds: ['p2'], pay: card });
+    });
+
+    it('example 5: half pitch, pay for myself, €4.80 each and his side’s €20.00 held', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(within(screen.getByTestId('checkout-guarantee')).getByText(
+        'We hold €20.00 on your card for unpaid spots, taken 2 hours after the game.',
+      )).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €4.80' }));
+      expect(p.onPay).toHaveBeenCalledWith({ mode: 'each_pays_responsible', kind: 'half', pitchIds: ['p2'], pay: card });
+    });
+
+    it('example 11: a Premium booker sees €44.95 for everyone and pays €4.00 for myself', async () => {
+      await render(<CheckoutView {...props(checkoutDataFixture(premiumQuoteV2Fixture()))} />);
+      expect(within(screen.getByTestId('checkout-who-pay-all')).getByText('€44.95')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(screen.getByRole('button', { name: 'Pay €4.00' })).toBeTruthy();
+    });
+
+    it('Pay is off until a way to pay is chosen (no default)', async () => {
+      await render(<CheckoutView {...props()} />);
+      expect(isDisabled()).toBe(true);
+    });
+
+    it('no "I’m responsible", no "Just my spot", no Losers pay or Gipedo Pano, and no tick box', async () => {
+      await render(<CheckoutView {...props()} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(screen.queryByText(/responsible for the team/)).toBeNull();
+      expect(screen.queryByText(/Just my spot/)).toBeNull();
+      expect(screen.queryByText(/Losers pay|Gipedo/)).toBeNull();
+      expect(screen.queryByTestId('checkout-who-gipedo')).toBeNull();
+      expect(screen.queryByRole('checkbox')).toBeNull();
+    });
   });
 
-  it('no credit option without credit at this venue', async () => {
-    await render(<CheckoutView {...props()} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-    expect(screen.queryByRole('button', { name: /Use my/ })).toBeNull();
+  describe('cash', () => {
+    it('a switch on a whole pitch paying for myself: €0.80 now and €4.00 at the venue (example 3)', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      await fireEvent(screen.getByTestId('checkout-cash'), 'valueChange', true);
+      expect(screen.getByText('You pay the €0.80 service fee by card now and €4.00 in cash at the venue.')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €0.80' }));
+      expect(p.onPay).toHaveBeenCalledWith({
+        mode: 'each_pays_responsible',
+        kind: 'whole',
+        pitchIds: ['p2'],
+        pay: { ...card, method: 'cash' },
+      });
+    });
+
+    it('never on a half pitch, never when paying for everyone, never when the server says no', async () => {
+      await render(<CheckoutView {...props()} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      expect(screen.queryByTestId('checkout-cash')).toBeNull();
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(screen.getByTestId('checkout-cash')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+      expect(screen.queryByTestId('checkout-cash')).toBeNull();
+    });
+
+    it('switched on, then a half pitch chosen: the payment is by card', async () => {
+      const p = props();
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      await fireEvent(screen.getByTestId('checkout-cash'), 'valueChange', true);
+      await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+      await fireEvent.press(payButton());
+      expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ kind: 'half', pay: card }));
+    });
+
+    it('not offered while the server doesn’t allow cash', async () => {
+      await render(<CheckoutView {...props(checkoutDataFixture(quoteV2Fixture({ cash_allowed: false })))} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      expect(screen.queryByTestId('checkout-cash')).toBeNull();
+    });
   });
 
-  it('shows the cancellation rules in three lines that hold in every mode', async () => {
+  describe('credit, as today, on a whole pitch', () => {
+    const withCredit = () =>
+      checkoutDataFixture(quoteV2Fixture(), {
+        available_cents: 3000,
+        expires_at: '2027-11-01T10:00:00Z',
+        with_credit: {
+          pay_all: { credit_cents: 3000, fee_cents: 550, card_cents: 1550 },
+          pay_for_myself: { credit_cents: 400, fee_cents: 0, card_cents: 0 },
+        },
+      });
+
+    it('paying for everyone: the server’s amounts with credit', async () => {
+      const p = props(withCredit());
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      await fireEvent.press(screen.getByTestId('checkout-credit'));
+      expect(within(screen.getByTestId('checkout-price')).getByText('-€30.00')).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: 'Pay €15.50' }));
+      expect(p.onPay).toHaveBeenCalledWith({
+        mode: 'pay_all',
+        kind: 'whole',
+        pitchIds: ['p2'],
+        pay: { ...card, useCredit: true },
+      });
+    });
+
+    it('paying for myself: the server’s amounts with credit, and no cash alongside it', async () => {
+      const p = props(withCredit());
+      await render(<CheckoutView {...p} />);
+      await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+      await fireEvent.press(screen.getByTestId('checkout-credit'));
+      expect(within(screen.getByTestId('checkout-price')).getByText('-€4.00')).toBeTruthy();
+      expect(screen.queryByTestId('checkout-cash')).toBeNull();
+      await fireEvent.press(payButton());
+      expect(p.onPay).toHaveBeenCalledWith({
+        mode: 'each_pays_responsible',
+        kind: 'whole',
+        pitchIds: ['p2'],
+        pay: { ...card, useCredit: true },
+      });
+    });
+
+    it('not on a half pitch', async () => {
+      await render(<CheckoutView {...props(withCredit())} />);
+      await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+      await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+      expect(screen.queryByTestId('checkout-credit')).toBeNull();
+    });
+  });
+
+  it('the cancellation line, and "Rules" opens the three cancellation rules', async () => {
     await render(<CheckoutView {...props()} />);
-    expect(
-      screen.getByText('Cancel for a full refund until 1 hour after paying or 6 hours before kickoff, whichever comes first.'),
-    ).toBeTruthy();
-    expect(
-      screen.getByText(
-        'After that, until 6 hours before kickoff, €1.00 is kept for each player paid for and the rest becomes credit at this venue. Paying the pitch in cash, only the service fee is at stake.',
-      ),
-    ).toBeTruthy();
+    expect(within(screen.getByTestId('checkout-cancellation')).getByText(
+      "Free to cancel for 1 hour after paying, if it's more than 6 hours before kickoff.",
+    )).toBeTruthy();
+    expect(screen.queryByText('Less than 6 hours before kickoff, there are no refunds.')).toBeNull();
+    await fireEvent.press(screen.getByTestId('checkout-rules'));
     expect(screen.getByText('Less than 6 hours before kickoff, there are no refunds.')).toBeTruthy();
   });
 
-  describe('spec 13’s rules in the text (P10)', () => {
-    it('changed rules: the guarantee is taken 3 hours after the match', async () => {
-      primeRules(CHANGED_RULES);
-      await render(<CheckoutView {...props()} />);
-      await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-      expect(screen.getByText(/taken from your guarantee hold 3 hours after the match/)).toBeTruthy();
-    });
-
-    it('changed rules: an unpaid booking is released after 30 minutes', async () => {
-      primeRules(CHANGED_RULES);
-      await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
-      expect(
-        screen.getByText("Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 30 minutes."),
-      ).toBeTruthy();
-    });
-
-    it('no rules loaded yet: the guarantee sentence without a number', async () => {
-      primeRules(null);
-      await render(<CheckoutView {...props()} />);
-      await fireEvent.press(screen.getByRole('tab', { name: 'Each pays: €6.80 each' }));
-      expect(screen.getByText(/taken from your guarantee hold after the match/)).toBeTruthy();
-    });
-
-    it('no rules loaded yet: the payment window without a number', async () => {
-      primeRules(null);
-      await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
-      expect(
-        screen.getByText("Who pays is fixed once payment starts. If you don't finish paying in time, the booking is released."),
-      ).toBeTruthy();
-    });
-  });
-
-  it('once payment has started, says who pays is fixed and an unpaid booking is released after 15 minutes', async () => {
-    await render(<CheckoutView {...props(undefined, { bookingHeld: true })} />);
-    expect(
-      screen.getByText("Who pays is fixed once payment starts. If you don't finish paying, the booking is released after 15 minutes."),
-    ).toBeTruthy();
-    expect(screen.queryByText(/pick the time again/)).toBeNull();
-  });
-
-  describe('the non-refundable notice', () => {
-    it('appears at 5h59m before kickoff (the server’s non_refundable flag is set), and Pay is disabled until it is accepted', async () => {
-      const p = props(quoteFixture({ non_refundable: true, kickoff_at: at(359), refunds_stop_at: at(-1) }));
-      await render(<CheckoutView {...p} />);
-      expect(screen.getByText('This booking is non-refundable')).toBeTruthy();
-      await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-      expect(isDisabled()).toBe(true);
-      await fireEvent.press(screen.getByRole('button', { name: 'I accept that this booking is non-refundable' }));
-      expect(isDisabled()).toBe(false);
-      await fireEvent.press(payButton());
-      expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', pay: { method: 'card', acceptNonRefundable: true, useCredit: false } });
-    });
-
-    it('does not appear at 6h01m before kickoff (the server’s non_refundable flag is not set)', async () => {
-      await render(<CheckoutView {...props(quoteFixture({ non_refundable: false, kickoff_at: at(361), refunds_stop_at: at(1) }))} />);
-      expect(screen.queryByText('This booking is non-refundable')).toBeNull();
-      await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
-      expect(isDisabled()).toBe(false);
-    });
-  });
-
-  it('a player in debt can’t pay, with one line saying why', async () => {
-    await render(<CheckoutView {...props(quoteFixture({ in_debt: true, cash_allowed: false }))} />);
-    expect(screen.getByText('You owe money to a venue. Pay it before booking.')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('tab', { name: 'Pay for everyone: €65.50' }));
+  it('kickoff under 6 hours away: the non-refundable notice must be accepted first', async () => {
+    const p = props(checkoutDataFixture(quoteV2Fixture({ non_refundable: true })));
+    await render(<CheckoutView {...p} />);
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
     expect(isDisabled()).toBe(true);
-  });
-
-  it('the debt line links to "Pay what I owe"', async () => {
-    const onPayOwed = jest.fn();
-    await render(<CheckoutView {...props(quoteFixture({ in_debt: true, cash_allowed: false }), { onPayOwed })} />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
-    expect(onPayOwed).toHaveBeenCalledTimes(1);
-  });
-
-  it('no "Pay what I owe" link without a debt', async () => {
-    await render(<CheckoutView {...props(quoteFixture(), { onPayOwed: jest.fn() })} />);
-    expect(screen.queryByRole('button', { name: 'Pay what I owe' })).toBeNull();
-  });
-
-  it('shows a failed quote with a retry', async () => {
-    const p = props(undefined, { quote: { status: 'error', message: 'That slot just filled up — pick another one.' } });
-    await render(<CheckoutView {...p} />);
-    expect(screen.getByText('That slot just filled up — pick another one.')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
-    expect(p.onRetry).toHaveBeenCalled();
-  });
-
-  it('shows a payment error inline', async () => {
-    await render(<CheckoutView {...props(undefined, { error: 'Card declined' })} />);
-    expect(screen.getByText('Card declined')).toBeTruthy();
-  });
-});
-
-describe('CheckoutView: Gipedo Pano (P8)', () => {
-  const lions = { id: 't1', name: 'Lions' };
-  const tigers = { id: 't2', name: 'Tigers' };
-
-  it('isn’t offered to a player who captains no team', async () => {
-    await render(<CheckoutView {...props(quoteFixture({ captain_teams: [] }))} />);
-    expect(screen.queryByRole('tab', { name: /Gipedo Pano/ })).toBeNull();
-  });
-
-  it('a captain books it for their team: the server’s 6550 hold, card only', async () => {
-    const p = props(quoteFixture({ captain_teams: [lions] }));
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
-    expect(screen.getByText(/the losing team pays for the pitch/)).toBeTruthy();
-    expect(screen.getByText('For Lions')).toBeTruthy();
-    expect(screen.queryByText('Pay the pitch in cash at the venue')).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Hold €65.50' }));
-    expect(p.onPay).toHaveBeenCalledWith({
-      mode: 'gipedo_pano',
-      teamId: 't1',
-      pay: { method: 'card', acceptNonRefundable: false, useCredit: false },
-    });
-  });
-
-  it('with two teams, the captain picks one before paying', async () => {
-    const p = props(quoteFixture({ captain_teams: [lions, tigers] }));
-    await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
-    expect(isDisabled()).toBe(true);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Tigers' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'I accept that this booking is non-refundable' }));
     await fireEvent.press(payButton());
-    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'gipedo_pano', teamId: 't2' }));
+    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ pay: { ...card, acceptNonRefundable: true } }));
   });
 
-  it('more than 5 days ahead: spec 13’s sentence, and no paying', async () => {
-    const quote = quoteFixture({
-      captain_teams: [lions],
-      gipedo_pano: { pitch_cents: 6000, fee_cents: 550, hold_cents: 6550, available: false, unavailable_reason: 'gipedo_too_far_ahead' },
-    });
-    await render(<CheckoutView {...props(quote)} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
-    expect(screen.getByText('Gipedo Pano can only be booked up to 5 days ahead.')).toBeTruthy();
-    expect(isDisabled()).toBe(true);
-  });
-
-  it('no credit with Gipedo Pano, even with credit at the venue', async () => {
-    const quote = quoteFixture({
-      captain_teams: [lions],
-      pay_all: { pitch_cents: 6000, fee_cents: 550, card_cents: 6550, with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 } },
-      credit: { available_cents: 5000, expires_at: '2027-11-01T00:00:00Z' },
-    });
-    await render(<CheckoutView {...props(quote)} />);
-    await fireEvent.press(screen.getByRole('tab', { name: 'Gipedo Pano: €65.50 held' }));
-    expect(screen.queryByText(/Use my €50.00 credit/)).toBeNull();
-  });
-});
-
-describe('CheckoutView: weather (P11)', () => {
-  it('shows the weather strip it is given', async () => {
-    const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
-    await render(<CheckoutView {...props(quoteFixture(), { weather: <Text>Forecast here</Text> })} />);
-    expect(within(screen.getByTestId('checkout-weather')).getByText('Forecast here')).toBeTruthy();
-  });
-
-  it('nothing until one is given', async () => {
-    await render(<CheckoutView {...props()} />);
-    expect(screen.queryByTestId('checkout-weather')).toBeNull();
-  });
-});
-
-describe('CheckoutView: testIDs for the Maestro tests (.maestro)', () => {
-  it('names the who-pays choices and the pay button', async () => {
+  it('a booking already held fixes the pitch, the kind and the way to pay', async () => {
     const p = props();
     await render(<CheckoutView {...p} />);
-    await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
-    await fireEvent.press(screen.getByTestId('checkout-each-own-spot'));
-    expect(screen.getByTestId('checkout-each-responsible')).toBeTruthy();
     await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
-    expect(screen.getByTestId('checkout-pay').props.accessibilityLabel).toBe('Pay €65.50');
-    await fireEvent.press(screen.getByTestId('checkout-pay'));
-    expect(p.onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'pay_all' }));
+    await screen.rerender(<CheckoutView {...p} bookingHeld />);
+    await fireEvent.press(screen.getByTestId('checkout-pitch-2'));
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+    expect(selected('checkout-pitch-1')).toBe(true);
+    expect(selected('checkout-kind-whole')).toBe(true);
+    expect(selected('checkout-who-pay-all')).toBe(true);
   });
 
-  it('names the error message', async () => {
-    await render(<CheckoutView {...props(quoteFixture(), { error: 'Your card was declined.' })} />);
-    expect(within(screen.getByTestId('checkout-error')).getByText('Your card was declined.')).toBeTruthy();
+  it('in debt: the banner, and Pay stays off', async () => {
+    await render(<CheckoutView {...props(checkoutDataFixture(quoteV2Fixture({ in_debt: true, cash_allowed: false })))} />);
+    expect(screen.getByText('You owe money to a venue. Pay it before booking.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(isDisabled()).toBe(true);
+  });
+
+  it('keeps the weather strip’s testID', async () => {
+    await render(<CheckoutView {...props(undefined, { weather: <></> })} />);
+    expect(screen.getByTestId('checkout-weather')).toBeTruthy();
+  });
+
+  it('loading and error states', async () => {
+    const onRetry = jest.fn();
+    await render(<CheckoutView {...props(undefined, { quote: { status: 'error', message: 'No connection' }, onRetry })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(onRetry).toHaveBeenCalled();
   });
 });

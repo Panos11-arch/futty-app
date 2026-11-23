@@ -10,9 +10,22 @@ import { daysText, hoursText, minutesText, ruleText } from '@/lib/rules';
  *  lib/edge-functions.ts's describeFunctionError first — supabase.functions.
  *  invoke() doesn't surface it directly the way a plain RPC error does.
  *  Every number in a message comes from spec 13's rules (lib/rules.ts); with
- *  none loaded yet the message is the same without the number. */
-export function describeBookingErrorMessage(message: string) {
+ *  none loaded yet the message is the same without the number. `detail` is
+ *  the error's detail where the server sends one (pitch_not_free: the
+ *  pitch's name). */
+export function describeBookingErrorMessage(message: string, detail?: string | null) {
   switch (message) {
+    // Booking v2 (spec 13 "Choosing a pitch", "How each side pays").
+    case 'pitch_not_free':
+      return `${detail || 'That pitch'} is no longer free. Pick another.`;
+    case 'invalid_pitch_choice':
+      return "That pitch can't be booked for this game. Pick another.";
+    case 'just_my_spot_removed':
+      return 'Choose Pay for everyone or Pay for myself.';
+    case 'cash_whole_pitch_only':
+      return 'Cash is for a whole pitch only.';
+    case 'half_pitch_not_available':
+      return "Half pitches aren't available yet. Book the whole pitch.";
     case 'slot_full':
       return 'That slot just filled up — pick another one.';
     case 'slot_in_past':

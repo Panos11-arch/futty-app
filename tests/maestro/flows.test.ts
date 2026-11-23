@@ -126,7 +126,8 @@ describe('taps wait for the weather strip', () => {
   // moves. A tap aimed before that lands where the button used to be: the
   // preview run's "Pay for everyone" tap chose nothing (23 November).
   const order = (file: string, ...needles: string[]) => {
-    const text = read(path.join(maestroDir, file));
+    // A Windows checkout (core.autocrlf=true) has CRLF line endings.
+    const text = read(path.join(maestroDir, file)).replace(/\r\n/g, '\n');
     return needles.map((n) => text.indexOf(n));
   };
 
@@ -135,16 +136,20 @@ describe('taps wait for the weather strip', () => {
     expect(steps).toEqual([{ extendedWaitUntil: { notVisible: { id: 'weather-strip-loading' }, timeout: 30000 } }]);
   });
 
-  it('book-and-pay: before choosing who pays', () => {
-    const [seen, settled, tap] = order(
+  it('book-and-pay: before the first tap on checkout (the pitch, then whole pitch, then who pays)', () => {
+    const [seen, settled, pitch, whole, payAll] = order(
       'flows/book-and-pay.yaml',
-      'id: checkout-who-pay-all',
+      'id: checkout-pitch-1',
       'weather-settled.yaml',
+      'tapOn:\n    id: checkout-pitch-1',
+      'tapOn:\n    id: checkout-kind-whole',
       'tapOn:\n    id: checkout-who-pay-all',
     );
     expect(seen).toBeGreaterThan(-1);
     expect(settled).toBeGreaterThan(seen);
-    expect(tap).toBeGreaterThan(settled);
+    expect(pitch).toBeGreaterThan(settled);
+    expect(whole).toBeGreaterThan(pitch);
+    expect(payAll).toBeGreaterThan(whole);
   });
 
   it('cancel: before scrolling to Cancel', () => {

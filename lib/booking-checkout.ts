@@ -54,19 +54,48 @@ export async function payShare(shareId: string, pay: PayOptions, sheet: PaymentS
   return { status: 'paid' };
 }
 
+/** Errors after which the pitch list is out of date (Booking v2): it's
+ *  loaded again, so a pitch taken since is no longer shown. */
+const PITCH_GONE = new Set(['pitch_not_free', 'invalid_pitch_choice', 'slot_blocked']);
+
+type SlotChoice = {
+  slot: Slot;
+  mode: PaymentMode;
+  teamId?: string;
+  /** Booking v2 (B2): the chosen pitch or combination, and the kind. */
+  pitchIds?: string[];
+  kind?: 'whole' | 'half';
+  pay: PayOptions;
+  bookingId: string | null;
+};
+
 /** Books the slot with the chosen mode (once: a retry passes the booking it
  *  already made) and pays the booker's own share: in Gipedo Pano, the
  *  captain's hold, for the team they chose. The booking is returned for the
- *  next retry, or null when there is none to retry. */
+ *  next retry, or null when there is none to retry. pitchTaken: the chosen
+ *  pitch was taken meanwhile, so the screen reloads the pitch list. */
 export async function payForSlot(
-  { slot, mode, teamId, pay, bookingId }: { slot: Slot; mode: PaymentMode; teamId?: string; pay: PayOptions; bookingId: string | null },
+  { slot, mode, teamId, pitchIds, kind, pay, bookingId }: SlotChoice,
   sheet: PaymentSheet,
-): Promise<PayOutcome & { bookingId: string | null }> {
+): Promise<PayOutcome & { bookingId: string | null; pitchTaken?: true }> {
   let id = bookingId;
   if (!id) {
-    const { data, error } = await bookSlot(teamId ? { ...slot, mode, teamId } : { ...slot, mode });
+    const { data, error } = await bookSlot({
+      ...slot,
+      mode,
+      ...(teamId ? { teamId } : {}),
+      ...(pitchIds ? { pitchIds } : {}),
+      ...(kind ? { kind } : {}),
+    });
     if (error || !data) {
-      return { status: 'error', message: describeBookingErrorMessage(error?.message ?? 'Could not create the booking.'), bookingId: null };
+      const code = error?.message ?? 'Could not create the booking.';
+      const detail = (error as { details?: string | null } | null)?.details;
+      return {
+        status: 'error',
+        message: describeBookingErrorMessage(code, detail),
+        bookingId: null,
+        ...(PITCH_GONE.has(code) ? { pitchTaken: true as const } : {}),
+      };
     }
     const booking = data as unknown as { id: string; amount_cents: number };
     // A free venue: confirmed at once, nothing to pay.
