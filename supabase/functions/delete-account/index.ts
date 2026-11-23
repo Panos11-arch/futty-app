@@ -7,6 +7,8 @@
 //      charge on an upcoming game, or an upcoming app booking they made (not
 //      a walk-in they added as staff, nor their training blocks). They
 //      need to cancel those first, so nobody else's game is left unpaid.
+//      Then refuses while they owe money: any unsettled debt to a venue or
+//      to Futty (owed.ts; spec 13 "Deleting an account").
 //      Then, for a Sign in with Apple account, revokes the user's Apple
 //      token with the fresh code the app sends (App Review 5.1.1(v), P13),
 //      after checking the code is for the account's own Apple ID. If that
@@ -36,6 +38,7 @@ import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { type Body, deleteAccount } from './handler.ts';
 import { deleteAccountLinks } from './links.ts';
+import { type Db as OwedDb, owedCents } from './owed.ts';
 import { type Db, hasUpcomingGames } from './upcoming.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -63,6 +66,9 @@ Deno.serve(async (req) => {
       // Walk-ins a staff member added and an owner's training blocks don't
       // count: see upcoming.ts (P6).
       hasMoneyInPlay: (id, today) => hasUpcomingGames(admin as unknown as Db, id, today),
+
+      // Unsettled debts, the same source as the Payments "You owe" screen.
+      owedCents: (id) => owedCents(admin as unknown as OwedDb, id),
 
       async loadIdentities(id) {
         const { data, error } = await admin.auth.admin.getUserById(id);

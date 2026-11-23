@@ -2,6 +2,7 @@
 // the point: nothing is deleted until the money check and, for a Sign in with
 // Apple account, the Apple revoke have both passed.
 import { AppleAccountMismatchError } from '../_shared/apple-sign-in.ts';
+import { euros } from '../_shared/rules.ts';
 
 /** One of the account's sign-in identities. For Apple, `id` is the identity's
  *  provider_id: the user's Apple ID (the `sub` in Apple's tokens). */
@@ -13,6 +14,8 @@ export type Deps = {
   /** Today in Cyprus (cyprusToday()). */
   today: string;
   hasMoneyInPlay(userId: string, today: string): Promise<boolean>;
+  /** The player's unsettled debts in integer cents (owed.ts), or null if they can't be read. */
+  owedCents(userId: string): Promise<number | null>;
   /** The account's identities from the server's own record, or null if it can't be read. */
   loadIdentities(userId: string): Promise<Identity[] | null>;
   /** Throws if Apple refuses, or AppleAccountMismatchError for another Apple ID. */
@@ -36,14 +39,25 @@ export type Result = { status: number; body: Record<string, unknown> };
 const NO_APPLE_SHEET_PLATFORMS = new Set(['android', 'web']);
 
 export async function deleteAccount(deps: Deps, userId: string, body: Body): Promise<Result> {
-  // 1. Money still in play?
+  // 1. Upcoming games?
   if (await deps.hasMoneyInPlay(userId, deps.today)) {
     return {
       status: 409,
       body: {
         error:
           'You still have upcoming games. Cancel your bookings (or wait until they have been played) and then try again.',
+        reason: 'upcoming_games',
       },
+    };
+  }
+
+  // 1a. Money owed? (spec 13 "Deleting an account", decided 19 November)
+  const owed = await deps.owedCents(userId);
+  if (owed === null) return { status: 500, body: { error: 'Could not check what you owe. Try again.' } };
+  if (owed > 0) {
+    return {
+      status: 409,
+      body: { error: `You owe ${euros(owed)}. Pay it from Payments, then try again.`, reason: 'money_owed', owed_cents: owed },
     };
   }
 

@@ -9,6 +9,7 @@ const APPLE_SUB = '001234.abcdef.0001';
 type Options = {
   identities?: Identity[] | null;
   moneyInPlay?: boolean;
+  owed?: number | null;
   revokeError?: Error;
   scrubError?: string;
 };
@@ -23,6 +24,10 @@ function fakeDeps(options: Options = {}) {
     hasMoneyInPlay: (userId, today) => {
       steps.push(`money:${userId}:${today}`);
       return Promise.resolve(options.moneyInPlay ?? false);
+    },
+    owedCents: (userId) => {
+      steps.push(`owed:${userId}`);
+      return Promise.resolve(options.owed === undefined ? 0 : options.owed);
     },
     loadIdentities: (userId) => {
       steps.push(`identities:${userId}`);
@@ -178,4 +183,53 @@ Deno.test('a failed profile scrub: 500, and the login is not deleted', async () 
   const result = await run(fake, { appleAuthorizationCode: 'fresh-code', platform: 'ios' });
   strictEqual(result.status, 500);
   strictEqual(fake.steps.includes('login'), false);
+});
+
+// --- Blocks: upcoming games first, then money owed (spec 13 "Deleting an account") ---
+
+Deno.test('upcoming games block first: 409 with the reason, money owed not even checked, nothing deleted', async () => {
+  const fake = fakeDeps({ moneyInPlay: true, owed: 680 });
+  const result = await run(fake);
+  strictEqual(result.status, 409);
+  strictEqual(result.body.reason, 'upcoming_games');
+  match(String(result.body.error), /upcoming games/);
+  deepStrictEqual(fake.steps, [`money:${USER}:2026-11-13`]);
+  deepStrictEqual(fake.deleted(), []);
+});
+
+Deno.test('money owed blocks: 409 "You owe €6.80. Pay it from Payments, then try again." with the server\'s cents', async () => {
+  const fake = fakeDeps({ owed: 680, identities: apple });
+  const result = await run(fake, { appleAuthorizationCode: 'code', platform: 'ios' });
+  strictEqual(result.status, 409);
+  deepStrictEqual(result.body, {
+    error: 'You owe €6.80. Pay it from Payments, then try again.',
+    reason: 'money_owed',
+    owed_cents: 680,
+  });
+  // Checked after upcoming games and before the Apple step: nothing revoked or deleted.
+  deepStrictEqual(fake.steps, [`money:${USER}:2026-11-13`, `owed:${USER}`]);
+  strictEqual(fake.revokes.length, 0);
+  deepStrictEqual(fake.deleted(), []);
+});
+
+Deno.test('one cent owed still blocks', async () => {
+  const result = await run(fakeDeps({ owed: 1 }));
+  strictEqual(result.status, 409);
+  strictEqual(result.body.error, 'You owe €0.01. Pay it from Payments, then try again.');
+});
+
+Deno.test('when what is owed can\'t be read, nothing is deleted', async () => {
+  const fake = fakeDeps({ owed: null });
+  const result = await run(fake);
+  strictEqual(result.status, 500);
+  strictEqual(result.body.error, 'Could not check what you owe. Try again.');
+  deepStrictEqual(fake.deleted(), []);
+});
+
+Deno.test('neither upcoming games nor money owed: the account is deleted', async () => {
+  const fake = fakeDeps({ moneyInPlay: false, owed: 0 });
+  const result = await run(fake);
+  strictEqual(result.status, 200);
+  deepStrictEqual(fake.steps.slice(0, 2), [`money:${USER}:2026-11-13`, `owed:${USER}`]);
+  deepStrictEqual(fake.deleted(), DELETES);
 });

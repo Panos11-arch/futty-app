@@ -218,6 +218,11 @@ Debt and credit are between the player and the venue, and the venue manages them
 - **Confirmed:** paying a debt adds no new fee. Futty absorbs Stripe's cost, about €0.34 on €6.00, because the fee was already paid at booking.
 - **Confirmed:** a cash player who cancels follows the normal timings, but only the €0.80 fee is at stake: the hold is cancelled in the first hour; after that the fee is kept.
 
+### Deleting an account (decided 19 November)
+A player can delete their account from Settings, except while either of these is true. The server checks them in this order, before anything is deleted (and, for a Sign in with Apple account, before Apple is asked to revoke anything):
+1. **Upcoming games:** a card hold or charge on an upcoming game, or an upcoming app booking they made (not a walk-in they added as venue staff, nor an owner's training block). The app shows the message with a button to My bookings.
+2. **Money owed:** any unsettled debt, to a venue or to Futty (see "Debt"; a failed payment that is still owed is one of these debts). The message is "You owe €X.XX. Pay it from Payments, then try again.", with the server's total of those debts in cents, the same total the Payments "You owe" screen shows. The app shows it with a button to Payments.
+
 ### Venue credit
 - Credit comes from cancelling in the middle window, a venue cancellation (if the player chooses credit), or a 5 v 5 → 6 v 6 switch.
 - **It can only be spent at the venue that issued it and can't be cashed out**, like Playtomic's club wallets.
