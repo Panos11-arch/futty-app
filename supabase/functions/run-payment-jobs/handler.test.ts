@@ -44,7 +44,9 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlements_due', []);
-  db.respond('booking_side_b_lapse_due', 0);
+  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_auto_cancel_due']) {
+    db.respond(fn, 0);
+  }
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
@@ -546,4 +548,22 @@ Deno.test('a failing side B lapse step never stops the other jobs', async () => 
 
   strictEqual(summary.sideBLapsed, 0);
   strictEqual(db.calls.some((c) => c.fn === 'money_releases_due'), true, 'the release queue still runs');
+});
+
+// Booking v2 (B1c part 2a): no side B 24 hours before kickoff asks the lone
+// captain to choose; no choice by 6 hours before cancels free, and the
+// release step gives the money back in the same run.
+Deno.test('asks for the no-opponent choice and cancels free after the cut-off, before the release step', async () => {
+  const { db, deps } = setup();
+  db.respond('booking_no_opponent_due', 1);
+  db.respond('booking_no_opponent_auto_cancel_due', 2);
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.noOpponent, 1);
+  strictEqual(summary.noOpponentCancelled, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('booking_no_opponent_due') < order.indexOf('booking_no_opponent_auto_cancel_due'), true);
+  strictEqual(order.indexOf('booking_no_opponent_auto_cancel_due') < order.indexOf('bookings_with_money_to_release'), true,
+    'cancelled bookings are released in the same run');
 });
