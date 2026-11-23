@@ -3,7 +3,8 @@ import path from 'node:path';
 
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
 import { E2E_VENUE } from './config';
-import { connectAccountKey, connectAccountParams, readSeedEnv, seedMain, stripeRest } from './seed';
+import { startingLevelOffered } from '../../lib/match/levels';
+import { connectAccountKey, connectAccountParams, e2eStartingLevel, readSeedEnv, seedMain, stripeRest } from './seed';
 
 const jwt = (claims: Record<string, unknown>) =>
   `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
@@ -129,5 +130,31 @@ describe('check-profile: the workflow’s first job', () => {
     expect(checkProfile(JSON.stringify(json)).join(' ')).toMatch(/EXPO_PUBLIC_E2E/);
     json.build['e2e-test'].env.EXPO_PUBLIC_E2E = '0';
     expect(checkProfile(JSON.stringify(json)).join(' ')).toMatch(/EXPO_PUBLIC_E2E/);
+  });
+});
+
+describe('a starting level for each test login', () => {
+  // Home opens the five starting questions for a player with no level once
+  // the server answers; on a slow simulator that's after the flow has moved
+  // on, so the questions slid over Home and "home-screen is visible" failed.
+  it('is a questionnaire level, so Home never offers the questions', () => {
+    const row = e2eStartingLevel('user-1');
+    expect(row).toEqual({
+      profile_id: 'user-1',
+      level: 4,
+      provisional: true,
+      reliability_pct: 0,
+      competitive_matches: 0,
+      source: 'questionnaire',
+    });
+    expect(
+      startingLevelOffered({
+        level: row.level,
+        provisional: row.provisional,
+        reliabilityPct: row.reliability_pct,
+        competitiveMatches: row.competitive_matches,
+        source: row.source,
+      })
+    ).toBe(false);
   });
 });
