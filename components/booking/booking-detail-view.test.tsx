@@ -5,6 +5,7 @@ import { BookingDetailView, OLD_RULES_WORDS, type BookingDetailViewProps } from 
 import { loadWithFile } from '@/components/ui/test-utils';
 import type { BookingDetailData } from '@/lib/booking-detail';
 import { bookerDetail, mySpotQuote, playerDetail, switchInfo, wholeTeamQuote } from '@/lib/booking-detail.fixtures';
+import { v2Fixture } from '@/lib/booking-opposition.fixtures';
 
 // The cancel sheet is a Modal: load it with the file, not in the first test.
 loadWithFile(Modal, BookingDetailView);
@@ -485,5 +486,77 @@ describe('BookingDetailView: testIDs for the Maestro tests (.maestro)', () => {
     await fireEvent.press(screen.getByTestId('booking-detail-cancel-my-spot'));
     await fireEvent.press(await screen.findByTestId('cancel-confirm'));
     expect(within(await screen.findByTestId('cancel-error')).getByText('Too late.')).toBeTruthy();
+  });
+});
+
+describe('BookingDetailView: Booking v2 (B3)', () => {
+  // A half pitch: s1 (Dimitris) on side A, s2-s4 on side B.
+  const halfV2 = (overrides: Partial<import('@/lib/booking-opposition').BookingV2Info> = {}) =>
+    v2Fixture({ roster_sides: { s1: 'a', s2: 'b', s3: 'b', s4: 'b' }, ...overrides });
+
+  it('shows the pitch name', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: halfV2() }))} />);
+    expect(within(screen.getByTestId('booking-detail-pitch')).getByText('Pitch 2')).toBeTruthy();
+  });
+
+  it('a half pitch shows both sides, their captains, how each pays and who has paid or is held', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: halfV2() }))} />);
+    const a = within(screen.getByTestId('booking-detail-side-a'));
+    expect(a.getByText('Side A · Andreas')).toBeTruthy();
+    expect(a.getByText('Pays for everyone')).toBeTruthy();
+    expect(a.getByLabelText('Held')).toBeTruthy();
+    const b = within(screen.getByTestId('booking-detail-side-b'));
+    expect(b.getByText('Side B · Bambos (Lions)')).toBeTruthy();
+    expect(b.getByText('Pays for myself')).toBeTruthy();
+    expect(b.getByLabelText('Unpaid')).toBeTruthy();
+  });
+
+  it('the roster is grouped by side', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: halfV2() }))} />);
+    expect(within(screen.getByTestId('booking-detail-roster-a')).getByTestId('roster-s1')).toBeTruthy();
+    const b = within(screen.getByTestId('booking-detail-roster-b'));
+    expect(b.getByTestId('roster-s2')).toBeTruthy();
+    expect(b.getByTestId('roster-s4')).toBeTruthy();
+  });
+
+  it('a whole pitch has no sides', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: v2Fixture({ kind: 'whole', sides: [], roster_sides: {}, opposition: null }) }))} />);
+    expect(screen.queryByTestId('booking-detail-sides')).toBeNull();
+    expect(screen.getByTestId('roster-s1')).toBeTruthy();
+  });
+
+  it('side A’s captain can invite the opposition while it is open', async () => {
+    const onInviteOpposition = jest.fn();
+    const detail = bookerDetail({ v2: halfV2({ sides: [halfV2().sides[0]], opposition: { found: false, open: true, invited: 0 } }) });
+    await render(<BookingDetailView {...props(detail, { onInviteOpposition })} />);
+    await fireEvent.press(screen.getByTestId('booking-detail-invite-opposition'));
+    expect(onInviteOpposition).toHaveBeenCalled();
+  });
+
+  it('no invite button once the opposition is found, or for side B', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: halfV2() }), { onInviteOpposition: jest.fn() })} />);
+    expect(screen.queryByTestId('booking-detail-invite-opposition')).toBeNull();
+  });
+
+  it('the no-opponent choice, with the server’s amount, when it is due', async () => {
+    const onPayWhole = jest.fn().mockResolvedValue(null);
+    const detail = bookerDetail({
+      v2: halfV2({
+        sides: [halfV2().sides[0]],
+        opposition: { found: false, open: false, invited: 1 },
+        no_opponent: { due: true, choice: null, pitch_cents: 2000, fee_cents: 275, amount_cents: 2275, choose_by: '2026-11-16T12:00:00Z' },
+      }),
+    });
+    await render(<BookingDetailView {...props(detail, { onPayWhole, onCancelFree: jest.fn() })} />);
+    await fireEvent.press(within(screen.getByTestId('booking-detail-no-opponent')).getByRole('button', { name: 'Pay €22.75 and play' }));
+    expect(onPayWhole).toHaveBeenCalled();
+  });
+
+  it('no choice before it is due', async () => {
+    const detail = bookerDetail({
+      v2: halfV2({ no_opponent: { due: false, choice: null, pitch_cents: 2000, fee_cents: 275, amount_cents: 2275, choose_by: '2026-11-16T12:00:00Z' } }),
+    });
+    await render(<BookingDetailView {...props(detail)} />);
+    expect(screen.queryByTestId('booking-detail-no-opponent')).toBeNull();
   });
 });

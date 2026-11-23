@@ -50,6 +50,16 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   saved_search_match: 'magnifyingglass',
 };
 
+/** B3 (Booking v2): opened where routeForPushData says. */
+const BOOKING_V2_TYPES = new Set([
+  'opposition_invite',
+  'no_opponent',
+  'no_opponent_reminder',
+  'opposition_found',
+  'opposition_left',
+  'opposition_lapsed',
+]);
+
 function inviteIdOf(notification: AppNotification) {
   const id = (notification.data as Record<string, unknown>).inviteId;
   return (notification.type === 'team_invite' || notification.type === 'booking_invite') && typeof id === 'string'
@@ -135,6 +145,10 @@ async function openNotification(notification: AppNotification) {
     router.push('/book');
   } else if (notification.type === 'saved_search_match') {
     // A freed slot opens Book at that venue; a game asking for players, its post.
+    router.push(routeForPushData({ ...data, type: notification.type }));
+  } else if (BOOKING_V2_TYPES.has(notification.type)) {
+    // B3 (Booking v2): an opposition invite opens side B's accept screen;
+    // the rest open the booking, where the sides and the choice are.
     router.push(routeForPushData({ ...data, type: notification.type }));
   } else if (notification.type === 'booking_cancelled') {
     router.push('/my-bookings');

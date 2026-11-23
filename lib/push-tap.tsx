@@ -18,6 +18,10 @@ import { playHref } from '@/lib/play-segments';
  *  the game and again when the vote and ratings open. */
 const POST_MATCH_FLOW_TYPES = new Set(['match_after_game', 'match_result_confirmed', 'motm_vote_open']);
 
+/** B3 (Booking v2): these open the booking, where the sides and the
+ *  no-opponent choice are. */
+const BOOKING_V2_TYPES = new Set(['no_opponent', 'no_opponent_reminder', 'opposition_found', 'opposition_left', 'opposition_lapsed']);
+
 // A push that arrives while the app is open shows as a banner (and in the
 // notification list), silently, so it can be tapped like any other.
 if (Platform.OS !== 'web') {
@@ -56,7 +60,15 @@ export function routeForPushData(raw: unknown): Href {
   }
   if (matchId) return { pathname: '/match/[id]', params: { id: matchId } };
 
+  // B3 (Booking v2): an opposition invite opens side B's accept screen.
+  const inviteId = stringId(data, 'inviteId');
+  if (data.type === 'opposition_invite' && inviteId) return { pathname: '/opposition-invite', params: { inviteId } };
+
   const bookingId = stringId(data, 'bookingId');
+  // B3: a half pitch's opposition and no-opponent choice are on the booking.
+  if (bookingId && typeof data.type === 'string' && BOOKING_V2_TYPES.has(data.type)) {
+    return { pathname: '/booking/[id]', params: { id: bookingId } };
+  }
   // P6e: the venue's offered player opens the booking, where the booker answers.
   if (bookingId && isVenuePlayerBookerType(data.type)) return { pathname: '/booking/[id]', params: { id: bookingId } };
   // My Bookings doesn't pick out one booking from the param yet (Panos's screen).

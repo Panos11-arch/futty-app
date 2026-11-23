@@ -30,6 +30,7 @@ import {
 } from '@/lib/booking-detail';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { chooseNoOpponent, pullOutOfGipedo } from '@/lib/booking-gipedo';
+import { cancelFree, payOtherHalf } from '@/lib/booking-opposition';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
 import { switchPlayersPerSide } from '@/lib/booking-switch';
@@ -46,7 +47,7 @@ export default function BookingDetailScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const load = useCallback(() => fetchBookingDetail(id), [id]);
   const { state, reload } = useLoad(id || null, load);
-  const { handleNextAction } = useStripe();
+  const { handleNextAction, initPaymentSheet, presentPaymentSheet } = useStripe();
   const [notice, setNotice] = useState<string | null>(null);
   const [inCalendar, setInCalendar] = useState(() => (id ? isBookingInCalendar(id) : false));
   const [choosingMaps, setChoosingMaps] = useState(false);
@@ -128,6 +129,18 @@ export default function BookingDetailScreen() {
     return null;
   }
 
+  // B3 (Booking v2): the no-opponent choice. "Pay the whole pitch and play"
+  // counts once Stripe's webhook says it's paid; the screen reloads.
+  async function payWhole(): Promise<string | null> {
+    const outcome = await payOtherHalf(id, { init: (p) => initPaymentSheet(p), present: () => presentPaymentSheet() });
+    if (outcome.status === 'error') return gipedoAction(async () => outcome.message);
+    if (outcome.status === 'paid') {
+      setNotice('Paid. Your game goes ahead on the whole pitch.');
+      return gipedoAction(async () => null);
+    }
+    return null;
+  }
+
   async function invite(username: string): Promise<string | null> {
     const { error } = await addBookingPlayer(id, username);
     return error ? describeBookingErrorMessage(error.message) : null;
@@ -176,6 +189,9 @@ export default function BookingDetailScreen() {
         onSwitch={switchFormat}
         onAnswerVenuePlayer={(offerId, accept) => venuePlayerAction(() => answerVenuePlayer(offerId, accept))}
         onRemoveVenuePlayer={(offerId) => venuePlayerAction(() => removeVenuePlayer(offerId))}
+        onInviteOpposition={() => router.push({ pathname: '/booking-after-pay', params: { bookingId: id } })}
+        onPayWhole={payWhole}
+        onCancelFree={() => gipedoAction(() => cancelFree(id))}
         weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
         checkIn={id ? <CheckInSection bookingId={id} /> : null}
         squadNeed={

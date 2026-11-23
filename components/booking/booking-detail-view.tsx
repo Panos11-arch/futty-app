@@ -21,6 +21,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { GipedoPanel } from '@/components/booking/gipedo-panel';
+import { NoOpponentPanel } from '@/components/booking/no-opponent-panel';
 import { SwitchFormat } from '@/components/booking/switch-format';
 import { colors, space } from '@/constants/futty-theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
@@ -39,7 +40,8 @@ import {
   type DetailCancelScope,
   type QuoteResult,
 } from '@/lib/booking-detail';
-import { slotLabel, useNow, type LoadState } from '@/lib/booking-search';
+import { rosterBySide, sideRow } from '@/lib/booking-opposition';
+import { slotLabel, useNow, type LoadState, type RosterEntry } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
 
 export type { ConfirmResult, DetailCancelScope, QuoteResult };
@@ -85,6 +87,11 @@ export type BookingDetailViewProps = {
    *  removes an accepted one. Each resolves to an error message, or null. */
   onAnswerVenuePlayer?: (offerId: string, accept: boolean) => Promise<string | null>;
   onRemoveVenuePlayer?: (offerId: string) => Promise<string | null>;
+  /** B3 (Booking v2, a half pitch): side A's captain opens Invite opposition. */
+  onInviteOpposition?: () => void;
+  /** B3: the no-opponent choice. Each resolves to an error message, or null. */
+  onPayWhole?: () => Promise<string | null>;
+  onCancelFree?: () => Promise<string | null>;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -142,6 +149,9 @@ function BookingDetailReady({
   checkIn,
   onAnswerVenuePlayer,
   onRemoveVenuePlayer,
+  onInviteOpposition,
+  onPayWhole,
+  onCancelFree,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -246,6 +256,32 @@ function BookingDetailReady({
   const bookingPill = PILL_FOR_BOOKING[booking.status];
   const pending = meActive && me.status === 'pending';
   const gipedo = detail.gipedo ?? null;
+  // B3: a Booking v2 booking's pitch, sides and no-opponent choice.
+  const v2 = detail.v2 ?? null;
+  const groups = v2?.kind === 'half' ? rosterBySide(roster, v2.roster_sides) : null;
+  const rosterRows = (entries: RosterEntry[]) =>
+    entries.map((entry) => {
+      const row = rosterRow(entry, isBooker, Boolean(gipedo));
+      return (
+        <ListRow
+          key={entry.share_id}
+          testID={`roster-${entry.share_id}`}
+          title={row.title}
+          subtitle={row.subtitle}
+          leading={{ avatar: { name: entry.name ?? entry.username ?? row.title } }}
+          trailing={
+            <View style={styles.trailing}>
+              {row.amount ? (
+                <Text variant="callout" tabular>
+                  {row.amount}
+                </Text>
+              ) : null}
+              <StatusPill status={row.pill} />
+            </View>
+          }
+        />
+      );
+    });
   const payLabel = gipedo?.my_side ? `Hold my card: ${formatEuros(me?.amount_cents ?? 0)}` : `Pay my share: ${formatEuros(me?.amount_cents ?? 0)}`;
 
   return (
@@ -261,6 +297,13 @@ function BookingDetailReady({
           <Text variant="body" tone="inkMuted">
             {`${booking.format} · ${booking.players_per_side} v ${booking.players_per_side}`}
           </Text>
+          {v2?.pitch_label ? (
+            <View testID="booking-detail-pitch">
+              <Text variant="body" tone="inkMuted">
+                {v2.pitch_label}
+              </Text>
+            </View>
+          ) : null}
           {bookingPill ? (
             // The status as a testID for the Maestro tests.
             <View testID={`booking-detail-status-${booking.status}`}>
@@ -296,6 +339,39 @@ function BookingDetailReady({
             onPullOut={onGipedoPullOut ?? (async () => null)}
             onChoose={onGipedoChoose ?? (async () => null)}
           />
+        ) : null}
+
+        {live && v2?.no_opponent?.due && onPayWhole && onCancelFree ? (
+          <NoOpponentPanel testID="booking-detail-no-opponent" info={v2.no_opponent} onPayWhole={onPayWhole} onCancelFree={onCancelFree} />
+        ) : null}
+
+        {v2?.kind === 'half' && v2.sides.length > 0 ? (
+          <View style={styles.section} testID="booking-detail-sides">
+            <SectionHeader title="Sides" />
+            <View style={styles.list}>
+              {v2.sides.map((side) => {
+                const row = sideRow(side);
+                return (
+                  <ListRow
+                    key={side.side}
+                    testID={`booking-detail-side-${side.side}`}
+                    title={row.title}
+                    subtitle={row.subtitle}
+                    trailing={row.pill ? <StatusPill status={row.pill} /> : undefined}
+                  />
+                );
+              })}
+            </View>
+            {live && v2.captain_of === 'a' && v2.opposition?.open && onInviteOpposition ? (
+              <Button
+                testID="booking-detail-invite-opposition"
+                label="Invite opposition"
+                variant="secondary"
+                onPress={onInviteOpposition}
+                fullWidth
+              />
+            ) : null}
+          </View>
         ) : null}
 
         {pending ? (
@@ -334,28 +410,26 @@ function BookingDetailReady({
             {`${spotsTaken(detail)} of ${booking.capacity} spots taken`}
           </Text>
           <View style={styles.list}>
-            {roster.map((entry) => {
-              const row = rosterRow(entry, isBooker, Boolean(gipedo));
-              return (
-                <ListRow
-                  key={entry.share_id}
-                  testID={`roster-${entry.share_id}`}
-                  title={row.title}
-                  subtitle={row.subtitle}
-                  leading={{ avatar: { name: entry.name ?? entry.username ?? row.title } }}
-                  trailing={
-                    <View style={styles.trailing}>
-                      {row.amount ? (
-                        <Text variant="callout" tabular>
-                          {row.amount}
-                        </Text>
-                      ) : null}
-                      <StatusPill status={row.pill} />
-                    </View>
-                  }
-                />
-              );
-            })}
+            {groups ? (
+              <>
+                <View testID="booking-detail-roster-a" style={styles.list}>
+                  <Text variant="callout" tone="inkMuted">
+                    Side A
+                  </Text>
+                  {rosterRows(groups.a)}
+                </View>
+                {groups.b.length > 0 ? (
+                  <View testID="booking-detail-roster-b" style={styles.list}>
+                    <Text variant="callout" tone="inkMuted">
+                      Side B
+                    </Text>
+                    {rosterRows(groups.b)}
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              rosterRows(roster)
+            )}
             {venuePlayers.map((player) => (
               <View key={player.id ?? player.name} testID={`venue-player-${player.id ?? player.name}`}>
                 <ListRow

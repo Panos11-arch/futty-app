@@ -92,8 +92,19 @@ env:
       PAY_LABEL: 'Pay €65\.50'
       PAY_AMOUNT: '65\.50'
 
+# ---- The screen after paying (B3) ----------------------------------------
+# Invite friends and publish are there; this journey goes on to the booking.
+- extendedWaitUntil:
+    visible:
+      id: after-pay-done
+    timeout: 60000
+- assertNotVisible:
+    id: checkout-error
+- tapOn:
+    id: after-pay-done
+
 # ---- Confirmed by the webhook --------------------------------------------
-# Paying opens the booking. Its status turns confirmed only when Stripe's
+# "Go to booking" opens the booking. Its status turns confirmed only when Stripe's
 # webhook says the payment is held, so open it again from My bookings until
 # it does: up to 6 tries, about 3 minutes.
 - extendedWaitUntil:

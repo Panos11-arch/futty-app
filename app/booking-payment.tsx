@@ -7,7 +7,7 @@ import { CheckoutView, type CheckoutPayChoice } from '@/components/booking/check
 import { PayShareView } from '@/components/booking/pay-share-view';
 import { WeatherStrip } from '@/components/venue/weather-strip';
 import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
-import { afterPayment } from '@/lib/booking-navigation';
+import { afterBooking, afterPayment } from '@/lib/booking-navigation';
 import { fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
 import { fetchCheckoutData, fetchFreePitches } from '@/lib/booking-v2';
 import { useReloadOnReturn } from '@/lib/use-owed';
@@ -89,8 +89,11 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
     const outcome = await payForSlot({ slot, mode, kind, pitchIds, pay, bookingId }, sheet);
     setPaying(false);
     setBookingId(outcome.bookingId);
-    if (outcome.status === 'paid') paid(outcome.bookingId);
-    else if (outcome.status === 'error') {
+    if (outcome.status === 'paid') {
+      // B3: on to the screen after paying (invite friends, the opposition, publish).
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      afterBooking(outcome.bookingId, router);
+    } else if (outcome.status === 'error') {
       failed();
       setError(outcome.message);
       // "Pitch 2 is no longer free. Pick another.": the list without it.

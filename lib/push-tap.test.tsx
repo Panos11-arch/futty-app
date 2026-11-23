@@ -73,6 +73,23 @@ describe('routeForPushData', () => {
     }
   );
 
+  // B3 (Booking v2): an opposition invite opens side B's accept screen; the
+  // rest about a half pitch open its booking, where the sides and the
+  // no-opponent choice are.
+  it('an opposition invite opens side B’s accept screen', () => {
+    expect(routeForPushData({ type: 'opposition_invite', bookingId: 'b1', inviteId: 'i1', teamId: 't1' })).toEqual({
+      pathname: '/opposition-invite',
+      params: { inviteId: 'i1' },
+    });
+  });
+
+  it.each(['no_opponent', 'no_opponent_reminder', 'opposition_found', 'opposition_left', 'opposition_lapsed'])(
+    '%s opens the booking',
+    (type) => {
+      expect(routeForPushData({ type, bookingId: 'b1' })).toEqual({ pathname: '/booking/[id]', params: { id: 'b1' } });
+    },
+  );
+
   it('a post-match type without a match id falls through as before', () => {
     expect(routeForPushData({ type: 'match_after_game' })).toBe('/notifications');
     expect(routeForPushData({ type: 'motm_vote_open', bookingId: 'b1' })).toEqual({

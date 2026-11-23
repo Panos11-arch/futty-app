@@ -26,6 +26,28 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
       return 'Cash is for a whole pitch only.';
     case 'half_pitch_not_available':
       return "Half pitches aren't available yet. Book the whole pitch.";
+    // Booking v2 after paying (B3): the opposition, publishing.
+    case 'opposition_found':
+      return 'Opposition found. Another captain accepted first.';
+    case 'opposition_closed':
+      return ruleText(
+        (r) => `Invites close ${hoursText(r.gipedo_opponent_hours)} before kickoff.`,
+        'Invites are closed for this game.',
+      );
+    case 'not_invited':
+      return "You weren't invited to this game.";
+    case 'not_half_pitch':
+      return 'Only a half pitch has an opposition.';
+    case 'booking_not_confirmed':
+      return 'Your booking is still being confirmed. Try again in a minute.';
+    case 'side_not_paid':
+      return 'Pay for your side first, then publish.';
+    case 'booking_full':
+      return 'Every spot is taken.';
+    case 'not_your_post':
+      return "That's not your post.";
+    case 'post_not_found':
+      return 'That post is already gone.';
     case 'slot_full':
       return 'That slot just filled up — pick another one.';
     case 'slot_in_past':

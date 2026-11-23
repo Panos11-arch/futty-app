@@ -33,7 +33,9 @@ begin
   v := public.booking_detail_modes(p_booking)
        || jsonb_build_object('switch', public.booking_switch_info(p_booking, p_user), 'gipedo', null,
                              -- P6e: no venue offers in these games.
-                             'venue_players', '[]'::jsonb);
+                             'venue_players', '[]'::jsonb,
+                             -- B3: bookings made before Booking v2 have no 'v2'.
+                             'v2', null);
   perform tests.act_as_postgres();
   return v;
 end;
