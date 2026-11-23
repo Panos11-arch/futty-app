@@ -75,7 +75,7 @@
         "expo-calendar",
         {
           "calendarPermission": "Allow $(PRODUCT_NAME) to add your Futty games to your calendar and keep them up to date when a booking moves or is cancelled.",
-          "remindersPermission": "Futty doesn't use your reminders. iOS asks every calendar app to include this line."
+          "remindersPermission": "Futty only adds your games to your calendar. It never reads or changes your reminders."
         }
       ],
       [
@@ -102,7 +102,6 @@
       ],
       "@react-native-community/datetimepicker",
       "@sentry/react-native",
-      "./plugins/withCrashReasonFile",
       [
         "expo-alternate-app-icons",
         [
