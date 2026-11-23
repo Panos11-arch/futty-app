@@ -123,6 +123,24 @@ export function connectAccountParams(): Record<string, string> {
 /** idempotencyKeys.connectAccount in supabase/functions/_shared/money.ts. */
 export const connectAccountKey = (venueId: string) => `connect-account-${venueId}-test`;
 
+/**
+ * Each test login's starting level: a questionnaire level, so Home never
+ * opens the five starting questions for it. Home opens them once the server
+ * answers; on a slow simulator that was after the flow had moved on, so the
+ * questions slid over Home and "home-screen is visible" failed. The flows
+ * still skip them if they ever show.
+ */
+export function e2eStartingLevel(profileId: string) {
+  return {
+    profile_id: profileId,
+    level: 4,
+    provisional: true,
+    reliability_pct: 0,
+    competitive_matches: 0,
+    source: 'questionnaire' as const,
+  };
+}
+
 export type SeedOutput = { slot_day: string; ios_start: string; android_start: string; venue_id: string };
 
 export type SeedDeps = {
@@ -174,6 +192,11 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     check(
       await admin.from('profiles').update({ username: user.username, full_name: user.fullName }).eq('id', id),
       `setting ${user.email}'s username`,
+    );
+    // Kept if it's already there (a match may have moved it).
+    check(
+      await admin.from('player_levels').upsert(e2eStartingLevel(id), { onConflict: 'profile_id', ignoreDuplicates: true }),
+      `giving ${user.email} a starting level`,
     );
   }
   const e2eUserIds = new Set(ids.values());
