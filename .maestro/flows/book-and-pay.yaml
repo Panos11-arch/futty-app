@@ -68,6 +68,7 @@ env:
     visible:
       id: checkout-who-pay-all
     timeout: 30000
+- runFlow: ../subflows/weather-settled.yaml
 - tapOn:
     id: checkout-who-pay-all
 - assertVisible:

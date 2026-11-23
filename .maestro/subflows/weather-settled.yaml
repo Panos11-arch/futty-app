@@ -1,0 +1,9 @@
+# Waits until the weather strip has loaded. While the forecast loads, a
+# two-line placeholder sits above the controls; when it goes, everything
+# under it moves, and a tap aimed before that lands on the wrong spot.
+appId: com.panosalepis.futtyapp
+---
+- extendedWaitUntil:
+    notVisible:
+      id: weather-strip-loading
+    timeout: 30000

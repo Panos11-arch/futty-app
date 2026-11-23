@@ -30,6 +30,7 @@ env:
     timeout: 20000
 
 # ---- The quote first ------------------------------------------------------
+- runFlow: ../subflows/weather-settled.yaml
 - scrollUntilVisible:
     element:
       id: booking-detail-cancel-whole-team

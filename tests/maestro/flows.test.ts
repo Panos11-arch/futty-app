@@ -80,6 +80,7 @@ describe('.maestro', () => {
       'subflows/open-tab.yaml',
       'subflows/sign-in.yaml',
       'subflows/stripe-test-card.yaml',
+      'subflows/weather-settled.yaml',
     ]);
   });
 
@@ -116,6 +117,40 @@ describe('the sign-in subflow gets past iOS', () => {
     const home = subflow.indexOf('id: home-screen');
     expect(dismiss).toBeGreaterThan(submit);
     expect(dismiss).toBeLessThan(home);
+  });
+});
+
+describe('taps wait for the weather strip', () => {
+  // Checkout and the booking detail show a two-line placeholder while the
+  // forecast loads, then the strip (or nothing), and everything under it
+  // moves. A tap aimed before that lands where the button used to be: the
+  // preview run's "Pay for everyone" tap chose nothing (23 November).
+  const order = (file: string, ...needles: string[]) => {
+    const text = read(path.join(maestroDir, file));
+    return needles.map((n) => text.indexOf(n));
+  };
+
+  it('weather-settled waits until the placeholder has gone', () => {
+    const steps = loadAll(read(path.join(maestroDir, 'subflows', 'weather-settled.yaml')))[1];
+    expect(steps).toEqual([{ extendedWaitUntil: { notVisible: { id: 'weather-strip-loading' }, timeout: 30000 } }]);
+  });
+
+  it('book-and-pay: before choosing who pays', () => {
+    const [seen, settled, tap] = order(
+      'flows/book-and-pay.yaml',
+      'id: checkout-who-pay-all',
+      'weather-settled.yaml',
+      'tapOn:\n    id: checkout-who-pay-all',
+    );
+    expect(seen).toBeGreaterThan(-1);
+    expect(settled).toBeGreaterThan(seen);
+    expect(tap).toBeGreaterThan(settled);
+  });
+
+  it('cancel: before scrolling to Cancel', () => {
+    const [settled, scroll] = order('flows/cancel.yaml', 'weather-settled.yaml', 'id: booking-detail-cancel-whole-team');
+    expect(settled).toBeGreaterThan(-1);
+    expect(scroll).toBeGreaterThan(settled);
   });
 });
 
