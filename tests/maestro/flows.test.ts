@@ -154,29 +154,21 @@ describe('taps wait for the weather strip', () => {
   });
 });
 
-describe("Stripe's payment sheet on iOS", () => {
-  // The card fields use the number pad, which has no key that closes it, so
-  // Maestro's hideKeyboard fails on iOS ("Couldn't hide the keyboard",
-  // preview run, 23 November), and Maestro can't find iOS's Done over the
-  // pad either. Stripe's sheet ends editing on a tap anywhere that isn't a
-  // control (BottomSheetViewController.didTapAnywhere), so tap its heading.
+describe("Stripe's payment sheet", () => {
+  type Flow = { when?: { platform?: string; visible?: string; notVisible?: string }; commands?: Record<string, unknown>[] };
   const steps = () => loadAll(read(path.join(maestroDir, 'subflows', 'stripe-test-card.yaml')))[1] as Record<string, unknown>[];
-
-  it('hides the keyboard only on Android, and taps the sheet\'s heading on iOS', () => {
-    expect(steps().some((s) => 'hideKeyboard' in s)).toBe(false);
-    const byPlatform = steps()
-      .filter((s) => 'runFlow' in s)
-      .map((s) => s.runFlow as { when?: { platform?: string }; commands?: unknown[] })
-      .filter((f) => f.when?.platform);
-    expect(byPlatform.find((f) => f.when!.platform === 'Android')?.commands).toEqual(['hideKeyboard']);
-    expect(byPlatform.find((f) => f.when!.platform === 'iOS')).toEqual({ when: { platform: 'iOS' }, commands: [{ tapOn: 'Card information' }] });
-  });
+  const branch = (platform: string) =>
+    steps()
+      .map((s) => s.runFlow as Flow | undefined)
+      .find((f) => f?.when?.platform === platform && !f.when.visible && !f.when.notVisible)!.commands!;
+  const inner = (commands: Record<string, unknown>[], key: 'visible' | 'notVisible') =>
+    commands.map((c) => c.runFlow as Flow | undefined).find((f) => f?.when?.[key])!;
 
   // On Android the sheet lists the ways to pay (Card, Amazon Pay, Satispay)
   // and opens the card form only after "Card" (preview run, 23 November).
   it('opens the card form from the list of ways to pay, when the sheet shows one', () => {
     const list = steps()
-      .map((s) => s.runFlow as { when?: { visible?: string }; commands?: unknown[] } | undefined)
+      .map((s) => s.runFlow as Flow | undefined)
       .find((f) => f?.when?.visible === 'Card');
     expect(list?.commands).toEqual([{ tapOn: 'Card' }]);
     const names = steps().map((s) => JSON.stringify(s));
@@ -186,18 +178,51 @@ describe("Stripe's payment sheet on iOS", () => {
     expect(openCard).toBeLessThan(typed);
   });
 
-  it("scrolls to the sheet's Pay button before tapping it", () => {
-    const names = steps().map((s) => Object.keys(s)[0]);
-    const scroll = names.lastIndexOf('scrollUntilVisible');
-    const tap = names.lastIndexOf('tapOn');
-    expect(scroll).toBeGreaterThan(-1);
-    const scrollStep = steps()[scroll].scrollUntilVisible as { element: { text: string }; visibilityPercentage?: number };
-    expect(scrollStep.element.text).toBe('${PAY_LABEL}');
-    // Android's Pay sits at the very bottom of the screen and never counts
-    // as 100% visible (the default), so scrollUntilVisible gave up with
-    // "No visible element found" (preview run, 23 November).
-    expect(scrollStep.visibilityPercentage).toBe(50);
-    expect(tap).toBeGreaterThan(scroll);
+  it('pays in a branch per platform, with no bare hideKeyboard or Pay tap outside them', () => {
+    const top = steps().map((s) => Object.keys(s)[0]);
+    expect(top).not.toContain('hideKeyboard');
+    expect(top).not.toContain('scrollUntilVisible');
+    expect(JSON.stringify(steps().filter((s) => 'tapOn' in s))).not.toContain('PAY');
+  });
+
+  // iOS's number pad has no key that closes it, so hideKeyboard fails, and
+  // Maestro can't find iOS's Done over the pad. Stripe's sheet ends editing
+  // on a tap anywhere that isn't a control (BottomSheetViewController.
+  // didTapAnywhere), so tap its heading, then scroll to Pay (half visible is
+  // enough) and tap it. This path paid on the iPhone (preview run, 23 November).
+  it('iOS: taps the heading, scrolls to Pay and taps it', () => {
+    const ios = branch('iOS');
+    expect(ios[0]).toEqual({ tapOn: 'Card information' });
+    expect(ios[1]).toEqual({
+      scrollUntilVisible: { element: { text: '${PAY_LABEL}' }, direction: 'DOWN', visibilityPercentage: 50, timeout: 15000 },
+    });
+    expect(ios[2]).toEqual({ tapOn: { text: '${PAY_LABEL}', retryTapIfNoChange: true } });
+  });
+
+  // Android: Stripe's Pay was on screen but Maestro never matched
+  // "Pay €65\.50" (preview runs, 23 November). Scroll to the end of the
+  // sheet, tap a looser match on the amount, and if even that isn't found,
+  // tap the button under the card-use notice that sits right above it.
+  it('Android: hides the keyboard, scrolls to the end and taps Pay by its amount, else under the notice', () => {
+    const android = branch('Android');
+    expect(android[0]).toBe('hideKeyboard');
+    const pay = '.*Pay.*${PAY_AMOUNT}.*';
+    expect(inner(android, 'visible')).toEqual({
+      when: { visible: pay },
+      commands: [{ tapOn: { text: pay, retryTapIfNoChange: true } }],
+    });
+    expect(inner(android, 'notVisible')).toEqual({
+      when: { notVisible: pay },
+      commands: [{ tapOn: { below: '.*By providing your card information.*', retryTapIfNoChange: true } }],
+    });
+    const order = android.map((c) => JSON.stringify(c));
+    expect(order.findIndex((c) => c.includes('scroll'))).toBeLessThan(order.findIndex((c) => c.includes('visible')));
+  });
+
+  it('book-and-pay passes the same amount as the label', () => {
+    const text = read(path.join(maestroDir, 'flows', 'book-and-pay.yaml'));
+    expect(text).toContain("PAY_LABEL: 'Pay €65\\.50'");
+    expect(text).toContain("PAY_AMOUNT: '65\\.50'");
   });
 });
 

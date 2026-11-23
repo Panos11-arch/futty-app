@@ -81,6 +81,7 @@ env:
     file: ../subflows/stripe-test-card.yaml
     env:
       PAY_LABEL: 'Pay €65\.50'
+      PAY_AMOUNT: '65\.50'
 
 # ---- Confirmed by the webhook --------------------------------------------
 # Paying opens the booking. Its status turns confirmed only when Stripe's
