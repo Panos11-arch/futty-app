@@ -4,9 +4,19 @@
 # the sheet's button, e.g. 'Pay €65\.50' (a regular expression).
 appId: com.panosalepis.futtyapp
 ---
+# The sheet opens either on the card form or (Android) on a list of ways to
+# pay (Card, Amazon Pay, Satispay); from the list, "Card" opens the form.
+- extendedWaitUntil:
+    visible: 'Card|.*Card number.*'
+    timeout: 30000
+- runFlow:
+    when:
+      visible: 'Card'
+    commands:
+      - tapOn: 'Card'
 - extendedWaitUntil:
     visible: '.*Card number.*'
-    timeout: 30000
+    timeout: 15000
 - tapOn: '.*Card number.*'
 # Focus moves on by itself once each field is complete.
 - inputText: '4242424242424242'
@@ -19,8 +29,10 @@ appId: com.panosalepis.futtyapp
     commands:
       - tapOn: '.*(ZIP|Postal).*'
       - inputText: '10001'
-# iOS's number pad has no key that closes it, so hideKeyboard fails there;
-# iOS shows a Done button over the pad instead. Android closes it with Back.
+# iOS's number pad has no key that closes it, so hideKeyboard fails there,
+# and Maestro can't find iOS's Done over the pad. Stripe's iOS sheet ends
+# editing on a tap anywhere that isn't a control, so tap its heading.
+# Android closes the keyboard with Back.
 - runFlow:
     when:
       platform: Android
@@ -29,9 +41,8 @@ appId: com.panosalepis.futtyapp
 - runFlow:
     when:
       platform: iOS
-      visible: 'Done'
     commands:
-      - tapOn: 'Done'
+      - tapOn: 'Card information'
 # Works with the keyboard up or down: the sheet scrolls its button into view.
 - scrollUntilVisible:
     element:
