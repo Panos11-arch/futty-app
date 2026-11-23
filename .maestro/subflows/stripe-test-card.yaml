@@ -44,10 +44,13 @@ appId: com.panosalepis.futtyapp
     commands:
       - tapOn: 'Card information'
 # Works with the keyboard up or down: the sheet scrolls its button into view.
+# On Android it sits at the very bottom of the screen and never counts as
+# 100% visible (the default), so half is enough.
 - scrollUntilVisible:
     element:
       text: ${PAY_LABEL}
     direction: DOWN
+    visibilityPercentage: 50
     timeout: 15000
 # The checkout's own button reads the same and sits under the sheet; the
 # sheet is on top, so the tap lands on Stripe's button.

@@ -100,6 +100,12 @@ env:
           visible:
             id: booking-detail-status-confirmed
           timeout: 15000
-- assertVisible:
-    id: booking-detail-cancel-whole-team
+# Cancel sits below the first screen (under the players and the invite), and
+# assertVisible doesn't scroll.
+- runFlow: ../subflows/weather-settled.yaml
+- scrollUntilVisible:
+    element:
+      id: booking-detail-cancel-whole-team
+    direction: DOWN
+    timeout: 20000
 - takeScreenshot: book-and-pay-${PLATFORM}
