@@ -57,18 +57,16 @@ env:
     visible:
       id: booking-detail-notice
     timeout: 30000
+# The words themselves: on iOS the banner's text isn't a child of the
+# notice's view in the tree Maestro reads, so containsDescendants misses it.
 - assertVisible:
-    id: booking-detail-notice
-    containsDescendants:
-      - text: 'The booking is cancelled\.'
+    text: 'The booking is cancelled\.'
 - extendedWaitUntil:
     visible:
       id: booking-detail-cancelled
     timeout: 30000
 - assertVisible:
-    id: booking-detail-cancelled
-    containsDescendants:
-      - text: 'This booking was cancelled\.'
+    text: 'This booking was cancelled\.'
 - assertNotVisible:
     id: cancel-error
 - takeScreenshot: cancel-${PLATFORM}
