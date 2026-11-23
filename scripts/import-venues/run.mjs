@@ -5,6 +5,7 @@
 // README.md. Needs Node 24 (it runs venue-import.ts directly).
 //
 //   node scripts/import-venues/run.mjs --venues <venues.csv> --items <venue_items.csv>
+//        [--pitches <pitches.csv>] [--combinations <combinations.csv>] [--prices <prices.csv>]
 //        [--photos <photos folder>] [--mapping <mapping.json>] [--out <import.sql>]
 //        [--allow-remote]
 //
@@ -27,6 +28,9 @@ const { values: args } = parseArgs({
   options: {
     venues: { type: 'string' },
     items: { type: 'string' },
+    pitches: { type: 'string' },
+    combinations: { type: 'string' },
+    prices: { type: 'string' },
     photos: { type: 'string' },
     mapping: { type: 'string' },
     out: { type: 'string' },
@@ -35,7 +39,10 @@ const { values: args } = parseArgs({
 });
 
 if (!args.venues || !args.items) {
-  console.error('Usage: node scripts/import-venues/run.mjs --venues <venues.csv> --items <venue_items.csv> [--photos <dir>] [--mapping <file>] [--out <file>]');
+  console.error(
+    'Usage: node scripts/import-venues/run.mjs --venues <venues.csv> --items <venue_items.csv> ' +
+      '[--pitches <file>] [--combinations <file>] [--prices <file>] [--photos <dir>] [--mapping <file>] [--out <file>]',
+  );
   process.exit(2);
 }
 
@@ -58,6 +65,9 @@ if (photosDir && existsSync(photosDir)) {
 const plan = buildImport({
   venues: readCsv(args.venues),
   items: readCsv(args.items),
+  pitches: args.pitches ? readCsv(args.pitches) : [],
+  combinations: args.combinations ? readCsv(args.combinations) : [],
+  prices: args.prices ? readCsv(args.prices) : [],
   venuePhotos,
   itemPhotos: photosDir ? listFiles(path.join(photosDir, 'items')) : [],
   mapping: args.mapping ? JSON.parse(readFileSync(args.mapping, 'utf8')) : {},
@@ -110,13 +120,18 @@ const counts = plan.venues.reduce(
     amenities: n.amenities + v.amenities.length,
     photos: n.photos + v.photos.length,
     items: n.items + v.items.length,
+    pitches: n.pitches + (v.pitches?.length ?? 0),
+    combinations: n.combinations + (v.combinations?.length ?? 0),
+    prices: n.prices + (v.prices?.length ?? 0),
   }),
-  { hours: 0, amenities: 0, photos: 0, items: 0 },
+  { hours: 0, amenities: 0, photos: 0, items: 0, pitches: 0, combinations: 0, prices: 0 },
 );
 console.log(
   `${plan.venues.length} venue(s), ${counts.hours} day(s) of hours, ${counts.amenities} amenities, ` +
-    `${counts.photos} photo(s), ${counts.items} item(s). SQL written to ${out}.`,
+    `${counts.photos} photo(s), ${counts.items} item(s), ${counts.pitches} pitch(es), ` +
+    `${counts.combinations} combination(s), ${counts.prices} price(s). SQL written to ${out}.`,
 );
+console.log('Running the SQL prints a NOTICE for every pitch or combination the database keeps as it is (read them).');
 if (plan.report.length > 0) {
   console.log(`\nNot imported (${plan.report.length}):`);
   for (const line of plan.report) console.log(`  - ${line}`);

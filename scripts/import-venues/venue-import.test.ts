@@ -221,10 +221,10 @@ describe('buildImport', () => {
     );
   });
 
-  it('doesn\'t import the price columns and says so', () => {
+  it('doesn\'t import the old price columns on the Venues tab and says so (prices come from the Prices tab)', () => {
     const plan = buildImport(input({ venues: [venueRow({ price_peak_eur_per_hour: '50', price_offpeak_eur_per_hour: '40' })] }));
     expect(JSON.stringify(plan.venues)).not.toMatch(/5000|4000|price_peak|price_offpeak/);
-    expect(plan.report).toContain("V001: price columns not imported (staff set the venue's one price per format); no price, so it can't be booked");
+    expect(plan.report).toContain('V001: price columns on the Venues tab not imported (prices come from the Prices tab)');
   });
 
   it('uses the mapping file to update an existing venue, never matching by name', () => {
@@ -336,5 +336,227 @@ describe('isLocalUrl', () => {
     expect(isLocalUrl('http://localhost:54321')).toBe(true);
     expect(isLocalUrl('https://abcd.supabase.co')).toBe(false);
     expect(isLocalUrl('not a url')).toBe(false);
+  });
+});
+
+
+// ---- F8: Pitches, Combinations and Prices tabs, and coordinates ---------------
+
+const pitchRow = (over: Row = {}): Row => ({
+  venue_id: 'V001',
+  pitch_name: 'Pitch 1',
+  size: '5-a-side',
+  formats: '5-a-side, 6-a-side',
+  surface: 'artificial grass',
+  indoor_or_outdoor: 'outdoor',
+  confirmed_by_venue: 'yes',
+  notes: '',
+  ...over,
+});
+const comboRow = (over: Row = {}): Row => ({
+  venue_id: 'V001',
+  format: '7-a-side',
+  pitch_names: 'Pitch 1 + Pitch 2',
+  confirmed_by_venue: 'yes',
+  notes: '',
+  ...over,
+});
+const priceRow = (over: Row = {}): Row => ({
+  venue_id: 'V001',
+  format: '5-a-side',
+  price_eur_per_hour: '60.00',
+  confirmed_by_venue: 'yes',
+  ...over,
+});
+const twoPitches = [pitchRow(), pitchRow({ pitch_name: 'Pitch 2', formats: '5-a-side' })];
+
+describe('buildImport: pitches (F8)', () => {
+  it('imports confirmed pitches exactly as the venue names them', () => {
+    const [venue] = buildImport(input({ pitches: twoPitches })).venues;
+    expect(venue.pitches).toEqual([
+      { name: 'Pitch 1', size: '5-a-side', formats: ['5-a-side', '6-a-side'], surface: 'artificial grass', indoor: false },
+      { name: 'Pitch 2', size: '5-a-side', formats: ['5-a-side'], surface: 'artificial grass', indoor: false },
+    ]);
+  });
+
+  it('skips and reports a pitch the venue hasn\'t confirmed', () => {
+    const plan = buildImport(input({ pitches: [pitchRow({ confirmed_by_venue: 'no' }), pitchRow({ pitch_name: 'Pitch 2', confirmed_by_venue: '' })] }));
+    expect(plan.venues[0]).not.toHaveProperty('pitches');
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'pitches row 2: V001 "Pitch 1" not confirmed by the venue, skipped',
+        'pitches row 3: V001 "Pitch 2" not confirmed by the venue, skipped',
+      ])
+    );
+  });
+
+  it('never guesses: an unreadable size, format list or indoor/outdoor skips the pitch', () => {
+    const plan = buildImport(
+      input({
+        pitches: [
+          pitchRow({ size: 'futsal' }),
+          pitchRow({ pitch_name: 'Pitch 2', formats: '' }),
+          pitchRow({ pitch_name: 'Pitch 3', formats: '5-a-side, 8-a-side' }),
+          pitchRow({ pitch_name: 'Pitch 4', indoor_or_outdoor: '' }),
+          pitchRow({ pitch_name: 'Pitch 5', indoor_or_outdoor: 'covered' }),
+          pitchRow({ venue_id: 'V999', pitch_name: 'Pitch 6' }),
+          pitchRow({ pitch_name: '' }),
+        ],
+      })
+    );
+    expect(plan.venues[0]).not.toHaveProperty('pitches');
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'pitches row 2: V001 "Pitch 1" size "futsal" isn\'t a format, skipped',
+        'pitches row 3: V001 "Pitch 2" has no formats, skipped',
+        'pitches row 4: V001 "Pitch 3" formats "5-a-side, 8-a-side" unreadable, skipped',
+        'pitches row 5: V001 "Pitch 4" indoor_or_outdoor is blank, skipped',
+        'pitches row 6: V001 "Pitch 5" indoor_or_outdoor "covered" isn\'t indoor or outdoor, skipped',
+        'pitches row 7: venue_id "V999" isn\'t an imported venue, skipped',
+        'pitches row 8: no pitch_name, skipped',
+      ])
+    );
+  });
+
+  it('a pitch named twice: the second row is skipped', () => {
+    const plan = buildImport(input({ pitches: [pitchRow(), pitchRow({ surface: 'concrete' })] }));
+    expect(plan.venues[0].pitches).toHaveLength(1);
+    expect(plan.venues[0].pitches?.[0].surface).toBe('artificial grass');
+    expect(plan.report).toContain('pitches row 3: V001 already has a pitch "Pitch 1", skipped');
+  });
+
+  it('indoor is read from the sheet; a blank surface stays empty', () => {
+    const [venue] = buildImport(input({ pitches: [pitchRow({ indoor_or_outdoor: 'Indoor', surface: '' })] })).venues;
+    expect(venue.pitches?.[0]).toMatchObject({ indoor: true, surface: null });
+  });
+
+  it('never takes a pitch from the Venues tab\'s free-text columns', () => {
+    const plan = buildImport(input({ venues: [venueRow({ pitch_name: 'Big pitch', max_format: '7-a-side' })] }));
+    expect(plan.venues[0]).not.toHaveProperty('pitches');
+    expect(plan.report).toContain(
+      'V001: pitch columns on the Venues tab not imported (pitch_name, max_format); pitches come from the Pitches tab'
+    );
+  });
+});
+
+describe('buildImport: combinations (F8)', () => {
+  it('imports a confirmed combination by the exact pitch names', () => {
+    const [venue] = buildImport(input({ pitches: twoPitches, combinations: [comboRow()] })).venues;
+    expect(venue.combinations).toEqual([{ format: '7-a-side', pitch_names: ['Pitch 1', 'Pitch 2'] }]);
+  });
+
+  it('skips and reports one that isn\'t confirmed', () => {
+    const plan = buildImport(input({ pitches: twoPitches, combinations: [comboRow({ confirmed_by_venue: 'no' })] }));
+    expect(plan.venues[0]).not.toHaveProperty('combinations');
+    expect(plan.report).toContain('combinations row 2: V001 7-a-side "Pitch 1 + Pitch 2" not confirmed by the venue, skipped');
+  });
+
+  it('refuses a combination naming a pitch the venue doesn\'t have, or too few pitches', () => {
+    const plan = buildImport(
+      input({
+        pitches: twoPitches,
+        combinations: [comboRow({ pitch_names: 'Pitch 1 + Pitch 9' }), comboRow({ pitch_names: 'Pitch 1' }), comboRow({ pitch_names: 'Pitch 1 + Pitch 1' })],
+      })
+    );
+    expect(plan.venues[0]).not.toHaveProperty('combinations');
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'combinations row 2: V001 has no pitch "Pitch 9" in the Pitches tab, skipped',
+        'combinations row 3: V001 "Pitch 1" needs at least two different pitches joined with "+", skipped',
+        'combinations row 4: V001 "Pitch 1 + Pitch 1" needs at least two different pitches joined with "+", skipped',
+      ])
+    );
+  });
+
+  it('refuses one whose pitches can\'t host the format: it must be bigger than every pitch in it', () => {
+    const plan = buildImport(
+      input({ pitches: twoPitches, combinations: [comboRow({ format: '5-a-side' }), comboRow({ format: '8-a-side' })] })
+    );
+    expect(plan.venues[0]).not.toHaveProperty('combinations');
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'combinations row 2: V001 "Pitch 1 + Pitch 2" can\'t host 5-a-side (each pitch is already that size or bigger), skipped',
+        'combinations row 3: V001 format "8-a-side" isn\'t a format, skipped',
+      ])
+    );
+  });
+});
+
+describe('buildImport: prices (F8, one price per format)', () => {
+  it('imports a confirmed price per format, in cents from the text', () => {
+    const [venue] = buildImport(input({ prices: [priceRow(), priceRow({ format: '7-a-side', price_eur_per_hour: '84,50' })] })).venues;
+    expect(venue.prices).toEqual([
+      { format: '5-a-side', price_cents: 6000 },
+      { format: '7-a-side', price_cents: 8450 },
+    ]);
+  });
+
+  it('never imports an unconfirmed, blank, unreadable, zero or second price', () => {
+    const plan = buildImport(
+      input({
+        prices: [
+          priceRow({ confirmed_by_venue: 'no' }),
+          priceRow({ format: '6-a-side', price_eur_per_hour: '' }),
+          priceRow({ format: '7-a-side', price_eur_per_hour: 'ask' }),
+          priceRow({ format: '9-a-side', price_eur_per_hour: '0' }),
+          priceRow({ format: '11-a-side', price_eur_per_hour: '150' }),
+          priceRow({ format: '11-a-side', price_eur_per_hour: '160' }),
+        ],
+      })
+    );
+    expect(plan.venues[0].prices).toEqual([{ format: '11-a-side', price_cents: 15000 }]);
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'prices row 2: V001 5-a-side not confirmed by the venue, skipped',
+        'prices row 3: V001 6-a-side has no price, skipped',
+        'prices row 4: V001 7-a-side price "ask" unreadable, skipped',
+        'prices row 5: V001 9-a-side price must be above €0, skipped',
+        'prices row 7: V001 already has a price for 11-a-side, skipped',
+      ])
+    );
+  });
+});
+
+describe('buildImport: coordinates (F8)', () => {
+  it('imports a valid pair inside Cyprus', () => {
+    const [venue] = buildImport(input({ venues: [venueRow({ latitude: '35.1594', longitude: '33.3501' })] })).venues;
+    expect(venue).toMatchObject({ latitude: 35.1594, longitude: 33.3501 });
+  });
+
+  it('both or neither, decimal degrees, inside Cyprus: anything else is reported and left empty', () => {
+    const plan = buildImport(
+      input({
+        venues: [
+          venueRow({ latitude: '35.1594', longitude: '' }),
+          venueRow({ venue_id: 'V002', latitude: '51.5072', longitude: '-0.1276' }),
+          venueRow({ venue_id: 'V003', latitude: '35°09′N', longitude: '33°21′E' }),
+        ],
+      })
+    );
+    for (const venue of plan.venues) {
+      expect(venue).not.toHaveProperty('latitude');
+      expect(venue).not.toHaveProperty('longitude');
+    }
+    expect(plan.report).toEqual(
+      expect.arrayContaining([
+        'V001: only one of latitude/longitude, coordinates left empty',
+        'V002: coordinates 51.5072, -0.1276 aren\'t in Cyprus, left empty',
+        'V003: coordinates "35°09′N", "33°21′E" aren\'t decimal degrees, left empty',
+      ])
+    );
+  });
+
+  it('a blank pair stays empty and isn\'t reported (never filled from the address)', () => {
+    const plan = buildImport(input());
+    expect(plan.venues[0]).not.toHaveProperty('latitude');
+    expect(plan.report.join('\n')).not.toMatch(/coordinates|latitude/);
+  });
+});
+
+describe('buildImport: the same sheet gives the same plan (F8)', () => {
+  it('is idempotent', () => {
+    const sheet = input({ pitches: twoPitches, combinations: [comboRow()], prices: [priceRow()] });
+    expect(buildImport(sheet)).toEqual(buildImport(sheet));
+    expect(toSql(buildImport(sheet).venues, 'T')).toEqual(toSql(buildImport(sheet).venues, 'T'));
   });
 });
