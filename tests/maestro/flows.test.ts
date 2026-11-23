@@ -106,6 +106,19 @@ describe('.maestro', () => {
   });
 });
 
+describe('the sign-in subflow gets past iOS', () => {
+  // After a password sign-in, iOS asks "Save Password?" over Home, and Maestro
+  // can't see home-screen under it (preview run, 23 November).
+  it('dismisses "Save Password?" before it looks for Home', () => {
+    const subflow = read(path.join(maestroDir, 'subflows', 'sign-in.yaml'));
+    const dismiss = subflow.indexOf("text: 'Not Now'");
+    const submit = subflow.indexOf('id: sign-in-submit');
+    const home = subflow.indexOf('id: home-screen');
+    expect(dismiss).toBeGreaterThan(submit);
+    expect(dismiss).toBeLessThan(home);
+  });
+});
+
 describe('what the flows expect is what the app shows', () => {
   const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
   const expected = (file: string, pattern: RegExp) =>
