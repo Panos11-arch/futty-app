@@ -154,6 +154,32 @@ describe('taps wait for the weather strip', () => {
   });
 });
 
+describe("Stripe's payment sheet on iOS", () => {
+  // The card fields use the number pad, which has no key that closes it, so
+  // Maestro's hideKeyboard fails on iOS ("Couldn't hide the keyboard",
+  // preview run, 23 November). iOS shows a Done button over the pad instead.
+  const steps = () => loadAll(read(path.join(maestroDir, 'subflows', 'stripe-test-card.yaml')))[1] as Record<string, unknown>[];
+
+  it('hides the keyboard only on Android, and taps Done on iOS', () => {
+    expect(steps().some((s) => 'hideKeyboard' in s)).toBe(false);
+    const byPlatform = steps()
+      .filter((s) => 'runFlow' in s)
+      .map((s) => s.runFlow as { when?: { platform?: string }; commands?: unknown[] })
+      .filter((f) => f.when?.platform);
+    expect(byPlatform.find((f) => f.when!.platform === 'Android')?.commands).toEqual(['hideKeyboard']);
+    expect(byPlatform.find((f) => f.when!.platform === 'iOS')?.commands).toEqual([{ tapOn: 'Done' }]);
+  });
+
+  it("scrolls to the sheet's Pay button before tapping it", () => {
+    const names = steps().map((s) => Object.keys(s)[0]);
+    const scroll = names.lastIndexOf('scrollUntilVisible');
+    const tap = names.lastIndexOf('tapOn');
+    expect(scroll).toBeGreaterThan(-1);
+    expect((steps()[scroll].scrollUntilVisible as { element: { text: string } }).element.text).toBe('${PAY_LABEL}');
+    expect(tap).toBeGreaterThan(scroll);
+  });
+});
+
 describe('what the flows expect is what the app shows', () => {
   const unescape = (s: string) => s.replace(/\\(.)/g, '$1');
   const expected = (file: string, pattern: RegExp) =>

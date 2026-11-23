@@ -19,7 +19,25 @@ appId: com.panosalepis.futtyapp
     commands:
       - tapOn: '.*(ZIP|Postal).*'
       - inputText: '10001'
-- hideKeyboard
+# iOS's number pad has no key that closes it, so hideKeyboard fails there;
+# iOS shows a Done button over the pad instead. Android closes it with Back.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+      visible: 'Done'
+    commands:
+      - tapOn: 'Done'
+# Works with the keyboard up or down: the sheet scrolls its button into view.
+- scrollUntilVisible:
+    element:
+      text: ${PAY_LABEL}
+    direction: DOWN
+    timeout: 15000
 # The checkout's own button reads the same and sits under the sheet; the
 # sheet is on top, so the tap lands on Stripe's button.
 - tapOn:
