@@ -4,7 +4,15 @@ import path from 'node:path';
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
 import { E2E_VENUE } from './config';
 import { startingLevelOffered } from '../../lib/match/levels';
-import { connectAccountKey, connectAccountParams, e2eStartingLevel, readSeedEnv, seedMain, stripeRest } from './seed';
+import {
+  connectAccountKey,
+  connectAccountParams,
+  E2E_UNTOUCHED_LEVEL,
+  e2eStartingLevel,
+  readSeedEnv,
+  seedMain,
+  stripeRest,
+} from './seed';
 
 const jwt = (claims: Record<string, unknown>) =>
   `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
@@ -156,5 +164,21 @@ describe('a starting level for each test login', () => {
         source: row.source,
       })
     ).toBe(false);
+  });
+
+  // The upsert keeps a row that's already there, so a login that already had
+  // the server's default level (3.0, no competitive match) kept it, and Home
+  // still offered the questions. The seed now turns exactly that row into the
+  // questionnaire level, and leaves a level that a match has moved alone.
+  it('replaces an untouched default level, the one Home still offers the questions for', () => {
+    const untouched = { level: 3, provisional: true, reliabilityPct: 0, competitiveMatches: 0, source: 'default' as const };
+    expect(startingLevelOffered(untouched)).toBe(true);
+    expect(E2E_UNTOUCHED_LEVEL).toEqual({ source: 'default', competitive_matches: 0 });
+    const replaced = { ...untouched, level: e2eStartingLevel('user-1').level, source: e2eStartingLevel('user-1').source };
+    expect(startingLevelOffered(replaced)).toBe(false);
+    // A match moved it: not matched by the filter, so kept.
+    const moved = { ...untouched, competitiveMatches: 2 };
+    expect(moved.competitiveMatches).not.toBe(E2E_UNTOUCHED_LEVEL.competitive_matches);
+    expect(startingLevelOffered(moved)).toBe(false);
   });
 });

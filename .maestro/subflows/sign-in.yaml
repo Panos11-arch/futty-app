@@ -1,7 +1,7 @@
 # Starts the app from nothing and signs in as EMAIL / PASSWORD, ending on
 # Home. The seeded logins have a username, so no profile setup; the
 # starting-level questions (offered once per device, and clearState makes a
-# new device) are skipped when they show.
+# new device) are skipped if they show.
 appId: com.panosalepis.futtyapp
 ---
 - launchApp:
@@ -26,14 +26,26 @@ appId: com.panosalepis.futtyapp
     visible:
       id: home-screen
     timeout: 30000
+# The seed gives each login a level, so the questions shouldn't show; if
+# they do, "Skip for now" sits under the answers and can be off screen on a
+# small simulator, so scroll to it before tapping.
 - extendedWaitUntil:
     visible:
-      id: starting-level-skip
+      id: starting-level-form
     timeout: 8000
     optional: true
-- tapOn:
-    id: starting-level-skip
-    optional: true
+- runFlow:
+    when:
+      visible:
+        id: starting-level-form
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: starting-level-skip
+          direction: DOWN
+          timeout: 10000
+      - tapOn:
+          id: starting-level-skip
 - extendedWaitUntil:
     visible:
       id: home-screen

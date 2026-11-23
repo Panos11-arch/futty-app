@@ -141,6 +141,14 @@ export function e2eStartingLevel(profileId: string) {
   };
 }
 
+/**
+ * The server's default level (match_rate_players makes it: 3.0, source
+ * 'default') before any competitive match. Home still offers the questions
+ * for it (startingLevelOffered), so the seed replaces exactly this row and
+ * keeps a level a match has moved.
+ */
+export const E2E_UNTOUCHED_LEVEL = { source: 'default', competitive_matches: 0 } as const;
+
 export type SeedOutput = { slot_day: string; ios_start: string; android_start: string; venue_id: string };
 
 export type SeedDeps = {
@@ -193,10 +201,21 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
       await admin.from('profiles').update({ username: user.username, full_name: user.fullName }).eq('id', id),
       `setting ${user.email}'s username`,
     );
-    // Kept if it's already there (a match may have moved it).
+    // Kept if it's already there (a match may have moved it)...
+    const start = e2eStartingLevel(id);
     check(
-      await admin.from('player_levels').upsert(e2eStartingLevel(id), { onConflict: 'profile_id', ignoreDuplicates: true }),
+      await admin.from('player_levels').upsert(start, { onConflict: 'profile_id', ignoreDuplicates: true }),
       `giving ${user.email} a starting level`,
+    );
+    // ...unless it's still the untouched default, which Home offers the questions for.
+    check(
+      await admin
+        .from('player_levels')
+        .update({ level: start.level, source: start.source })
+        .eq('profile_id', id)
+        .eq('source', E2E_UNTOUCHED_LEVEL.source)
+        .eq('competitive_matches', E2E_UNTOUCHED_LEVEL.competitive_matches),
+      `replacing ${user.email}'s default level`,
     );
   }
   const e2eUserIds = new Set(ids.values());
