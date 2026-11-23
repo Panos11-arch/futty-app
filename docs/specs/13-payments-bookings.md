@@ -111,6 +111,7 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 - **Only up to 5 days ahead**, as today: holds expire.
 
 ### Losers pay (Gipedo Pano in Booking v2)
+- **Both sides are held for double their half, and every card stays held until the result is settled** (confirmed by Panos, 23 November): a side paying for everyone holds the whole pitch with all 10 players' fees; a side paying for myself holds twice each player's share. Nothing is taken before the result, except a pull-out or forfeit as today. The odd-cent rule (Futty absorbs it) applies to Losers pay draws and disputes too.
 - **Half pitch only**, chosen by the booker. **Each side keeps its own way to pay:**
   - **Pay for everyone:** the captain's card is held for the whole pitch plus €0.55 per player for all 10 players (€45.50 on a €40 pitch).
   - **Pay for myself:** each player's card is held for **twice** their normal each-pays share including the fee (€9.60 on a €40 5-a-side pitch; €8.00 for a Premium player's own spot). **24 hours before kickoff** (or at once if booked or accepted later), the side's captain gets a guarantee hold only for that side's spots still without a hold, at the same per-spot amount.
