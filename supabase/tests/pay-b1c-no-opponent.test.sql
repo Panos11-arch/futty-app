@@ -160,7 +160,7 @@ begin
   assert public.booking_no_opponent_auto_cancel_due() = 0, 'once';
 end $$;
 
--- 6. "Pay the whole pitch and play" is paid in the app (part 2b).
+-- 6. "Pay the whole pitch and play" is made by paying in the app (part 2b).
 do $$
 declare
   s record := tests.b1c2_setup();
@@ -168,7 +168,7 @@ begin
   perform tests.set_kickoff(s.booking, now() + interval '23 hours');
   perform public.booking_no_opponent_due();
   assert tests.error_of(format('select tests.b1c2_choose(%L, %L, ''play_whole'')', s.booking, s.booker))
-         = 'play_whole_not_available', 'not yet';
+         = 'play_whole_needs_payment', 'made by paying (part 2b)';
 end $$;
 
 -- 7. The jobs are the server's.

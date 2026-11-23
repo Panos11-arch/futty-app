@@ -84,6 +84,10 @@ export const idempotencyKeys = {
    *  replacing previousIntentId (cancelled first). */
   owed: (kind: 'debt' | 'cash', id: string, amountCents: number, previousIntentId: string | null) =>
     `owed-${kind}-${id}-${amountCents}-after-${previousIntentId ?? 'none'}`,
+  /** Booking v2 (B1c): "Pay the whole pitch and play", the other half's one
+   *  payment: one amount, replacing previousIntentId (cancelled first). */
+  otherHalf: (paymentId: string, amountCents: number, previousIntentId: string | null) =>
+    `other-half-${paymentId}-${amountCents}-after-${previousIntentId ?? 'none'}`,
   /** P4d: one transfer to a venue (one payout row, one amount): a retry
    *  after no answer is the same transfer, never a second one. */
   payout: (payoutId: string) => `payout-${payoutId}`,

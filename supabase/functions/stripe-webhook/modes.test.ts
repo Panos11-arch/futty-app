@@ -355,3 +355,37 @@ Deno.test('a cancelled debt, cash-part or top-up payment needs nothing (the next
   }
   strictEqual(db.calls.length, 0);
 });
+
+// Booking v2 (B1c part 2b): "Pay the whole pitch and play".
+Deno.test('the other half counts when Stripe says it was taken, recorded with Stripe\'s fee', async () => {
+  const { db, stripe, deps } = setup();
+  const paid = intent('pi_oh', 'succeeded', {
+    amount: 2275, stripeFee: 47, metadata: { kind: 'other_half', other_half_id: 'o1', booking_id: 'b1', fee_cents: '275' },
+  });
+  stripe.respond('paymentIntents.retrieve', paid);
+  db.respond('other_half_paid', { result: 'paid', booking_id: 'b1' });
+
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', paid), deps), true);
+  deepStrictEqual(db.callsTo('other_half_paid')[0].args, { p_payment_id: 'o1', p_intent_id: 'pi_oh', p_amount_cents: 2275, p_stripe_fee_cents: 47 });
+  strictEqual(db.callsTo('share_payment_captured').length, 0, 'not a share');
+  strictEqual(stripe.callsTo('refunds.create').length, 0);
+});
+
+Deno.test('an other-half payment that can\'t count is given back', async () => {
+  const { db, stripe, deps } = setup();
+  const late = intent('pi_oh2', 'succeeded', { amount: 2275, metadata: { kind: 'other_half', other_half_id: 'o1', booking_id: 'b1' } });
+  stripe.respond('paymentIntents.retrieve', late);
+  db.respond('other_half_paid', { result: 'refund', booking_id: 'b1', reason: 'booking_cancelled' });
+
+  await handlePaymentModeEvent(event('payment_intent.succeeded', late), deps);
+
+  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => c.idempotencyKey), ['refund-pi_oh2-2275']);
+});
+
+Deno.test('other events for an other-half payment are acknowledged and move nothing', async () => {
+  const { db, deps } = setup();
+  const open = intent('pi_oh3', 'requires_action', { metadata: { kind: 'other_half', other_half_id: 'o1' } });
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', open), deps), true);
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', { ...open, status: 'canceled' }), deps), true);
+  strictEqual(db.calls.length, 0);
+});

@@ -95,3 +95,8 @@ Deno.test('P4d: a transfer and a Connect account are keyed on our row ids', () =
   strictEqual(idempotencyKeys.connectAccount('v1', false), 'connect-account-v1-test', 'one Express account per venue and mode');
   strictEqual(idempotencyKeys.connectAccount('v1', true), 'connect-account-v1-live');
 });
+
+Deno.test('B1c key: paying the other half names the amount and the payment it replaces', () => {
+  strictEqual(idempotencyKeys.otherHalf('o1', 2275, null), 'other-half-o1-2275-after-none');
+  strictEqual(idempotencyKeys.otherHalf('o1', 2275, 'pi_old'), 'other-half-o1-2275-after-pi_old');
+});

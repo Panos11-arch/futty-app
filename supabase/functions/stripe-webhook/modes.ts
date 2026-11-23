@@ -24,6 +24,10 @@
 //                                             app (P4c, pay-owed)
 //   (top_up)                                  recorded by run-collection,
 //                                             which charged it (P4c)
+//   payment_intent.succeeded (other_half)     the captain paid the other half
+//                                             of a half pitch nobody took on
+//                                             ("Pay the whole pitch and play",
+//                                             Booking v2, pay-other-half)
 // The share is found by the share id in the intent's metadata. The event's
 // time (when Stripe says the card was held or charged) decides the
 // 15-minute payment window and whether a share is non-refundable.
@@ -112,6 +116,9 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
     // money; the debt or cash part is still owed and the next "Pay" starts a
     // new payment.
     if (OWED_KINDS.has(canceled.metadata?.kind ?? '')) return true;
+    // Booking v2: a cancelled other-half payment moved no money; the choice
+    // is still open and the next "Pay" starts a new payment.
+    if (canceled.metadata?.kind === 'other_half') return true;
     if (canceled.metadata?.kind === 'share' && canceled.metadata.share_id) {
       // Only the share's current payment releases anything. The hold is
       // really gone, so a share still marked held on it is undone too:
@@ -175,6 +182,10 @@ export async function handlePaymentModeEvent(event: Stripe.Event, deps: Deps): P
     if (event.type === 'payment_intent.succeeded') await owedPaid(deps, intent);
     return true;
   }
+  if (intent.metadata?.kind === 'other_half') {
+    if (event.type === 'payment_intent.succeeded') await otherHalfPaid(deps, intent);
+    return true;
+  }
   const shareId = intent.metadata?.share_id;
   if (!shareId) return false;
   const pm = paymentMethodId(intent.payment_method as string | { id: string } | null);
@@ -223,6 +234,27 @@ async function owedPaid(deps: Deps, intent: Stripe.PaymentIntent) {
       p_share_id: intent.metadata.cash_share_id,
       ...args,
     });
+  if (result.result === 'refund') {
+    await releaseOrQueue(deps, {
+      booking_id: result.booking_id ?? intent.metadata.booking_id,
+      intent_id: intent.id,
+      reason: result.reason ?? 'refused',
+    });
+  }
+}
+
+/** Booking v2: the captain paid the other half ("Pay the whole pitch and
+ *  play"): recorded with Stripe's actual fee, then it counts or, when it
+ *  can't (the booking was cancelled, the choice already made, the wrong
+ *  amount), it's given back. */
+async function otherHalfPaid(deps: Deps, intent: Stripe.PaymentIntent) {
+  const full = await deps.stripe.paymentIntents.retrieve(intent.id, { expand: ['latest_charge.balance_transaction'] });
+  const result = await rpc<{ result: string; reason?: string; booking_id?: string }>(deps.db, 'other_half_paid', {
+    p_payment_id: intent.metadata.other_half_id,
+    p_intent_id: intent.id,
+    p_amount_cents: full.amount_received,
+    p_stripe_fee_cents: stripeFeeCents(full),
+  });
   if (result.result === 'refund') {
     await releaseOrQueue(deps, {
       booking_id: result.booking_id ?? intent.metadata.booking_id,
