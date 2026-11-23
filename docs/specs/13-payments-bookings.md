@@ -69,8 +69,12 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 ### Invites, after payment
 - **Whole pitch:** "Invite friends".
 - **Half pitch:** "Invite friends" (side A), then **"Invite opposition"**: sent to friends or teams the booker picks, plus an optional **"Publish"** as a public opposition post.
+  - **Who can accept (decided 23 November):** an invited friend, for himself, or an invited team's captain. Someone already in the booking can't.
   - **The first captain to accept becomes side B's captain.** The server decides with a row lock; everyone else sees "Opposition found".
   - He then chooses how side B pays, pays or holds his part, and invites his own players.
+  - **He pays or holds his part within 15 minutes (decided 23 November),** the same payment window as the booker's. Otherwise his acceptance lapses, his share and guarantee are cancelled, and the invite reopens for the others.
+  - **Each captain is the booker of his own half (decided 23 November).** Side B's captain has his own guarantee (his side's half, when side B pays for myself) and invites his own players once side B has paid. Side B's captain sees from the start that, if side A cancels, the slot and its choices pass to him (see Cancellations).
+  - **Invites close 24 hours before kickoff:** no side B by then means the 24-hour choice below.
 - **No side B by 24 hours before kickoff:** the booker chooses **"Pay the whole pitch and play"** (side A pays the other half too, at the same per-player fee as its way to pay) or **"Cancel free"** (everything refunded, holds released). **No choice by 6 hours before kickoff = cancelled free.** Same timing as Gipedo Pano's decision 1.
   - **"Pay the whole pitch and play" is one card payment by the booker, at once** (decided 23 November): the other half plus 5 × that way to pay's fee. Paying for everyone: €20.00 + 5 × €0.55 = €22.75. Paying for myself: €20.00 + 5 × €0.80 = €24.00.
 
@@ -82,6 +86,8 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 ### Cancellations (Booking v2)
 - Today's rules (see "Cancellations and refunds") apply **per side**.
 - **If side B cancels before kickoff,** the opposition invite reopens, and the 24-hour choice above applies again.
+- **If side A's captain cancels his half after side B joined (decided 23 November):** side A is cancelled under today's rules, side B keeps the slot, the opposition invite reopens on side B's behalf, and the 24-hour choice ("Pay the whole pitch and play" or "Cancel free") goes to side B's captain.
+- **Side B cancelling less than 6 hours before kickoff (decided 23 November):** no refund, as today; the venue keeps its half and side A still plays. Nothing reopens.
 
 ### Worked examples (Booking v2)
 Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: each player's part of the pitch is €4.00. Amounts are what the player or captain pays in the app; Stripe's cost comes out of Futty's fee as everywhere in this spec. Each example becomes a test with exactly this amount.
@@ -124,6 +130,10 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 3. **No opponent, "Pay the whole pitch and play":** one card payment by the booker, at once (examples 6a and 6b).
 4. **Odd cents:** each side pays its half rounded down and Futty absorbs the cent, for every Booking v2 booking (example 7c).
 5. **Venue credit (assumed, Panos to confirm):** a "Pay for myself" share can still be paid with venue credit as today (credit first, the rest by card plus €0.80); never for Losers pay holds or cash.
+6. **Side B's payment window:** 15 minutes, as the booker's; then his acceptance lapses and the invite reopens.
+7. **Who accepts the opposition invite:** an invited friend, or an invited team's captain.
+8. **Each captain is the booker of his own half:** if side A cancels, side B keeps the slot, the invite reopens on its behalf and the 24-hour choice is side B's captain's.
+9. **Side B cancelling under 6 hours before kickoff:** no refund, the game stays, nothing reopens.
 
 ### Where the old modes are still used (to change in B1–B5)
 - **App:** `components/booking/checkout-view.tsx` (including the "Just my spot" text), `lib/booking-actions.ts`, `lib/booking-search.ts`, `lib/booking-detail.ts`, `lib/use-owed.ts`, `lib/rules.ts`, `lib/terms.ts`, `lib/terms-el.ts`, `lib/squads.ts`, `app/squads.tsx`.

@@ -44,6 +44,7 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlements_due', []);
+  db.respond('booking_side_b_lapse_due', 0);
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
@@ -521,4 +522,28 @@ Deno.test('Gipedo Pano jobs failing never stop the rest of the run', async () =>
   const summary = await runPaymentJobs(deps);
   strictEqual(summary.gipedoSettled, 0);
   strictEqual(db.callsTo('booking_match_syncs_due').length, 1);
+});
+
+// Booking v2 (B1c): side B's captain who didn't pay or hold within the
+// 15-minute payment window loses side B; the payment he started is released
+// by the release queue in the same run.
+Deno.test('lapses side B captains who did not pay in time, before the release queue runs', async () => {
+  const { db, deps } = setup();
+  db.respond('booking_side_b_lapse_due', 2);
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.sideBLapsed, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('booking_side_b_lapse_due') < order.indexOf('money_releases_due'), true, 'lapse first');
+});
+
+Deno.test('a failing side B lapse step never stops the other jobs', async () => {
+  const { db, deps } = setup();
+  db.fail('booking_side_b_lapse_due', 'boom');
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.sideBLapsed, 0);
+  strictEqual(db.calls.some((c) => c.fn === 'money_releases_due'), true, 'the release queue still runs');
 });
