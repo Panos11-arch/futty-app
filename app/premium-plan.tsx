@@ -18,6 +18,7 @@ import {
   openablePlan,
   personalPremiumPerks,
   personalPremiumPriceLabel,
+  warnIfPremiumPriceDiffers,
   PERSONAL_PREMIUM_SKU,
   verifyPurchaseOnServer,
 } from '@/lib/premium';
@@ -127,9 +128,14 @@ export default function PremiumPlanScreen() {
   const isActive =
     plan === 'personal' ? profile.status === 'ready' && profile.profile.is_premium : !!team && (format === '9-a-side' ? team.premium_9aside : team.premium_11aside);
 
+  const livePrice = plan === 'personal' ? subscriptions.find((s) => s.id === sku)?.displayPrice ?? null : null;
+  useEffect(() => {
+    if (plan === 'personal') warnIfPremiumPriceDiffers(livePrice, rules?.premium_price_label);
+  }, [plan, livePrice, rules?.premium_price_label]);
+
   const priceLabel =
     plan === 'personal'
-      ? personalPremiumPriceLabel(rules, subscriptions.find((s) => s.id === sku)?.displayPrice)
+      ? personalPremiumPriceLabel(rules, livePrice)
       : format
         ? `€${PREMIUM_FORMAT_PRICES[format]}/season`
         : '';
