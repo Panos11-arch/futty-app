@@ -34,7 +34,11 @@
 //  10. Booking v2 (B1c): side B's captain who didn't pay or hold his part
 //      within the 15-minute payment window loses side B and the invite
 //      reopens (booking_side_b_lapse_due). It runs before step 3, so what
-//      he started at Stripe is released in the same run.
+//      he started at Stripe is released in the same run. 24 hours before
+//      kickoff with no side B, the lone captain is asked to choose
+//      (booking_no_opponent_due); with no choice by 6 hours before, it's
+//      cancelled free (booking_no_opponent_auto_cancel_due) and the release
+//      step gives everything back in the same run.
 // Which ones are due is decided in the database, in Cyprus time. One item
 // failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
@@ -74,7 +78,7 @@ export async function runPaymentJobs(deps: Deps) {
     creditReleased: 0,
     matchSynced: 0, matchSyncFailed: 0,
     gipedoSettled: 0, gipedoFailed: 0,
-    sideBLapsed: 0,
+    sideBLapsed: 0, noOpponent: 0, noOpponentCancelled: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -129,10 +133,16 @@ export async function runPaymentJobs(deps: Deps) {
     console.error('run-payment-jobs: Gipedo Pano jobs failed:', err);
   }
 
-  try {
-    summary.sideBLapsed = await rpc<number>(deps.db, 'booking_side_b_lapse_due');
-  } catch (err) {
-    console.error('run-payment-jobs: side B lapse failed:', err);
+  for (const [key, fn] of [
+    ['sideBLapsed', 'booking_side_b_lapse_due'],
+    ['noOpponent', 'booking_no_opponent_due'],
+    ['noOpponentCancelled', 'booking_no_opponent_auto_cancel_due'],
+  ] as const) {
+    try {
+      summary[key] = await rpc<number>(deps.db, fn);
+    } catch (err) {
+      console.error(`run-payment-jobs: ${fn} failed:`, err);
+    }
   }
 
   for (const { booking_id } of await rpc<{ booking_id: string }[]>(deps.db, 'bookings_with_money_to_release')) {

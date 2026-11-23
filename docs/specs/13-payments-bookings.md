@@ -77,6 +77,7 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
   - **Invites close 24 hours before kickoff:** no side B by then means the 24-hour choice below.
 - **No side B by 24 hours before kickoff:** the booker chooses **"Pay the whole pitch and play"** (side A pays the other half too, at the same per-player fee as its way to pay) or **"Cancel free"** (everything refunded, holds released). **No choice by 6 hours before kickoff = cancelled free.** Same timing as Gipedo Pano's decision 1.
   - **"Pay the whole pitch and play" is one card payment by the booker, at once** (decided 23 November): the other half plus 5 × that way to pay's fee. Paying for everyone: €20.00 + 5 × €0.55 = €22.75. Paying for myself: €20.00 + 5 × €0.80 = €24.00.
+  - **The other half is the half rounded down,** as every Booking v2 split (Futty absorbs an odd cent): on a €45.55 pitch, €22.77 plus the fees. "Cancel free" gives everything back to the card it came from, as Gipedo Pano's free cancel.
 
 ### Publish game
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.
