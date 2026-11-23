@@ -365,7 +365,13 @@ Venues are loaded from the Futty Venue Data sheet by an import script (`scripts/
   - "yes" counts, keeping a note in brackets such as "(free)" but not a source note such as "(per activeplanet.com)";
   - "no" isn't shown;
   - anything else (e.g. "equipment rental listed") is skipped and reported.
-- **Pitches:** the sheet's free-text pitch description is kept for Futty's own use only. It isn't shown, and no pitches are shown until real ones are entered.
+- **Pitches, combinations and prices come from their own tabs (decided 22 November, F8):** the sheet has a **Pitches** tab (one row per pitch: `venue_id`, `pitch_name` exactly as the venue names it, `size`, `formats` it hosts alone, `surface`, `indoor_or_outdoor`, `confirmed_by_venue`, `notes`), a **Combinations** tab (one row per combination: `venue_id`, `format`, `pitch_names` joined with "+", e.g. "Pitch 1 + Pitch 2", `confirmed_by_venue`, `notes`) and a **Prices** tab (one price per format: `venue_id`, `format`, `price_eur_per_hour`, `confirmed_by_venue`).
+  - Only rows with `confirmed_by_venue` = yes are imported; every other row is reported and skipped.
+  - Nothing is derived from the Venues tab's free-text pitch description (still kept for Futty's own use only, never shown) or its old price columns, and a blank is never filled.
+  - A pitch is matched on its exact name at that venue. A pitch that holds a game that hasn't ended keeps its size and formats. A pitch is never deleted: one missing from the tab is reported and kept.
+  - A combination names pitches of that venue on the Pitches tab, at least two different ones, and its format must be bigger than every pitch in it; otherwise it's reported and skipped. An identical combination isn't added twice.
+  - A price is above €0, in cents from the text.
+- **Coordinates:** the Venues tab has `latitude` and `longitude` (decimal degrees), used by the weather and the map. Both or neither, inside Cyprus; anything else is reported and left empty. They are never looked up from the address.
 - **No price, no booking:** a venue with no price can't be booked.
 - **Food and drink:** items are imported with their price, offer price and dietary tags.
 - **Same result every time:** the import is idempotent, keyed on `venue_id` (V001...). An existing venue is matched only through an optional mapping file (`venue_id` -> existing venue id), never by name.

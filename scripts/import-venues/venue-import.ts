@@ -1,5 +1,5 @@
 // The venue data import (spec 13, "Venue pages and the venue data import",
-// decided 11 November): turns the two CSVs exported from the venue sheet
+// decided 11 November): turns the CSVs exported from the venue sheet (Venues, Venue items and F8's Pitches, Combinations and Prices)
 // into one import_venue payload per venue, the photos to upload, and a
 // report of every cell that wasn't imported. No file or network access here
 // (run.mjs does that), so all of it is tested.
@@ -7,9 +7,13 @@
 // Rules:
 //   - blank cells stay empty; a price, a time or a day list that can't be
 //     read is left empty and reported, never guessed;
-//   - no pitches and no prices: the sheet has no named pitches, and
-//     the sheet's price columns aren't imported: a venue has one price per
-//     format, which its staff set in the dashboard;
+//   - pitches, combinations and prices come only from the Pitches,
+//     Combinations and Prices tabs, and only from rows the venue confirmed
+//     (confirmed_by_venue = yes); never from the Venues tab's free-text
+//     columns. A combination joins pitches by their exact names and must be
+//     a bigger format than every pitch in it (F8, decided 22 November);
+//   - latitude/longitude: both or neither, decimal degrees, inside Cyprus;
+//     never looked up from the address;
 //   - a close of "00:00" is the end of that day (23:59:59); a close after
 //     midnight isn't supported yet, so that day is skipped and reported;
 //   - photos only when photo_permission_given is yes; the venue is imported
@@ -36,11 +40,28 @@ export type VenuePayload = {
   sheet_status: string | null;
   notes: string | null;
   photo_permission: boolean;
+  /** Only when the sheet gives a valid pair inside Cyprus. */
+  latitude?: number;
+  longitude?: number;
+  /** Only when the venue has confirmed rows on that tab. */
+  pitches?: PitchPayload[];
+  combinations?: CombinationPayload[];
+  prices?: PricePayload[];
   hours: { weekday: number; opens: string; closes: string }[];
   amenities: { kind: AmenityKind; note: string | null }[];
   photos: { storage_path: string; sort_order: number }[];
   items: ItemPayload[];
 };
+
+export type PitchPayload = { name: string; size: Format; formats: Format[]; surface: string | null; indoor: boolean };
+export type CombinationPayload = { format: Format; pitch_names: string[] };
+export type PricePayload = { format: Format; price_cents: number };
+
+export const FORMATS = ['5-a-side', '6-a-side', '7-a-side', '9-a-side', '11-a-side'] as const;
+export type Format = (typeof FORMATS)[number];
+
+/** Cyprus, the whole island, in decimal degrees: a coordinate outside it is a mistake. */
+export const CYPRUS_BOUNDS = { minLat: 34.4, maxLat: 35.8, minLng: 32.2, maxLng: 34.7 } as const;
 
 export type ItemPayload = {
   name: string;
@@ -63,6 +84,10 @@ export type Upload = { localPath: string; storagePath: string; contentType: stri
 export type ImportInput = {
   venues: Row[];
   items: Row[];
+  /** The Pitches, Combinations and Prices tabs (F8). */
+  pitches?: Row[];
+  combinations?: Row[];
+  prices?: Row[];
   /** Photo file names found in photos/<venue_id>/, per venue_id. */
   venuePhotos: Record<string, string[]>;
   /** Photo file names found in photos/items/. */
@@ -296,10 +321,19 @@ export function buildImport(input: ImportInput): ImportPlan {
     if (other) venue.amenities.push({ kind: 'other', note: other });
 
     if (text(row.price_peak_eur_per_hour) || text(row.price_offpeak_eur_per_hour) || text(row.peak_hours)) {
-      report.push(`${key}: price columns not imported (staff set the venue's one price per format); no price, so it can't be booked`);
+      report.push(`${key}: price columns on the Venues tab not imported (prices come from the Prices tab)`);
     }
     const pitchFields = ['pitch_name', 'surface', 'indoor_or_outdoor', 'max_format', 'combines_with'].filter((c) => text(row[c]));
-    if (pitchFields.length > 0) report.push(`${key}: no pitches imported (${pitchFields.join(', ')} kept in the sheet only)`);
+    if (pitchFields.length > 0) {
+      report.push(`${key}: pitch columns on the Venues tab not imported (${pitchFields.join(', ')}); pitches come from the Pitches tab`);
+    }
+
+    const coordinates = readCoordinates(row.latitude, row.longitude);
+    if ('problem' in coordinates) report.push(`${key}: ${coordinates.problem}`);
+    else if (coordinates.latitude !== undefined) {
+      venue.latitude = coordinates.latitude;
+      venue.longitude = coordinates.longitude;
+    }
 
     const files = [...(input.venuePhotos[key] ?? [])].sort();
     if (permission) {
@@ -407,7 +441,153 @@ export function buildImport(input: ImportInput): ImportPlan {
     });
   });
 
+  importPitches(input.pitches ?? [], byKey, report);
+  importCombinations(input.combinations ?? [], byKey, report);
+  importPrices(input.prices ?? [], byKey, report);
+
   return { venues, uploads, report };
+}
+
+type Coordinates = { latitude?: number; longitude?: number } | { problem: string };
+
+/** Decimal degrees, both or neither, inside Cyprus. Blank: none, and nothing to report. */
+export function readCoordinates(lat: string | undefined, lng: string | undefined): Coordinates {
+  const latCell = text(lat);
+  const lngCell = text(lng);
+  if (!latCell && !lngCell) return {};
+  if (!latCell || !lngCell) return { problem: 'only one of latitude/longitude, coordinates left empty' };
+  const DECIMAL = /^-?\d{1,3}(\.\d+)?$/;
+  if (!DECIMAL.test(latCell) || !DECIMAL.test(lngCell)) {
+    return { problem: `coordinates "${latCell}", "${lngCell}" aren't decimal degrees, left empty` };
+  }
+  const latitude = Number(latCell);
+  const longitude = Number(lngCell);
+  const b = CYPRUS_BOUNDS;
+  if (latitude < b.minLat || latitude > b.maxLat || longitude < b.minLng || longitude > b.maxLng) {
+    return { problem: `coordinates ${latCell}, ${lngCell} aren't in Cyprus, left empty` };
+  }
+  return { latitude, longitude };
+}
+
+function isFormat(value: string | null): value is Format {
+  return value !== null && (FORMATS as readonly string[]).includes(value);
+}
+
+function confirmed(row: Row): boolean {
+  return /^yes\b/i.test((row.confirmed_by_venue ?? '').trim());
+}
+
+/** The venue a tab's row belongs to, or null (reported) if it isn't imported. */
+function venueOf(row: Row, where: string, byKey: Map<string, VenuePayload>, report: string[]): VenuePayload | null {
+  const key = text(row.venue_id);
+  const venue = key ? byKey.get(key) : undefined;
+  if (!venue) {
+    report.push(`${where}: venue_id "${key ?? ''}" isn't an imported venue, skipped`);
+    return null;
+  }
+  return venue;
+}
+
+/** Pitches tab: one row per pitch, exactly as the venue names it. */
+function importPitches(rows: Row[], byKey: Map<string, VenuePayload>, report: string[]) {
+  rows.forEach((row, i) => {
+    const where = `pitches row ${i + 2}`;
+    const name = text(row.pitch_name);
+    if (!name) {
+      if (Object.values(row).some((c) => c.trim() !== '')) report.push(`${where}: no pitch_name, skipped`);
+      return;
+    }
+    const venue = venueOf(row, where, byKey, report);
+    if (!venue) return;
+    const it = `${venue.import_key} "${name}"`;
+    if (!confirmed(row)) return void report.push(`${where}: ${it} not confirmed by the venue, skipped`);
+    const size = text(row.size);
+    if (!isFormat(size)) return void report.push(`${where}: ${it} size "${size ?? ''}" isn't a format, skipped`);
+    const formatsCell = text(row.formats);
+    if (!formatsCell) return void report.push(`${where}: ${it} has no formats, skipped`);
+    const formats = formatsCell.split(',').map((f) => f.trim()).filter(Boolean);
+    if (formats.length === 0 || !formats.every((f) => isFormat(f))) {
+      return void report.push(`${where}: ${it} formats "${formatsCell}" unreadable, skipped`);
+    }
+    const placeCell = text(row.indoor_or_outdoor);
+    if (!placeCell) return void report.push(`${where}: ${it} indoor_or_outdoor is blank, skipped`);
+    const place = placeCell.toLowerCase();
+    if (place !== 'indoor' && place !== 'outdoor') {
+      return void report.push(`${where}: ${it} indoor_or_outdoor "${placeCell}" isn't indoor or outdoor, skipped`);
+    }
+    venue.pitches ??= [];
+    if (venue.pitches.some((p) => p.name === name)) {
+      return void report.push(`${where}: ${venue.import_key} already has a pitch "${name}", skipped`);
+    }
+    venue.pitches.push({
+      name,
+      size,
+      formats: [...new Set(formats as Format[])],
+      surface: text(row.surface),
+      indoor: place === 'indoor',
+    });
+  });
+}
+
+/** Combinations tab: which of the venue's pitches join, and into what format. */
+function importCombinations(rows: Row[], byKey: Map<string, VenuePayload>, report: string[]) {
+  rows.forEach((row, i) => {
+    const where = `combinations row ${i + 2}`;
+    if (!Object.values(row).some((c) => c.trim() !== '')) return;
+    const venue = venueOf(row, where, byKey, report);
+    if (!venue) return;
+    const key = venue.import_key;
+    const namesCell = text(row.pitch_names) ?? '';
+    const formatCell = text(row.format);
+    if (!confirmed(row)) {
+      return void report.push(`${where}: ${key} ${formatCell ?? ''} "${namesCell}" not confirmed by the venue, skipped`);
+    }
+    if (!isFormat(formatCell)) return void report.push(`${where}: ${key} format "${formatCell ?? ''}" isn't a format, skipped`);
+    const names = namesCell.split('+').map((n) => n.trim()).filter(Boolean);
+    if (names.length < 2 || new Set(names).size !== names.length) {
+      return void report.push(`${where}: ${key} "${namesCell}" needs at least two different pitches joined with "+", skipped`);
+    }
+    const members = names.map((n) => venue.pitches?.find((p) => p.name === n));
+    const missing = names.find((_, j) => !members[j]);
+    if (missing) return void report.push(`${where}: ${key} has no pitch "${missing}" in the Pitches tab, skipped`);
+    const rank = (f: Format) => FORMATS.indexOf(f);
+    if (!members.every((p) => rank(p!.size) < rank(formatCell))) {
+      return void report.push(
+        `${where}: ${key} "${namesCell}" can't host ${formatCell} (each pitch is already that size or bigger), skipped`
+      );
+    }
+    venue.combinations ??= [];
+    const same = (c: CombinationPayload) =>
+      c.format === formatCell && [...c.pitch_names].sort().join('+') === [...names].sort().join('+');
+    if (venue.combinations.some(same)) {
+      return void report.push(`${where}: ${key} already has ${formatCell} "${namesCell}", skipped`);
+    }
+    venue.combinations.push({ format: formatCell, pitch_names: names });
+  });
+}
+
+/** Prices tab: one price per format (decided 19 November), from the text, never a float. */
+function importPrices(rows: Row[], byKey: Map<string, VenuePayload>, report: string[]) {
+  rows.forEach((row, i) => {
+    const where = `prices row ${i + 2}`;
+    if (!Object.values(row).some((c) => c.trim() !== '')) return;
+    const venue = venueOf(row, where, byKey, report);
+    if (!venue) return;
+    const key = venue.import_key;
+    const format = text(row.format);
+    if (!isFormat(format)) return void report.push(`${where}: ${key} format "${format ?? ''}" isn't a format, skipped`);
+    if (!confirmed(row)) return void report.push(`${where}: ${key} ${format} not confirmed by the venue, skipped`);
+    const cell = text(row.price_eur_per_hour);
+    if (!cell) return void report.push(`${where}: ${key} ${format} has no price, skipped`);
+    const cents = eurosToCents(cell);
+    if (cents === null) return void report.push(`${where}: ${key} ${format} price "${cell}" unreadable, skipped`);
+    if (cents <= 0) return void report.push(`${where}: ${key} ${format} price must be above €0, skipped`);
+    venue.prices ??= [];
+    if (venue.prices.some((p) => p.format === format)) {
+      return void report.push(`${where}: ${key} already has a price for ${format}, skipped`);
+    }
+    venue.prices.push({ format, price_cents: cents });
+  });
 }
 
 function contentType(file: string): string | null {
