@@ -3,6 +3,14 @@
 // as the primary domain, no external scripts or fonts, no launch date, and
 // the Formspree and Google Analytics IDs in one place, with the forms hidden
 // and analytics off until they're set.
+//
+// While Futty isn't launched, the website is private (decided by Panos, 22
+// November): https://futty.app/ is a plain "Coming soon" page, and only the
+// pages App Store Connect and Google need (privacy, terms, their Greek
+// versions, cookies, support) stay public. The marketing homepage and its
+// app screenshots are kept in site-marketing/, which is not deployed. To go
+// public again, move site-marketing/index.html and site-marketing/img/* back
+// into site/ and drop the "private website" tests.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -13,7 +21,11 @@ function read(page: string): string {
   return readFileSync(join(SITE, page, 'index.html'), 'utf8');
 }
 
-const home = read('');
+const MARKETING = join(ROOT, 'site-marketing');
+/** The marketing homepage, kept out of the website while it is private. */
+const home = readFileSync(join(MARKETING, 'index.html'), 'utf8');
+/** What https://futty.app/ serves today. */
+const comingSoon = read('');
 const PAGES = ['privacy', 'terms', 'el/privacy', 'el/terms', 'support', 'cookies'];
 const GREEK = new Set(['el/privacy', 'el/terms']);
 
@@ -80,23 +92,64 @@ describe('every page', () => {
     expect(source).not.toMatch(/fonts\.googleapis|fonts\.gstatic|@import/);
   });
 
-  it('every image and font the pages use is served from site/', () => {
+  it('every image and font the pages use is served from site/ (or kept with the marketing homepage)', () => {
     // Hidden on the homepage until the image exists (noted in the PR).
     const missingOnPurpose = new Set(['img/venue-dashboard.webp']);
     const css = readFileSync(join(SITE, 'style.css'), 'utf8');
-    const refs = [home, css, ...PAGES.map(read)].flatMap((s) => [
+    const refs = [home, comingSoon, css, ...PAGES.map(read)].flatMap((s) => [
       ...[...s.matchAll(/(?:src|href|data-src)="\/?((?:img|fonts)\/[^"]+)"/g)].map((m) => m[1]),
       ...[...s.matchAll(/url\(\/?((?:img|fonts)\/[^)]+)\)/g)].map((m) => m[1]),
     ]);
     expect(refs.length).toBeGreaterThan(20);
     for (const ref of new Set(refs)) {
       if (missingOnPurpose.has(ref)) continue;
-      expect(existsSync(join(SITE, ref))).toBe(true);
+      expect(existsSync(join(SITE, ref)) || existsSync(join(MARKETING, ref))).toBe(true);
     }
   });
 });
 
-describe('the homepage', () => {
+describe('the private website (coming soon)', () => {
+  const page = markup(comingSoon);
+
+  it('says Coming soon and asks search engines not to list it', () => {
+    expect(comingSoon).toContain('<title>Futty — Coming soon</title>');
+    expect(comingSoon).toContain('<meta name="robots" content="noindex">');
+    expect(page).toContain('<h1>Coming soon</h1>');
+  });
+
+  it('shows no app screens, forms, scripts or languages', () => {
+    expect(comingSoon).not.toMatch(/<script|<form|<iframe/);
+    const images = [...comingSoon.matchAll(/(?:src|href)="\/?(img\/[^"]+)"/g)].map((m) => m[1]);
+    for (const img of images) expect(img).toMatch(/^img\/(logo\.png|favicon[^/]*|apple-touch-icon[^/]*)$/);
+    expect(comingSoon).not.toContain('og:image');
+  });
+
+  it('links the public pages and support@futty.app', () => {
+    const links = hrefs(comingSoon);
+    for (const link of ['/privacy/', '/terms/', '/cookies/', '/support/', 'mailto:support@futty.app']) {
+      expect(links).toContain(link);
+    }
+    expect(comingSoon).toContain('<link rel="stylesheet" href="/style.css">');
+  });
+
+  it('keeps the marketing homepage out of site/', () => {
+    expect(home).toContain("var LANGS=");
+    for (const file of siteTextFiles()) {
+      expect(readFileSync(file, 'utf8')).not.toContain('var LANGS=');
+    }
+  });
+
+  it('serves only the logo and icons from site/img (the app screenshots stay with the marketing homepage)', () => {
+    for (const file of readdirSync(join(SITE, 'img'))) {
+      expect(file).toMatch(/^(logo\.png|favicon[^/]*|apple-touch-icon[^/]*)$/);
+    }
+    for (const shot of ['s1-home.webp', '01-book.webp', 'player-card.webp', 'og-image.png']) {
+      expect(existsSync(join(MARKETING, 'img', shot))).toBe(true);
+    }
+  });
+});
+
+describe('the marketing homepage (site-marketing/, not deployed while the website is private)', () => {
   it('links privacy, terms, cookies and support by path; privacy and terms follow the language', () => {
     const links = hrefs(home);
     for (const link of ['/privacy/', '/terms/', '/cookies/', '/support/']) expect(links).toContain(link);

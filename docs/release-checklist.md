@@ -195,6 +195,7 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 ## 9. Privacy
 
 - [ ] **Website:** `site/` is the website, plain HTML and CSS with no build step. Host it at https://futty.app so that https://futty.app/privacy, https://futty.app/terms and https://futty.app/support work.
+- [ ] **Website public again (at launch):** until launch the homepage is a private "Coming soon" page. Move `site-marketing/index.html` back to `site/index.html` and `site-marketing/img/*` back to `site/img/`, delete the "private website (coming soon)" tests in `tests/site/site-pages.test.ts`, and point the homepage tests back at `site/`.
 - [ ] **Privacy policy URL:** enter https://futty.app/privacy in App Store Connect (App Information). It must say what the app's own screen (`app/account/privacy-policy.tsx`) says; `tests/site/site-matches-app.test.tsx` fails if `site/privacy/index.html` drifts from it. Check it covers Stripe (payments), Sentry (crash reports), contact matching (phone numbers are sent to find friends on Futty), calendar, push notifications and the Futty AI.
 - [ ] **App Privacy answers** (draft to check against the code; "linked to the user" unless noted):
   - Contact info: name, email address, phone number.
