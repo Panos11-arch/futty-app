@@ -264,9 +264,9 @@ begin
     assert not has_function_privilege('anon', v_fn, 'execute'), format('%s is internal (anon)', v_fn);
   end loop;
   assert has_function_privilege('authenticated',
-    'public.book_slot(uuid, date, time, time, integer, text, integer, text, uuid)', 'execute'), 'players book';
+    'public.book_slot(uuid, date, time, time, integer, text, integer, text, uuid, uuid[], text)', 'execute'), 'players book';
   assert not has_function_privilege('anon',
-    'public.book_slot(uuid, date, time, time, integer, text, integer, text, uuid)', 'execute'), 'anon can''t book';
+    'public.book_slot(uuid, date, time, time, integer, text, integer, text, uuid, uuid[], text)', 'execute'), 'anon can''t book';
 end $$;
 
 select 'pay gipedo 1 (booking) passed' as result;
