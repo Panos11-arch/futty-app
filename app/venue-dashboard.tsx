@@ -23,7 +23,7 @@
 // amounts the server returns.
 import { router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -48,7 +48,8 @@ import { OfferRedeemSection } from '@/components/venue/offer-redeem-section';
 import { TrainingSlotsSection } from '@/components/venue/training-slots-section';
 import { WalkInSheet } from '@/components/venue/walk-in-sheet';
 import { WeatherNudgesList } from '@/components/venue/weather-nudges';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import { useAuth } from '@/lib/auth';
 import { loadCheckInQr } from '@/lib/check-in';
@@ -166,6 +167,7 @@ function useCyprusClock() {
 }
 
 export default function VenueDashboardScreen() {
+  const styles = useStyles();
   const { user } = useAuth();
   const profile = useProfile();
   const clock = useCyprusClock();
@@ -568,7 +570,7 @@ export default function VenueDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -577,4 +579,4 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: space.sm },
   section: { gap: space.sm, marginTop: space.xl },
   divider: { marginTop: space.xl },
-});
+}));

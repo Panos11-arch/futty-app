@@ -1,16 +1,6 @@
 import { useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { POPUP_HEADER_HEIGHT, PopupModal } from '@/components/popup-modal';
@@ -18,7 +8,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, shadow, space, type } from '@/constants/futty-theme';
+import { hairline, radius, shadow, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { sendFuttyAiMessage, type ChatMessage } from '@/lib/futty-ai';
 import { type Block, parseReply } from '@/lib/futty-ai-markdown';
 
@@ -63,6 +54,7 @@ export function chatKeyboardProps(os: typeof Platform.OS, insetTop: number) {
 /** One reply: bold, bullet and numbered lists and line breaks, never a raw
  *  asterisk (lib/futty-ai-markdown.ts). */
 function Reply({ text }: { text: string }) {
+  const styles = useStyles();
   const inline = (block: Block) =>
     block.inline.map((part, i) => (
       <Text key={i} variant="body" style={part.bold ? styles.bold : undefined}>
@@ -90,6 +82,8 @@ function Reply({ text }: { text: string }) {
 }
 
 export function FuttyAiChat() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -230,7 +224,7 @@ export function FuttyAiChat() {
               onPress={send}
               disabled={sendDisabled}
               style={[styles.sendButton, sendDisabled && styles.sendButtonDisabled]}>
-              <IconSymbol name="paperplane.circle.fill" size={ICON.regular + space.sm} color={colors.brand} />
+              <IconSymbol name="paperplane.circle.fill" size={ICON.regular + space.sm} color={colors.positive} />
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -239,7 +233,7 @@ export function FuttyAiChat() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, type }) => ({
   flex: { flex: 1 },
   launcherWrap: {
     position: 'absolute',
@@ -297,4 +291,4 @@ const styles = StyleSheet.create({
   },
   sendButton: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
   sendButtonDisabled: { opacity: DISABLED_OPACITY },
-});
+}));

@@ -1,12 +1,14 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 function TeamBadge({ name }: { name: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.badgeCol}>
       <Avatar name={name} size={space.xxl * 2} />
@@ -40,6 +42,8 @@ export function FixtureConfirmedCard({
    *  a normal split-payment match, which gets no extra callout here. */
   paymentModeLabel?: string | null;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const isFixture = !!teamAName && !!teamBName;
 
   return (
@@ -95,7 +99,7 @@ export function FixtureConfirmedCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   wrap: { alignItems: 'center', gap: space.xl, alignSelf: 'stretch' },
   matchupRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.lg },
   badgeCol: { alignItems: 'center', gap: space.sm, flex: 1 },
@@ -118,4 +122,4 @@ const styles = StyleSheet.create({
   },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   flex: { flex: 1 },
-});
+}));

@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/card';
 import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { updateProfile, useProfile } from '@/lib/use-profile';
 
 export default function PrivacySettingsScreen() {
+  const styles = useStyles();
   const profile = useProfile();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export default function PrivacySettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg },
-});
+}));

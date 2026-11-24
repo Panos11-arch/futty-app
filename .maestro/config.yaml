@@ -12,3 +12,4 @@ executionOrder:
     - sign-in
     - book-and-pay
     - cancel
+    - appearance

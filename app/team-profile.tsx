@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FollowButton } from '@/components/match/follow-button';
@@ -15,7 +15,8 @@ import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { cyprusYear } from '@/lib/match/stats-api';
 import { useTeamForm } from '@/lib/match/use-profile-matches';
 import { useTeamRecentMatches, useTeamSeasonStats } from '@/lib/match/use-stats';
@@ -40,6 +41,7 @@ const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  *  counters (teams.played/won/goals) with the season stats from confirmed
  *  matches and adds the team's recent matches. */
 export default function TeamProfileScreen() {
+  const styles = useStyles();
   const { teamId } = useLocalSearchParams<{ teamId: string }>();
   const [state, setState] = useState<State>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -171,6 +173,7 @@ export default function TeamProfileScreen() {
 
 /** A7: the team's season (this year in Cyprus time, or all time), from team_season_stats. */
 function TeamSeason({ teamId }: { teamId: string }) {
+  const styles = useStyles();
   const [pick, setPick] = useState<SeasonPick>('year');
   const stats = useTeamSeasonStats(teamId, pick === 'year' ? { kind: 'year', year: cyprusYear() } : { kind: 'all' });
   return (
@@ -187,6 +190,7 @@ function TeamSeason({ teamId }: { teamId: string }) {
 
 /** The viewer's team against this one; a captain of several teams picks which. */
 function HeadToHeadSection({ captainOf, opponent }: { captainOf: Team[]; opponent: Team }) {
+  const styles = useStyles();
   const [pickedId, setPickedId] = useState(captainOf[0].id);
   const mine = captainOf.find((t) => t.id === pickedId) ?? captainOf[0];
   return (
@@ -204,7 +208,7 @@ function HeadToHeadSection({ captainOf, opponent }: { captainOf: Team[]; opponen
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: {
     flex: 1,
@@ -218,4 +222,4 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, gap: space.xs },
   section: { gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

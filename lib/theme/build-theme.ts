@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS: DisplaySettings = {
 
 /** What the phone's own settings say. */
 export type SystemSignals = {
-  colorScheme: 'light' | 'dark' | null | undefined;
+  colorScheme: 'light' | 'dark' | 'unspecified' | null | undefined;
   /** The phone's text size, as React Native applies it to every fontSize */
   fontScale: number;
   reduceMotion: boolean;

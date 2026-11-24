@@ -4,10 +4,11 @@
 // If the money changed between the quote and the tap (his free hour ended,
 // kickoff got closer), the new quote is shown to check again.
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Banner, Button, EmptyState, SkeletonText, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { LoadState } from '@/lib/booking-search';
 import {
   actionTitle,
@@ -34,6 +35,7 @@ export type LosersPayLeaveViewProps = {
 };
 
 export function LosersPayLeaveView(props: LosersPayLeaveViewProps) {
+  const styles = useStyles();
   const { state } = props;
   if (state.status === 'loading') {
     return (
@@ -59,6 +61,7 @@ export function LosersPayLeaveView(props: LosersPayLeaveViewProps) {
 }
 
 function Ready({ action, initial, onConfirm, onKeep, onDone }: LosersPayLeaveViewProps & { initial: LosersPayQuote }) {
+  const styles = useStyles();
   const [quote, setQuote] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [changed, setChanged] = useState(false);
@@ -139,9 +142,9 @@ function Ready({ action, initial, onConfirm, onKeep, onDone }: LosersPayLeaveVie
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
   group: { gap: space.xs },
-});
+}));

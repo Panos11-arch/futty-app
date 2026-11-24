@@ -18,13 +18,15 @@ import {
 import { DISABLED_OPACITY, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text, type TextTone } from '@/components/ui/text';
-import { colors, radius, space, type } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { getPasswordStrength } from '@/lib/password';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
 /** One column on the canvas, keyboard-aware, vertically centred. */
 export function AuthScreen({ children }: PropsWithChildren) {
+  const styles = useStyles();
   return (
     <View style={styles.screen}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -38,6 +40,7 @@ export function AuthScreen({ children }: PropsWithChildren) {
 
 /** The Futty wordmark, in ink. No illustration. */
 export function AuthWordmark() {
+  const styles = useStyles();
   return (
     <Text variant="display" accessibilityRole="header" style={styles.wordmark}>
       Futty
@@ -59,6 +62,8 @@ export function AuthSubtitle({ children }: PropsWithChildren) {
 
 /** A bare input for older screens; the auth screens use components/ui TextField. */
 export function AuthField(props: TextInputProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   return <TextInput placeholderTextColor={colors.inkMuted} {...props} style={[styles.input, props.style]} />;
 }
 
@@ -76,6 +81,8 @@ type AuthButtonProps = {
 };
 
 export function AuthButton({ label, onPress, disabled, busy, variant = 'primary', icon, compact }: AuthButtonProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const isPrimary = variant === 'primary';
   const tone: TextTone = isPrimary ? 'onBrand' : 'brand';
 
@@ -130,6 +137,8 @@ const STRENGTH_CONFIG = {
 
 /** Live weak/medium/strong indicator, based on length + character variety. */
 export function PasswordStrengthMeter({ password }: { password: string }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const strength = getPasswordStrength(password);
   if (!strength) return null;
   const config = STRENGTH_CONFIG[strength];
@@ -153,6 +162,7 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
 
 /** A plain text link, at least 44 points tall. */
 export function AuthLink({ label, onPress, disabled }: Omit<AuthButtonProps, 'variant' | 'busy'>) {
+  const styles = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -168,7 +178,7 @@ export function AuthLink({ label, onPress, disabled }: Omit<AuthButtonProps, 'va
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, type }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: {
@@ -199,7 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
   },
   buttonPrimary: { backgroundColor: colors.brand },
-  buttonSecondary: { borderWidth: 1, borderColor: colors.brand, backgroundColor: colors.surface },
+  buttonSecondary: { borderWidth: 1, borderColor: colors.positive, backgroundColor: colors.surface },
   buttonCompact: { alignSelf: 'flex-start', paddingHorizontal: space.xl },
   inactive: { opacity: DISABLED_OPACITY },
   buttonLabelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
@@ -208,4 +218,4 @@ const styles = StyleSheet.create({
   strengthWrap: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   strengthBars: { flex: 1, flexDirection: 'row', gap: space.xs },
   strengthBar: { flex: 1, height: space.xs, borderRadius: radius.pill },
-});
+}));

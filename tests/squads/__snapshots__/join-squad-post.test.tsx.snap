@@ -29,9 +29,12 @@ exports[`Join squad post loading shows a skeleton 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           {
             "padding": 16,
           },
@@ -52,13 +55,13 @@ exports[`Join squad post loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -69,13 +72,13 @@ exports[`Join squad post loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "60%",
               },
             ]
@@ -90,10 +93,10 @@ exports[`Join squad post loading shows a skeleton 1`] = `
       style={
         [
           {
-            "backgroundColor": "#E4E7EB",
+            "backgroundColor": "#F1F3F5",
           },
           {
-            "borderRadius": 12,
+            "borderRadius": 16,
             "height": 48,
             "width": "100%",
           },
@@ -107,10 +110,10 @@ exports[`Join squad post loading shows a skeleton 1`] = `
       style={
         [
           {
-            "backgroundColor": "#E4E7EB",
+            "backgroundColor": "#F1F3F5",
           },
           {
-            "borderRadius": 12,
+            "borderRadius": 16,
             "height": 64,
             "width": "100%",
           },
@@ -151,9 +154,12 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -165,12 +171,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
-                "fontFamily": "Inter_700Bold",
+                "fontFamily": "Cairo_700Bold",
                 "fontSize": 22,
-                "lineHeight": 28,
+                "lineHeight": 30,
               },
               {
                 "color": "#0B1215",
@@ -183,12 +190,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
           Arena
         </Text>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -214,7 +222,7 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
             "alignItems": "center",
             "backgroundColor": "#FFFFFF",
             "borderColor": "#E4E7EB",
-            "borderRadius": 12,
+            "borderRadius": 16,
             "borderWidth": 0.5,
             "flexDirection": "row",
             "gap": 8,
@@ -227,12 +235,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
           testID="icon-person.2.fill"
         />
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#0B1215",
@@ -256,9 +265,12 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -285,12 +297,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#5B6470",
@@ -305,12 +318,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
               Pitch
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -338,12 +352,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#5B6470",
@@ -358,12 +373,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
               Service fee
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -398,6 +414,7 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -418,6 +435,7 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
               Your share
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -443,12 +461,13 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
         </View>
       </View>
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_500Medium",
-              "fontSize": 13,
-              "lineHeight": 18,
+              "fontSize": 14,
+              "lineHeight": 20,
             },
             {
               "color": "#5B6470",
@@ -497,14 +516,14 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
             {
               "alignItems": "center",
               "alignSelf": "flex-start",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "justifyContent": "center",
               "minHeight": 44,
               "paddingHorizontal": 16,
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0E5A3A",
+              "backgroundColor": "#00FF9C",
             },
             false,
             {
@@ -516,6 +535,7 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -524,7 +544,7 @@ exports[`Join squad post shows the server’s price unchanged, split as the serv
                 "lineHeight": 22,
               },
               {
-                "color": "#FFFFFF",
+                "color": "#03140C",
               },
               false,
               {

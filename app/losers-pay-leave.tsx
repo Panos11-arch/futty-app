@@ -2,7 +2,6 @@
 // the booking (spec 13 "Losers pay (Gipedo Pano in Booking v2)", "Pulling
 // out"). The quote and the amounts are the server's; on the tap the quote
 // is read again and, if the money changed, shown to check again first.
-import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 
@@ -17,6 +16,7 @@ import {
 } from '@/lib/booking-losers-pay';
 import { useLoad } from '@/lib/booking-search';
 import { useRules } from '@/lib/use-rules';
+import { haptic } from '@/lib/haptics';
 
 export default function LosersPayLeaveScreen() {
   useRules();
@@ -35,7 +35,7 @@ export default function LosersPayLeaveScreen() {
     if (!sameMoney(shown, now)) return { status: 'changed', quote: now };
     const error = await confirmLosersPay(action, bookingId);
     if (error) return fail(error);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    haptic.success();
     return { status: 'done' };
   }
 
@@ -55,6 +55,6 @@ export default function LosersPayLeaveScreen() {
 }
 
 function fail(message: string): ConfirmOutcome {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  haptic.error();
   return { status: 'error', message };
 }

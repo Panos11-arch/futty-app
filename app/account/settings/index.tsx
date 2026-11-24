@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
@@ -8,9 +8,11 @@ import { Button } from '@/components/ui/button';
 import { type DeleteFailure, deleteMyAccount } from '@/lib/account';
 import { useAuth } from '@/lib/auth';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 export default function SettingsScreen() {
+  const styles = useStyles();
   const { signOut } = useAuth();
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<DeleteFailure | null>(null);
@@ -50,6 +52,21 @@ export default function SettingsScreen() {
 
         <MenuSection>
           <MenuRow
+            testID="settings-appearance"
+            icon="circle.lefthalf.filled"
+            label="Appearance"
+            onPress={() => router.push('/account/settings/appearance')}
+          />
+          <MenuRow
+            testID="settings-accessibility"
+            icon="accessibility"
+            label="Accessibility"
+            onPress={() => router.push('/account/settings/accessibility')}
+          />
+        </MenuSection>
+
+        <MenuSection>
+          <MenuRow
             icon="trash.fill"
             label="Delete account"
             destructive
@@ -75,7 +92,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: {
     flex: 1,
     backgroundColor: colors.canvas,
@@ -84,4 +101,4 @@ const styles = StyleSheet.create({
     gap: space.xl,
     padding: space.lg,
   },
-});
+}));

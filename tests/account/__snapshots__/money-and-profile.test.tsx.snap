@@ -84,12 +84,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
           />
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
-                  "fontFamily": "Inter_700Bold",
+                  "fontFamily": "Cairo_700Bold",
                   "fontSize": 28,
-                  "lineHeight": 34,
+                  "lineHeight": 38,
                 },
                 {
                   "color": "#0B1215",
@@ -103,12 +104,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
           </Text>
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -126,9 +128,12 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -204,12 +209,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             >
               <Text
                 allowFontScaling={false}
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
                       "color": "#5B6470",
@@ -232,6 +238,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -250,12 +257,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               Ann Lee
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -269,12 +277,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               ann
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -353,13 +362,14 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flex": 1,
                 "paddingVertical": 8,
               }
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -382,12 +392,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               10
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -407,13 +418,14 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flex": 1,
                 "paddingVertical": 8,
               }
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -436,12 +448,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               40%
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -461,13 +474,14 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flex": 1,
                 "paddingVertical": 8,
               }
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -490,12 +504,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               7
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -530,12 +545,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -548,12 +564,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               Level
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
-                    "fontFamily": "Inter_700Bold",
+                    "fontFamily": "Cairo_700Bold",
                     "fontSize": 22,
-                    "lineHeight": 28,
+                    "lineHeight": 30,
                   },
                   {
                     "color": "#0B1215",
@@ -583,12 +600,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               testID="player-level-provisional"
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
                       "color": "#0B1215",
@@ -603,12 +621,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             </View>
           </View>
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 12,
-                  "lineHeight": 16,
+                  "fontSize": 13,
+                  "lineHeight": 18,
                 },
                 {
                   "color": "#5B6470",
@@ -641,7 +660,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -706,12 +725,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -795,12 +815,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -884,12 +905,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -973,12 +995,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1009,7 +1032,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -1073,12 +1096,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1091,12 +1115,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
                 Go Premium
               </Text>
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 13,
-                      "lineHeight": 18,
+                      "fontSize": 14,
+                      "lineHeight": 20,
                     },
                     {
                       "color": "#5B6470",
@@ -1127,7 +1152,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -1191,12 +1216,13 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#B42318",
@@ -1246,9 +1272,12 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             false,
             undefined,
           ]
@@ -1274,12 +1303,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -1294,6 +1324,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               Arena
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -1328,12 +1359,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -1359,26 +1391,31 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               accessibilityLabel="Paid"
               accessible={true}
               style={
-                {
-                  "alignSelf": "flex-start",
-                  "backgroundColor": "#F4F5F7",
-                  "borderRadius": 999,
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 2,
-                }
+                [
+                  {
+                    "alignSelf": "flex-start",
+                    "borderRadius": 999,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 2,
+                  },
+                  {
+                    "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                  },
+                ]
               }
               testID="status-pill"
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
-                      "color": "#1F7A45",
+                      "color": "#12804A",
                     },
                     false,
                     undefined,
@@ -1419,12 +1456,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -1440,6 +1478,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
                (your booking)
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -1474,12 +1513,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -1506,23 +1546,28 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               accessibilityLabel="Pending"
               accessible={true}
               style={
-                {
-                  "alignSelf": "flex-start",
-                  "backgroundColor": "#F4F5F7",
-                  "borderRadius": 999,
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 2,
-                }
+                [
+                  {
+                    "alignSelf": "flex-start",
+                    "borderRadius": 999,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 2,
+                  },
+                  {
+                    "backgroundColor": "#FFF6DA",
+                  },
+                ]
               }
               testID="status-pill"
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
                       "color": "#8A5C00",
@@ -1573,7 +1618,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
                 {
                   "alignItems": "center",
                   "alignSelf": "flex-start",
-                  "borderRadius": 10,
+                  "borderRadius": 12,
                   "justifyContent": "center",
                   "minHeight": 44,
                   "paddingHorizontal": 16,
@@ -1581,10 +1626,9 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
                 },
                 {
                   "backgroundColor": "transparent",
-                },
-                {
                   "paddingHorizontal": 8,
                 },
+                false,
                 false,
                 false,
                 false,
@@ -1592,6 +1636,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -1600,7 +1645,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
                     "lineHeight": 22,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   {
@@ -1642,12 +1687,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -1662,6 +1708,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               Arena
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -1696,12 +1743,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -1728,23 +1776,28 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               accessibilityLabel="Refunded"
               accessible={true}
               style={
-                {
-                  "alignSelf": "flex-start",
-                  "backgroundColor": "#F4F5F7",
-                  "borderRadius": 999,
-                  "paddingHorizontal": 8,
-                  "paddingVertical": 2,
-                }
+                [
+                  {
+                    "alignSelf": "flex-start",
+                    "borderRadius": 999,
+                    "paddingHorizontal": 8,
+                    "paddingVertical": 2,
+                  },
+                  {
+                    "backgroundColor": "#F1F3F5",
+                  },
+                ]
               }
               testID="status-pill"
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
                       "color": "#5B6470",
@@ -1788,12 +1841,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -1808,6 +1862,7 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
               Arena
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -1842,12 +1897,13 @@ exports[`Transactions renders the server’s amounts unchanged, right-aligned an
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",

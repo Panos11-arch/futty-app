@@ -12,7 +12,8 @@ import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 import { formResult } from '@/lib/match/form';
 import { formatMatchWhen } from '@/lib/match/format';
 import type { FormResult, MatchListItem } from '@/lib/match/types';
@@ -28,6 +29,7 @@ export type MatchRowProps =
   | { loading: true; item?: undefined; onPress?: undefined; viewerResult?: undefined };
 
 export function MatchRow(props: MatchRowProps) {
+  const { colors } = useTheme();
   if (props.loading) {
     return (
       <Card style={styles.card}>

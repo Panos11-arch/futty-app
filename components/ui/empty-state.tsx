@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 
 export type EmptyStateProps = {
   icon: IconSymbolName;
@@ -14,6 +15,7 @@ export type EmptyStateProps = {
 };
 
 export function EmptyState({ icon, message, action }: EmptyStateProps) {
+  const { colors } = useTheme();
   return (
     <View style={styles.wrap}>
       <View testID="empty-state-icon">

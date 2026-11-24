@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { initials } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatEuros } from '@/lib/money/format';
 
 export type VenueCardProps = {
@@ -31,6 +32,7 @@ export function VenueCard({
   onTimePress,
   testID,
 }: VenueCardProps) {
+  const styles = useStyles();
   const price = `${formatEuros(pricePerPlayerCents)} per player`;
   return (
     <Card testID={testID} padded={false} onPress={onPress} accessibilityLabel={`${name}, ${area}, ${price}`}>
@@ -73,7 +75,7 @@ export function VenueCard({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   photo: {
     width: '100%',
     aspectRatio: 16 / 9,
@@ -85,4 +87,4 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   titleText: { flex: 1, gap: 2 },
   times: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

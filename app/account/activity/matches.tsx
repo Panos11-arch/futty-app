@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { formatMatchDate } from '@/lib/match/format';
 import { useRecentResults } from '@/lib/use-recent-results';
@@ -24,6 +25,7 @@ function formatResultDate(iso: string) {
 }
 
 export default function MatchesScreen() {
+  const styles = useStyles();
   const results = useRecentResults(FULL_HISTORY_LIMIT);
 
   return (
@@ -69,9 +71,9 @@ export default function MatchesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
   row: { gap: 2, paddingHorizontal: space.lg, paddingVertical: space.md },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

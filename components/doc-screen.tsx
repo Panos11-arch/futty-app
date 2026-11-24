@@ -1,13 +1,14 @@
 import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 /** Shared layout for the plain-text screens under the account menu's Support
  *  and Legal information sections (Help, How Futty works, Terms of use,
@@ -19,6 +20,7 @@ export function DocScreen({
   updatedLabel = 'Last updated',
   children,
 }: PropsWithChildren<{ updated?: string; updatedLabel?: string }>) {
+  const styles = useStyles();
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -34,6 +36,7 @@ export function DocScreen({
 }
 
 export function DocHeading({ children }: PropsWithChildren) {
+  const styles = useStyles();
   return (
     <Text variant="headline" accessibilityRole="header" style={styles.heading}>
       {children}
@@ -46,6 +49,7 @@ export function DocParagraph({ children }: PropsWithChildren) {
 }
 
 export function DocBullet({ children }: PropsWithChildren) {
+  const styles = useStyles();
   return (
     <View style={styles.bulletRow}>
       <View style={styles.bulletDot} />
@@ -64,6 +68,8 @@ export function DocEmailLink({ email, subject }: { email: string; subject?: stri
 /** Tap-to-expand question, matching the <details>/<summary> pairs on the
  *  website's support page (site/support/index.html). */
 export function DocFAQ({ question, children }: PropsWithChildren<{ question: string }>) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   return (
     <Pressable
@@ -86,7 +92,7 @@ export function DocFAQ({ question, children }: PropsWithChildren<{ question: str
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
@@ -109,4 +115,4 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   faqQuestionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-});
+}));

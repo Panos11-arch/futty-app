@@ -11,14 +11,15 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { initials } from '@/components/ui/avatar';
 import { AvatarStack } from '@/components/ui/avatar-stack';
 import { Card } from '@/components/ui/card';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { openBookingDetail } from '@/lib/booking-navigation';
 import { fetchBookingRoster, rosterName, useLoad, whoHasntPaid } from '@/lib/booking-search';
 import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
@@ -44,6 +45,7 @@ export function bookingWhen(booking: Pick<MyBooking, 'booking_day' | 'start_time
 }
 
 export function NextBookingCard({ booking, venue, onPress, weather, testID }: NextBookingCardProps) {
+  const styles = useStyles();
   const name = venue?.name ?? 'Booked venue';
   const when = bookingWhen(booking);
   const loadRoster = useCallback(() => fetchBookingRoster(booking.id), [booking.id]);
@@ -106,7 +108,7 @@ export function NextBookingCard({ booking, venue, onPress, weather, testID }: Ne
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   photo: {
     width: '100%',
     aspectRatio: 16 / 9,
@@ -118,4 +120,4 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   titleText: { flex: 1, gap: space.xs },
   rosterRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
-});
+}));

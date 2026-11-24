@@ -4,11 +4,12 @@
 // November), drawn large so a player can scan it off the manager's phone.
 // The code is printed underneath in fours, in IBM Plex Mono (15 Design), for
 // a player whose camera won't scan, with the window it's open in Cyprus time.
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { Text } from '@/components/ui';
-import { colors, mono, radius, space } from '@/constants/futty-theme';
+import { mono, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { checkInLink, groupCode, windowLabel } from '@/lib/check-in';
 
 /** The QR fills the sheet's width, up to this. */
@@ -17,6 +18,8 @@ const MAX_QR = 320;
 export type CheckInCodeProps = { matchId: string; code: string; kickoffAt: string; endsAt: string };
 
 export function CheckInCode({ matchId, code, kickoffAt, endsAt }: CheckInCodeProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const size = Math.max(Math.min(width - space.xxl * 3, MAX_QR), space.xxl * 7);
   const grouped = groupCode(code);
@@ -39,7 +42,7 @@ export function CheckInCode({ matchId, code, kickoffAt, endsAt }: CheckInCodePro
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   box: { backgroundColor: colors.canvas, borderRadius: radius.control, padding: space.md, gap: space.md },
   qr: {
     alignSelf: 'center',
@@ -49,4 +52,4 @@ const styles = StyleSheet.create({
   },
   codeBox: { gap: space.xs, alignItems: 'center' },
   code: { fontFamily: mono.medium, textAlign: 'center' },
-});
+}));

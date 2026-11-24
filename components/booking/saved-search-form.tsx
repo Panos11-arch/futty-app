@@ -2,10 +2,11 @@
 // game length, a format and a place. Prefilled from the booking search. The
 // server checks every rule; this form only collects the choice.
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Banner, Button, Chip, SectionHeader, SegmentedControl, SkeletonBlock, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { PITCH_FORMATS } from '@/lib/booking';
 import { dateStrip, dayChipLabel, GAME_LENGTHS, type LoadState } from '@/lib/booking-search';
 import {
@@ -32,6 +33,7 @@ export type SavedSearchFormProps = {
 type DayKind = 'date' | 'weekday';
 
 export function SavedSearchForm({ initial, today, windowDays, places, saving, error, onSave }: SavedSearchFormProps) {
+  const styles = useStyles();
   const days = useMemo(() => dateStrip(today, windowDays), [today, windowDays]);
   const times = useMemo(() => halfHours(), []);
   const [kind, setKind] = useState<DayKind>(initial.day ? 'date' : 'weekday');
@@ -190,10 +192,10 @@ export function SavedSearchForm({ initial, today, windowDays, places, saving, er
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
   row: { gap: space.sm },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

@@ -6,7 +6,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
 
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { pitchLayout, positionLabel } from '@/lib/match/page';
 
 export type PitchSlot = { key: string; name: string | null };
@@ -29,6 +30,8 @@ const MARKER_HEIGHT = 44;
 const LINE = 0.6;
 
 export function Pitch({ formation, names, editable = false, placing = false, onPressPosition, testID }: PitchProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const spots = pitchLayout(formation);
   return (
     <View style={styles.pitch} testID={testID}>
@@ -68,7 +71,7 @@ export function Pitch({ formation, names, editable = false, placing = false, onP
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   pitch: { width: '100%', aspectRatio: 100 / 140, borderRadius: radius.control, overflow: 'hidden' },
   marker: {
     position: 'absolute',
@@ -86,4 +89,4 @@ const styles = StyleSheet.create({
   },
   markerPlacing: { backgroundColor: colors.brandSoft, borderColor: colors.brand },
   name: { textAlign: 'center' },
-});
+}));

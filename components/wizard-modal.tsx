@@ -1,13 +1,14 @@
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Modal, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { MIN_TOUCH, MOTION, useReduceMotion } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -56,6 +57,7 @@ export function WizardModal({
   /** Small line under the Continue button — e.g. a charge disclaimer. */
   footerNote?: ReactNode;
 }>) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
 
@@ -121,7 +123,7 @@ export function WizardModal({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   header: {
@@ -143,4 +145,4 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     gap: space.sm,
   },
-});
+}));

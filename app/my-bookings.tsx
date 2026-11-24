@@ -1,17 +1,19 @@
 // My Bookings: each upcoming booking opens its detail (app/booking/[id].tsx).
 // The list and the ?booking= link are components/booking/my-bookings-view.tsx.
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MyBookingsView } from '@/components/booking/my-bookings-view';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { linkedBookingId, openBookingDetail } from '@/lib/booking-navigation';
 import { useMyBookings } from '@/lib/use-my-bookings';
 import { useVenues } from '@/lib/use-venues';
 
 export default function MyBookingsScreen() {
   // "Open in Futty" from a calendar event (lib/calendar, BOOKING_LINK_PATH).
+  const styles = useStyles();
   const { booking } = useLocalSearchParams<{ booking?: string }>();
   const bookings = useMyBookings();
   const venuesState = useVenues();
@@ -31,7 +33,7 @@ export default function MyBookingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, paddingBottom: space.xxl },
-});
+}));

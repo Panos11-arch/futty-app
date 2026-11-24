@@ -1,17 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { FormChip, FormChips } from '@/components/match/form-chips';
-import { flatStyle } from '@/components/ui/test-utils';
+import { flatStyle, withTheme } from '@/components/ui/test-utils';
 import { colors, radius } from '@/constants/futty-theme';
 import { playerForm } from '@/lib/match/form';
 import { mockFormEntries, PROFILE } from '@/lib/match/mock';
 import type { FormResult } from '@/lib/match/types';
 
-const kinds: [FormResult, string, string][] = [
-  ['W', 'W', colors.success],
-  ['D', 'D', colors.inkMuted],
-  ['L', 'L', colors.danger],
-  ['L_forfeit', 'L (forfeit)', colors.danger],
+const kinds: [FormResult, string, string, string][] = [
+  ['W', 'W', colors.onFormWin, colors.formWin],
+  ['D', 'D', colors.onFormDraw, colors.formDraw],
+  ['L', 'L', colors.onFormLoss, colors.formLoss],
+  ['L_forfeit', 'L (forfeit)', colors.onFormLoss, colors.formLoss],
 ];
 
 describe('FormChip', () => {
@@ -26,13 +26,25 @@ describe('FormChip', () => {
     expect(screen.getByLabelText(spoken)).toBeTruthy();
   });
 
-  it.each(kinds)('%s reads "%s" in its colour on a small canvas pill', async (result, label, color) => {
+  it.each(kinds)('%s always shows the letter "%s" on its result colour', async (result, label, color, fill) => {
     await render(<FormChip result={result} />);
     expect(flatStyle(screen.getByText(label)).color).toBe(color);
     expect(flatStyle(screen.getByTestId('form-chip'))).toMatchObject({
-      backgroundColor: colors.canvas,
+      backgroundColor: fill,
       borderRadius: radius.pill,
     });
+  });
+
+  it.each([
+    ['W', 'W', radius.pill, undefined],
+    ['D', 'D', 4, undefined],
+    ['L', 'L', 4, [{ rotate: '45deg' }]],
+  ] as const)('colour-blind friendly: %s keeps its letter and gets its own shape', async (result, label, corner, transform) => {
+    await render(withTheme(<FormChip result={result} />, { colourBlind: true }));
+    expect(screen.getByText(label)).toBeTruthy();
+    const style = flatStyle(screen.getByTestId('form-chip'));
+    expect(style.borderRadius).toBe(corner);
+    expect(style.transform).toEqual(transform);
   });
 });
 

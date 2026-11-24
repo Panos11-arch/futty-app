@@ -9,11 +9,12 @@
 // route works on its own, and guards a signed-out player itself.
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner, Button, Card, SkeletonText, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { useNow } from '@/lib/booking-search';
 import {
@@ -40,6 +41,7 @@ function done() {
 }
 
 export default function CheckInScreen() {
+  const styles = useStyles();
   const params = useLocalSearchParams<{ match?: string; code?: string }>();
   const { user } = useAuth();
   const userId = user?.id ?? null;
@@ -160,8 +162,8 @@ export default function CheckInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg },
   stack: { gap: space.md },
-});
+}));

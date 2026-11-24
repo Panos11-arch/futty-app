@@ -33,11 +33,11 @@ describe('MatchRow', () => {
   );
 
   it.each([
-    ['a win', mockSideAWon, 'W', colors.success],
-    ['a loss', mockSideBWon, 'L', colors.danger],
-    ['a draw', mockDraw, 'D', colors.inkMuted],
-    ['a forfeit win', mockForfeitPulledOut, 'W', colors.success],
-    ['a forfeit loss', mockForfeitNoShow, 'L (forfeit)', colors.danger],
+    ['a win', mockSideAWon, 'W', colors.onFormWin],
+    ['a loss', mockSideBWon, 'L', colors.onFormLoss],
+    ['a draw', mockDraw, 'D', colors.onFormDraw],
+    ['a forfeit win', mockForfeitPulledOut, 'W', colors.onFormWin],
+    ['a forfeit loss', mockForfeitNoShow, 'L (forfeit)', colors.onFormLoss],
   ] as const)("shows the viewer's result chip for %s", async (_, item, label, color) => {
     await render(<MatchRow item={item} />);
     const chip = screen.getByTestId('match-row-result');

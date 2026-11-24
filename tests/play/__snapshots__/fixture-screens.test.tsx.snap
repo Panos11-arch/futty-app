@@ -49,6 +49,7 @@ exports[`Fixture chat empty 1`] = `
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -152,12 +153,13 @@ exports[`Fixture chat empty 1`] = `
             />
           </View>
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_400Regular",
-                  "fontSize": 15,
-                  "lineHeight": 20,
+                  "fontSize": 16,
+                  "lineHeight": 22,
                 },
                 {
                   "color": "#5B6470",
@@ -200,12 +202,12 @@ exports[`Fixture chat empty 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "borderWidth": 1,
               "color": "#0B1215",
               "fontFamily": "Inter_400Regular",
-              "fontSize": 15,
-              "lineHeight": 20,
+              "fontSize": 16,
+              "lineHeight": 22,
               "minHeight": 44,
               "paddingHorizontal": 12,
               "paddingVertical": 8,
@@ -255,14 +257,14 @@ exports[`Fixture chat empty 1`] = `
             {
               "alignItems": "center",
               "alignSelf": "flex-start",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "justifyContent": "center",
               "minHeight": 44,
               "paddingHorizontal": 16,
               "paddingVertical": 8,
             },
             {
-              "backgroundColor": "#0E5A3A",
+              "backgroundColor": "#00FF9C",
             },
             false,
             false,
@@ -274,6 +276,7 @@ exports[`Fixture chat empty 1`] = `
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -282,7 +285,7 @@ exports[`Fixture chat empty 1`] = `
                 "lineHeight": 22,
               },
               {
-                "color": "#FFFFFF",
+                "color": "#03140C",
               },
               false,
               {
@@ -365,7 +368,7 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
@@ -389,13 +392,13 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -406,13 +409,13 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -423,13 +426,13 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "60%",
               },
             ]
@@ -476,14 +479,14 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "borderRadius": 10,
+          "borderRadius": 12,
           "justifyContent": "center",
           "minHeight": 44,
           "paddingHorizontal": 16,
           "paddingVertical": 8,
         },
         {
-          "backgroundColor": "#0E5A3A",
+          "backgroundColor": "#00FF9C",
         },
         false,
         {
@@ -495,6 +498,7 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
     }
   >
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
@@ -503,7 +507,7 @@ exports[`Fixture confirmed loading: a skeleton, plain background (no drawn pitch
             "lineHeight": 22,
           },
           {
-            "color": "#FFFFFF",
+            "color": "#03140C",
           },
           false,
           {
@@ -619,12 +623,13 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
           >
             <Text
               allowFontScaling={false}
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -638,6 +643,7 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
             </Text>
           </View>
           <Text
+            maxFontSizeMultiplier={2}
             numberOfLines={2}
             style={
               [
@@ -660,12 +666,13 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
           </Text>
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -709,12 +716,13 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
           >
             <Text
               allowFontScaling={false}
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -728,6 +736,7 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
             </Text>
           </View>
           <Text
+            maxFontSizeMultiplier={2}
             numberOfLines={2}
             style={
               [
@@ -756,7 +765,7 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
             "alignSelf": "stretch",
             "backgroundColor": "#FFFFFF",
             "borderColor": "#E4E7EB",
-            "borderRadius": 12,
+            "borderRadius": 16,
             "borderWidth": 0.5,
             "gap": 12,
             "padding": 16,
@@ -776,12 +785,13 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
             testID="icon-mappin.and.ellipse"
           />
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
                   "color": "#0B1215",
@@ -836,14 +846,14 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
         {
           "alignItems": "center",
           "alignSelf": "flex-start",
-          "borderRadius": 10,
+          "borderRadius": 12,
           "justifyContent": "center",
           "minHeight": 44,
           "paddingHorizontal": 16,
           "paddingVertical": 8,
         },
         {
-          "backgroundColor": "#0E5A3A",
+          "backgroundColor": "#00FF9C",
         },
         false,
         {
@@ -855,6 +865,7 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
     }
   >
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
@@ -863,7 +874,7 @@ exports[`Fixture confirmed ready: both teams, venue and the same buttons 1`] = `
             "lineHeight": 22,
           },
           {
-            "color": "#FFFFFF",
+            "color": "#03140C",
           },
           false,
           {

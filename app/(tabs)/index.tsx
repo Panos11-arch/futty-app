@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-card';
@@ -19,7 +19,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { dateKeyAndTimeToDate } from '@/lib/days';
 import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
@@ -71,6 +72,7 @@ function InlineError({ message, onRetry }: { message: string; onRetry: () => voi
 }
 
 function FriendlyScoreForm({ match, onSubmitted }: { match: FriendlyMatch; onSubmitted: () => void }) {
+  const styles = useStyles();
   const [homeScore, setHomeScore] = useState('');
   const [awayScore, setAwayScore] = useState('');
   const [busy, setBusy] = useState(false);
@@ -125,6 +127,7 @@ function FriendlyScoreForm({ match, onSubmitted }: { match: FriendlyMatch; onSub
 }
 
 function NextGameSection() {
+  const styles = useStyles();
   const myBookings = useMyBookings();
   const venuesState = useVenues();
 
@@ -192,6 +195,7 @@ function NextGameSection() {
 }
 
 function QuickActions() {
+  const styles = useStyles();
   return (
     <View style={styles.quickActions}>
       <View style={styles.quickAction}>
@@ -219,6 +223,7 @@ const openMatch = (id: string) => router.push({ pathname: '/match/[id]', params:
  *  forms: a friendly match, a league fixture you captain, or a plain booking
  *  you made. */
 function LogScoreSection({ onScored }: { onScored: () => void }) {
+  const styles = useStyles();
   const venuesState = useVenues();
   const friendlyMatches = useMyFriendlyMatches();
   const fixtures = useMyFixtures();
@@ -394,6 +399,7 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
  *  logging a score in LogScoreSection must refresh this card at once, and
  *  only a shared parent can reload it. */
 function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typeof useRecentResults> }) {
+  const styles = useStyles();
   const results = recentResults.status === 'ready' ? recentResults.results : [];
   // A10 (match-record.md decision 1j): a game that has a match offers the post-match flow.
   const matchLinks = useMatchLinks({
@@ -457,6 +463,7 @@ function RecentResultsSection({ recentResults }: { recentResults: ReturnType<typ
  *  times) once the server returns a per-player price and photos (P5/P9): the
  *  app never works a price out itself. */
 function VenuesSection() {
+  const styles = useStyles();
   const venuesState = useVenues();
 
   if (venuesState.status === 'loading') {
@@ -500,6 +507,7 @@ function VenuesSection() {
 }
 
 function NeedPlayersSection() {
+  const styles = useStyles();
   const posts = useSquadPosts('players');
 
   useFocusEffect(
@@ -582,6 +590,7 @@ function PremiumSection() {
  *  notifications bell with a dot while anything is unread, and the account
  *  menu (app/account/index.tsx). */
 export function HomeHeader() {
+  const styles = useStyles();
   const notifications = useNotifications();
   const unread = notifications.unreadCount;
 
@@ -643,6 +652,7 @@ function OwedBanner() {
 }
 
 export default function HomeScreen() {
+  const styles = useStyles();
   const recentResults = useRecentResults();
   // A5b: the five starting-level questions, once per device, after sign-up.
   useStartingLevelOffer();
@@ -682,7 +692,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   headerSafeArea: { backgroundColor: colors.canvas },
   header: {
@@ -718,4 +728,4 @@ const styles = StyleSheet.create({
   scoreForm: { gap: space.sm },
   scoreInputsRow: { flexDirection: 'row', gap: space.md },
   scoreInput: { flex: 1 },
-});
+}));

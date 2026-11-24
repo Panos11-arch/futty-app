@@ -2,20 +2,52 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { Card } from '@/components/ui/card';
-import { flatStyle } from '@/components/ui/test-utils';
-import { colors, radius, shadow } from '@/constants/futty-theme';
+import { flatStyle, withTheme } from '@/components/ui/test-utils';
+import { darkPalette, lightPalette, radius } from '@/constants/futty-theme';
 
 describe('Card', () => {
-  it('renders content on surface with the one shadow and no border', async () => {
+  it.each([
+    ['light', lightPalette],
+    ['dark', darkPalette],
+  ] as const)('renders content on surface with a border and no shadow (%s)', async (appearance, palette) => {
     await render(
-      <Card testID="card">
-        <Text>Inside</Text>
-      </Card>,
+      withTheme(
+        <Card testID="card">
+          <Text>Inside</Text>
+        </Card>,
+        { appearance },
+      ),
     );
     expect(screen.getByText('Inside')).toBeTruthy();
     const style = flatStyle(screen.getByTestId('card'));
-    expect(style).toMatchObject({ backgroundColor: colors.surface, borderRadius: radius.card, ...shadow });
-    expect(style.borderWidth).toBeUndefined();
+    expect(style).toMatchObject({
+      backgroundColor: palette.surface,
+      borderRadius: radius.card,
+      borderColor: palette.border,
+    });
+    expect(style.borderWidth).toBeGreaterThan(0);
+    expect(style.boxShadow).toBeUndefined();
+  });
+
+  it('shows a chosen card with a green border on a soft green fill', async () => {
+    await render(
+      <Card testID="card" selected>
+        <Text>Pay for everyone</Text>
+      </Card>,
+    );
+    expect(flatStyle(screen.getByTestId('card'))).toMatchObject({
+      borderColor: lightPalette.green,
+      backgroundColor: lightPalette.greenSoft,
+    });
+  });
+
+  it('draws a night panel', async () => {
+    await render(
+      <Card testID="card" tone="night">
+        <Text>Featured event</Text>
+      </Card>,
+    );
+    expect(flatStyle(screen.getByTestId('card')).backgroundColor).toBe(lightPalette.night);
   });
 
   it('is a button when pressable', async () => {

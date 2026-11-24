@@ -2,7 +2,7 @@
 // the look on a phone. Dev builds only: open futtyapp://dev/components.
 import { Redirect, Stack } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   AvatarStack,
@@ -26,7 +26,8 @@ import {
   VenueCard,
   type Status,
 } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 const statuses: Status[] = [
   'paid',
@@ -46,6 +47,7 @@ const people = ['Andreas Georgiou', 'Bella Kyriakou', 'Chris Pavlou', 'Dina Mich
 );
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <SectionHeader title={title} />
@@ -57,6 +59,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 const noop = () => {};
 
 export default function ComponentGallery() {
+  const styles = useStyles();
   const [payMode, setPayMode] = useState<'everyone' | 'each'>('everyone');
   const [chip, setChip] = useState('18:00');
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -247,11 +250,11 @@ export default function ComponentGallery() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl },
   section: { gap: space.md },
   stack: { gap: space.md },
   row: { flexDirection: 'row', gap: space.sm },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

@@ -13,7 +13,7 @@ describe('TextField', () => {
     const input = screen.getByLabelText('Team name');
     await fireEvent.changeText(input, 'Larnaca Lions');
     expect(onChangeText).toHaveBeenCalledWith('Larnaca Lions');
-    expect(flatStyle(input).borderColor).toBe(colors.border);
+    expect(flatStyle(input)).toMatchObject({ backgroundColor: colors.fill, borderColor: colors.fill });
     expect(flatStyle(input).minHeight).toBeGreaterThanOrEqual(44);
   });
 

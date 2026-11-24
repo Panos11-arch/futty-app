@@ -3,12 +3,13 @@
 // "Accept as captain" and the way side B pays. Paying (or holding) within the
 // payment window makes the acceptance stick; the screen does that.
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { ChoiceCard } from '@/components/booking/checkout-choice';
 import { payLabel } from '@/components/booking/checkout-parts';
 import { Banner, Button, EmptyState, SkeletonBlock, SkeletonText, StickyActionBar, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { OppositionInvite } from '@/lib/booking-opposition';
 import { slotLabel, type LoadState } from '@/lib/booking-search';
 import { guaranteeLine, wayLine, type WayToPay } from '@/lib/booking-v2';
@@ -33,6 +34,7 @@ const WAYS: { way: WayToPay; mode: Mode; title: string; testID: string }[] = [
 ];
 
 export function OppositionInviteView(props: OppositionInviteViewProps) {
+  const styles = useStyles();
   const { state } = props;
   if (state.status === 'loading') {
     return (
@@ -55,6 +57,7 @@ export function OppositionInviteView(props: OppositionInviteViewProps) {
 }
 
 function InviteReady({ invite, onPay, paying, error, accepted }: Omit<OppositionInviteViewProps, 'state' | 'onRetry'> & { invite: OppositionInvite }) {
+  const styles = useStyles();
   const [accepting, setAccepting] = useState(accepted);
   const [mode, setMode] = useState<Mode | null>(null);
   // B1d: on a Losers pay game side B's prices are its holds.
@@ -160,10 +163,10 @@ function losersPayInviteLine(invite: OppositionInvite, mode: Mode | null): strin
   return settle;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
   group: { gap: space.xs },
   row: { flexDirection: 'row', gap: space.md },
-});
+}));

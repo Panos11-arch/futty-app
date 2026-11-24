@@ -1,10 +1,11 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Button } from '@/components/ui/button';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { Text, type TextTone } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { Text, useToneColour, type TextTone } from '@/components/ui/text';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 export type BannerTone = 'info' | 'warning' | 'danger';
 
@@ -16,22 +17,24 @@ export type BannerProps = {
 };
 
 const tones: Record<BannerTone, { icon: IconSymbolName; tone: TextTone }> = {
-  info: { icon: 'info.circle.fill', tone: 'ink' },
+  info: { icon: 'info.circle.fill', tone: 'info' },
   warning: { icon: 'exclamationmark.triangle.fill', tone: 'warning' },
   danger: { icon: 'exclamationmark.circle.fill', tone: 'danger' },
 };
 
-/** Tone shows in the icon and title only; the banner itself is a surface, never a coloured fill. */
+/** A tinted panel with a border in its tone (the agreed screens); the message stays in ink. */
 export function Banner({ tone, message, title, action }: BannerProps) {
+  const styles = useStyles();
   const look = tones[tone];
+  const iconColour = useToneColour(look.tone);
   return (
     <View
       testID="banner"
       accessibilityRole={tone === 'info' ? undefined : 'alert'}
       accessibilityLiveRegion="polite"
-      style={styles.banner}>
+      style={[styles.banner, styles[tone]]}>
       <View style={styles.row}>
-        <IconSymbol name={look.icon} size={ICON.small} color={colors[look.tone === 'ink' ? 'inkMuted' : look.tone]} />
+        <IconSymbol name={look.icon} size={ICON.small} color={iconColour} />
         <View style={styles.text}>
           {title ? (
             <Text variant="headline" tone={look.tone}>
@@ -50,16 +53,17 @@ export function Banner({ tone, message, title, action }: BannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, hairline }) => ({
   banner: {
     gap: space.md,
     padding: space.lg,
     borderRadius: radius.card,
-    borderWidth: hairline,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderWidth: hairline * 2,
   },
+  info: { backgroundColor: colors.infoLight, borderColor: colors.info },
+  warning: { backgroundColor: colors.warningLight, borderColor: colors.warning },
+  danger: { backgroundColor: colors.dangerLight, borderColor: colors.danger },
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   text: { flex: 1, gap: space.xs },
   action: { paddingLeft: space.xl + space.sm },
-});
+}));

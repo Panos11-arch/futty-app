@@ -12,7 +12,6 @@ const files = [
   'app/modal.tsx',
   'components/popup-modal.tsx',
   'components/wizard-modal.tsx',
-  'components/icon-label.tsx',
   'components/external-link.tsx',
 ];
 

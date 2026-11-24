@@ -6,11 +6,12 @@
 // rule; this screen only hides Add photo at the limit it reports.
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Banner, Button, Card, EmptyState, SectionHeader, Text } from '@/components/ui';
 import { ConfirmStep, SetupFrame } from '@/components/venue/setup-parts';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useVenueMedia } from '@/lib/use-venue-media';
 import {
   addVenuePhoto,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/venue-media';
 
 export function PhotosView({ venueId }: { venueId: string }) {
+  const styles = useStyles();
   const { state, write, retry } = useVenueMedia(venueId);
   /** 'add', 'permission', or the id of the photo being changed. */
   const [busy, setBusy] = useState<string | null>(null);
@@ -182,10 +184,10 @@ export function PhotosView({ venueId }: { venueId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   stack: { gap: space.md },
   photo: { width: '100%', aspectRatio: 4 / 3, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card },
   missing: { backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center' },
   body: { padding: space.lg, gap: space.sm },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

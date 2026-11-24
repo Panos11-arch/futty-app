@@ -4,7 +4,6 @@
 // hold within the payment window; then on to the screen after paying, to
 // invite side B's players.
 import { usePaymentSheet } from '@stripe/stripe-react-native';
-import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 
@@ -15,6 +14,7 @@ import { acceptOpposition, fetchOppositionInvite, type AcceptedOpposition } from
 import { acceptOppositionPost, fetchOppositionPost } from '@/lib/booking-posts';
 import { useLoad } from '@/lib/booking-search';
 import { useRules } from '@/lib/use-rules';
+import { haptic } from '@/lib/haptics';
 
 const card = { method: 'card' as const, acceptNonRefundable: false, useCredit: false };
 
@@ -43,7 +43,7 @@ export default function OppositionInviteScreen() {
       if ('error' in result) {
         setPaying(false);
         setError(result.error);
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        haptic.error();
         return;
       }
       mine = result.accepted;
@@ -54,10 +54,10 @@ export default function OppositionInviteScreen() {
       : ({ status: 'paid' } as const);
     setPaying(false);
     if (outcome.status === 'paid') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       afterBooking(mine.booking_id, router);
     } else if (outcome.status === 'error') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
       setError(outcome.message);
     }
   }

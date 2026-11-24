@@ -1,9 +1,10 @@
 // The player's saved searches (decided 18 November): each one with what it
 // looks for, and Delete. A player can delete a search at any time.
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Banner, Button, Card, EmptyState, SkeletonBlock, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { LoadState } from '@/lib/booking-search';
 import { type SavedSearch, savedSearchDetail, savedSearchTitle } from '@/lib/saved-searches';
 
@@ -19,6 +20,7 @@ export type SavedSearchesListProps = {
 };
 
 export function SavedSearchesList({ searches, deletingId, error, onDelete, onRetry, onNewSearch }: SavedSearchesListProps) {
+  const styles = useStyles();
   if (searches.status === 'loading') {
     return (
       <View style={[styles.screen, styles.content]}>
@@ -76,9 +78,9 @@ export function SavedSearchesList({ searches, deletingId, error, onDelete, onRet
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   text: { flex: 1, gap: space.xs },
-});
+}));

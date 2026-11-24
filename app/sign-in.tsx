@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 import { clearHandedOffEmail, handedOffEmail, useAuth } from '@/lib/auth';
 import { describeAuthError, EmailTakenError, RESEND_NEEDS_EMAIL_MESSAGE } from '@/lib/auth-errors';
 import { signInWithApple, signInWithGoogle, useAppleSignInAvailable } from '@/lib/auth-providers';
@@ -28,6 +29,7 @@ import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
 type Mode = 'sign-in' | 'sign-up';
 
 export default function SignInScreen() {
+  const { colors } = useTheme();
   const { signIn, signUp, isUsernameAvailable, resendConfirmation, linkError, clearLinkError } =
     useAuth();
   // Set by confirm-email (lib/auth.tsx signInHref). On web the email comes

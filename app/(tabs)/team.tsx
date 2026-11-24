@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { Avatar } from '@/components/ui/avatar';
@@ -13,7 +13,8 @@ import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
 import { playHref } from '@/lib/play-segments';
@@ -30,6 +31,7 @@ function roleLabel(role: string) {
 }
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
+  const styles = useStyles();
   return (
     <View style={styles.statTile} accessible accessibilityLabel={`${label} ${value}`}>
       <Text variant="headline" tabular>
@@ -53,6 +55,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
  *  charging anything. There is now exactly one place that ever calls
  *  requestPurchase() for Team Premium — app/premium-plan.tsx. */
 function TeamPremiumRow({ team, format }: { team: Team; format: PremiumFormat }) {
+  const styles = useStyles();
   const enabled = hasTeamPremium(team, format);
 
   return (
@@ -98,6 +101,7 @@ function TeamPremiumRow({ team, format }: { team: Team; format: PremiumFormat })
 }
 
 function TeamPremiumSection({ team }: { team: Team }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <SectionHeader title="Team Premium" />
@@ -114,6 +118,7 @@ function TeamPremiumSection({ team }: { team: Team }) {
 }
 
 function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain: boolean; onTeamChanged: () => void }) {
+  const styles = useStyles();
   const myProfile = useProfile();
   const [roster, setRoster] = useState<RosterMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -251,6 +256,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
  *  itself. `teamId` opens one team (app/account/activity/teams.tsx links to
  *  it) instead of whichever comes first. */
 export function TeamContent({ teamId }: { teamId?: string }) {
+  const styles = useStyles();
   const myTeams = useMyTeams();
   const [selectedId, setSelectedId] = useState<string | null>(teamId ?? null);
 
@@ -322,7 +328,7 @@ export default function TeamRoute() {
   return <Redirect href={playHref('teams', { teamId })} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -341,4 +347,4 @@ const styles = StyleSheet.create({
   },
   premiumActive: { alignItems: 'flex-end' },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View, type AccessibilityRole, type AccessibilityState } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import type { AvatarKit } from '@/lib/avatar';
 
 export type ListRowLeading =
@@ -21,10 +22,26 @@ export type ListRowProps = {
   chevron?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** e.g. "radio" for one choice of several; defaults to "button" when pressable. */
+  accessibilityRole?: AccessibilityRole;
+  accessibilityState?: AccessibilityState;
   testID?: string;
 };
 
-export function ListRow({ title, subtitle, leading, trailing, chevron, onPress, accessibilityLabel, testID }: ListRowProps) {
+export function ListRow({
+  title,
+  subtitle,
+  leading,
+  trailing,
+  chevron,
+  onPress,
+  accessibilityLabel,
+  accessibilityRole = 'button',
+  accessibilityState,
+  testID,
+}: ListRowProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const content = (
     <>
       {leading && 'icon' in leading ? (
@@ -60,7 +77,8 @@ export function ListRow({ title, subtitle, leading, trailing, chevron, onPress, 
   return (
     <Pressable
       testID={testID}
-      accessibilityRole="button"
+      accessibilityRole={accessibilityRole}
+      accessibilityState={accessibilityState}
       accessibilityLabel={accessibilityLabel ?? title}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
@@ -69,7 +87,7 @@ export function ListRow({ title, subtitle, leading, trailing, chevron, onPress, 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   row: {
     minHeight: MIN_TOUCH,
     flexDirection: 'row',
@@ -81,4 +99,4 @@ const styles = StyleSheet.create({
   },
   text: { flex: 1, gap: 2 },
   pressed: { backgroundColor: colors.canvas },
-});
+}));

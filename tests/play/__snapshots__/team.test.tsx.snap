@@ -34,12 +34,13 @@ exports[`Teams segment empty: says so and links to leagues as before 1`] = `
         />
       </View>
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_400Regular",
-              "fontSize": 15,
-              "lineHeight": 20,
+              "fontSize": 16,
+              "lineHeight": 22,
             },
             {
               "color": "#5B6470",
@@ -90,7 +91,7 @@ exports[`Teams segment empty: says so and links to leagues as before 1`] = `
             {
               "alignItems": "center",
               "alignSelf": "flex-start",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "justifyContent": "center",
               "minHeight": 44,
               "paddingHorizontal": 16,
@@ -99,7 +100,7 @@ exports[`Teams segment empty: says so and links to leagues as before 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderWidth": 0.5,
+              "borderWidth": 1,
             },
             false,
             false,
@@ -109,6 +110,7 @@ exports[`Teams segment empty: says so and links to leagues as before 1`] = `
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -162,9 +164,12 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -206,12 +211,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
           >
             <Text
               allowFontScaling={false}
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -232,6 +238,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -250,12 +257,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               Tigers
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -285,7 +293,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -293,6 +301,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -315,12 +324,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               10
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -340,7 +350,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -348,6 +358,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -370,12 +381,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               5
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -395,7 +407,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -403,6 +415,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -425,12 +438,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               2
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -450,7 +464,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -458,6 +472,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -480,12 +495,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               3
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -505,7 +521,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -513,6 +529,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -535,12 +552,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               20
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -560,7 +578,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -568,6 +586,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -590,12 +609,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               120
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -615,7 +635,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "minWidth": 64,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -623,6 +643,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -645,12 +666,13 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               50%
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -684,6 +706,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -741,7 +764,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
@@ -749,10 +772,9 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
               },
               {
                 "backgroundColor": "transparent",
-              },
-              {
                 "paddingHorizontal": 8,
               },
+              false,
               false,
               false,
               false,
@@ -760,6 +782,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -768,7 +791,7 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#12804A",
                 },
                 false,
                 {
@@ -807,9 +830,12 @@ exports[`Teams segment shows a skeleton while loading 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           {
             "padding": 16,
           },
@@ -835,7 +861,7 @@ exports[`Teams segment shows a skeleton while loading 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
@@ -866,13 +892,13 @@ exports[`Teams segment shows a skeleton while loading 1`] = `
               style={
                 [
                   {
-                    "backgroundColor": "#E4E7EB",
+                    "backgroundColor": "#F1F3F5",
                   },
                   {
                     "borderRadius": 999,
                   },
                   {
-                    "height": 12,
+                    "height": 13.2,
                     "width": "100%",
                   },
                 ]
@@ -883,13 +909,13 @@ exports[`Teams segment shows a skeleton while loading 1`] = `
               style={
                 [
                   {
-                    "backgroundColor": "#E4E7EB",
+                    "backgroundColor": "#F1F3F5",
                   },
                   {
                     "borderRadius": 999,
                   },
                   {
-                    "height": 12,
+                    "height": 13.2,
                     "width": "60%",
                   },
                 ]
@@ -905,10 +931,10 @@ exports[`Teams segment shows a skeleton while loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
-              "borderRadius": 12,
+              "borderRadius": 16,
               "height": 64,
               "width": "100%",
             },

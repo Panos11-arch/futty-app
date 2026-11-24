@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Easing } from 'react-native';
 
+import { useTheme } from '@/lib/theme/theme-provider';
+
 /** Smallest touch target, in points. */
 export const MIN_TOUCH = 44;
 
@@ -14,8 +16,12 @@ export const MOTION = { duration: 250, easing: Easing.bezier(0.2, 0, 0, 1) } as 
 /** Opacity of a control that can't be used right now. */
 export const DISABLED_OPACITY = 0.4;
 
-/** True while the system "Reduce motion" setting is on. Animations jump to their end state. */
+/**
+ * True while the phone's "Reduce motion" or the app's (Settings →
+ * Accessibility) is on. Animations jump to their end state.
+ */
 export function useReduceMotion(): boolean {
+  const inApp = useTheme().reduceMotion;
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     let mounted = true;
@@ -28,5 +34,5 @@ export function useReduceMotion(): boolean {
       sub?.remove();
     };
   }, []);
-  return reduce;
+  return reduce || inApp;
 }

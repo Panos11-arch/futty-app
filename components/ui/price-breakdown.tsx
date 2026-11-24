@@ -1,7 +1,8 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatEuros } from '@/lib/money/format';
 
 export type PriceLine = { label: string; cents: number };
@@ -15,6 +16,7 @@ export type PriceBreakdownProps = {
 };
 
 export function PriceBreakdown({ lines, totalCents, totalLabel = 'Total' }: PriceBreakdownProps) {
+  const styles = useStyles();
   return (
     <View style={styles.wrap}>
       {lines.map((line, i) => (
@@ -39,9 +41,9 @@ export function PriceBreakdown({ lines, totalCents, totalLabel = 'Total' }: Pric
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   wrap: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.md },
   label: { flex: 1 },
   totalRow: { borderTopWidth: hairline, borderTopColor: colors.border, paddingTop: space.sm },
-});
+}));

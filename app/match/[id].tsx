@@ -20,7 +20,7 @@
 // while this player has a step left in it.
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CheckInSection } from '@/components/booking/check-in-panel';
@@ -40,7 +40,8 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatMatchWhen } from '@/lib/match/format';
 import { canBalanceTeams } from '@/lib/match/levels';
 import { lineupEditable, playedMatch, sideOf, writerSides, type MatchPage } from '@/lib/match/page';
@@ -65,6 +66,7 @@ function pageScore(page: MatchPage): string | null {
 }
 
 export default function MatchScreen() {
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Array.isArray(id) ? id[0] : id;
   const result = useResultMatch(matchId);
@@ -282,8 +284,8 @@ export default function MatchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg },
   stack: { gap: space.md },
-});
+}));

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Fragment, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -10,7 +10,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { StatusPill, type Status } from '@/components/ui/status-pill';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatEuros } from '@/lib/money/format';
 import { supabase } from '@/lib/supabase';
 import { useVenues } from '@/lib/use-venues';
@@ -58,6 +59,7 @@ const STATUS_NOTE: Record<string, string> = {
  *  Amounts are the server's integer cents, formatted only (right-aligned,
  *  tabular figures). */
 export default function TransactionsScreen() {
+  const styles = useStyles();
   const venuesState = useVenues();
   const [transactions, setTransactions] = useState<Transaction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +132,7 @@ export default function TransactionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
@@ -138,4 +140,4 @@ const styles = StyleSheet.create({
   rowMain: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   amount: { textAlign: 'right' },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

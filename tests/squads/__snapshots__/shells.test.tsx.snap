@@ -106,6 +106,7 @@ exports[`PopupModal renders title, body and footer; Close and Back call their ha
         </View>
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -307,6 +308,7 @@ exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 
         </View>
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -345,12 +347,13 @@ exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -451,14 +454,14 @@ exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
                 "paddingVertical": 8,
               },
               {
-                "backgroundColor": "#0E5A3A",
+                "backgroundColor": "#00FF9C",
               },
               false,
               {
@@ -470,6 +473,7 @@ exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -478,7 +482,7 @@ exports[`WizardModal shows progress as "Step 2 of 3" text, with no progress bar 
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#03140C",
                 },
                 false,
                 {

@@ -6,7 +6,7 @@
 // match page.
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PostMatchFlow } from '@/components/match/post-match-flow';
@@ -14,7 +14,8 @@ import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { playedMatch } from '@/lib/match/page';
 import { useMatchRatings } from '@/lib/match/use-levels';
 import { useMatchPage, useMatchRoster } from '@/lib/match/use-match-page';
@@ -22,6 +23,7 @@ import { useResultMatch } from '@/lib/match/use-match-result';
 import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 
 export default function AfterGameScreen() {
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const matchId = Array.isArray(id) ? id[0] : id;
   const result = useResultMatch(matchId);
@@ -95,8 +97,8 @@ export default function AfterGameScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg },
   stack: { gap: space.md },
-});
+}));

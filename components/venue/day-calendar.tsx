@@ -7,10 +7,11 @@
 // passed (Cyprus time), or that no game could start in and end by midnight,
 // takes no tap. Rows grow with the text size. Amounts are the server's, only
 // formatted.
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 
 import { EmptyState, Text } from '@/components/ui';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import {
   bookingSummary,
   bookingTitle,
@@ -56,6 +57,7 @@ export type DayCalendarProps = {
 };
 
 export function DayCalendar({ board, clock, ...handlers }: DayCalendarProps) {
+  const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const sizes = calendarSizes(fontScale);
   if (board.pitches.length === 0) {
@@ -94,6 +96,7 @@ function PitchColumn({
   onOpenBooking,
   ...cellHandlers
 }: { board: DayBoard; clock: CalendarClock; pitch: BoardPitch; sizes: Sizes } & Handlers) {
+  const styles = useStyles();
   const { bookings, cells } = pitchColumn(board, pitch.id);
   return (
     <View style={[styles.column, { width: sizes.column }]}>
@@ -176,6 +179,7 @@ function Cell({
   past: boolean;
   height: number;
 } & Omit<Handlers, 'onOpenBooking'>) {
+  const styles = useStyles();
   const testID = `cell-${pitch.id}-${cell.start}`;
   const style = [styles.cell, { height }];
   if (!cell.free) return <View testID={testID} style={style} />;
@@ -250,7 +254,7 @@ function Cell({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   grid: { flexDirection: 'row' },
   header: { justifyContent: 'center', paddingHorizontal: space.sm },
   column: { borderLeftWidth: hairline, borderLeftColor: colors.border },
@@ -275,4 +279,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   pressed: { opacity: 0.8 },
-});
+}));

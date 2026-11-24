@@ -6,14 +6,16 @@
 // every call.
 import { Redirect, Stack, useLocalSearchParams } from 'expo-router';
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner, EmptyState, SkeletonBlock } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useOwnedVenue } from '@/lib/use-owned-venue';
 
 export function VenueScreen({ title, children }: { title: string; children: (venueId: string) => ReactNode }) {
+  const styles = useStyles();
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const { state, reload } = useOwnedVenue(venueId);
 
@@ -40,7 +42,7 @@ export function VenueScreen({ title, children }: { title: string; children: (ven
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   padded: { padding: space.lg },
-});
+}));

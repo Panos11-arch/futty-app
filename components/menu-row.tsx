@@ -1,12 +1,13 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { Children, Fragment } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
@@ -34,6 +35,8 @@ export function MenuRow({
   /** For the Maestro tests (.maestro). */
   testID?: string;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const tint = destructive ? colors.danger : (iconColor ?? colors.inkMuted);
 
   return (
@@ -61,6 +64,7 @@ export function MenuRow({
 
 /** A titled group of rows on one card, separated by inset hairlines. */
 export function MenuSection({ title, children }: { title?: string; children: ReactNode }) {
+  const styles = useStyles();
   const rows = Children.toArray(children).filter(Boolean);
   return (
     <View style={styles.section}>
@@ -77,7 +81,7 @@ export function MenuSection({ title, children }: { title?: string; children: Rea
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   section: { gap: space.sm },
   sectionCard: {
     backgroundColor: colors.surface,
@@ -97,4 +101,4 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.canvas },
   textBlock: { flex: 1, gap: 2 },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg + ICON.small + space.md },
-});
+}));

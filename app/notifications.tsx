@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { Fragment, useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -12,7 +12,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { acceptInvite, declineInvite, describeInviteError, inviteStatuses, type InviteStatus } from '@/lib/invites';
 import {
@@ -168,6 +169,7 @@ function InviteActions({
   status: InviteStatus | undefined;
   onAnswered: (status: InviteStatus) => void;
 }) {
+  const styles = useStyles();
   const inviteId = inviteIdOf(notification);
   const [busy, setBusy] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -237,6 +239,8 @@ function NotificationRow({
   onOpened: () => void;
   onInviteAnswered: (status: InviteStatus) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const unread = !notification.read_at;
 
   async function press() {
@@ -272,6 +276,7 @@ function NotificationRow({
 }
 
 export default function NotificationsScreen() {
+  const styles = useStyles();
   const notifications = useNotifications();
   const [invites, setInvites] = useState<Map<string, InviteStatus>>(new Map());
 
@@ -344,7 +349,7 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   group: { gap: space.sm },
@@ -371,4 +376,4 @@ const styles = StyleSheet.create({
     marginTop: space.sm - space.xs / 2,
   },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

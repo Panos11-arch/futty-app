@@ -6,7 +6,7 @@
 // (app/venue/[id].tsx) loads it.
 import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 
 import {
   Banner,
@@ -22,7 +22,8 @@ import {
   Text,
 } from '@/components/ui';
 import { initials } from '@/components/ui/avatar';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { formatEuros } from '@/lib/money/format';
 import { offerPrices } from '@/lib/post-match-offers';
 import type { VenuePageState } from '@/lib/use-venue-page';
@@ -38,6 +39,8 @@ export type VenuePageViewProps = {
 };
 
 export function VenuePageView({ state, onRetry, onDirections, onBook, weather }: VenuePageViewProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   if (state.status === 'loading') return <VenuePageSkeleton />;
   if (state.status === 'not_found') {
     return (
@@ -205,6 +208,7 @@ export function VenuePageView({ state, onRetry, onDirections, onBook, weather }:
 }
 
 function Gallery({ name, urls }: { name: string; urls: string[] }) {
+  const styles = useStyles();
   const { width } = useWindowDimensions();
   const photoWidth = width - space.lg * 2;
   const size = { width: photoWidth, height: (photoWidth * 3) / 4 };
@@ -240,6 +244,7 @@ function Gallery({ name, urls }: { name: string; urls: string[] }) {
 }
 
 function Offer({ offer, photoUrl }: { offer: VenuePageData['offers'][number]; photoUrl?: string }) {
+  const styles = useStyles();
   const price = offer.offer_price_cents ?? offer.price_cents;
   const when = offerWhen(offer);
   return (
@@ -272,6 +277,7 @@ function Offer({ offer, photoUrl }: { offer: VenuePageData['offers'][number]; ph
 /** One food or drink item: the offer price with the normal price struck
  *  through when both exist and differ (as A8 shows offers); both from the server. */
 function MenuRow({ item, photoUrl }: { item: VenuePageData['menu'][number]; photoUrl?: string }) {
+  const styles = useStyles();
   const prices = offerPrices(item);
   const details = [item.description, item.dietary_tags?.length ? item.dietary_tags.join(' · ') : null].filter(Boolean);
   return (
@@ -305,6 +311,7 @@ function MenuRow({ item, photoUrl }: { item: VenuePageData['menu'][number]; phot
 }
 
 function VenuePageSkeleton() {
+  const styles = useStyles();
   return (
     <View style={[styles.screen, styles.padded]} testID="venue-page-loading">
       <SkeletonBlock width="100%" height={240} />
@@ -319,7 +326,7 @@ function VenuePageSkeleton() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   padded: { padding: space.lg },
   content: { paddingVertical: space.lg, gap: space.xl },
@@ -357,4 +364,4 @@ const styles = StyleSheet.create({
   menuPhoto: { width: space.xxl * 2, height: space.xxl * 2, borderRadius: radius.control },
   menuPrices: { alignItems: 'flex-end' },
   struck: { textDecorationLine: 'line-through' },
-});
+}));

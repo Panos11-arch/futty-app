@@ -6,15 +6,13 @@ import { Button } from '@/components/ui/button';
 import { MOTION, useReduceMotion } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 /** Drag further than this, in points, to close. */
 const SWIPE_CLOSE_DISTANCE = 80;
 /** Or flick down faster than this, in points per millisecond. */
 const SWIPE_CLOSE_VELOCITY = 0.5;
-/** The dimmed screen behind the sheet: ink at this opacity. */
-const SCRIM_OPACITY = 0.4;
-
 export function shouldCloseOnSwipe(dy: number, vy: number): boolean {
   return dy > SWIPE_CLOSE_DISTANCE || (dy > 0 && vy > SWIPE_CLOSE_VELOCITY);
 }
@@ -36,6 +34,7 @@ export type SheetProps = {
 
 /** Bottom sheet. Slides up in 250 ms, or appears at once with Reduce Motion on. */
 export function Sheet({ visible, onClose, title, children, primaryAction, secondaryAction }: SheetProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const offscreen = Dimensions.get('window').height;
@@ -154,13 +153,13 @@ export function Sheet({ visible, onClose, title, children, primaryAction, second
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   root: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.ink, opacity: SCRIM_OPACITY },
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.card,
-    borderTopRightRadius: radius.card,
+    borderTopLeftRadius: radius.sheet,
+    borderTopRightRadius: radius.sheet,
     paddingHorizontal: space.lg,
     paddingTop: space.sm,
     gap: space.lg,
@@ -170,10 +169,11 @@ const styles = StyleSheet.create({
     width: space.xxl + space.sm,
     height: space.xs,
     borderRadius: radius.pill,
-    backgroundColor: colors.border,
+    backgroundColor: colors.muted,
+    opacity: 0.4,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   title: { flex: 1 },
   content: { gap: space.md },
   actions: { gap: space.sm },
-});
+}));

@@ -12,7 +12,7 @@ describe('Skeleton', () => {
       width: 120,
       height: 68,
       borderRadius: radius.card,
-      backgroundColor: colors.border,
+      backgroundColor: colors.fill,
     });
   });
 

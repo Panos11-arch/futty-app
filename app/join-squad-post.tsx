@@ -1,7 +1,7 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -12,7 +12,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { PriceBreakdown } from '@/components/ui/price-breakdown';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { getBookingPostQuotes, type BookingPostQuote } from '@/lib/booking-posts';
 import { createSharePayment } from '@/lib/booking-shares';
@@ -38,6 +39,8 @@ import { useSquadPosts } from '@/lib/use-squad-posts';
  *  this only places an authorization hold, captured later (all shares at
  *  once) once the roster fills, via supabase/functions/stripe-webhook. */
 export default function JoinSquadPostScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const posts = useSquadPosts('players');
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
@@ -324,7 +327,7 @@ export default function JoinSquadPostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.lg, padding: space.lg, paddingBottom: space.xxl },
   head: { gap: space.xs },
@@ -345,4 +348,4 @@ const styles = StyleSheet.create({
     paddingLeft: space.md,
     paddingVertical: space.xs,
   },
-});
+}));

@@ -2,14 +2,34 @@ import { APPLE_PAY_MERCHANT_ID } from '@/lib/wallet-pay';
 import { Sentry } from '@/lib/sentry';
 
 import { IBMPlexMono_500Medium, IBMPlexMono_600SemiBold } from '@expo-google-fonts/ibm-plex-mono';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { getFocusedRouteNameFromRoute, ThemeProvider } from '@react-navigation/native';
+import {
+  Cairo_400Regular,
+  Cairo_500Medium,
+  Cairo_600SemiBold,
+  Cairo_700Bold,
+  Cairo_800ExtraBold,
+} from '@expo-google-fonts/cairo';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
+import {
+  Lexend_400Regular,
+  Lexend_500Medium,
+  Lexend_600SemiBold,
+  Lexend_700Bold,
+  Lexend_800ExtraBold,
+} from '@expo-google-fonts/lexend';
+import { getFocusedRouteNameFromRoute, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -18,12 +38,12 @@ import { FuttyAiChat } from '@/components/futty-ai-chat';
 import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
 import { PremiumIconSync } from '@/components/premium-icon-sync';
-import { colors, FuttyNavigationTheme, type } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useNeedsProfileSetup } from '@/lib/auth-providers';
 import { tabsBackTitle } from '@/lib/navigation-a11y';
 import { PushTapHandler } from '@/lib/push-tap';
+import { navigationTheme, ThemeProvider, useTheme } from '@/lib/theme';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -35,30 +55,37 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 // Applied to every pushed screen with a native header (Book, Squads, Premium)
-// so the header matches the fixed brand look instead of React Navigation's
-// default chrome. The ThemeProvider below should cascade this on its own, but
-// setting it explicitly too means it doesn't depend on that cascade working
-// correctly on every platform — cheap insurance for something unverifiable
-// without a real device in front of me.
-const brandedHeaderOptions = {
-  headerStyle: { backgroundColor: colors.canvas },
-  headerTintColor: colors.ink,
-  headerTitleStyle: { fontFamily: type.headline.fontFamily, color: colors.ink },
-  // Chevron only, no previous screen's title next to it — the default
-  // shows e.g. "< Profile" beside the back arrow on every pushed screen,
-  // which reads as clutter rather than useful context.
-  headerBackButtonDisplayMode: 'minimal',
-} as const;
+// so the header matches the live theme (light or dark) instead of React
+// Navigation's default chrome. The navigation ThemeProvider below should
+// cascade this on its own, but setting it explicitly too means it doesn't
+// depend on that cascade working correctly on every platform.
+function useBrandedHeaderOptions() {
+  const { colors, type } = useTheme();
+  return useMemo(
+    () =>
+      ({
+        headerStyle: { backgroundColor: colors.canvas },
+        headerTintColor: colors.ink,
+        headerTitleStyle: { fontFamily: type.headline.fontFamily, color: colors.ink },
+        // Chevron only, no previous screen's title next to it — the default
+        // shows e.g. "< Profile" beside the back arrow on every pushed screen,
+        // which reads as clutter rather than useful context.
+        headerBackButtonDisplayMode: 'minimal',
+      }) as const,
+    [colors, type],
+  );
+}
 
 /** Held in place of the navigator while a signed-in user's profile is read
  *  (P13), so one with no username never reaches (tabs). Sign out is the way
  *  out if the read keeps failing. */
 function ProfileCheckScreen() {
   const { signOut } = useAuth();
+  const { colors } = useTheme();
   return (
     <AuthScreen>
       <AuthWordmark />
-      <ActivityIndicator color={colors.brand} accessibilityLabel="Loading your profile" />
+      <ActivityIndicator color={colors.positive} accessibilityLabel="Loading your profile" />
       <AuthLink label="Sign out" onPress={() => signOut().catch(() => {})} />
     </AuthScreen>
   );
@@ -67,6 +94,7 @@ function ProfileCheckScreen() {
 export function RootNavigator() {
   const { session, initializing, isRecovering } = useAuth();
   const { locked } = useAppLock();
+  const brandedHeaderOptions = useBrandedHeaderOptions();
   // A new Apple or Google user has no username yet (P13).
   const profileSetup = useNeedsProfileSetup(session && !isRecovering ? session.user.id : null);
 
@@ -202,6 +230,14 @@ export function RootNavigator() {
             name="account/settings/security"
             options={{ title: 'Security', ...brandedHeaderOptions }}
           />
+          <Stack.Screen
+            name="account/settings/appearance"
+            options={{ title: 'Appearance', ...brandedHeaderOptions }}
+          />
+          <Stack.Screen
+            name="account/settings/accessibility"
+            options={{ title: 'Accessibility', ...brandedHeaderOptions }}
+          />
           <Stack.Screen name="account/help" options={{ title: 'Help', ...brandedHeaderOptions }} />
           <Stack.Screen
             name="account/how-it-works"
@@ -260,12 +296,39 @@ export function RootNavigator() {
 // 1.5s sits in the middle of the "1-2 seconds" asked for.
 const MIN_SPLASH_MS = 1500;
 
+/** React Navigation's chrome and the status bar follow the live theme. */
+function ThemedNavigation() {
+  const theme = useTheme();
+  const navTheme = useMemo(() => navigationTheme(theme), [theme]);
+  return (
+    <NavigationThemeProvider value={navTheme}>
+      <RootNavigator />
+      {/* Light text on the dark theme, dark text on the light one, whatever
+          the phone's own setting is. */}
+      <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+    </NavigationThemeProvider>
+  );
+}
+
 export default Sentry.wrap(function RootLayout() {
+  // Cairo for headings and numbers, Inter for the rest, Lexend for the
+  // dyslexia-friendly font (spec 15 sections 0.3 and 0.4). All SIL OFL 1.1.
   const [fontsLoaded] = useFonts({
+    Cairo_400Regular,
+    Cairo_500Medium,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
+    Cairo_800ExtraBold,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Inter_800ExtraBold,
+    Lexend_400Regular,
+    Lexend_500Medium,
+    Lexend_600SemiBold,
+    Lexend_700Bold,
+    Lexend_800ExtraBold,
     IBMPlexMono_500Medium,
     IBMPlexMono_600SemiBold,
   });
@@ -299,12 +362,8 @@ export default Sentry.wrap(function RootLayout() {
         merchantIdentifier={APPLE_PAY_MERCHANT_ID}>
         <AuthProvider>
           <AppLockProvider>
-            <ThemeProvider value={FuttyNavigationTheme}>
-              <RootNavigator />
-              {/* Fixed, not "auto": the background is always the light stone-50
-                  brand color now, so status bar content should always be dark,
-                  regardless of system light/dark mode. */}
-              <StatusBar style="dark" />
+            <ThemeProvider>
+              <ThemedNavigation />
             </ThemeProvider>
           </AppLockProvider>
         </AuthProvider>

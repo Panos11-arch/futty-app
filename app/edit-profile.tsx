@@ -1,7 +1,7 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField } from '@/components/auth-form';
@@ -12,7 +12,8 @@ import { Chip } from '@/components/ui/chip';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { SERVER_ERROR_FALLBACK } from '@/lib/booking-errors';
 import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
@@ -59,6 +60,7 @@ type FormState = {
 };
 
 function Field({ label, children, testID }: { label: string; children: React.ReactNode; testID?: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.field} testID={testID}>
       <Text variant="callout" tone="inkMuted">
@@ -78,6 +80,7 @@ function PickerRow({
   value: string;
   onChange: (next: string) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.pickerRow}>
       {options.map((option) => (
@@ -99,6 +102,7 @@ function MultiPickerRow<T extends string>({
   value: T[];
   onChange: (next: T[]) => void;
 }) {
+  const styles = useStyles();
   return (
     <View style={styles.pickerRow}>
       {options.map((option) => {
@@ -124,6 +128,7 @@ const DEFAULT_DOB = new Date(2000, 0, 1);
  *  repeatedly. iOS renders it inline as a spinner sheet instead, toggled by
  *  the same tap. */
 function DateOfBirthField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const styles = useStyles();
   const [showIOSPicker, setShowIOSPicker] = useState(false);
   const dateValue = value ? new Date(value) : DEFAULT_DOB;
   const maximumDate = new Date(); // can't be born in the future
@@ -168,6 +173,7 @@ function DateOfBirthField({ value, onChange }: { value: string; onChange: (next:
 }
 
 export default function EditProfileScreen() {
+  const styles = useStyles();
   const { isUsernameAvailable } = useAuth();
   const profile = useProfile();
   const [form, setForm] = useState<FormState | null>(null);
@@ -414,7 +420,7 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
@@ -432,4 +438,4 @@ const styles = StyleSheet.create({
   },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   textarea: { minHeight: space.xxl * 2 + space.sm, textAlignVertical: 'top' },
-});
+}));
