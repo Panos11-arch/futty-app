@@ -115,7 +115,9 @@ describe('B1d: Losers pay, in words', () => {
     ['accept_losers_pay', 'This game is Losers pay. Accept Losers pay to play it.'],
     ['captain_pulls_out_side', 'As captain, you pull your whole team out instead.'],
     ['losers_pay_play_whole_not_available', 'On Losers pay your holds pay for the whole pitch: tap Play the whole pitch.'],
-    ['use_losers_pay_leave', "Leaving a Losers pay game isn't in the app yet."],
+    ['use_losers_pay_leave', 'This is a Losers pay game: use Leave this game on the booking.'],
+    ['use_losers_pay_pull_out', 'This is a Losers pay game: use Pull your team out on the booking.'],
+    ['already_settled', "You've already left this game."],
   ])('%s', (code, words) => {
     expect(describeBookingErrorMessage(code)).toBe(words);
   });

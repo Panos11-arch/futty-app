@@ -4,8 +4,8 @@
 // is the server's; the app sends only ids, the scope and the quote it showed.
 import { useStripe } from '@stripe/stripe-react-native';
 import * as Haptics from 'expo-haptics';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Share } from 'react-native';
 
 import { BookingDetailView } from '@/components/booking/booking-detail-view';
@@ -52,6 +52,14 @@ export default function BookingDetailScreen() {
   const [inCalendar, setInCalendar] = useState(() => (id ? isBookingInCalendar(id) : false));
   const [choosingMaps, setChoosingMaps] = useState(false);
   const detail = state.status === 'ready' ? state.data : null;
+  // B1d: back from leaving or pulling out of a Losers pay game, show what changed.
+  const focusedOnce = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (focusedOnce.current) reload();
+      focusedOnce.current = true;
+    }, [reload]),
+  );
   // P11: the forecast for the game's hours.
   const weather = useGameWeather(
     detail?.venue.id,
@@ -198,6 +206,7 @@ export default function BookingDetailScreen() {
         onInviteOpposition={() => router.push({ pathname: '/booking-after-pay', params: { bookingId: id } })}
         onPayWhole={payWhole}
         onCancelFree={() => gipedoAction(() => cancelFree(id))}
+        onLosersPay={(action) => router.push({ pathname: '/losers-pay-leave', params: { bookingId: id, action } })}
         weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
         checkIn={id ? <CheckInSection bookingId={id} /> : null}
         squadNeed={
