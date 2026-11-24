@@ -19,7 +19,8 @@ describe('booking navigation', () => {
   it('a new Booking v2 booking, once paid, goes to the screen after paying (B3)', () => {
     const n = nav();
     afterBooking('b1', n);
-    expect(n.replace).toHaveBeenCalledWith({ pathname: '/booking-after-pay', params: { bookingId: 'b1' } });
+    // from: 'pay' (QA 24 November, S4): back from there goes to the booking.
+    expect(n.replace).toHaveBeenCalledWith({ pathname: '/booking-after-pay', params: { bookingId: 'b1', from: 'pay' } });
     const m = nav();
     afterBooking(null, m);
     expect(m.replace).toHaveBeenCalledWith('/my-bookings');

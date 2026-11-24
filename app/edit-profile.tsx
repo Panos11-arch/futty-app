@@ -1,7 +1,7 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { router, useNavigation } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField } from '@/components/auth-form';
@@ -14,6 +14,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { useAuth } from '@/lib/auth';
+import { SERVER_ERROR_FALLBACK } from '@/lib/booking-errors';
 import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
 import { toDateKey } from '@/lib/days';
 import {
@@ -57,9 +58,9 @@ type FormState = {
   showPhonePublicly: boolean;
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, testID }: { label: string; children: React.ReactNode; testID?: string }) {
   return (
-    <View style={styles.field}>
+    <View style={styles.field} testID={testID}>
       <Text variant="callout" tone="inkMuted">
         {label}
       </Text>
@@ -172,12 +173,34 @@ export default function EditProfileScreen() {
   const [form, setForm] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // QA 24 November: the username's own error, shown under its field.
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  // What was loaded, to tell whether anything changed; and whether the
+  // screen is leaving because it saved (then nothing is asked).
+  const initial = useRef<FormState | null>(null);
+  const saved = useRef(false);
+  const navigation = useNavigation();
+  const dirty = !!form && !!initial.current && JSON.stringify(form) !== JSON.stringify(initial.current);
+
+  // QA 24 November, bug 5: leaving (back button or gesture) with unsaved
+  // changes asks first.
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', (e) => {
+      if (!dirty || saved.current) return;
+      e.preventDefault();
+      Alert.alert('Discard changes?', undefined, [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+      ]);
+    });
+  }, [navigation, dirty]);
 
   useEffect(() => {
     if (profile.status !== 'ready') return;
     const p = profile.profile;
     const { country, national } = splitPhone(p.phone);
-    setForm({
+    const loaded: FormState = {
       username: p.username ?? '',
       fullName: p.full_name ?? '',
       phoneCountry: country,
@@ -191,7 +214,9 @@ export default function EditProfileScreen() {
       preferredDays: p.preferred_days ?? [],
       preferredTimes: p.preferred_times ?? [],
       showPhonePublicly: p.show_phone_publicly,
-    });
+    };
+    initial.current = loaded;
+    setForm(loaded);
     // Seeded once when the row first loads — re-running on every `profile`
     // change would stomp on in-progress edits each time `reload()` refetches.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -220,8 +245,9 @@ export default function EditProfileScreen() {
     if (!form || busy) return;
 
     const trimmedUsername = form.username.trim();
+    setUsernameError(null);
     if (!USERNAME_PATTERN.test(trimmedUsername)) {
-      setError(USERNAME_RULES_MESSAGE);
+      showUsernameError(USERNAME_RULES_MESSAGE);
       return;
     }
 
@@ -236,7 +262,7 @@ export default function EditProfileScreen() {
     const usernameChanged = trimmedUsername.toLowerCase() !== (activeProfile.username ?? '').toLowerCase();
 
     if (usernameChanged && !(await isUsernameAvailable(trimmedUsername))) {
-      setError(`"${trimmedUsername}" is already taken.`);
+      showUsernameError(`"${trimmedUsername}" is already taken.`);
       setBusy(false);
       return;
     }
@@ -259,23 +285,43 @@ export default function EditProfileScreen() {
     setBusy(false);
 
     if (updateError) {
-      setError(updateError.message);
+      // Never the server's own text.
+      setError(SERVER_ERROR_FALLBACK);
     } else {
+      saved.current = true;
       router.back();
     }
   }
 
+  /** The username's error goes under its field, scrolled into view. */
+  function showUsernameError(message: string) {
+    setError(null);
+    setUsernameError(message);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content}>
         <View style={styles.row}>
-          <Field label="Username">
+          <Field label="Username" testID="edit-profile-username-field">
             <AuthField
               value={form.username}
               onChangeText={(v) => set('username', v)}
               autoCapitalize="none"
               autoCorrect={false}
+              accessibilityLabel="Username"
             />
+            {usernameError ? (
+              <Text
+                variant="callout"
+                tone="danger"
+                accessibilityLiveRegion="polite"
+                testID="edit-profile-username-error"
+              >
+                {usernameError}
+              </Text>
+            ) : null}
           </Field>
           <Field label="Full name">
             <AuthField value={form.fullName} onChangeText={(v) => set('fullName', v)} autoCapitalize="words" />

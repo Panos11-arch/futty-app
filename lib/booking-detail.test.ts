@@ -8,7 +8,9 @@ import {
   countdownLabel,
   cutoffPassed,
   cyprusTimeLabel,
+  describeOutcome,
   describeQuote,
+  fetchCancellationOutcome,
   describeVenuePlayerAnswerError,
   openVenueOffers,
   paymentDeadlineLabel,
@@ -33,7 +35,8 @@ jest.mock('@/lib/calendar', () => ({
   addBookingToCalendar: (...args: unknown[]) => mockAdd(...args),
   syncBookingInCalendar: (...args: unknown[]) => mockSync(...args),
 }));
-jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+const mockRpc = jest.fn();
+jest.mock('@/lib/supabase', () => ({ supabase: { rpc: (...a: unknown[]) => mockRpc(...a) } }));
 
 const now = new Date('2026-11-16T08:00:00Z');
 const at = (minutes: number) => new Date(now.getTime() + minutes * 60_000).toISOString();
@@ -236,6 +239,23 @@ describe('describeQuote', () => {
       '2 other players get their money back in full. A player whose payment was already taken chooses a card refund or credit within 48 hours.',
       'Your guarantee hold is released.',
       "Cancelling the whole team costs €6.00 (6 players whose payment was taken). It is charged to your card when you confirm. If the charge doesn't go through, the booking is still cancelled.",
+    ]);
+  });
+
+  // QA 24 November, T5: the guarantee hold is named with the server's amount.
+  it('names the guarantee hold it releases with the server’s amount', () => {
+    const cash = wholeTeamQuote({
+      lines: [
+        line({ profile_id: 'p1', is_booker: true, window: 'middle', action: 'keep', value_cents: 80, kept_cents: 80, paid_cents: 80 }),
+        line({ profile_id: 'p1', share_id: null, guarantee_id: 'g1', is_booker: true, window: null, action: 'release', stripe_intent_id: 'pi_g1' }),
+      ],
+      booker_fee: null,
+      guarantee_hold_cents: 6000,
+    });
+    expect(describeQuote(cash, 'Nuevo Campo')).toEqual([
+      'The booking is cancelled and the pitch is released.',
+      'Nothing comes back. €0.80 is kept.',
+      'Your €60.00 guarantee hold is released.',
     ]);
   });
 
@@ -516,5 +536,55 @@ describe('venue players', () => {
     ['booking_cancelled', 'This booking was cancelled.'],
   ])('%s in words', (code, words) => {
     expect(describeVenuePlayerAnswerError(code)).toBe(words);
+  });
+});
+
+// QA 24 November, T4: a cancelled booking says what happened to the
+// caller's own money, from the server (my_cancellation_outcome).
+describe('describeOutcome', () => {
+  it('kept and the guarantee hold released (the QA cash booking)', () => {
+    const outcome = {
+      scope: 'whole_team' as const,
+      lines: [line({ profile_id: 'p1', is_booker: true, window: 'middle', action: 'keep', value_cents: 80, kept_cents: 80, paid_cents: 80 })],
+      guarantee_cents: 6000,
+    };
+    expect(describeOutcome(outcome, 'Nuevo Campo')).toEqual(['Nothing comes back. €0.80 is kept.', 'Your €60.00 guarantee hold is released.']);
+  });
+
+  it('the money back, as the sheet said it', () => {
+    const outcome = {
+      scope: 'whole_team' as const,
+      lines: [line({ profile_id: 'p1', is_booker: true, window: 'free', action: 'release', value_cents: 6550, refund_cents: 6550, paid_cents: 6550, stripe_intent_id: 'pi_1' })],
+      guarantee_cents: 0,
+    };
+    expect(describeOutcome(outcome, 'Nuevo Campo')).toEqual(['You get €65.50 back. The hold on your card is released.']);
+  });
+
+  it('the venue cancelled: a card refund or credit', () => {
+    const outcome = {
+      scope: 'venue' as const,
+      lines: [line({ profile_id: 'p1', window: 'venue', action: 'refund_choice', value_cents: 680, refund_cents: 680 })],
+      guarantee_cents: 0,
+    };
+    expect(describeOutcome(outcome, 'Nuevo Campo')).toEqual(['You get €6.80 back, by card refund or as credit at Nuevo Campo.']);
+  });
+
+  it('nothing from the server, nothing said', () => {
+    expect(describeOutcome(null, 'Nuevo Campo')).toEqual([]);
+  });
+});
+
+describe('fetchCancellationOutcome', () => {
+  beforeEach(() => mockRpc.mockReset());
+
+  it('asks the server for the caller’s own outcome', async () => {
+    mockRpc.mockResolvedValue({ data: { scope: 'whole_team', lines: [], guarantee_cents: 6000 }, error: null });
+    await expect(fetchCancellationOutcome('b1')).resolves.toEqual({ scope: 'whole_team', lines: [], guarantee_cents: 6000 });
+    expect(mockRpc).toHaveBeenCalledWith('my_cancellation_outcome', { p_booking_id: 'b1' });
+  });
+
+  it('an error says nothing rather than something wrong', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    await expect(fetchCancellationOutcome('b1')).resolves.toBeNull();
   });
 });

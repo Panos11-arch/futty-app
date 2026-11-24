@@ -1,7 +1,7 @@
 // The screen after paying (B3, Booking v2): invite friends, on a half pitch
 // invite the opposition, publish the game. Wires AfterPayView to the server;
 // "Go to booking" opens the booking's detail.
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { Share } from 'react-native';
 
@@ -24,7 +24,7 @@ import { useRules } from '@/lib/use-rules';
 
 export default function BookingAfterPayScreen() {
   useRules();
-  const { bookingId = '' } = useLocalSearchParams<{ bookingId: string }>();
+  const { bookingId = '', from } = useLocalSearchParams<{ bookingId: string; from?: string }>();
   const { user } = useAuth();
   const load = useCallback(() => fetchBookingDetail(bookingId), [bookingId]);
   const { state, reload } = useLoad(bookingId || null, load);
@@ -46,6 +46,20 @@ export default function BookingAfterPayScreen() {
 
   const followed = useRef<Set<string> | null>(null);
 
+  // QA 24 November, S4: back (the header button, a swipe or Android's back)
+  // goes to the booking, never back to the checkout of a paid booking.
+  const navigation = useNavigation();
+  // Only right after paying: opened from a booking, back goes back to it.
+  const afterPaying = from === 'pay';
+  useEffect(() => {
+    if (!bookingId || !afterPaying) return;
+    return navigation.addListener('beforeRemove', (e) => {
+      if (e.data.action.type !== 'GO_BACK' && e.data.action.type !== 'POP') return;
+      e.preventDefault();
+      router.replace(bookingDetailHref(bookingId));
+    });
+  }, [navigation, bookingId, afterPaying]);
+
   async function publish(kind: 'players' | 'opposition', on: boolean): Promise<string | null> {
     let error: string | null;
     if (on) error = await publishBooking(bookingId, kind);
@@ -59,7 +73,7 @@ export default function BookingAfterPayScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Booked' }} />
+      <Stack.Screen options={afterPaying ? { title: 'Booked', headerBackTitle: 'Booking' } : { title: 'Booked' }} />
       <AfterPayView
         state={bookingId ? state : { status: 'error', message: 'This booking could not be found.' }}
         onRetry={reload}

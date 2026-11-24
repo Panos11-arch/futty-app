@@ -58,6 +58,13 @@ export type BookSearchViewProps = {
   now?: Date;
 };
 
+/** A venue's free times: the time searched first (every venue listed is free
+ *  then; QA 24 November, bug 9), then the server's next free times. */
+export function freeTimes(chosen: string | null, nextStarts: string[]): string[] {
+  const times = nextStarts.map((t) => t.slice(0, 5));
+  return chosen ? [chosen, ...times.filter((t) => t !== chosen)] : times;
+}
+
 const PLAYERS_PER_SIDE = [
   { value: '5', label: '5 v 5' },
   { value: '6', label: '6 v 6' },
@@ -253,7 +260,7 @@ function BookSearchReady({
                   area={v.city ?? v.address ?? ''}
                   pricePerPlayerCents={v.player_cents}
                   photoUrl={v.photoUrl}
-                  nextTimes={v.next_starts.map((t) => t.slice(0, 5))}
+                  nextTimes={freeTimes(startTime, v.next_starts)}
                   onPress={() => startTime && choose(v, startTime)}
                   onTimePress={(t) => choose(v, t)}
                 />

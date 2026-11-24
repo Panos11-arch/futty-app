@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { ScrollView } from 'react-native';
 
 import { SavedSearchForm, type SavedSearchFormProps } from '@/components/booking/saved-search-form';
 import { draftFromSearch } from '@/lib/saved-searches';
@@ -96,5 +97,28 @@ describe('SavedSearchForm', () => {
     await render(<SavedSearchForm {...props()} />);
     expect(screen.getByRole('button', { name: 'Thu 19' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Fri 20' })).toBeNull();
+  });
+
+  // QA 24 November, bug 10: the searched time is chosen and in view, not
+  // hidden behind 00:00 at the start of each row.
+  it('scrolls the From and Until rows to the searched time', async () => {
+    await render(<SavedSearchForm {...props()} />);
+    expect(screen.getByTestId('from-19:00').props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByTestId('to-20:00').props.accessibilityState).toMatchObject({ selected: true });
+    // React Native's ScrollView mock shares one scrollTo on its prototype.
+    const scrollTo = ScrollView.prototype.scrollTo as unknown as jest.Mock;
+    for (const chip of ['from-19:00', 'to-20:00']) {
+      scrollTo.mockClear();
+      await fireEvent(screen.getByTestId(chip), 'layout', { nativeEvent: { layout: { x: 1520, y: 0, width: 72, height: 44 } } });
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      const { x, animated } = scrollTo.mock.calls[0][0];
+      expect(animated).toBe(false);
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThanOrEqual(1520);
+    }
+    // A chip that isn't chosen moves nothing.
+    scrollTo.mockClear();
+    await fireEvent(screen.getByTestId('from-08:00'), 'layout', { nativeEvent: { layout: { x: 640, y: 0, width: 72, height: 44 } } });
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

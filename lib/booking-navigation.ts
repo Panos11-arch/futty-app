@@ -23,7 +23,9 @@ export function afterPayment(bookingId: string | null, nav: BookingNavigator) {
 /** B3: a new Booking v2 booking, once paid, goes to the screen after paying
  *  (invite friends, the opposition, publish), in place of checkout. */
 export function afterBooking(bookingId: string | null, nav: BookingNavigator) {
-  nav.replace(bookingId ? { pathname: '/booking-after-pay', params: { bookingId } } : '/my-bookings');
+  // from: 'pay' tells the screen that back must go to the booking, not to
+  // the checkout it replaced (QA 24 November, S4).
+  nav.replace(bookingId ? { pathname: '/booking-after-pay', params: { bookingId, from: 'pay' } } : '/my-bookings');
 }
 
 /** The ?booking= search param, as one id or none. */

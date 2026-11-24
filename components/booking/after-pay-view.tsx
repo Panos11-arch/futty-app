@@ -15,6 +15,7 @@ import {
   SectionHeader,
   SkeletonBlock,
   SkeletonText,
+  StatusPill,
   StickyActionBar,
   Text,
   TextField,
@@ -215,6 +216,11 @@ function AfterPayReady({
               {venue.name}
             </Text>
           ) : null}
+          {/* QA 24 November, S4: the payment went through; Confirmed once
+              the payment webhook has confirmed the booking on the server. */}
+          <View testID="after-pay-status" style={styles.status}>
+            <StatusPill status={booking.status === 'confirmed' ? 'confirmed' : 'paid'} />
+          </View>
         </View>
 
         {captain ? (
@@ -339,6 +345,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
   group: { gap: space.xs },
+  status: { flexDirection: 'row' },
   inline: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm },
   grow: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },

@@ -68,6 +68,9 @@ export type BookingDetailViewProps = {
   onPayShare: () => void;
   /** A message from the screen (calendar, cancellation done). */
   notice: string | null;
+  /** A cancelled booking: what happened to the caller's money, in words,
+   *  from the server (my_cancellation_outcome; QA 24 November, T4). */
+  cancelledMoney?: string[];
   /** Gipedo Pano (P8): pull out, and the no-opponent choice. Each resolves
    *  to an error message, or null when it went through. */
   onGipedoPullOut?: () => Promise<string | null>;
@@ -144,6 +147,7 @@ function BookingDetailReady({
   onDirections,
   onPayShare,
   notice,
+  cancelledMoney,
   squadNeed,
   onGipedoPullOut,
   onGipedoChoose,
@@ -318,12 +322,30 @@ function BookingDetailReady({
         </View>
 
         {cancelled ? (
-          <View testID="booking-detail-cancelled">
-            <Banner tone="info" message="This booking was cancelled." />
+          // QA 24 November (T4, S5): one banner. Just after cancelling it
+          // carries the screen's notice too; the words stay as the Maestro
+          // cancel flow checks them. Then what happened to the money.
+          <View testID="booking-detail-cancelled" style={styles.list}>
+            {notice ? (
+              <View testID="booking-detail-notice">
+                <Banner tone="info" title="This booking was cancelled." message={notice} />
+              </View>
+            ) : (
+              <Banner tone="info" message="This booking was cancelled." />
+            )}
+            {cancelledMoney && cancelledMoney.length > 0 ? (
+              <View testID="booking-detail-cancelled-money" style={styles.list}>
+                {cancelledMoney.map((line) => (
+                  <Text key={line} variant="body" tabular>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </View>
         ) : null}
         {!cancelled && !meActive && !isBooker ? <Banner tone="info" message="You're no longer in this game." /> : null}
-        {notice ? (
+        {!cancelled && notice ? (
           <View testID="booking-detail-notice">
             <Banner tone="info" message={notice} />
           </View>
@@ -409,57 +431,60 @@ function BookingDetailReady({
           </View>
         ))}
 
-        <View style={styles.section}>
-          <SectionHeader title="Who's playing" />
-          <Text variant="callout" tone="inkMuted" tabular>
-            {`${spotsTaken(detail)} of ${booking.capacity} spots taken`}
-          </Text>
-          <View style={styles.list}>
-            {groups ? (
-              <>
-                <View testID="booking-detail-roster-a" style={styles.list}>
-                  <Text variant="callout" tone="inkMuted">
-                    Side A
-                  </Text>
-                  {rosterRows(groups.a)}
-                </View>
-                {groups.b.length > 0 ? (
-                  <View testID="booking-detail-roster-b" style={styles.list}>
+        {/* QA 24 November, T4: a cancelled game lists nobody as paying. */}
+        {!cancelled ? (
+          <View style={styles.section}>
+            <SectionHeader title="Who's playing" />
+            <Text variant="callout" tone="inkMuted" tabular>
+              {`${spotsTaken(detail)} of ${booking.capacity} spots taken`}
+            </Text>
+            <View style={styles.list}>
+              {groups ? (
+                <>
+                  <View testID="booking-detail-roster-a" style={styles.list}>
                     <Text variant="callout" tone="inkMuted">
-                      Side B
+                      Side A
                     </Text>
-                    {rosterRows(groups.b)}
+                    {rosterRows(groups.a)}
                   </View>
-                ) : null}
-              </>
-            ) : (
-              rosterRows(roster)
-            )}
-            {venuePlayers.map((player) => (
-              <View key={player.id ?? player.name} testID={`venue-player-${player.id ?? player.name}`}>
-                <ListRow
-                  title={player.name}
-                  subtitle="Venue player · Plays free"
-                  leading={{ avatar: { name: player.name } }}
-                  trailing={
-                    isBooker && live && player.can_remove && player.id ? (
-                      <Button
-                        label={`Remove ${player.name}`}
-                        variant="plain"
-                        loading={venueBusy === `remove-${player.id}`}
-                        disabled={venueBusy !== null}
-                        onPress={() =>
-                          venueAction(player.id!, `remove-${player.id}`, onRemoveVenuePlayer && (() => onRemoveVenuePlayer(player.id!)))
-                        }
-                      />
-                    ) : undefined
-                  }
-                />
-                {player.id && venueError && venueError.id === player.id ? <Banner tone="danger" message={venueError.message} /> : null}
-              </View>
-            ))}
+                  {groups.b.length > 0 ? (
+                    <View testID="booking-detail-roster-b" style={styles.list}>
+                      <Text variant="callout" tone="inkMuted">
+                        Side B
+                      </Text>
+                      {rosterRows(groups.b)}
+                    </View>
+                  ) : null}
+                </>
+              ) : (
+                rosterRows(roster)
+              )}
+              {venuePlayers.map((player) => (
+                <View key={player.id ?? player.name} testID={`venue-player-${player.id ?? player.name}`}>
+                  <ListRow
+                    title={player.name}
+                    subtitle="Venue player · Plays free"
+                    leading={{ avatar: { name: player.name } }}
+                    trailing={
+                      isBooker && live && player.can_remove && player.id ? (
+                        <Button
+                          label={`Remove ${player.name}`}
+                          variant="plain"
+                          loading={venueBusy === `remove-${player.id}`}
+                          disabled={venueBusy !== null}
+                          onPress={() =>
+                            venueAction(player.id!, `remove-${player.id}`, onRemoveVenuePlayer && (() => onRemoveVenuePlayer(player.id!)))
+                          }
+                        />
+                      ) : undefined
+                    }
+                  />
+                  {player.id && venueError && venueError.id === player.id ? <Banner tone="danger" message={venueError.message} /> : null}
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        ) : null}
 
         {isBooker && live && detail.venueTakingPlayers === false ? (
           <View style={styles.section}>

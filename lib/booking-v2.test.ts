@@ -164,6 +164,10 @@ describe('Booking v2 checkout words (spec 15 Words rules)', () => {
     expect(wayLine('half', 'pay_all')).toBe("You pay your team's half now.");
     expect(wayLine('whole', 'pay_for_myself')).toBe('You pay your share. You cover unpaid spots.');
     expect(wayLine('half', 'pay_for_myself')).toBe('You pay your share. You cover unpaid spots.');
+    // QA 24 November, T1: on Losers pay, paying for everyone holds the whole
+    // pitch with all 10 fees (example 7a), not the team's half.
+    expect(wayLine('half', 'pay_all', true)).toBe('The whole pitch is held until the result.');
+    expect(wayLine('whole', 'pay_all', true)).toBe('You pay the whole pitch now.');
   });
 
   it('a pitch in one line: indoor or outdoor, then its surface', () => {

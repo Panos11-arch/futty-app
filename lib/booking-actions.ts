@@ -94,6 +94,9 @@ export type CancellationQuote = {
   /** The booker's guarantee hold has actually been placed (before that it
    *  is only a saved card). Always false for my_spot. */
   guarantee_hold_placed: boolean;
+  /** QA 24 November (T5): the amount of each held guarantee this releases,
+   *  so the sheet names it. Absent from servers before that migration. */
+  guarantee_hold_cents?: number;
   /** Venue scope only: Stripe's recorded fees on the card payments this
    *  cancel refunds or turns into credit, which the venue will owe. */
   venue_stripe_fee_cents?: number;

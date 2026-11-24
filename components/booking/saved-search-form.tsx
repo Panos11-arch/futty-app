@@ -1,7 +1,7 @@
 // Save a search (decided 18 November): a day or a weekday, a time window, a
 // game length, a format and a place. Prefilled from the booking search. The
 // server checks every rule; this form only collects the choice.
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Chip, SectionHeader, SegmentedControl, SkeletonBlock, Text } from '@/components/ui';
@@ -55,6 +55,17 @@ export function SavedSearchForm({ initial, today, windowDays, places, saving, er
   };
   const fits = gameFits(draft);
 
+  // QA 24 November, bug 10: the From and Until rows open scrolled to the
+  // searched time, so it shows as chosen instead of the row's 00:00.
+  const fromRow = useRef<ScrollView>(null);
+  const toRow = useRef<ScrollView>(null);
+  const scrolled = useRef({ from: false, to: false });
+  function scrollToChosen(row: 'from' | 'to', x: number) {
+    if (scrolled.current[row]) return;
+    scrolled.current[row] = true;
+    (row === 'from' ? fromRow : toRow).current?.scrollTo({ x: Math.max(0, x - space.xl), animated: false });
+  }
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text variant="body" tone="inkMuted">
@@ -89,15 +100,31 @@ export function SavedSearchForm({ initial, today, windowDays, places, saving, er
 
       <View style={styles.section}>
         <SectionHeader title="From" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        <ScrollView
+          ref={fromRow}
+          testID="saved-search-from"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+        >
           {times.slice(0, -1).map((t) => (
-            <Chip key={t} testID={`from-${t}`} label={t} tabular selected={t === from} onPress={() => setFrom(t)} />
+            <View key={t} onLayout={t === from ? (e) => scrollToChosen('from', e.nativeEvent.layout.x) : undefined}>
+              <Chip testID={`from-${t}`} label={t} tabular selected={t === from} onPress={() => setFrom(t)} />
+            </View>
           ))}
         </ScrollView>
         <SectionHeader title="Until" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        <ScrollView
+          ref={toRow}
+          testID="saved-search-to"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+        >
           {times.slice(1).map((t) => (
-            <Chip key={t} testID={`to-${t}`} label={t} tabular selected={t === to} onPress={() => setTo(t)} />
+            <View key={t} onLayout={t === to ? (e) => scrollToChosen('to', e.nativeEvent.layout.x) : undefined}>
+              <Chip testID={`to-${t}`} label={t} tabular selected={t === to} onPress={() => setTo(t)} />
+            </View>
           ))}
         </ScrollView>
       </View>

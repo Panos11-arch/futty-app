@@ -174,11 +174,18 @@ function CheckoutReady({
   const amounts = checkoutAmountsV2(data, choice);
   const guarantee = guaranteeCents(quote, choice);
   const nonRefundable = showNonRefundable(quote, now);
-  const totalLabel = amounts && (amounts.cashCents !== null || creditOn) ? 'By card now' : 'Total';
+  // QA 24 November, T2: Losers pay takes nothing before the result, so its
+  // bar says what's held, not paid.
+  const holding = losersPay && kind === 'half';
+  const totalLabel = holding
+    ? 'Held until the result.'
+    : amounts && (amounts.cashCents !== null || creditOn)
+      ? 'By card now'
+      : 'Total';
 
   const canPay =
     way !== null && amounts !== null && pitch !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying;
-  const actionLabel = amounts ? payLabel(amounts.totalCents) : 'Choose who pays';
+  const actionLabel = amounts ? (holding ? `Hold ${formatEuros(amounts.totalCents)}` : payLabel(amounts.totalCents)) : 'Choose who pays';
 
   const choose = <T,>(set: (v: T) => void) => (v: T) => {
     if (!bookingHeld) set(v);
@@ -287,7 +294,7 @@ function CheckoutReady({
                 testID={w.testID}
                 title={w.title}
                 price={wayPriceLabel(quote, kind, w.way, losersPay)}
-                line={wayLine(kind, w.way)}
+                line={wayLine(kind, w.way, losersPay)}
                 selected={way === w.way}
                 locked={bookingHeld}
                 onPress={() => choose(setWay)(w.way)}

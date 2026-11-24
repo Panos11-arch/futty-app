@@ -36,6 +36,9 @@ export type SquadNeedBooking = {
   kickoffAt: string;
   format: string;
   openSpots: number;
+  /** Booking v2: a half pitch. Opposition is a half-pitch idea; on a whole
+   *  pitch the server refuses it (not_half_pitch), so it isn't offered. */
+  halfPitch: boolean;
 };
 
 /** What create_squad_post gets: the booking's venue, kickoff and format,
@@ -63,6 +66,8 @@ export type SquadNeedPanelProps = {
   error: string | null;
   onPost: (choice: SquadChoice) => void;
   onCancelPost: (type: PostType) => void;
+  /** Only a half pitch offers Need opposition (QA 24 November, S2). */
+  halfPitch: boolean;
 };
 
 /** Toggle chips: tap again to clear. */
@@ -92,7 +97,16 @@ function Choices<T extends string>({
   );
 }
 
-export function SquadNeedPanel({ openSpots, captainTeams, posted, busy, error, onPost, onCancelPost }: SquadNeedPanelProps) {
+export function SquadNeedPanel({
+  openSpots,
+  captainTeams,
+  posted,
+  busy,
+  error,
+  onPost,
+  onCancelPost,
+  halfPitch,
+}: SquadNeedPanelProps) {
   const [mode, setMode] = useState<PostType | null>(null);
   const [count, setCount] = useState(String(Math.max(openSpots, 1)));
   const [level, setLevel] = useState<SkillLevel | undefined>();
@@ -169,7 +183,9 @@ export function SquadNeedPanel({ openSpots, captainTeams, posted, busy, error, o
   return (
     <View style={styles.group}>
       <Text variant="callout" tone="inkMuted">
-        Short of players or an opponent? Post it for any Futty player to join.
+        {halfPitch
+          ? 'Short of players or an opponent? Post it for any Futty player to join.'
+          : 'Short of players? Post it for any Futty player to join.'}
       </Text>
       <View style={styles.wrap}>
         {posted.players ? (
@@ -184,9 +200,9 @@ export function SquadNeedPanel({ openSpots, captainTeams, posted, busy, error, o
             onPress={() => onCancelPost('opposition')}
             loading={busy === 'opposition'}
           />
-        ) : (
+        ) : halfPitch ? (
           <Button label="Need opposition" variant="secondary" onPress={() => setMode('opposition')} disabled={busy !== null} />
-        )}
+        ) : null}
       </View>
       {errorBanner}
     </View>
@@ -248,6 +264,7 @@ export function SquadNeed({ booking }: { booking: SquadNeedBooking }) {
       error={error}
       onPost={post}
       onCancelPost={cancel}
+      halfPitch={booking.halfPitch}
     />
   );
 }

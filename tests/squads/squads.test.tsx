@@ -117,8 +117,11 @@ describe('Squads', () => {
   });
 
   it('error retries the same load', async () => {
-    mockPosts = { status: 'error', message: 'offline' };
+    mockPosts = { status: 'error', message: 'column squad_posts.side does not exist' };
     await render(<SquadsScreen />);
+    // QA 24 November, bug 2: one plain line, never the server's text.
+    expect(screen.getByText('Could not load games. Try again.')).toBeTruthy();
+    expect(screen.queryByText(/squad_posts/)).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(mockReload).toHaveBeenCalledTimes(1);
   });

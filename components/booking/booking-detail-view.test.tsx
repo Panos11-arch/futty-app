@@ -480,6 +480,40 @@ describe('BookingDetailView: testIDs for the Maestro tests (.maestro)', () => {
     expect(screen.queryByTestId('booking-detail-status-cancelled')).toBeNull();
   });
 
+  // QA 24 November, T4 and S5: one banner, the money from the server, and
+  // nobody listed as paying. The Maestro cancel flow's words stay.
+  it('a cancelled booking: one banner, the server’s money words, no roster', async () => {
+    const detail = bookerDetail();
+    await render(
+      <BookingDetailView
+        {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } }, {
+          notice: 'The booking is cancelled.',
+          cancelledMoney: ['Nothing comes back. €0.80 is kept.', 'Your €60.00 guarantee hold is released.'],
+        })}
+      />,
+    );
+    expect(screen.getAllByTestId('banner')).toHaveLength(1);
+    expect(screen.getByTestId('booking-detail-cancelled')).toBeTruthy();
+    expect(screen.getByTestId('booking-detail-notice')).toBeTruthy();
+    expect(screen.getByText('This booking was cancelled.')).toBeTruthy();
+    expect(screen.getByText('The booking is cancelled.')).toBeTruthy();
+    const money = within(screen.getByTestId('booking-detail-cancelled-money'));
+    expect(money.getByText('Nothing comes back. €0.80 is kept.')).toBeTruthy();
+    expect(money.getByText('Your €60.00 guarantee hold is released.')).toBeTruthy();
+    expect(screen.queryByText(/spots taken/)).toBeNull();
+    expect(screen.queryByText("Who's playing")).toBeNull();
+    expect(screen.queryByText(/Pays cash/)).toBeNull();
+  });
+
+  it('a cancelled booking opened later: one banner, no notice', async () => {
+    const detail = bookerDetail();
+    await render(<BookingDetailView {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } })} />);
+    expect(screen.getAllByTestId('banner')).toHaveLength(1);
+    expect(screen.getByText('This booking was cancelled.')).toBeTruthy();
+    expect(screen.queryByTestId('booking-detail-notice')).toBeNull();
+    expect(screen.queryByTestId('booking-detail-cancelled-money')).toBeNull();
+  });
+
   it('names a refused cancellation', async () => {
     const p = props(playerDetail(), { onConfirmCancel: jest.fn(async () => ({ status: 'error' as const, message: 'Too late.' })) });
     await render(<BookingDetailView {...p} />);

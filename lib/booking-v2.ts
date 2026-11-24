@@ -116,8 +116,11 @@ export const KIND_LINES: Record<BookingKind, string> = {
   half: 'Opponents pay half.',
 };
 
-export function wayLine(kind: BookingKind, way: WayToPay): string {
+export function wayLine(kind: BookingKind, way: WayToPay, losersPay = false): string {
   if (way === 'pay_for_myself') return 'You pay your share. You cover unpaid spots.';
+  // QA 24 November, T1: Losers pay, paying for everyone, holds the whole
+  // pitch with all 10 fees until the result (spec 13, example 7a).
+  if (losersPay && kind === 'half') return 'The whole pitch is held until the result.';
   return kind === 'whole' ? 'You pay the whole pitch now.' : "You pay your team's half now.";
 }
 
