@@ -30,7 +30,7 @@ import {
 } from '@/lib/booking-detail';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { chooseNoOpponent, pullOutOfGipedo } from '@/lib/booking-gipedo';
-import { cancelFree, payOtherHalf } from '@/lib/booking-opposition';
+import { cancelFree, payOtherHalf, playWholeFromHolds } from '@/lib/booking-opposition';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
 import { switchPlayersPerSide } from '@/lib/booking-switch';
@@ -132,6 +132,12 @@ export default function BookingDetailScreen() {
   // B3 (Booking v2): the no-opponent choice. "Pay the whole pitch and play"
   // counts once Stripe's webhook says it's paid; the screen reloads.
   async function payWhole(): Promise<string | null> {
+    // Losers pay (24 November): the holds pay for the whole pitch, no payment sheet.
+    if (detail?.v2?.no_opponent?.losers_pay) {
+      const error = await gipedoAction(() => playWholeFromHolds(id));
+      if (!error) setNotice('Your game goes ahead on the whole pitch.');
+      return error;
+    }
     const outcome = await payOtherHalf(id, { init: (p) => initPaymentSheet(p), present: () => presentPaymentSheet() });
     if (outcome.status === 'error') return gipedoAction(async () => outcome.message);
     if (outcome.status === 'paid') {

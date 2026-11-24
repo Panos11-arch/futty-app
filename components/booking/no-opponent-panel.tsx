@@ -1,15 +1,23 @@
 // The no-opponent choice (B3; spec 13 "No side B by 24 hours before
 // kickoff"): "Pay the whole pitch and play" or "Cancel free", on Home and in
-// the booking. The amount and the deadline are the server's.
+// the booking. The amount and the deadline are the server's. On Losers pay
+// (decided 24 November) the holds pay for the whole pitch: the button reads
+// "Play the whole pitch" and the card says what the holds give.
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Banner, Button, Card, Text } from '@/components/ui';
 import { space } from '@/constants/futty-theme';
-import { noOpponentLines, payWholeLabel, type NoOpponentInfo } from '@/lib/booking-opposition';
+import {
+  losersPayWholeLine,
+  noOpponentLines,
+  payWholeLabel,
+  type LosersPayWhole,
+  type NoOpponentInfo,
+} from '@/lib/booking-opposition';
 
 export type NoOpponentPanelProps = {
-  info: Pick<NoOpponentInfo, 'amount_cents' | 'choose_by'>;
+  info: Pick<NoOpponentInfo, 'amount_cents' | 'choose_by'> & LosersPayWhole;
   /** Home: which game ("Kamares · Pitch 2 · Thu 26 Nov · 20:00"). */
   game?: string;
   /** Each resolves to an error message, or null once done. */
@@ -23,6 +31,7 @@ export function NoOpponentPanel({ info, game, onPayWhole, onCancelFree, testID }
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lines = noOpponentLines(info);
+  const losersLine = losersPayWholeLine(info);
 
   async function run(kind: 'pay' | 'cancel', work: () => Promise<string | null>) {
     if (busy) return;
@@ -45,6 +54,11 @@ export function NoOpponentPanel({ info, game, onPayWhole, onCancelFree, testID }
       <Text variant="callout" tone="inkMuted">
         {lines.body}
       </Text>
+      {losersLine ? (
+        <Text testID={`${testID}-losers-pay`} variant="callout" tone="inkMuted">
+          {losersLine}
+        </Text>
+      ) : null}
       {confirming ? (
         <View style={styles.actions}>
           <Text variant="body">The game is cancelled and everyone gets their money back.</Text>
@@ -63,7 +77,7 @@ export function NoOpponentPanel({ info, game, onPayWhole, onCancelFree, testID }
         <View style={styles.actions}>
           <Button
             testID={`${testID}-pay-whole`}
-            label={payWholeLabel(info.amount_cents)}
+            label={payWholeLabel(info.amount_cents, info.losers_pay === true)}
             loading={busy === 'pay'}
             disabled={busy !== null}
             onPress={() => run('pay', onPayWhole)}

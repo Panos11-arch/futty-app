@@ -12,6 +12,7 @@ import {
   cancelFree,
   fetchNoOpponentChoices,
   payOtherHalf,
+  playWholeFromHolds,
   type NoOpponentChoice,
 } from '@/lib/booking-opposition';
 
@@ -19,12 +20,20 @@ export type NoOpponentChoicesListProps = {
   load: () => Promise<NoOpponentChoice[]>;
   /** Each resolves to an error message, or null. */
   onPayWhole: (bookingId: string) => Promise<string | null>;
+  /** Losers pay (24 November): the holds pay for the whole pitch, no payment sheet. */
+  onPlayWholeFromHolds: (bookingId: string) => Promise<string | null>;
   onCancelFree: (bookingId: string) => Promise<string | null>;
   /** Bumped by Home when it comes back into view. */
   refreshKey?: number;
 };
 
-export function NoOpponentChoicesList({ load, onPayWhole, onCancelFree, refreshKey = 0 }: NoOpponentChoicesListProps) {
+export function NoOpponentChoicesList({
+  load,
+  onPayWhole,
+  onPlayWholeFromHolds,
+  onCancelFree,
+  refreshKey = 0,
+}: NoOpponentChoicesListProps) {
   const [choices, setChoices] = useState<NoOpponentChoice[]>([]);
   const request = useRef(0);
   const loadRef = useRef(load);
@@ -61,7 +70,7 @@ export function NoOpponentChoicesList({ load, onPayWhole, onCancelFree, refreshK
           testID={`home-no-opponent-${c.booking_id}`}
           info={c}
           game={[c.venue_name, c.pitch_label, dayTimeLabel(c.booking_day, c.start_time)].filter(Boolean).join(' · ')}
-          onPayWhole={after(() => onPayWhole(c.booking_id))}
+          onPayWhole={after(() => (c.losers_pay ? onPlayWholeFromHolds(c.booking_id) : onPayWhole(c.booking_id)))}
           onCancelFree={after(() => onCancelFree(c.booking_id))}
         />
       ))}
@@ -88,6 +97,7 @@ export function NoOpponentChoices() {
     <NoOpponentChoicesList
       load={fetchNoOpponentChoices}
       onPayWhole={payWhole}
+      onPlayWholeFromHolds={playWholeFromHolds}
       onCancelFree={cancelFree}
       refreshKey={refreshKey}
     />

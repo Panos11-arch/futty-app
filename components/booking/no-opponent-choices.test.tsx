@@ -26,13 +26,13 @@ const choice: NoOpponentChoice = {
 
 describe('NoOpponentChoicesList (Home, B3)', () => {
   it('nothing to choose: nothing on Home', async () => {
-    await render(<NoOpponentChoicesList load={async () => []} onPayWhole={jest.fn()} onCancelFree={jest.fn()} />);
+    await render(<NoOpponentChoicesList load={async () => []} onPayWhole={jest.fn()} onPlayWholeFromHolds={jest.fn()} onCancelFree={jest.fn()} />);
     await waitFor(() => expect(screen.queryByTestId('home-no-opponent-b1')).toBeNull());
     expect(screen.toJSON()).toBeNull();
   });
 
   it('a card per game waiting for the choice, with the game and the server’s amount', async () => {
-    await render(<NoOpponentChoicesList load={async () => [choice]} onPayWhole={jest.fn()} onCancelFree={jest.fn()} />);
+    await render(<NoOpponentChoicesList load={async () => [choice]} onPayWhole={jest.fn()} onPlayWholeFromHolds={jest.fn()} onCancelFree={jest.fn()} />);
     expect(await screen.findByText('Kamares · Pitch 2 · Thu 26 Nov · 20:00')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Pay €22.75 and play' })).toBeTruthy();
   });
@@ -41,15 +41,33 @@ describe('NoOpponentChoicesList (Home, B3)', () => {
     const load = jest.fn().mockResolvedValueOnce([choice]).mockResolvedValue([]);
     const onPayWhole = jest.fn().mockResolvedValue(null);
     const onCancelFree = jest.fn().mockResolvedValue(null);
-    await render(<NoOpponentChoicesList load={load} onPayWhole={onPayWhole} onCancelFree={onCancelFree} />);
+    await render(<NoOpponentChoicesList load={load} onPayWhole={onPayWhole} onPlayWholeFromHolds={jest.fn()} onCancelFree={onCancelFree} />);
     await fireEvent.press(await screen.findByTestId('home-no-opponent-b1-pay-whole'));
     expect(onPayWhole).toHaveBeenCalledWith('b1');
     await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
   });
 
+  it('Losers pay: the holds pay for the whole pitch, no payment sheet (decided 24 November)', async () => {
+    const onPayWhole = jest.fn().mockResolvedValue(null);
+    const onPlayWholeFromHolds = jest.fn().mockResolvedValue(null);
+    const losers: NoOpponentChoice = { ...choice, amount_cents: 0, losers_pay: true, taken_cents: 4550 };
+    await render(
+      <NoOpponentChoicesList
+        load={async () => [losers]}
+        onPayWhole={onPayWhole}
+        onPlayWholeFromHolds={onPlayWholeFromHolds}
+        onCancelFree={jest.fn()}
+      />,
+    );
+    expect(await screen.findByRole('button', { name: 'Play the whole pitch' })).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('home-no-opponent-b1-pay-whole'));
+    expect(onPlayWholeFromHolds).toHaveBeenCalledWith('b1');
+    expect(onPayWhole).not.toHaveBeenCalled();
+  });
+
   it('cancel free from Home', async () => {
     const onCancelFree = jest.fn().mockResolvedValue(null);
-    await render(<NoOpponentChoicesList load={async () => [choice]} onPayWhole={jest.fn()} onCancelFree={onCancelFree} />);
+    await render(<NoOpponentChoicesList load={async () => [choice]} onPayWhole={jest.fn()} onPlayWholeFromHolds={jest.fn()} onCancelFree={onCancelFree} />);
     await fireEvent.press(await screen.findByTestId('home-no-opponent-b1-cancel-free'));
     await fireEvent.press(screen.getByTestId('home-no-opponent-b1-cancel-free-confirm'));
     expect(onCancelFree).toHaveBeenCalledWith('b1');
@@ -57,7 +75,7 @@ describe('NoOpponentChoicesList (Home, B3)', () => {
 
   it('a failed load shows nothing rather than an error on Home', async () => {
     await render(
-      <NoOpponentChoicesList load={async () => Promise.reject(new Error('x'))} onPayWhole={jest.fn()} onCancelFree={jest.fn()} />,
+      <NoOpponentChoicesList load={async () => Promise.reject(new Error('x'))} onPayWhole={jest.fn()} onPlayWholeFromHolds={jest.fn()} onCancelFree={jest.fn()} />,
     );
     await waitFor(() => expect(screen.toJSON()).toBeNull());
   });

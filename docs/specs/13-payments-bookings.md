@@ -87,6 +87,7 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.
 - Joiners pay as that side pays (nothing if the side paid for everyone).
 - Unpublish any time. The post closes when full or at kickoff; opposition posts close 24 hours before kickoff, as today.
+- **Publishing again while the post is open** brings it up to date without shutting out anyone: the post wants the players who already joined it plus the spots still open (decided by Panos, 24 November).
 
 ### Cancellations (Booking v2)
 - Today's rules (see "Cancellations and refunds") apply **per side**.
@@ -117,9 +118,17 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 | 10a | **Losers pay, pay for myself, 2 of side B's 5 players never held**; side B loses | 24 hours before kickoff side B's captain gets a guarantee hold for the 2 spots without one: 2 × €9.60 = **€19.20**. Taken: the 3 players' holds first (**€28.80**), then the captain's guarantee (**€19.20**): **€48.00** | €40.00 | €8.00 |
 | 10b | Same, **side B wins** | Nothing taken from side B: its 3 players' holds and the captain's **€19.20** guarantee are released | (side A pays €48.00) | |
 | 11 | **Premium player** | Whole pitch, pay for myself: **€4.00** (no fee on their own spot). A Premium booker paying for everyone: €40.00 + 9 × €0.55 = **€44.95**. Losers pay, pay for myself: held **€8.00** (2 × €4.00). A Premium captain paying for everyone in Losers pay: held **€44.95** | | |
+| 12a | **Losers pay, no opponent, "Pay the whole pitch and play"**, side A paid for everyone | The captain's **€45.50** hold is taken as the whole pitch's payment; nothing more to pay. It's now an ordinary whole-pitch booking, paid for everyone (example 1) | €40.00 | €5.50 |
+| 12b | Same, side A **paid for myself**, the captain and 4 players held | Each player's normal **€4.80** is taken from his €9.60 hold (**€24.00** from the 5), and the other €4.80 of each hold is released. It's now an ordinary whole-pitch booking, paid for myself (example 2): the captain's guarantee is **€40.00**, for the unpaid spots, as on any whole pitch | €40.00 (the players and the guarantee) | €8.00 |
+| 13 | **Losers pay, a side paying for everyone pulls out** more than 6 hours before kickoff | **€5.00** (€1 × 5 players of his side) is taken from the captain's €45.50 hold; **€40.50** released. The other side keeps the slot | €0.00 | €5.00 |
+| 14a | **Losers pay, side B (pay for myself, 5 held) pulls out** less than 6 hours before kickoff | Side B pays as the losing side: its five **€9.60** holds are taken (**€48.00**); side A's holds are released | €40.00 | €8.00 |
+| 14b | Same, **side B paid for everyone** | Side B's **€45.50** is taken; side A's released | €40.00 | €5.50 |
+| 15a | **Losers pay, a side on its own (no opponent yet) pulls out**, paying for everyone, more than 24 hours before kickoff | **€5.00** (€1 × 5) is taken from the captain's €45.50 hold; **€40.50** released. The booking is cancelled | €0.00 | €5.00 |
+| 15b | Same, the side **pays for myself**, the captain and 2 players held | **€1.00** from each of the 3 holds (**€3.00**), the rest released. The booking is cancelled | €0.00 | €3.00 |
+| 16 | **Losers pay, pay for myself: a player leaves after the captain's guarantee was counted.** Side B: the captain and 2 players held, 2 spots never held (guarantee **€19.20**); one held player leaves | His €4.80 share goes as today (after his free hour: €1 kept, €3.80 venue credit), the rest of his hold is released. **At once** the captain's guarantee goes up by **€9.60**, to **€28.80**. Side B loses: the 2 players' holds (**€19.20**) and the guarantee (**€28.80**): **€48.00** | €40.00 | €8.00 |
 
 - **Losers pay always gives the venue the full pitch price.** With "pay for myself" the hold is twice the share, so a losing side of 5 pays for all 10 spots (example 8a), and in a draw each half pays half (8b).
-- **Only up to 5 days ahead**, as today: holds expire.
+- **From 24 hours to 5 days ahead (decided by Panos, 24 November),** as today's Gipedo Pano: holds expire, and a game less than 24 hours away can't be booked as Losers pay.
 
 ### Losers pay (Gipedo Pano in Booking v2)
 - **Both sides are held for double their half, and every card stays held until the result is settled** (confirmed by Panos, 23 November): a side paying for everyone holds the whole pitch with all 10 players' fees; a side paying for myself holds twice each player's share. Nothing is taken before the result, except a pull-out or forfeit as today. The odd-cent rule (Futty absorbs it) applies to Losers pay draws and disputes too.
@@ -128,10 +137,18 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
   - **Pay for myself:** each player's card is held for **twice** their normal each-pays share including the fee (€9.60 on a €40 5-a-side pitch; €8.00 for a Premium player's own spot). **24 hours before kickoff** (or at once if booked or accepted later), the side's captain gets a guarantee hold only for that side's spots still without a hold, at the same per-spot amount.
 - **Settlement as today:** the losing side's holds are taken in full (players' holds first, then the captain's guarantee for missing spots); the winning side's are released; a draw or dispute takes half of every hold and releases the rest. The venue always receives the full pitch price.
 - **Side B sees "Losers pay" and its hold amount before accepting.** The button reads **"Accept Losers pay"**; there's no way to accept without it.
-- **Pulling out (decided by Panos, 23 November):**
+- **Pulling out (decided by Panos, 23 and 24 November):**
   1. **A player on a "pay for myself" side who leaves before the match:** today's rules apply to his €4.80 share (free in the first hour, then €1 kept, less than 6 hours before kickoff nothing back); the rest of his hold is released.
+     - **If he leaves after his captain's guarantee was counted (24 November),** the captain gets a hold for that spot **at once**, at the same per-spot amount (**€9.60**): his guarantee goes up by that much (example 16). A player who never held changes nothing: his spot was already counted.
   2. **A whole "pay for myself" side pulling out more than 6 hours before kickoff:** the €1 per player is taken from each player's own hold; the rest of each hold is released.
-- **No opponent 24 hours before kickoff (decided by Panos, 23 November):** the same choice as a normal half pitch: **"Pay the whole pitch and play"** (the booking then becomes an ordinary booking, no Losers pay) or **"Cancel free"** (everything refunded, holds released). No choice by 6 hours before kickoff = cancelled free.
+  3. **A "pay for everyone" side pulling out more than 6 hours before kickoff (24 November):** **€1 per player of his side** (€5 on 5 v 5) is taken from the captain's hold; the rest is released (example 13).
+  4. **Any side pulling out less than 6 hours before kickoff (24 November) pays as the losing side:** its holds are taken in full as if it lost (players' holds, then the captain's guarantee for spots without one); the other side's holds are released. The venue gets the full pitch (examples 14a and 14b). The other side's game goes ahead and nothing reopens.
+  5. **A side on its own (no opponent yet) pulling out (24 November):** the same as a pull-out: €1 per player of his side kept (from the captain's hold when paying for everyone, from each player's own hold when paying for myself), the rest released, and the booking is cancelled (examples 15a and 15b). **Once the 24-hour choice is open, "Cancel free" applies instead.**
+  - After a side pulls out more than 6 hours before kickoff, the other side keeps the slot and its opposition invite reopens, as when a side cancels.
+- **No opponent 24 hours before kickoff (decided by Panos, 23 November):** the same choice as a normal half pitch: **"Pay the whole pitch and play"** or **"Cancel free"** (everything refunded, holds released). No choice by 6 hours before kickoff = cancelled free.
+  - **"Pay the whole pitch and play" on Losers pay (decided by Panos, 24 November):** it becomes an **ordinary whole-pitch booking with the same way to pay, no Losers pay**, and there's no payment sheet: the holds pay for it.
+    - **Paying for everyone:** the captain's **€45.50** hold is taken as the whole pitch's payment (example 12a).
+    - **Paying for myself:** each player's normal **€4.80** is taken from his hold and the rest released; unpaid spots are covered by the captain's guarantee as on any whole pitch (**€40.00**, example 12b).
 
 ### Answered on 23 November (Panos)
 1. **Cash:** each player, as today: €0.80 in the app and their pitch part in cash; unticked cash comes from the booker's guarantee (example 3).
@@ -143,6 +160,14 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 7. **Who accepts the opposition invite:** an invited friend, or an invited team's captain.
 8. **Each captain is the booker of his own half:** if side A cancels, side B keeps the slot, the invite reopens on its behalf and the 24-hour choice is side B's captain's.
 9. **Side B cancelling under 6 hours before kickoff:** no refund, the game stays, nothing reopens.
+
+### Answered on 24 November (Panos): Losers pay
+1. **"Pay the whole pitch and play" on Losers pay:** an ordinary whole-pitch booking with the same way to pay. Paying for everyone: the captain's €45.50 hold is the payment. Paying for myself: each player's €4.80 from his hold, the rest released, the captain's guarantee for unpaid spots (examples 12a and 12b).
+2. **A pay-for-everyone side pulling out more than 6 hours before kickoff:** €1 per player of his side from the captain's hold (example 13).
+3. **Any side pulling out less than 6 hours before kickoff:** pays as the losing side; the other side's holds are released (examples 14a and 14b).
+4. **A side on its own pulling out:** the same as a pull-out; once the 24-hour choice is open, "Cancel free" instead (examples 15a and 15b).
+5. **Losers pay needs booking at least 24 hours before kickoff** (24 hours to 5 days ahead), as today's Gipedo Pano.
+6. **A player leaving a pay-for-myself side after the guarantee was counted:** the captain gets a €9.60 hold for that spot at once (example 16).
 
 ### Where the old modes are still used (to change in B1–B5)
 - **App:** ~~`components/booking/checkout-view.tsx` (including the "Just my spot" text), `lib/booking-actions.ts`, `lib/booking-search.ts`~~ (done in B2: the checkout uses `booking_quote_v2`, `venue_free_pitches` and `book_slot` with the chosen pitch and kind; `lib/booking-search.ts` keeps the old `booking_quote` only for venue credit; its unused `checkoutAmounts` was removed in B5), `lib/booking-detail.ts`, `lib/use-owed.ts`, `lib/rules.ts`, `lib/terms.ts`, `lib/terms-el.ts`, `lib/squads.ts`, `app/squads.tsx`.
