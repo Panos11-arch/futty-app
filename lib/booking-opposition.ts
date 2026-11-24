@@ -50,6 +50,8 @@ export type NoOpponentInfo = LosersPayWhole & {
 /** booking_detail's 'v2' (supabase/migrations/*_pay_b3_after_pay.sql). */
 export type BookingV2Info = {
   kind: 'whole' | 'half';
+  /** B1d: a Losers pay game (its own ways out: leave, pull out). */
+  losers_pay?: boolean;
   pitch_label: string | null;
   /** The side the caller captains, if any. */
   captain_of: SideLetter | null;

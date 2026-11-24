@@ -560,3 +560,45 @@ describe('BookingDetailView: Booking v2 (B3)', () => {
     expect(screen.queryByTestId('booking-detail-no-opponent')).toBeNull();
   });
 });
+
+describe('BookingDetailView: Losers pay ways out (B1d, decided 23 and 24 November)', () => {
+  const losersV2 = (overrides: Partial<import('@/lib/booking-opposition').BookingV2Info> = {}) =>
+    v2Fixture({ losers_pay: true, roster_sides: { s1: 'a', s2: 'b' }, ...overrides });
+
+  it('a captain pulls his team out on its own screen, never through the usual cancel', async () => {
+    const onLosersPay = jest.fn();
+    await render(<BookingDetailView {...props(bookerDetail({ v2: losersV2() }), { onLosersPay })} />);
+    expect(screen.queryByTestId('booking-detail-cancel-my-spot')).toBeNull();
+    expect(screen.queryByTestId('booking-detail-cancel-whole-team')).toBeNull();
+    expect(screen.queryByTestId('booking-detail-losers-leave')).toBeNull();
+    await fireEvent.press(screen.getByTestId('booking-detail-losers-pull-out'));
+    expect(onLosersPay).toHaveBeenCalledWith('pull_out');
+  });
+
+  it('a player leaves on its own screen', async () => {
+    const onLosersPay = jest.fn();
+    await render(<BookingDetailView {...props(playerDetail({ v2: losersV2({ captain_of: null, my_side: 'b' }) }), { onLosersPay })} />);
+    expect(screen.queryByTestId('booking-detail-cancel-my-spot')).toBeNull();
+    expect(screen.queryByTestId('booking-detail-losers-pull-out')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Leave this game' }));
+    expect(onLosersPay).toHaveBeenCalledWith('leave');
+  });
+
+  it('once he has left, no way out is offered', async () => {
+    const detail = playerDetail({ v2: losersV2({ captain_of: null, my_side: 'b' }) });
+    const left = { ...detail, me: detail.me ? { ...detail.me, status: 'credited' as const } : null };
+    await render(<BookingDetailView {...props(left, { onLosersPay: jest.fn() })} />);
+    expect(screen.queryByTestId('booking-detail-losers-leave')).toBeNull();
+  });
+
+  it('after kickoff, nothing', async () => {
+    const detail = bookerDetail({ v2: losersV2() });
+    await render(<BookingDetailView {...props(detail, { onLosersPay: jest.fn(), now: new Date(Date.parse(detail.booking.kickoff_at) + 60_000) })} />);
+    expect(screen.queryByTestId('booking-detail-losers-pull-out')).toBeNull();
+  });
+
+  it('not Losers pay: the usual cancel buttons', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ v2: v2Fixture({ losers_pay: false }) }), { onLosersPay: jest.fn() })} />);
+    expect(screen.queryByTestId('booking-detail-losers-pull-out')).toBeNull();
+  });
+});

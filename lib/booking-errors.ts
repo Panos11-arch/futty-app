@@ -47,8 +47,11 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
     case 'not_losers_pay':
       return "This game isn't Losers pay.";
     case 'use_losers_pay_leave':
+      return 'This is a Losers pay game: use Leave this game on the booking.';
     case 'use_losers_pay_pull_out':
-      return "Leaving a Losers pay game isn't in the app yet.";
+      return 'This is a Losers pay game: use Pull your team out on the booking.';
+    case 'already_settled':
+      return "You've already left this game.";
     case 'cash_whole_pitch_only':
       return 'Cash is for a whole pitch only.';
     case 'half_pitch_not_available':

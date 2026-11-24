@@ -92,6 +92,9 @@ export type BookingDetailViewProps = {
   /** B3: the no-opponent choice. Each resolves to an error message, or null. */
   onPayWhole?: () => Promise<string | null>;
   onCancelFree?: () => Promise<string | null>;
+  /** B1d (Losers pay, decided 23 and 24 November): a player leaves, or a
+   *  captain pulls his side out, on its own screen with the server's amounts. */
+  onLosersPay?: (action: 'leave' | 'pull_out') => void;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -152,6 +155,7 @@ function BookingDetailReady({
   onInviteOpposition,
   onPayWhole,
   onCancelFree,
+  onLosersPay,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const clock = useNow(15_000);
@@ -258,6 +262,7 @@ function BookingDetailReady({
   const gipedo = detail.gipedo ?? null;
   // B3: a Booking v2 booking's pitch, sides and no-opponent choice.
   const v2 = detail.v2 ?? null;
+  const losersPay = v2?.losers_pay === true;
   const groups = v2?.kind === 'half' ? rosterBySide(roster, v2.roster_sides) : null;
   const rosterRows = (entries: RosterEntry[]) =>
     entries.map((entry) => {
@@ -510,7 +515,33 @@ function BookingDetailReady({
           <Button label="Directions" variant="secondary" onPress={onDirections} fullWidth />
         </View>
 
-        {live && (detail.can_cancel.my_spot || detail.can_cancel.whole_team) ? (
+        {live && losersPay && onLosersPay ? (
+          // A Losers pay game has its own ways out (the usual cancellation doesn't apply).
+          <View style={styles.section}>
+            {v2?.captain_of ? (
+              <Button
+                testID="booking-detail-losers-pull-out"
+                label="Pull your team out"
+                variant="destructive"
+                onPress={() => onLosersPay('pull_out')}
+                fullWidth
+              />
+            ) : me && ['pending', 'authorized', 'covered'].includes(me.status) ? (
+              <Button
+                testID="booking-detail-losers-leave"
+                label="Leave this game"
+                variant="destructive"
+                onPress={() => onLosersPay('leave')}
+                fullWidth
+              />
+            ) : null}
+            <Text variant="caption" tone="inkMuted">
+              You see exactly what happens to the money before anything changes.
+            </Text>
+          </View>
+        ) : null}
+
+        {live && !losersPay && (detail.can_cancel.my_spot || detail.can_cancel.whole_team) ? (
           <View style={styles.section}>
             {detail.can_cancel.my_spot && !legacy ? (
               <Button
