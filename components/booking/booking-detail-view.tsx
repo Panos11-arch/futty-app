@@ -28,6 +28,7 @@ import { makeStyles } from '@/lib/theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import {
   acceptedVenuePlayers,
+  cancelOptions,
   countdownLabel,
   cutoffPassed,
   describeQuote,
@@ -174,6 +175,7 @@ function BookingDetailReady({
   const started = now.getTime() >= Date.parse(booking.kickoff_at);
   const live = !cancelled && !started;
   const legacy = booking.payment_mode === null;
+  const canCancel = cancelOptions(detail);
 
   // The server picks the next cutoff; ask once each time one passes.
   const refreshedFor = useRef<string | null>(null);
@@ -569,9 +571,9 @@ function BookingDetailReady({
           </View>
         ) : null}
 
-        {live && !losersPay && (detail.can_cancel.my_spot || detail.can_cancel.whole_team) ? (
+        {live && !losersPay && (canCancel.mySpot || canCancel.wholeTeam) ? (
           <View style={styles.section}>
-            {detail.can_cancel.my_spot && !legacy ? (
+            {canCancel.mySpot ? (
               <Button
                 testID="booking-detail-cancel-my-spot"
                 label="Cancel my spot"
@@ -580,7 +582,7 @@ function BookingDetailReady({
                 fullWidth
               />
             ) : null}
-            {detail.can_cancel.whole_team ? (
+            {canCancel.wholeTeam ? (
               <Button
                 testID="booking-detail-cancel-whole-team"
                 label="Cancel whole team"
