@@ -47,7 +47,7 @@ describe('Greek Terms of use', () => {
     expect(terms).toContain('ολόκληρη η τιμή του γηπέδου 3 ημέρες πριν από την έναρξη');
     expect(terms).toContain('συν €0.55 για κάθε παίκτη της κράτησης');
     expect(terms).toContain('Το Gipedo Pano κλείνεται το πολύ 5 ημέρες νωρίτερα.');
-    expect(terms).toContain('κοστίζει €3.99 τον μήνα');
+    expect(terms).toContain('κοστίζει €4.99 τον μήνα');
     expect(terms).toContain('έως 14 ημέρες νωρίτερα αντί για 7 ημέρες');
     expect(terms).toContain('η διαφορά χρεώνεται 2 ώρες μετά τον αγώνα, όπως στο «Κράτηση και πληρωμή»');
   });
@@ -60,7 +60,7 @@ describe('Greek Terms of use', () => {
     expect(terms).toContain('Η πίστωση λήγει 6 μήνες');
     expect(terms).toContain('η διαφορά χρεώνεται 3 ώρες μετά τον αγώνα');
     expect(terms).not.toContain('€0.80');
-    expect(terms).not.toContain('€3.99');
+    expect(terms).not.toContain('€4.99');
     expect(terms).not.toContain('6 ώρες');
   });
 

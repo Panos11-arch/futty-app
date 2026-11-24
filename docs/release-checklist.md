@@ -73,7 +73,7 @@ Their migrations go out in section 1b's single push; the checks and the other st
 
 **#77, P10 server (`app_rules`)**
 - [ ] Migration `20261115190000_pay_app_rules.sql`.
-- [ ] Check: `select * from public.app_rules;` gives spec 13's numbers (80 / 55 / 0 / 55, 7 / 14 days, 60 min, 100, 6 h, 48 h, 15 min, 72 h / 6 h, 2 h, 12 months, 5 days / 24 h, €3.99).
+- [ ] Check: `select * from public.app_rules;` gives spec 13's numbers (80 / 55 / 0 / 55, 7 / 14 days, 60 min, 100, 6 h, 48 h, 15 min, 72 h / 6 h, 2 h, 12 months, 5 days / 24 h, €4.99).
 
 **#78, P10 app (Futty AI reads `app_rules`)**
 - [ ] `supabase functions deploy futty-ai-chat`. It needs #77's migration first: with no rules it refuses to answer. (#80 and this PR change the same function; one deploy after section 3 covers all three, but deploying now does no harm.)
@@ -175,9 +175,9 @@ Both are set only as `service_role` or in the SQL editor; a signed-in session is
 
 ## 7. App Store Connect: the Premium product
 
-- [ ] Features → **Subscriptions** (not In-App Purchases): the auto-renewable subscription `premium_monthly_v2`, in a subscription group, at the €3.99 price (Cyprus and the euro storefronts), with its display name, description and review screenshot. `premium_monthly` is a stuck non-consumable: don't use it.
+- [ ] Features → **Subscriptions** (not In-App Purchases): the auto-renewable subscription `premium_monthly_v2`, in a subscription group, at the €4.99 price (Cyprus and the euro storefronts; decided 22 November), with its display name, description and review screenshot. `premium_monthly` is a stuck non-consumable: don't use it.
 - [ ] The first subscription is submitted together with the app version: add it under the version's "In-App Purchases and Subscriptions".
-- [ ] `app_rules.premium_price_label` is `€3.99`. The app shows the store's own price and falls back to that label.
+- [ ] `app_rules.premium_price_label` is `€4.99` (migration 20261124190000). The app shows the store's own price and falls back to that label.
 - [ ] Team Premium (`team_premium_9aside`, `team_premium_11aside`) is **not** submitted: it is off in this build (`TEAM_PREMIUM_ENABLED = false`); 9-a-side and 11-a-side leagues say "coming soon".
 
 ## 8. Build and TestFlight

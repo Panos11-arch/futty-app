@@ -49,7 +49,7 @@ describe('Terms of Use', () => {
     expect(terms).toContain('plus €0.55 for each player in the booking');
     expect(terms).toContain('Gipedo Pano can only be booked up to 5 days ahead.');
     expect(terms).toContain(
-      'Personal Premium costs €3.99 a month, as an auto-renewing subscription through the App Store, under Apple’s terms as well as these. Premium players can book up to 14 days ahead instead of 7 days',
+      'Personal Premium costs €4.99 a month, as an auto-renewing subscription through the App Store, under Apple’s terms as well as these. Premium players can book up to 14 days ahead instead of 7 days',
     );
   });
 
@@ -58,7 +58,7 @@ describe('Terms of Use', () => {
     expect(terms).toContain('€0.90 when each player pays their own share, €0.60 when the booker pays for everyone');
     expect(terms).toContain('Premium players pay a €0.10 service fee on their own spot.');
     expect(terms).not.toContain('€0.80');
-    expect(terms).not.toContain('€3.99');
+    expect(terms).not.toContain('€4.99');
   });
 
   it('has none of the old terms’ rules', () => {

@@ -31,7 +31,7 @@ The venue always gets its full pitch price; Futty adds a service fee per player 
 
 Futty's figures are before Stripe Connect payout costs. UK and non-European cards cost about €0.07–€0.12 more per payment.
 
-**Premium (agreed):** €3.99 a month. Premium players book **14 days ahead**; standard accounts book **7**. *The app today says 2 and 21 days and €4.99, so the code, the Futty AI's answers and the App Store product all have to change.*
+**Premium (agreed):** €4.99 a month (decided by Panos on 22 November; €3.99 from 7 November until then). Premium players book **14 days ahead**; standard accounts book **7**. The app shows the store's own price once it has loaded, and `app_rules.premium_price_label` only while it loads; the App Store and Google Play products must be €4.99 too.
 
 **Confirmed:** when a Premium booker pays for everyone, only the booker's own spot is fee-free; the other players' spots still carry €0.55. For example, 5 v 5 = €60 + 9 × €0.55 = €64.95.
 
@@ -687,7 +687,7 @@ A player saves a search from the booking search and hears when it comes up. **Fr
 
 ## Rules in one place (decided 15 November)
 
-Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€3.99), the weather thresholds, the number of saved searches a player can keep (5) and the no-opponent reminder (2 hours before the 6-hour cut-off). The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
+Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€4.99), the weather thresholds, the number of saved searches a player can keep (5) and the no-opponent reminder (2 hours before the 6-hour cut-off). The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
 
 - **Only Futty changes a rule** (service role), and every change is kept with what it was before.
 - **A change applies at once.** Rules are read when they're used, so a new cutoff also applies to bookings already made. What a booking already stored (its pitch price and its service fee per player) doesn't change, and neither does a deadline already set: when a held share is taken, when the guarantee hold is placed, the deadline to choose venue credit, and when credit expires keep the value in force when they were set. A quote the player saw is checked again when they confirm, so nobody is charged on an old rule.
@@ -751,12 +751,12 @@ Each step is one pull request with its tests. The safety base comes first becaus
 6.  **6 v 6 on the booking form**, and switching.
 7.  **Gipedo Pano fixes**, and switching settlement on.
 8.  **Weather** with WeatherKit.
-9.  **Premium:** €3.99, 14 / 7 days, updated in the app and in the Futty AI's answers.
+9.  **Premium:** €4.99 (decided 22 November), 14 / 7 days, updated in the app and in the Futty AI's answers.
 
 **Timing risk:** this is about two weeks of focused work, and code-complete is Friday 20 November. If it slips, steps 8 and 6 (weather, switching) can follow straight after the App Store submission without touching any money rules.
 
 ### Founder tasks that unblock the build
 - ☐ Panos: create a WeatherKit key in Apple Developer (Certificates, Identifiers & Profiles, Keys)
-- ☐ Panos: set the Premium subscription to €3.99 in App Store Connect
+- ☐ Panos: set the Premium subscription to €4.99 in App Store Connect and Google Play (decided 22 November)
 - ☐ Panos: fix the live Stripe account details before any real payment
 - ☐ Owner to name: legal advice on venue credit and the terms (decisions doc \#16, G)

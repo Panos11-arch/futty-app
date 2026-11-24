@@ -16,7 +16,7 @@ Every game booked through Futty is a real match: two sides, a venue, a time, a r
 | Teams and leagues | Round robin, standings, fixtures | Stats self-editable; XP only goes down | Keep; replace XP with level and stats below |
 | Community feed, follows | Moderation built | Little reason to open it | Keep; feed it match results and cards |
 | Venue dashboard | Block slots, house players | Thin for running a venue | Keep and expand: venues judge us on it |
-| Premium, Team Premium | Apple verification works | Sells the wrong things | On: €3.99 a month, 14 days ahead instead of 7, no service fee on the player's own spot (decided 7 November) |
+| Premium, Team Premium | Apple verification works | Sells the wrong things | On: €4.99 a month (decided 22 November; €3.99 before), 14 days ahead instead of 7, no service fee on the player's own spot (decided 7 November) |
 | Futty AI | Live availability | States outdated rules (2/21 days, €4.99, 30-minute cancellation). Decided 6 Nov: stays on, rules read from one shared source (14, P10) | On, after P10 |
 
 ## 2\. The foundation: every game becomes a match record
