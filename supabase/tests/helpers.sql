@@ -352,19 +352,47 @@ end;
 $$;
 
 -- Moves a booking so it kicks off at p_kickoff (any minute; tests only),
--- keeping when it was made. For timing tests.
-create or replace function tests.set_kickoff(p_booking uuid, p_kickoff timestamptz)
+-- keeping when it was made. For timing tests. The game is 30 minutes long
+-- and stored on one Cyprus day, so it never crosses midnight, whatever the
+-- time the tests run:
+--   - normally, exactly p_kickoff to p_kickoff + 30 minutes;
+--   - across midnight and midnight already past at p_now: from midnight to
+--     the exact end (a game that's over stays over, and ended when asked);
+--   - across midnight and midnight still ahead: from the exact kickoff to
+--     midnight (a game to come or under way stays so).
+-- Kickoff and end are on the same side of p_now as asked, and the end is
+-- always after the kickoff. p_now is now() except in helpers-clock.test.sql,
+-- which runs the edge times (00:15 and 20:59:59 Cyprus time).
+drop function if exists tests.set_kickoff(uuid, timestamptz);
+create or replace function tests.set_kickoff(p_booking uuid, p_kickoff timestamptz, p_now timestamptz default now())
 returns void
-language sql
+language plpgsql
 security definer
 set search_path = ''
 as $$
-  update public.venue_bookings
-  set booking_day = (p_kickoff at time zone 'Asia/Nicosia')::date,
-      start_time = (p_kickoff at time zone 'Asia/Nicosia')::time,
-      end_time = case when (p_kickoff at time zone 'Asia/Nicosia')::time >= time '23:29' then time '23:59:59'
-                      else (p_kickoff at time zone 'Asia/Nicosia')::time + interval '30 minutes' end
-  where id = p_booking;
+declare
+  v_start timestamp := p_kickoff at time zone 'Asia/Nicosia';
+  v_end timestamp := (p_kickoff + interval '30 minutes') at time zone 'Asia/Nicosia';
+  v_midnight timestamp := date_trunc('day', v_start) + interval '1 day';
+begin
+  if v_end <= v_midnight then
+    -- One day (ending at midnight exactly is 24:00 that day).
+    update public.venue_bookings
+    set booking_day = v_start::date, start_time = v_start::time,
+        end_time = case when v_end = v_midnight then time '24:00' else v_end::time end
+    where id = p_booking;
+  elsif (v_midnight at time zone 'Asia/Nicosia') <= p_now then
+    -- Across midnight, which has passed: midnight to the exact end.
+    update public.venue_bookings
+    set booking_day = v_end::date, start_time = time '00:00', end_time = v_end::time
+    where id = p_booking;
+  else
+    -- Across midnight, still ahead: the exact kickoff to midnight.
+    update public.venue_bookings
+    set booking_day = v_start::date, start_time = v_start::time, end_time = time '24:00'
+    where id = p_booking;
+  end if;
+end;
 $$;
 
 -- P4b: cancellations and venue credit.
@@ -531,13 +559,14 @@ $$;
 
 -- Moves a booking so its match (30 minutes, see set_kickoff) ended p_ago
 -- ago. Collection is due 2 hours after the end.
-create or replace function tests.end_match(p_booking uuid, p_ago interval default '3 hours')
+drop function if exists tests.end_match(uuid, interval);
+create or replace function tests.end_match(p_booking uuid, p_ago interval default '3 hours', p_now timestamptz default now())
 returns void
 language sql
 security definer
 set search_path = ''
 as $$
-  select tests.set_kickoff(p_booking, now() - p_ago - interval '30 minutes');
+  select tests.set_kickoff(p_booking, p_now - p_ago - interval '30 minutes', p_now);
 $$;
 
 -- The booker's guarantee is held for its full amount (as placeGuaranteeHold
