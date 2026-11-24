@@ -12,12 +12,14 @@ import {
   AuthWordmark,
   PasswordStrengthMeter,
 } from '@/components/auth-form';
+import { DateOfBirthField } from '@/components/date-of-birth-field';
 import { Button } from '@/components/ui/button';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { radius, space } from '@/constants/futty-theme';
 import { useTheme } from '@/lib/theme';
+import { isDateOfBirthAllowed, TOO_YOUNG_MESSAGE } from '@/lib/age';
 import { clearHandedOffEmail, handedOffEmail, useAuth } from '@/lib/auth';
 import { describeAuthError, EmailTakenError, RESEND_NEEDS_EMAIL_MESSAGE } from '@/lib/auth-errors';
 import { signInWithApple, signInWithGoogle, useAppleSignInAvailable } from '@/lib/auth-providers';
@@ -45,6 +47,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [rememberEmail, setRememberEmail] = useState(rememberedEmail !== null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +64,7 @@ export default function SignInScreen() {
     email.trim().length > 0 &&
     password.length > 0 &&
     !passwordLengthError &&
-    (!isSignUp || username.trim().length > 0);
+    (!isSignUp || (username.trim().length > 0 && dateOfBirth.length > 0));
 
   function switchMode() {
     setMode(isSignUp ? 'sign-in' : 'sign-up');
@@ -117,6 +120,12 @@ export default function SignInScreen() {
           return;
         }
 
+        // S12, A2: the server decides; under 14 never gets an account.
+        if (!(await isDateOfBirthAllowed(dateOfBirth))) {
+          setError(TOO_YOUNG_MESSAGE);
+          return;
+        }
+
         // Checked up front for a clear message. The unique index is the real
         // guard — see the race handling in supabase/schema.sql.
         if (!(await isUsernameAvailable(trimmedUsername))) {
@@ -129,6 +138,7 @@ export default function SignInScreen() {
           password,
           username: trimmedUsername,
           fullName,
+          dateOfBirth,
         });
 
         if (needsEmailConfirmation) {
@@ -220,6 +230,13 @@ export default function SignInScreen() {
             autoComplete="name"
             textContentType="name"
             editable={!busy}
+          />
+          <DateOfBirthField
+            testID="sign-in-dob"
+            label="Date of birth"
+            value={dateOfBirth}
+            onChange={setDateOfBirth}
+            disabled={busy}
           />
         </>
       ) : null}

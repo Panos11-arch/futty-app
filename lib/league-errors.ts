@@ -1,5 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
+import { TOO_YOUNG_MESSAGE } from '@/lib/age';
 import { FIXTURE_SCHEDULING_WINDOW_DAYS } from '@/lib/fixtures';
 
 /** Maps the plain-text exceptions raised by supabase/teams.sql and
@@ -54,6 +55,11 @@ export function describeLeagueError(error: PostgrestError) {
       return `Pick a date within the next ${FIXTURE_SCHEDULING_WINDOW_DAYS} days.`;
     case 'venue_not_found':
       return 'Pick a pitch from the list.';
+    // S12, A6 and A2.
+    case 'minor_chat_blocked':
+      return 'Chat is off for this fixture. Propose a date instead.';
+    case 'too_young':
+      return TOO_YOUNG_MESSAGE;
     case 'message_required':
       return 'Write a message first.';
     case 'match_not_found':

@@ -40,6 +40,8 @@ export type SignUpParams = {
   password: string;
   username?: string;
   fullName?: string;
+  /** YYYY-MM-DD (S12, A1). The server refuses under 14. */
+  dateOfBirth?: string;
 };
 
 type SignUpResult = {
@@ -169,6 +171,7 @@ async function ensureProfile(user: User, params: SignUpParams) {
       email: user.email,
       username: params.username?.trim() || null,
       full_name: params.fullName?.trim() || null,
+      date_of_birth: params.dateOfBirth || null,
     },
     { onConflict: 'id' }
   );
@@ -297,7 +300,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
             // With confirmation enabled there is no session at sign-up, so the
             // client cannot write these to `profiles` itself. Stashing them in
             // user metadata lets the database trigger copy them across.
-            data: { username: username ?? null, full_name: fullName ?? null },
+            data: {
+              username: username ?? null,
+              full_name: fullName ?? null,
+              date_of_birth: params.dateOfBirth || null,
+            },
             emailRedirectTo: authRedirectTo('/'),
           },
         });

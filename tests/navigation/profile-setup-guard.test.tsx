@@ -7,8 +7,10 @@ import { Slot } from 'expo-router';
 import { Text } from 'react-native';
 
 const mockProfileRead = jest.fn();
+const mockRpc = jest.fn();
 jest.mock('@/lib/supabase', () => ({
   supabase: {
+    rpc: (...a: unknown[]) => mockRpc(...a),
     from: () => ({
       select: () => ({ eq: () => ({ maybeSingle: () => mockProfileRead() }) }),
     }),
@@ -47,6 +49,8 @@ jest.mock('@/components/ui/icon-symbol', () =>
 
 // eslint-disable-next-line import/first
 import { RootNavigator } from '@/app/_layout';
+// eslint-disable-next-line import/first
+import { markAgeStatus } from '@/lib/age';
 
 const homeRenders = jest.fn();
 function Home() {
@@ -61,6 +65,8 @@ function routes() {
     '(tabs)/_layout': () => <Slot />,
     '(tabs)/index': Home,
     'choose-username': () => <Text>Choose username screen</Text>,
+    'date-of-birth': () => <Text>Date of birth screen</Text>,
+    'age-locked': () => <Text>Age locked screen</Text>,
     'sign-in': () => <Text>Sign in screen</Text>,
     'auth/callback': require('@/app/auth/callback'),
   };
@@ -88,6 +94,7 @@ beforeEach(async () => {
   mockAuthState.session = null;
   mockAuthState.isRecovering = false;
   await AsyncStorage.clear();
+  mockRpc.mockResolvedValue({ data: 'ok', error: null });
 });
 
 describe('profile setup guard', () => {
@@ -164,6 +171,63 @@ describe('profile setup guard', () => {
     await open('/');
     expect(screen.getByText('Sign in screen')).toBeTruthy();
     expect(mockProfileRead).not.toHaveBeenCalled();
+  });
+});
+
+// S12: after the username, the date of birth (A1) and the under-14 lock (A2).
+describe('age guard', () => {
+  beforeEach(() => {
+    signedInAs('u1');
+    mockProfileRead.mockResolvedValue({ data: { username: 'dimitris' }, error: null });
+  });
+
+  it('no date of birth: only the date of birth screen, never Home', async () => {
+    mockRpc.mockResolvedValue({ data: 'needs_dob', error: null });
+    const r = await open('/');
+    expect(screen.getByText('Date of birth screen')).toBeTruthy();
+    expect(r.getPathname()).toBe('/date-of-birth');
+    expect(homeRenders).not.toHaveBeenCalled();
+    expect(mockRpc).toHaveBeenCalledWith('my_age_status');
+  });
+
+  it('under 14: only the locked screen', async () => {
+    mockRpc.mockResolvedValue({ data: 'too_young', error: null });
+    const r = await open('/');
+    expect(screen.getByText('Age locked screen')).toBeTruthy();
+    expect(r.getPathname()).toBe('/age-locked');
+    expect(homeRenders).not.toHaveBeenCalled();
+  });
+
+  it('ok: Home', async () => {
+    mockRpc.mockResolvedValue({ data: 'ok', error: null });
+    await open('/');
+    expect(screen.getByText('Home screen')).toBeTruthy();
+  });
+
+  it('holds the loading screen while the age status loads or fails', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'offline' } });
+    await open('/');
+    expect(screen.getByLabelText('Loading your profile')).toBeTruthy();
+    expect(screen.queryByText('Date of birth screen')).toBeNull();
+    expect(homeRenders).not.toHaveBeenCalled();
+  });
+
+  it('a new Apple or Google user picks a username first, with no age read yet', async () => {
+    mockProfileRead.mockResolvedValue({ data: { username: null }, error: null });
+    mockRpc.mockResolvedValue({ data: 'needs_dob', error: null });
+    await open('/');
+    expect(screen.getByText('Choose username screen')).toBeTruthy();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('saving the date of birth lets the player in', async () => {
+    mockRpc.mockResolvedValue({ data: 'needs_dob', error: null });
+    await open('/');
+    expect(screen.getByText('Date of birth screen')).toBeTruthy();
+    await act(async () => {
+      markAgeStatus('ok');
+    });
+    expect(screen.getByText('Home screen')).toBeTruthy();
   });
 });
 
