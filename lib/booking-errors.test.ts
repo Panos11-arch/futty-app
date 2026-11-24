@@ -68,8 +68,15 @@ describe('describeBookingErrorMessage', () => {
     expect(message).not.toMatch(/30 minutes/);
   });
 
-  it('passes unknown messages through', () => {
-    expect(describeBookingErrorMessage('something else')).toBe('something else');
+  // QA 24 November, bugs 1 and 2: never a raw server error, one plain fallback.
+  it.each([
+    'something_new',
+    'Could not find the function public.booking_quote_v2(p_day, p_end, p_format, p_players_per_side, p_start, p_venue_id) in the schema cache',
+    'column squad_posts.side does not exist',
+    'Edge Function returned a non-2xx status code',
+    '',
+  ])('never shows a raw server message: %s', (message) => {
+    expect(describeBookingErrorMessage(message)).toBe('Something went wrong. Try again.');
   });
 });
 

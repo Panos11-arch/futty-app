@@ -5,7 +5,7 @@
 // plain language. It never adds, divides or works out an amount, and sends
 // only the booking id and the players per side the server offered.
 import type { SwitchInfo } from '@/lib/booking-search';
-import { describeBookingErrorMessage } from '@/lib/booking-errors';
+import { describeBookingErrorMessage, SERVER_ERROR_FALLBACK } from '@/lib/booking-errors';
 import { formatEuros } from '@/lib/money/format';
 import { hoursText, ruleText } from '@/lib/rules';
 import { supabase } from '@/lib/supabase';
@@ -93,7 +93,7 @@ export function switchErrorMessage(code: string): string {
       return 'Finish paying for the booking first, then you can switch it.';
     default: {
       const words = describeBookingErrorMessage(code);
-      return words === code ? "The booking couldn't be switched. Try again." : words;
+      return words === SERVER_ERROR_FALLBACK ? "The booking couldn't be switched. Try again." : words;
     }
   }
 }

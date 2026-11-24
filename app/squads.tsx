@@ -582,7 +582,7 @@ export default function SquadsScreen() {
         {posts.status === 'error' ? (
           <Banner
             tone="danger"
-            message={`Could not load: ${posts.message}`}
+            message="Could not load games. Try again."
             action={{ label: 'Try again', onPress: posts.reload }}
           />
         ) : null}

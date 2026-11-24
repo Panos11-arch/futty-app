@@ -276,7 +276,8 @@ export function describeQuote(quote: CancellationQuote, venueName: string): stri
   if (kept.length > 0) words.push(`${plural(kept.length, 'other player gets', 'other players get')} nothing back.`);
 
   // Before the hold is placed the guarantee is only a saved card: nothing to say.
-  if (quote.guarantee_hold_placed && quote.lines.some((l) => l.guarantee_id !== null && l.action === 'release')) {
+  if (quote.guarantee_hold_cents) words.push(guaranteeWords(quote.guarantee_hold_cents));
+  else if (quote.guarantee_hold_placed && quote.lines.some((l) => l.guarantee_id !== null && l.action === 'release')) {
     words.push('Your guarantee hold is released.');
   }
   if (quote.booker_fee) {
@@ -286,6 +287,36 @@ export function describeQuote(quote: CancellationQuote, venueName: string): stri
         "It is charged to your card when you confirm. If the charge doesn't go through, the booking is still cancelled.",
     );
   }
+  return words;
+}
+
+/** "Your €60.00 guarantee hold is released." (QA 24 November, T5). */
+function guaranteeWords(cents: number): string {
+  return `Your ${formatEuros(cents)} guarantee hold is released.`;
+}
+
+/** my_cancellation_outcome: the caller's own lines of the cancellation that
+ *  ended the booking, and the guarantee hold it released (QA 24 November, T4). */
+export type CancellationOutcome = {
+  scope: CancelScope;
+  lines: CancellationLine[];
+  guarantee_cents: number;
+};
+
+/** The caller's outcome, or null (not cancelled, no money in it, or the
+ *  server couldn't say: then the screen says nothing rather than guess). */
+export async function fetchCancellationOutcome(bookingId: string): Promise<CancellationOutcome | null> {
+  const { data, error } = await supabase.rpc('my_cancellation_outcome', { p_booking_id: bookingId });
+  if (error || !data) return null;
+  return data as CancellationOutcome;
+}
+
+/** What happened to the caller's money, in the cancel sheet's own words,
+ *  with the server's amounts. */
+export function describeOutcome(outcome: CancellationOutcome | null, venueName: string): string[] {
+  if (!outcome) return [];
+  const words = outcome.lines.map((l) => ownLineWords(l, venueName));
+  if (outcome.guarantee_cents > 0) words.push(guaranteeWords(outcome.guarantee_cents));
   return words;
 }
 

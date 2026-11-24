@@ -9,7 +9,7 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-const booking = { id: 'b1', venueId: 'v1', kickoffAt: '2026-11-16T17:00:00+00:00', format: '5-a-side', openSpots: 6 };
+const booking = { id: 'b1', venueId: 'v1', kickoffAt: '2026-11-16T17:00:00+00:00', format: '5-a-side', openSpots: 6, halfPitch: true };
 
 describe('squadPostParams', () => {
   it('a Need players post is linked to the booking, at its kickoff, with no payment choice', () => {
@@ -53,6 +53,7 @@ function props(overrides: Partial<SquadNeedPanelProps> = {}): SquadNeedPanelProp
     error: null,
     onPost: jest.fn(),
     onCancelPost: jest.fn(),
+    halfPitch: true,
     ...overrides,
   };
 }
@@ -93,6 +94,15 @@ describe('SquadNeedPanel', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Need opposition' }));
     expect(screen.getByText('Only a team captain can post for opposition.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Post: need opposition' })).toBeNull();
+  });
+
+  // QA 24 November, S2: opposition is a half-pitch idea; on a whole pitch
+  // the server refuses it (not_half_pitch), so it isn't offered.
+  it('a whole pitch offers Need players but never Need opposition', async () => {
+    await render(<SquadNeedPanel {...props({ halfPitch: false })} />);
+    expect(screen.getByRole('button', { name: 'Need players' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Need opposition' })).toBeNull();
+    expect(screen.queryByText(/an opponent/)).toBeNull();
   });
 
   it('an open post can be cancelled from the same place', async () => {

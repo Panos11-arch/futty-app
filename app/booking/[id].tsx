@@ -19,7 +19,10 @@ import {
   answerVenuePlayer,
   calendarMessage,
   confirmCancellation,
+  describeOutcome,
   fetchBookingDetail,
+  fetchCancellationOutcome,
+  type CancellationOutcome,
   removeVenuePlayer,
   shareText,
   spotsTaken,
@@ -52,6 +55,21 @@ export default function BookingDetailScreen() {
   const [inCalendar, setInCalendar] = useState(() => (id ? isBookingInCalendar(id) : false));
   const [choosingMaps, setChoosingMaps] = useState(false);
   const detail = state.status === 'ready' ? state.data : null;
+
+  // QA 24 November (T4): once cancelled, what happened to the caller's money,
+  // from the server.
+  const [outcome, setOutcome] = useState<CancellationOutcome | null>(null);
+  const cancelled = detail?.booking.status === 'cancelled';
+  useEffect(() => {
+    if (!cancelled || !id) return;
+    let live = true;
+    void fetchCancellationOutcome(id).then((o) => {
+      if (live) setOutcome(o);
+    });
+    return () => {
+      live = false;
+    };
+  }, [cancelled, id]);
   // B1d: back from leaving or pulling out of a Losers pay game, show what changed.
   const focusedOnce = useRef(false);
   useFocusEffect(
@@ -198,6 +216,7 @@ export default function BookingDetailScreen() {
         onDirections={directions}
         onPayShare={() => router.push({ pathname: '/booking-payment', params: { bookingId: id } })}
         notice={notice}
+        cancelledMoney={detail ? describeOutcome(outcome, detail.venue.name) : undefined}
         onGipedoPullOut={() => gipedoAction(() => pullOutOfGipedo(id))}
         onGipedoChoose={(choice) => gipedoAction(() => chooseNoOpponent(id, choice))}
         onSwitch={switchFormat}
@@ -220,6 +239,7 @@ export default function BookingDetailScreen() {
                 format: detail.booking.format,
                 // P6e: an accepted venue player takes a spot.
                 openSpots: detail.booking.capacity - spotsTaken(detail),
+                halfPitch: detail.v2?.kind === 'half',
               }}
             />
           ) : null

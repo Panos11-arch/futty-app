@@ -49,6 +49,21 @@ describe('AfterPayView (B3: the screen after paying)', () => {
     expect(p.onDone).toHaveBeenCalled();
   });
 
+  // QA 24 November, S4: the screen says the payment went through.
+  it('says Paid until the booking is confirmed, then Confirmed', async () => {
+    const pending = bookerDetail({ v2: openHalf });
+    pending.booking = { ...pending.booking, status: 'pending_payment' };
+    const view = await render(<AfterPayView {...props(pending)} />);
+    expect(within(screen.getByTestId('after-pay-status')).getByText('Paid')).toBeTruthy();
+    expect(screen.queryByText('Confirmed')).toBeNull();
+
+    const confirmed = bookerDetail({ v2: openHalf });
+    confirmed.booking = { ...confirmed.booking, status: 'confirmed' };
+    await view.rerender(<AfterPayView {...props(confirmed)} />);
+    expect(within(screen.getByTestId('after-pay-status')).getByText('Confirmed')).toBeTruthy();
+    expect(screen.queryByText('Paid')).toBeNull();
+  });
+
   it('Invite friends: by username, and the share menu', async () => {
     const p = props(bookerDetail({ v2: v2Fixture({ kind: 'whole', sides: [], opposition: null }) }));
     await render(<AfterPayView {...p} />);

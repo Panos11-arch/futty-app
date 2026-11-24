@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native';
 
-import { BookSearchView, type BookSearchViewProps } from '@/components/booking/book-search-view';
+import { BookSearchView, type BookSearchViewProps, freeTimes } from '@/components/booking/book-search-view';
 import { DISABLED_OPACITY } from '@/components/ui/foundation';
 import { loadWithFile } from '@/components/ui/test-utils';
 import type { FreeVenueWithPhoto, SearchOptions } from '@/lib/booking-search';
@@ -150,6 +150,23 @@ describe('BookSearchView', () => {
     expect(p.onVenueInfo).toHaveBeenCalledWith('v1');
   });
 
+  // QA 24 November, bug 9: the time searched is free at every venue listed,
+  // so its chip comes first, then the server's next free times.
+  it('shows the chosen time first among each venue’s free times', async () => {
+    const p = props({ results: { status: 'ready', data: [nuevo, { ...other, next_starts: ['21:00:00'] }] } });
+    await render(<BookSearchView {...p} />);
+    await pickSlot();
+    const chips = (id: string) =>
+      within(screen.getByTestId(id))
+        .getAllByRole('button')
+        .map((b) => b.props.accessibilityLabel)
+        .filter((label: string) => /^\d\d:\d\d$/.test(label));
+    expect(chips('free-venue-v1')).toEqual(['19:00', '19:30', '20:00']);
+    expect(chips('free-venue-v2')).toEqual(['19:00', '21:00']);
+    await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:00' }));
+    expect(p.onChoose).toHaveBeenLastCalledWith(nuevo, '19:00');
+  });
+
   it('from a venue page, lists only that venue', async () => {
     await render(
       <BookSearchView
@@ -240,5 +257,14 @@ describe('BookSearchView: testIDs for the Maestro tests (.maestro)', () => {
     expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
     await fireEvent.press(screen.getByTestId('free-venue-v1-info'));
     expect(p.onVenueInfo).toHaveBeenCalledWith('v1');
+  });
+});
+
+describe('freeTimes', () => {
+  it('puts the chosen time first, once, then the server’s next free times', () => {
+    expect(freeTimes('19:00', ['19:30:00', '20:00:00'])).toEqual(['19:00', '19:30', '20:00']);
+    expect(freeTimes('19:00', ['19:00:00', '21:00:00'])).toEqual(['19:00', '21:00']);
+    expect(freeTimes(null, ['19:30:00'])).toEqual(['19:30']);
+    expect(freeTimes('19:00', [])).toEqual(['19:00']);
   });
 });

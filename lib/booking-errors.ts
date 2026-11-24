@@ -232,9 +232,14 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
     case 'invalid_score':
       return 'Enter a valid score for both sides.';
     default:
-      return message;
+      // QA 24 November: never the server's own text (SQL, a missing
+      // function, an Edge Function's status line). Known codes are above.
+      return SERVER_ERROR_FALLBACK;
   }
 }
+
+/** The one plain line for any server error that has no wording above. */
+export const SERVER_ERROR_FALLBACK = 'Something went wrong. Try again.';
 
 /** For the plain RPC paths (book_slot, log_booking_result) that still return
  *  a PostgrestError directly, message included. */

@@ -364,6 +364,41 @@ describe('CheckoutView: Losers pay', () => {
     expect(onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'each_pays_responsible', kind: 'half', losersPay: true }));
   });
 
+  // QA 24 November, T1 and T2: a hold reads as a hold.
+  it('Pay for everyone: the whole pitch is held; Hold €45.50, held until the result', async () => {
+    await render(<CheckoutView {...props()} />);
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent(screen.getByTestId('checkout-losers-pay'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    const pfe = within(screen.getByTestId('checkout-who-pay-all'));
+    expect(pfe.getByText('The whole pitch is held until the result.')).toBeTruthy();
+    expect(pfe.queryByText(/team's half/)).toBeNull();
+    const bar = within(screen.getByTestId('sticky-action-bar'));
+    expect(bar.getByText('Hold €45.50')).toBeTruthy();
+    expect(bar.getByText('Held until the result.')).toBeTruthy();
+    expect(bar.queryByText('Total')).toBeNull();
+    expect(bar.queryByText(/^Pay /)).toBeNull();
+  });
+
+  it('Pay for myself: Hold €9.60, held until the result', async () => {
+    await render(<CheckoutView {...props()} />);
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent(screen.getByTestId('checkout-losers-pay'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+    const bar = within(screen.getByTestId('sticky-action-bar'));
+    expect(bar.getByText('Hold €9.60')).toBeTruthy();
+    expect(bar.getByText('Held until the result.')).toBeTruthy();
+  });
+
+  it('a normal booking keeps Pay and Total', async () => {
+    await render(<CheckoutView {...props()} />);
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    const bar = within(screen.getByTestId('sticky-action-bar'));
+    expect(bar.getByText('Pay €22.75')).toBeTruthy();
+    expect(bar.getByText('Total')).toBeTruthy();
+  });
+
   it('off: a normal half pitch, and no losersPay sent', async () => {
     const onPay = jest.fn();
     await render(<CheckoutView {...props(checkoutDataFixture(), { onPay })} />);
