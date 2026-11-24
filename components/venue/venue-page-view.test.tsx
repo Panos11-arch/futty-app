@@ -209,11 +209,11 @@ describe('VenuePageView: the frame', () => {
     expect(screen.getAllByTestId('venue-gallery-photo')).toHaveLength(1);
   });
 
-  it('the card: name, the area and amenities, and Directions, Website and Call only when known', async () => {
+  it('the card: name, the area, and Directions, Website and Call only when known', async () => {
     const p = props(ready(full));
     await render(<VenuePageView {...p} />);
     expect(screen.getByText('Nuevo Campo')).toBeTruthy();
-    expect(screen.getByText('2 Aristidou Street, Latsia, Nicosia (Strovolos) · Parking · Showers · Physio on Saturdays')).toBeTruthy();
+    expect(screen.getByText('2 Aristidou Street, Latsia, Nicosia (Strovolos)')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Directions' }));
     expect(p.onDirections).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole('button', { name: 'Website' }));
@@ -225,6 +225,17 @@ describe('VenuePageView: the frame', () => {
     expect(screen.getByRole('button', { name: 'Directions' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Website' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Call' })).toBeNull();
+  });
+
+  it('S5A: the amenities as icons with tiny labels under the card, on every tab; none entered, none shown', async () => {
+    await render(<VenuePageView {...props(ready(full), { tab: 'book' })} />);
+    const row = within(screen.getByTestId('venue-amenities'));
+    expect(row.getByLabelText('Parking, free')).toBeTruthy();
+    expect(row.getByText('Parking')).toBeTruthy();
+    expect(row.getByTestId('icon-car.fill')).toBeTruthy();
+    expect(row.getByLabelText('Physio on Saturdays')).toBeTruthy();
+    await render(<VenuePageView {...props(ready(bare))} />);
+    expect(screen.queryByTestId('venue-amenities')).toBeNull();
   });
 
   it('three tabs only, the chosen one selected; a tap changes tab', async () => {
@@ -417,31 +428,58 @@ describe('VenuePageView: Book', () => {
 });
 
 describe('VenuePageView: Facilities', () => {
-  it('amenities, the pitches without the format twice, and the food and drink menu', async () => {
-    const dish = {
-      id: 'm2',
-      name: 'Keo beer',
-      category: 'Drinks',
-      description: null,
-      price_cents: 400,
-      offer_price_cents: 300,
-      is_post_match_offer: true,
-      offer_text: 'After your game',
-      photo_path: null,
-      dietary_tags: null,
-    };
-    await render(<VenuePageView {...props(ready({ ...full, menu: [dish] }), { tab: 'facilities' })} />);
-    expect(screen.getByTestId('venue-amenities')).toBeTruthy();
-    expect(screen.getByLabelText('Parking, free')).toBeTruthy();
-    expect(screen.getByTestId('icon-car.fill')).toBeTruthy();
-    expect(screen.getByLabelText('Physio on Saturdays')).toBeTruthy();
-    expect(within(screen.getByTestId('venue-pitch-p1')).getByText('5-a-side · Artificial grass · Outdoor')).toBeTruthy();
+  const dish = (over: Partial<VenuePageData['menu'][number]>): VenuePageData['menu'][number] => ({
+    id: 'm',
+    name: 'Item',
+    category: null,
+    description: null,
+    price_cents: 300,
+    offer_price_cents: null,
+    is_post_match_offer: false,
+    offer_text: null,
+    photo_path: null,
+    dietary_tags: null,
+    ...over,
+  });
+  const menu = [
+    dish({ id: 'm1', name: 'Frappé', category: 'Drinks', price_cents: 350, photo_path: 'V001/items/frappe.jpg' }),
+    dish({ id: 'm2', name: 'Keo beer', category: 'Drinks', price_cents: 400, offer_price_cents: 300, is_post_match_offer: true }),
+    dish({ id: 'm3', name: 'Halloumi wrap', category: 'Food', price_cents: 650, description: 'With mint' }),
+  ];
 
-    const menu = screen.getByTestId('venue-menu');
-    expect(within(menu).getByText('Food and drink')).toBeTruthy();
-    expect(within(screen.getByTestId('venue-menu-m2')).getByText('€3.00')).toBeTruthy();
+  it('S5A: Food & drink photo cards, with the offer price, the normal one struck through and After game', async () => {
+    await render(
+      <VenuePageView {...props(ready({ ...full, menu }, { 'V001/items/frappe.jpg': 'https://signed/frappe' }), { tab: 'facilities' })} />,
+    );
+    const section = within(screen.getByTestId('venue-menu'));
+    expect(section.getByText('Food & drink')).toBeTruthy();
+    expect(within(screen.getByTestId('venue-food-m1')).getByLabelText('Frappé')).toBeTruthy();
+    expect(within(screen.getByTestId('venue-food-m1')).getByText('€3.50')).toBeTruthy();
+    const beer = within(screen.getByTestId('venue-food-m2'));
+    expect(beer.getByText('€3.00')).toBeTruthy();
+    expect(beer.getByLabelText('was €4.00')).toHaveStyle({ textDecorationLine: 'line-through' });
+    expect(beer.getByText('After game')).toBeTruthy();
+    expect(within(screen.getByTestId('venue-food-m3')).queryByText('After game')).toBeNull();
+    // The amenities are under the card now, not repeated here.
+    expect(screen.getAllByLabelText('Parking, free')).toHaveLength(1);
+    expect(within(screen.getByTestId('venue-pitch-p1')).getByText('5-a-side · Artificial grass · Outdoor')).toBeTruthy();
+  });
+
+  it('S5A: See all opens the whole menu by category', async () => {
+    await render(<VenuePageView {...props(ready({ ...full, menu }), { tab: 'facilities' })} />);
+    expect(screen.queryByTestId('venue-menu-m3')).toBeNull();
+    await fireEvent.press(screen.getByTestId('venue-menu-see-all'));
+    expect(screen.getByText('Drinks')).toBeTruthy();
+    expect(screen.getByText('Food')).toBeTruthy();
+    expect(screen.getByTestId('venue-menu-m3')).toHaveTextContent(/Halloumi wrap.*With mint.*€6\.50/);
     const was = within(screen.getByTestId('venue-menu-m2')).getByLabelText('was €4.00');
     expect(was).toHaveStyle({ textDecorationLine: 'line-through' });
+  });
+
+  it('no active items: no Food & drink section', async () => {
+    await render(<VenuePageView {...props(ready(full), { tab: 'facilities' })} />);
+    expect(screen.queryByTestId('venue-menu')).toBeNull();
+    expect(screen.queryByText('Food & drink')).toBeNull();
   });
 
   it('nothing set up yet is one line', async () => {

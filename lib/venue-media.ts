@@ -72,6 +72,9 @@ export const AMENITY_KINDS: AmenityKind[] = [
   'ball_hire',
   'first_aid',
   'wifi',
+  'restaurant',
+  'vending_machines',
+  'shop',
   'other',
 ];
 

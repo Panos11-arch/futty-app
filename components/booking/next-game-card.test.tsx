@@ -48,6 +48,31 @@ const booking: NextBookingCardProps['booking'] = {
 };
 const venue = { name: 'Nuevo Campo', city: 'Nicosia' };
 
+describe('NextBookingCard: the venue’s extras (S5A)', () => {
+  function venuePage(page: Record<string, unknown>) {
+    mockRpc.mockImplementation((fn: string) =>
+      Promise.resolve(fn === 'venue_page' ? { data: page, error: null } : { data: { roster: [] }, error: null }),
+    );
+  }
+
+  it('small amenity icons and "After-game offers" when the venue has any', async () => {
+    venuePage({ amenities: [{ kind: 'parking' }, { kind: 'cafe_or_bar' }], offers: [{ id: 'o1' }], menu: [] });
+    await render(<NextBookingCard booking={booking} venue={venue} onPress={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId('next-game-amenities')).toBeTruthy());
+    expect(screen.getByTestId('next-game-amenities').props.accessibilityLabel).toBe('Café or bar, Parking');
+    expect(screen.getByText('After-game offers')).toBeTruthy();
+    expect(mockRpc).toHaveBeenCalledWith('venue_page', { p_venue_id: 'v1' });
+  });
+
+  it('nothing the venue hasn’t entered', async () => {
+    venuePage({ amenities: [], offers: [], menu: [] });
+    await render(<NextBookingCard booking={booking} venue={venue} onPress={jest.fn()} />);
+    await waitFor(() => expect(mockRpc).toHaveBeenCalledWith('venue_page', { p_venue_id: 'v1' }));
+    expect(screen.queryByTestId('next-game-amenities')).toBeNull();
+    expect(screen.queryByText('After-game offers')).toBeNull();
+  });
+});
+
 describe('NextBookingCard', () => {
   it('shows the venue, city and format', async () => {
     await render(<NextBookingCard booking={booking} venue={venue} onPress={jest.fn()} />);

@@ -12,6 +12,7 @@ import { Banner, Button, Card, EmptyState, SkeletonBlock, SkeletonText, Text } f
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { VenueBookTab, chosenPitch, type VenueBookProps } from '@/components/venue/venue-book-tab';
 import { VenueFacilitiesTab } from '@/components/venue/venue-facilities-tab';
+import { AmenityIcons } from '@/components/venue/venue-extras';
 import { VenueGallery } from '@/components/venue/venue-gallery';
 import { VenueHomeTab, type VenueHomeProps } from '@/components/venue/venue-home-tab';
 import { hairline, space } from '@/constants/futty-theme';
@@ -61,7 +62,7 @@ export function VenuePageView(props: VenuePageViewProps) {
 
   const { data, photoUrls } = state;
   const { venue } = data;
-  const line = venueCardLine(venue, data.amenities);
+  const line = venueCardLine(venue);
   const website = websiteUrl(venue.website);
   const call = phoneUrl(venue.phone);
 
@@ -103,6 +104,11 @@ export function VenuePageView(props: VenuePageViewProps) {
               </View>
             </View>
           </Card>
+        </View>
+
+        {/* S5A: the amenities as icons with tiny labels, on every tab. */}
+        <View style={styles.amenities}>
+          <AmenityIcons testID="venue-amenities" amenities={data.amenities} labels />
         </View>
 
         <View style={styles.tabs} accessibilityRole="tablist">
@@ -195,6 +201,7 @@ const useStyles = makeStyles(({ colors }) => ({
   cardWrap: { marginTop: -space.xxl, paddingHorizontal: space.lg },
   card: { gap: space.sm },
   actions: { flexDirection: 'row', gap: space.sm, marginTop: space.sm },
+  amenities: { paddingHorizontal: space.lg, paddingTop: space.lg },
   action: { flex: 1 },
   tabs: {
     flexDirection: 'row',
