@@ -415,3 +415,89 @@ Deno.test('bad requests and the rate limit; no rules, no answer', async () => {
   ok(error instanceof Error && error.message === 'app_rules_missing');
   strictEqual(noRules.requests.length, 0, 'the model is never asked without the rules');
 });
+
+// B5: Booking v2 (spec 13 "Booking modes"): whole or half pitch, the ways to
+// pay, choosing a pitch, opposition and its payment window, the no-opponent
+// choice and Publish, from the rules. Not Losers pay in Booking v2 yet (B1d).
+const BOOKING_V2_QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
+  {
+    question: "What's a half pitch?",
+    facts: () => [
+      "the booker's team is side A and pays half the pitch; an opposing team, side B, pays the other half",
+      'each side pays its half rounded down and Futty absorbs the cent',
+    ],
+  },
+  {
+    question: 'How do the ways to pay work now?',
+    facts: (r) => [
+      `plus ${euros(r.fee_pay_all_cents)} per player covered`,
+      `their part of the pitch plus ${euros(r.fee_each_pays_cents)}`,
+      "the pitch price on a whole pitch, his side's half on a half pitch",
+      `It is held ${hours(r.guarantee_hold_lead_hours)} before kickoff`,
+      'Cash at the venue (whole pitch only)',
+      `"Just my spot" can't be chosen for new bookings.`,
+    ],
+  },
+  {
+    question: 'Can I choose which pitch?',
+    facts: () => ['listed by name ("Pitch 1", "Pitch 2")', 'the first free one is preselected', '("Pitch 1 + 2")'],
+  },
+  {
+    question: 'Someone invited my team to play. How long do I have to pay?',
+    facts: (r) => [
+      'The first to accept becomes side B\'s captain; everyone else sees "Opposition found".',
+      `pays or holds his part within ${minutes(r.payment_window_minutes)}; otherwise his acceptance lapses`,
+      `Invites close ${hours(r.gipedo_opponent_hours)} before kickoff.`,
+    ],
+  },
+  {
+    question: 'Nobody accepted our game. What now?',
+    facts: (r) => [
+      `No side B by ${hours(r.gipedo_opponent_hours)} before kickoff: the booker chooses "Pay the whole pitch and play" or "Cancel free".`,
+      'one card payment, at once',
+      'everyone gets everything back and every hold is released',
+      `No choice by ${hours(r.refund_cutoff_hours)} before kickoff: it's cancelled free.`,
+    ],
+  },
+  {
+    question: 'How do I find players for my booking?',
+    facts: (r) => [
+      'tap "Publish" so anyone can join the open spots from Find a game',
+      'The slot stays booked.',
+      'nothing if it paid for everyone, their own share if it pays for myself',
+      `opposition posts close ${hours(r.gipedo_opponent_hours)} before kickoff`,
+    ],
+  },
+];
+
+Deno.test('Booking v2 (B5): each question reaches the model with the facts it needs, from the rules', async () => {
+  for (const rules of [SPEC_RULES, CHANGED_RULES]) {
+    for (const { question, facts } of BOOKING_V2_QUESTIONS) {
+      const f = fake(rules);
+      await chat(f.deps, { messages: [{ role: 'user', content: question }] });
+      const prompt = systemTexts(f.requests[0])[0];
+      for (const fact of facts(rules)) ok(prompt.includes(fact), `"${question}" needs: ${fact}`);
+    }
+  }
+});
+
+Deno.test("Booking v2 (B5): spec 13's numbers as they are today", () => {
+  const prompt = buildSystemPrompt(SPEC_RULES);
+  for (const fact of [
+    'plus €0.55 per player covered',
+    'their part of the pitch plus €0.80',
+    'within 15 minutes; otherwise his acceptance lapses',
+    'Invites close 24 hours before kickoff.',
+    "No choice by 6 hours before kickoff: it's cancelled free.",
+    '€1.00 per player is kept and the rest becomes venue credit',
+  ]) ok(prompt.includes(fact), fact);
+});
+
+Deno.test('Booking v2 (B5): Losers pay is not offered yet, and the old modes are for older bookings only', () => {
+  const prompt = buildSystemPrompt(SPEC_RULES);
+  ok(prompt.includes("Losers pay isn't available for new bookings yet."), 'not available yet');
+  ok(!prompt.includes('Accept Losers pay'), 'no B1d wording');
+  ok(prompt.includes('BOOKINGS MADE BEFORE BOOKING V2 keep the way to pay they were booked with'), 'old modes are labelled');
+  ok(prompt.includes('GIPEDO PANO (bookings made before Booking v2'), 'Gipedo Pano is labelled');
+  ok(!prompt.includes('From a booking, you can post "need players" or "need opposition"'), 'the old squads line is gone');
+});

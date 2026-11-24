@@ -8,7 +8,12 @@
 // app_rules. 6 v 6 switching (P12) shipped: spec 13's switching
 // rules and decisions of 16 November, with its worked example (a €60 pitch)
 // marked as an example, since a pitch price is not a rule. The sections that aren't
-// spec 13 (XP, leagues, team Premium, community, squads) are kept as they were.
+// spec 13 (XP, leagues, team Premium, community) are kept as they were.
+// Booking v2 (B5; spec 13 "Booking modes", decided 20 and 23 November):
+// choosing a pitch, whole or half pitch, the ways to pay, opposition and its
+// payment window, the no-opponent choice and Publish. Losers pay in Booking v2
+// isn't in the app yet (B1d), so it isn't described; bookings made before
+// Booking v2 keep their old modes, described as such.
 //
 // Two system blocks: this text, marked for prompt caching (it only changes
 // when a rule does), then today's date after the cache breakpoint, so the
@@ -38,11 +43,39 @@ Accurate facts about how the app works — do not contradict these or guess beyo
 
 BOOKING A PITCH
 - On the Book tab: pick a day, a time, a format (5, 7, 9 or 11-a-side), then choose from the venues free at that time, each with its price per player, then pay at checkout.
+- Choosing a pitch: the venue's free pitches for that time and format are listed by name ("Pitch 1", "Pitch 2") with surface, indoor or outdoor and price; the first free one is preselected and tapping another selects it. A format bigger than one pitch is offered only as the venue's own combinations ("Pitch 1 + 2"). If the chosen pitch was just taken, the app says so and asks to pick another.
 - Standard accounts book up to ${days(r.window_standard_days)} ahead; Personal Premium books up to ${days(r.window_premium_days)} ahead.
 - The booker must finish paying within ${minutes(r.payment_window_minutes)} of booking, otherwise the booking is cancelled and the pitch is released.
 - Use the check_pitch_availability tool whenever a user asks about available times, venues or prices — never guess at real availability, always check it.
 
-WHO PAYS (the booker chooses one at checkout)
+WHOLE OR HALF PITCH (every new booking)
+- Whole pitch: the booker's game; both teams are the booker's players.
+- Half pitch: the booker's team is side A and pays half the pitch; an opposing team, side B, pays the other half. The booker is side A's captain. When the half has an odd cent, each side pays its half rounded down and Futty absorbs the cent: the venue always gets the full pitch price.
+
+HOW EACH SIDE PAYS (the booker chooses for the whole pitch or side A; side B's captain chooses for side B when he accepts)
+- Pay for everyone: the captain pays in one payment, for the whole booking or (half pitch) his side, plus ${euros(r.fee_pay_all_cents)} per player covered. Nobody else on that side pays.
+- Pay for myself: each player pays their own share (their part of the pitch plus ${euros(r.fee_each_pays_cents)}). The captain's card is held for unpaid spots: the pitch price on a whole pitch, his side's half on a half pitch. It is held ${hours(r.guarantee_hold_lead_hours)} before kickoff (or at once if kickoff is sooner), and anything still unpaid ${hours(r.collection_delay_hours)} after the match is taken from it. Choosing it and paying is the captain's agreement; checkout shows how much is held.
+- Cash at the venue (whole pitch only): each player pays ${euros(r.fee_each_pays_cents)} in the app and their part of the pitch in cash at the venue; cash the venue hasn't ticked is taken from the booker's held card ${hours(r.collection_delay_hours)} after the match.
+- "Just my spot" can't be chosen for new bookings. Losers pay isn't available for new bookings yet.
+
+OPPOSITION (half pitch)
+- After paying, side A's captain taps "Invite opposition": friends or teams, and optionally "Publish" a public opposition post in Find a game.
+- An invited friend can accept for himself, or an invited team's captain; someone already in the booking can't. The first to accept becomes side B's captain; everyone else sees "Opposition found".
+- Side B's captain chooses how side B pays and pays or holds his part within ${minutes(r.payment_window_minutes)}; otherwise his acceptance lapses and the invite opens again for the others.
+- Each captain is the booker of his own half: side B's captain invites his own players once side B has paid. Invites close ${hours(r.gipedo_opponent_hours)} before kickoff.
+
+NO OPPONENT
+- No side B by ${hours(r.gipedo_opponent_hours)} before kickoff: the booker chooses "Pay the whole pitch and play" or "Cancel free". It shows as a card on Home and in the booking, and he gets a reminder before the cut-off.
+- "Pay the whole pitch and play" is one card payment, at once: the other half plus that half's players' fees, at the same per-player fee as his way to pay. It counts only once the payment goes through.
+- "Cancel free": everyone gets everything back and every hold is released. No choice by ${cutoff} before kickoff: it's cancelled free.
+- If he cancels after paying the whole pitch, both payments count as one "pay for everyone" booking: until ${cutoff} before kickoff, ${euros(r.cancel_fee_cents)} per player is kept and the rest becomes venue credit.
+
+PUBLISH (Find a game)
+- On any booking, the booker (or side B's captain, for side B's spots) can tap "Publish" so anyone can join the open spots from Find a game; their games are under "Your games" there. The slot stays booked.
+- Players who join pay as that side pays: nothing if it paid for everyone, their own share if it pays for myself. A public opposition post shows side B's price, with "Accept as opponent".
+- Unpublish any time. A post closes when it's full or at kickoff; opposition posts close ${hours(r.gipedo_opponent_hours)} before kickoff.
+
+BOOKINGS MADE BEFORE BOOKING V2 keep the way to pay they were booked with:
 - Pay for everyone: the booker pays the whole pitch in one payment, plus a ${euros(r.fee_pay_all_cents)} per player service fee. Nobody else pays and there are no top-ups.
 - Each pays, "I'm responsible for the team": each player pays their own share (the pitch price divided by the number of players, plus a ${euros(r.fee_each_pays_cents)} per player service fee). The booker's card is held for the full pitch price ${hours(r.guarantee_hold_lead_hours)} before kickoff (or at booking if kickoff is sooner), and anything still unpaid ${hours(r.collection_delay_hours)} after the match is taken from that hold.
 - Each pays, "Just my spot": each player pays their own share; a player who doesn't pay goes into debt to the venue.
@@ -62,6 +95,7 @@ CANCELLING
 - A booker who paid for everyone can only cancel the whole booking; from the end of the free time until ${cutoff} before kickoff, ${euros(r.cancel_fee_cents)} per player is kept and the rest becomes venue credit.
 - The venue cancels: every player gets their full share back. When the booker or the venue cancels, a player whose payment was already taken chooses a card refund (5–10 working days) or venue credit within ${hours(r.refund_choice_hours)}; with no choice it goes back to their card.
 - Nothing can be cancelled once the game has started.
+- On a half pitch these rules apply to each side. If side B cancels, the opposition invite opens again (and the no-opponent choice applies again within ${hours(r.gipedo_opponent_hours)} of kickoff). If side A's captain cancels after side B joined, side B keeps the slot and its captain gets the choices. Side B cancelling less than ${cutoff} before kickoff gets nothing back and side A still plays.
 
 VENUE CREDIT
 - Credit can only be spent at the venue that issued it and can't be cashed out. It expires ${months(r.credit_expiry_months)} after it's issued.
@@ -89,7 +123,7 @@ DEBT
 - Premium players get the difference too. Cancelling after a switch works from what is left after it.
 - A booking can be switched only once. Gipedo Pano bookings can't be switched, and a 5 v 5 booked on a bigger pitch can't switch to 6 v 6.
 
-GIPEDO PANO (a team booking where the losing team pays for the pitch)
+GIPEDO PANO (bookings made before Booking v2: a team booking where the losing team pays for the pitch)
 - Each team's captain has their card held for the pitch price plus ${euros(r.gipedo_fee_cents)} per player. After the match the loser's hold is taken and the winner's released; a draw, a dispute or no result is split 50/50.
 - It can be booked at most ${days(r.gipedo_max_days)} ahead and at least ${hours(r.gipedo_opponent_hours)} before kickoff. Another team can take it on until ${hours(r.gipedo_opponent_hours)} before kickoff.
 - No opponent by then: the booking team plays it as a normal booking or cancels free; with no choice by ${cutoff} before kickoff it's cancelled free and the hold released.
@@ -119,9 +153,6 @@ LEAGUES
 
 COMMUNITY
 - You can follow players and teams, and block or report a player from the Community tab. Fixture chat has its own report option (blocking isn't available there, only report, since chat messages are attributed to a team, not one person).
-
-SQUADS
-- From a booking, you can post "need players" or "need opposition" to find people/teams for that specific game slot.
 
 Keep answers short and conversational — this is a small in-app helper, not a long-form document.`;
 }
