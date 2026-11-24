@@ -6,7 +6,6 @@
 // a price, fee or total.
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { PriceLine } from '@/components/ui/price-breakdown';
 import { minToTime, timeToMin } from '@/lib/booking';
 import type { PaymentMode } from '@/lib/booking-actions';
 import type { BookingV2Info } from '@/lib/booking-opposition';
@@ -285,80 +284,6 @@ export function showPlayersPerSide(format: string | null, sixOnFiveAllowed: bool
  *  hours" (spec 13). Both are instants, so the phone's time zone can't matter. */
 export function showNonRefundable(info: { non_refundable?: boolean; refunds_stop_at: string }, now: Date): boolean {
   return info.non_refundable === true || now.getTime() > Date.parse(info.refunds_stop_at);
-}
-
-export type CheckoutChoice = { mode: PaymentMode | null; cash: boolean; credit: boolean };
-
-export type CheckoutAmounts = {
-  lines: PriceLine[];
-  /** What's paid in the app now. */
-  totalCents: number;
-  /** Paid in cash at the venue, when the player picked cash. */
-  cashCents: number | null;
-};
-
-/** The server's amounts for the choice, as they are. Credit shows as a
- *  minus line; nothing is summed here. */
-export function checkoutAmounts(quote: BookingQuote, choice: CheckoutChoice): CheckoutAmounts | null {
-  if (!choice.mode) return null;
-  if (choice.mode === 'gipedo_pano') {
-    // Card only: never cash, never credit (decided 13 November).
-    const hold = quote.gipedo_pano;
-    return {
-      lines: [
-        { label: 'Pitch', cents: hold.pitch_cents },
-        { label: 'Service fee', cents: hold.fee_cents },
-      ],
-      totalCents: hold.hold_cents,
-      cashCents: null,
-    };
-  }
-  if (choice.mode === 'pay_all') {
-    const all = quote.pay_all;
-    if (choice.credit && all.with_credit) {
-      return {
-        lines: [
-          { label: 'Pitch', cents: all.pitch_cents },
-          { label: 'Your credit', cents: -all.with_credit.credit_cents },
-          { label: 'Service fee', cents: all.with_credit.fee_cents },
-        ],
-        totalCents: all.with_credit.card_cents,
-        cashCents: null,
-      };
-    }
-    return {
-      lines: [
-        { label: 'Pitch', cents: all.pitch_cents },
-        { label: 'Service fee', cents: all.fee_cents },
-      ],
-      totalCents: all.card_cents,
-      cashCents: null,
-    };
-  }
-  const mine = quote.each_pays.mine;
-  if (choice.credit && mine.with_credit) {
-    return {
-      lines: [
-        { label: 'Your part of the pitch', cents: mine.pitch_cents },
-        { label: 'Your credit', cents: -mine.with_credit.credit_cents },
-        { label: 'Service fee', cents: mine.with_credit.fee_cents },
-      ],
-      totalCents: mine.with_credit.card_cents,
-      cashCents: null,
-    };
-  }
-  if (choice.cash) {
-    const cash = quote.each_pays.cash;
-    return { lines: [{ label: 'Service fee', cents: cash.card_cents }], totalCents: cash.card_cents, cashCents: cash.cash_cents };
-  }
-  return {
-    lines: [
-      { label: 'Your part of the pitch', cents: mine.pitch_cents },
-      { label: 'Service fee', cents: mine.fee_cents },
-    ],
-    totalCents: mine.card_cents,
-    cashCents: null,
-  };
 }
 
 // ---- Server calls -------------------------------------------------------

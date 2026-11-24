@@ -1,5 +1,4 @@
 import {
-  checkoutAmounts,
   dateStrip,
   endTime,
   GAME_LENGTHS,
@@ -111,69 +110,6 @@ describe('showNonRefundable', () => {
   });
 });
 
-describe('checkoutAmounts', () => {
-  const quote = quoteFixture();
-
-  it('pay for everyone: the server’s pitch, fee and total, unchanged', () => {
-    expect(checkoutAmounts(quote, { mode: 'pay_all', cash: false, credit: false })).toEqual({
-      lines: [
-        { label: 'Pitch', cents: 6000 },
-        { label: 'Service fee', cents: 550 },
-      ],
-      totalCents: 6550,
-      cashCents: null,
-    });
-  });
-
-  it.each(['each_pays_responsible', 'each_pays_own_spot'] as const)('%s by card: your share', (mode) => {
-    expect(checkoutAmounts(quote, { mode, cash: false, credit: false })).toEqual({
-      lines: [
-        { label: 'Your part of the pitch', cents: 600 },
-        { label: 'Service fee', cents: 80 },
-      ],
-      totalCents: 680,
-      cashCents: null,
-    });
-  });
-
-  it('cash: the service fee by card now, the pitch part in cash at the venue', () => {
-    expect(checkoutAmounts(quote, { mode: 'each_pays_own_spot', cash: true, credit: false })).toEqual({
-      lines: [{ label: 'Service fee', cents: 80 }],
-      totalCents: 80,
-      cashCents: 600,
-    });
-  });
-
-  it('credit: the server’s credit, fee and card amounts (spec 13: €50 credit on €60 → €15.50)', () => {
-    const withCredit = quoteFixture({
-      pay_all: {
-        pitch_cents: 6000,
-        fee_cents: 550,
-        card_cents: 6550,
-        with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 },
-      },
-      credit: { available_cents: 5000, expires_at: '2027-11-01T00:00:00Z' },
-    });
-    expect(checkoutAmounts(withCredit, { mode: 'pay_all', cash: false, credit: true })).toEqual({
-      lines: [
-        { label: 'Pitch', cents: 6000 },
-        { label: 'Your credit', cents: -5000 },
-        { label: 'Service fee', cents: 550 },
-      ],
-      totalCents: 1550,
-      cashCents: null,
-    });
-  });
-
-  it('ignores credit when the server returned none', () => {
-    expect(checkoutAmounts(quote, { mode: 'pay_all', cash: false, credit: true })?.totalCents).toBe(6550);
-  });
-
-  it('nothing to show before a mode is chosen', () => {
-    expect(checkoutAmounts(quote, { mode: null, cash: false, credit: false })).toBeNull();
-  });
-});
-
 describe('whoHasntPaid', () => {
   const base = { profile_id: 'p', name: null, username: null, is_booker: false, is_me: false, amount_cents: null, cash_cents: null };
 
@@ -191,29 +127,3 @@ describe('whoHasntPaid', () => {
   });
 });
 
-describe('checkoutAmounts: Gipedo Pano (P8)', () => {
-  it('the server’s hold: the pitch and 10 x 55, held on the card (6550)', () => {
-    expect(checkoutAmounts(quoteFixture(), { mode: 'gipedo_pano', cash: false, credit: false })).toEqual({
-      lines: [
-        { label: 'Pitch', cents: 6000 },
-        { label: 'Service fee', cents: 550 },
-      ],
-      totalCents: 6550,
-      cashCents: null,
-    });
-  });
-
-  it('never with cash or credit', () => {
-    const withCredit = quoteFixture({
-      pay_all: { pitch_cents: 6000, fee_cents: 550, card_cents: 6550, with_credit: { credit_cents: 5000, fee_cents: 550, card_cents: 1550 } },
-    });
-    expect(checkoutAmounts(withCredit, { mode: 'gipedo_pano', cash: true, credit: true })?.totalCents).toBe(6550);
-  });
-
-  it('a Premium captain’s hold is the server’s 6495', () => {
-    const premium = quoteFixture({
-      gipedo_pano: { pitch_cents: 6000, fee_cents: 495, hold_cents: 6495, available: true, unavailable_reason: null },
-    });
-    expect(checkoutAmounts(premium, { mode: 'gipedo_pano', cash: false, credit: false })?.totalCents).toBe(6495);
-  });
-});
