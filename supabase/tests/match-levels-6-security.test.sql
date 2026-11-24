@@ -39,7 +39,7 @@ begin
     'select public.match_levels_tick()',
     format('select public.match_rating_for(%L, %L)', v_m, tests.player_id(v_m, v_other)),
     format('select public.match_rater_weight(%L, %L)', v_m, v_user),
-    'select public.match_level_start(''under_1'', ''kickabout'', ''rarely'', 5)'] loop
+    'select public.match_level_expected(''under_1'', ''kickabout'', ''rarely'')'] loop
     assert tests.error_as(v_user, v_sql) like 'permission denied%', 'internal: ' || v_sql;
   end loop;
 
