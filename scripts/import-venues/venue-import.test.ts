@@ -125,6 +125,18 @@ describe('cell readers', () => {
 });
 
 describe('buildImport', () => {
+  it('S5A: reads the restaurant, vending machines and shop columns', () => {
+    const [venue] = buildImport(input({ venues: [venueRow({ restaurant: 'yes', vending_machines: 'yes (drinks)', shop: 'no' })] })).venues;
+    expect(venue.amenities).toEqual(
+      expect.arrayContaining([
+        { kind: 'restaurant', note: null },
+        { kind: 'vending_machines', note: 'drinks' },
+      ]),
+    );
+    expect(venue.amenities.map((a) => a.kind)).not.toContain('shop');
+  });
+
+
   it('imports the venue with exactly what the sheet says: blank cells stay empty, no price, no pitch', () => {
     const [venue] = buildImport(input()).venues;
     expect(venue).toMatchObject({

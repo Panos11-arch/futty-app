@@ -3,6 +3,7 @@ import {
   addDetailToCalendar,
   calendarBookingFrom,
   calendarMessage,
+  cancelOptions,
   cancelledMessage,
   confirmCancellation,
   countdownLabel,
@@ -22,6 +23,7 @@ import {
   type CancelDeps,
 } from './booking-detail';
 import { bookerDetail, line, mySpotQuote, playerDetail, wholeTeamQuote } from './booking-detail.fixtures';
+import { v2Fixture } from './booking-opposition.fixtures';
 import { primeRules } from '@/lib/rules.fixtures';
 
 // Spec 13's rules as the migration's defaults (P10): the text below reads them.
@@ -586,5 +588,42 @@ describe('fetchCancellationOutcome', () => {
   it('an error says nothing rather than something wrong', async () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
     await expect(fetchCancellationOutcome('b1')).resolves.toBeNull();
+  });
+});
+
+describe('cancelOptions (spec 13, "Cancellations (Booking v2)")', () => {
+  const sideB = (mode: 'pay_all' | 'each_pays_responsible') =>
+    v2Fixture({
+      captain_of: 'b',
+      my_side: 'b',
+      sides: [
+        { side: 'a', captain: { id: 'u1', name: 'Andreas' }, team: null, payment_mode: 'pay_all', players: 5, state: 'paid' },
+        { side: 'b', captain: { id: 'p2', name: 'Bambos' }, team: null, payment_mode: mode, players: 5, state: 'paid' },
+      ],
+    });
+
+  it('follows can_cancel on a whole pitch', () => {
+    expect(cancelOptions(playerDetail())).toEqual({ mySpot: true, wholeTeam: false });
+    expect(cancelOptions(bookerDetail({ can_cancel: { my_spot: false, whole_team: true } }))).toEqual({ mySpot: false, wholeTeam: true });
+  });
+
+  it("side B's captain who paid for everyone cancels his side, not \"his spot\" (the server refuses it: use_whole_team)", () => {
+    const detail = playerDetail({ can_cancel: { my_spot: true, whole_team: false }, v2: sideB('pay_all') });
+    expect(cancelOptions(detail)).toEqual({ mySpot: false, wholeTeam: true });
+  });
+
+  it("side B's captain paying for myself can leave his spot or cancel his side", () => {
+    const detail = playerDetail({ can_cancel: { my_spot: true, whole_team: false }, v2: sideB('each_pays_responsible') });
+    expect(cancelOptions(detail)).toEqual({ mySpot: true, wholeTeam: true });
+  });
+
+  it('a player on a half pitch who captains no side only has his spot', () => {
+    const detail = playerDetail({ v2: v2Fixture({ captain_of: null, my_side: 'b' }) });
+    expect(cancelOptions(detail)).toEqual({ mySpot: true, wholeTeam: false });
+  });
+
+  it('a booking made before P4a never offers "my spot"', () => {
+    const detail = bookerDetail();
+    expect(cancelOptions({ ...detail, booking: { ...detail.booking, payment_mode: null } })).toEqual({ mySpot: false, wholeTeam: true });
   });
 });

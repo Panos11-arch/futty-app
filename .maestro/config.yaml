@@ -16,3 +16,4 @@ executionOrder:
     - navigation
     - book-missing-venue
     - find-match
+    - venue-book-and-pay

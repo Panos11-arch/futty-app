@@ -34,11 +34,13 @@ jest.mock('@/lib/booking-opposition', () => ({
   searchTeams: jest.fn(),
 }));
 jest.mock('@/lib/use-rules', () => ({ useRules: () => undefined }));
+jest.mock('@/lib/venue-extras', () => ({ fetchVenueExtras: () => Promise.resolve(null) }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 
 function detail(status: string, v2: Record<string, unknown>) {
   return {
     is_booker: true,
+    venue: { id: 'v1', name: 'Kamares' },
     booking: { status },
     v2: { posts: { players: null, opposition: null }, captain_of: null, opposition: null, ...v2 },
   };

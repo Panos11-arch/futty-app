@@ -340,6 +340,22 @@ export function cancelledMessage(scope: CancelScope, result: CancelResult): stri
 // ---- Cancelling: quote first, confirm second ---------------------------
 
 export type DetailCancelScope = 'my_spot' | 'whole_team';
+
+/** Which cancel buttons to show. can_cancel is the booker's view; on a half
+ *  pitch each captain is the booker of his own half (spec 13,
+ *  "Cancellations (Booking v2)"), so a captain of a side still in the game
+ *  (the server's captain_of) can cancel his side. A captain whose side paid
+ *  for everyone can't leave just his spot (the server says use_whole_team). */
+export function cancelOptions(detail: BookingDetail): { mySpot: boolean; wholeTeam: boolean } {
+  const legacy = detail.booking.payment_mode === null;
+  const v2 = detail.v2 ?? null;
+  const mySide = v2?.kind === 'half' && v2.captain_of ? (v2.sides.find((s) => s.side === v2.captain_of) ?? null) : null;
+  return {
+    mySpot: detail.can_cancel.my_spot && !legacy && mySide?.payment_mode !== 'pay_all',
+    wholeTeam: detail.can_cancel.whole_team || mySide !== null,
+  };
+}
+
 export type QuoteResult = { quote: CancellationQuote } | { error: string };
 export type ConfirmResult =
   | { status: 'cancelled'; notice?: string }

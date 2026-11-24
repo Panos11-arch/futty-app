@@ -38,6 +38,42 @@ function props(detail: BookingDetailData, overrides: Partial<AfterPayViewProps> 
   };
 }
 
+describe('AfterPayView: At the venue (S5A)', () => {
+  const card = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    name: `Item ${id}`,
+    photoUrl: null,
+    price: '€3.50',
+    was: null,
+    afterGame: false,
+    ...over,
+  });
+
+  it('up to 3 food and drink cards and the amenity icons', async () => {
+    const atVenue = {
+      amenities: ['restaurant' as const, 'parking' as const],
+      food: [card('a'), card('b', { afterGame: true, price: '€3.00', was: '€4.00' }), card('c')],
+      hasAfterGameOffers: true,
+    };
+    await render(<AfterPayView {...props(bookerDetail(), { atVenue })} />);
+    const section = within(screen.getByTestId('after-pay-at-venue'));
+    expect(section.getByText('At the venue')).toBeTruthy();
+    expect(section.getByTestId('after-pay-food-a')).toBeTruthy();
+    expect(within(section.getByTestId('after-pay-food-b')).getByText('After game')).toBeTruthy();
+    expect(section.getByTestId('after-pay-amenities').props.accessibilityLabel).toBe('Restaurant, Parking');
+  });
+
+  it('only what the venue entered: amenities alone, or nothing at all', async () => {
+    await render(<AfterPayView {...props(bookerDetail(), { atVenue: { amenities: ['shop'], food: [], hasAfterGameOffers: false } })} />);
+    expect(screen.queryByTestId('after-pay-food')).toBeNull();
+    expect(screen.getByTestId('after-pay-amenities')).toBeTruthy();
+    await render(<AfterPayView {...props(bookerDetail(), { atVenue: { amenities: [], food: [], hasAfterGameOffers: false } })} />);
+    expect(screen.queryByTestId('after-pay-at-venue')).toBeNull();
+    await render(<AfterPayView {...props(bookerDetail(), { atVenue: null })} />);
+    expect(screen.queryByText('At the venue')).toBeNull();
+  });
+});
+
 describe('AfterPayView (B3: the screen after paying)', () => {
   it('shows the pitch name, the day and time and the venue; "Go to booking" opens it', async () => {
     const p = props(bookerDetail({ v2: openHalf }));

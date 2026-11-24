@@ -20,11 +20,13 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { AmenityIcons, FoodCards } from '@/components/venue/venue-extras';
 import { space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
 import type { BookingDetailData } from '@/lib/booking-detail';
 import type { TeamResult } from '@/lib/booking-opposition';
 import { slotLabel, type LoadState } from '@/lib/booking-search';
+import type { VenueExtras } from '@/lib/venue-extras';
 
 export type AfterPayViewProps = {
   state: LoadState<BookingDetailData>;
@@ -40,6 +42,8 @@ export type AfterPayViewProps = {
   /** S6: a game started from Find a match: this switch starts on (and
    *  publishes). The player can still switch it off. */
   preselect?: 'players' | 'opposition' | null;
+  /** S5A: the venue's food, drink and amenities; null until loaded, or if they can't be. */
+  atVenue?: VenueExtras | null;
 };
 
 export function AfterPayView(props: AfterPayViewProps) {
@@ -141,6 +145,7 @@ function AfterPayReady({
   onPublishGame,
   onDone,
   preselect = null,
+  atVenue = null,
 }: Omit<AfterPayViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const styles = useStyles();
   const { booking, venue } = detail;
@@ -352,6 +357,15 @@ function AfterPayReady({
               preselected={preselect === 'players'}
               onChange={onPublishGame}
             />
+          </View>
+        ) : null}
+
+        {/* S5A: only what the venue has entered. */}
+        {atVenue && (atVenue.food.length > 0 || atVenue.amenities.length > 0) ? (
+          <View style={styles.section} testID="after-pay-at-venue">
+            <SectionHeader title="At the venue" />
+            <FoodCards testID="after-pay-food" cards={atVenue.food} />
+            <AmenityIcons testID="after-pay-amenities" amenities={atVenue.amenities.map((kind) => ({ kind }))} />
           </View>
         ) : null}
       </ScrollView>

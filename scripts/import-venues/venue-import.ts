@@ -111,6 +111,9 @@ export const AMENITY_COLUMNS = {
   ball_hire: 'ball_hire',
   first_aid: 'first_aid',
   wifi: 'wifi',
+  restaurant: 'restaurant',
+  vending_machines: 'vending_machines',
+  shop: 'shop',
 } as const;
 export type AmenityKind = (typeof AMENITY_COLUMNS)[keyof typeof AMENITY_COLUMNS] | 'other';
 

@@ -1,7 +1,7 @@
 // A Book a pitch result (image 02; Playtomic 01, 02): the photo with the
 // venue's name over it and a heart, then area · town, "from €X.XX per
 // player" (the server's cheapest per-player price among the times shown),
-// the amenities and the free start times. The card opens the venue page; a
+// the amenities (up to 4 icons, S5A) and the free start times. The card opens the venue page; a
 // time opens that slot (lib/booking-search openTimeSlot).
 import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
@@ -13,6 +13,7 @@ import { radius, space } from '@/constants/futty-theme';
 import { slotChipLabel, type BookResult, type BookSlot } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
 import { makeStyles, useTheme } from '@/lib/theme';
+import { AmenityIcons } from '@/components/venue/venue-extras';
 import { AMENITIES } from '@/lib/venue-page';
 
 export type VenueResultCardProps = {
@@ -32,7 +33,6 @@ export function VenueResultCard({ result, severalDays, timesDisabled, onOpen, on
   const id = result.venue_id;
   const place = [result.area, result.town].filter(Boolean).join(' · ');
   const price = result.from_player_cents === null ? null : `from ${formatEuros(result.from_player_cents)} per player`;
-  const amenities = result.amenities.map((a) => AMENITIES[a]?.label).filter(Boolean).join(' · ');
 
   return (
     <View testID={`free-venue-${id}`}>
@@ -78,11 +78,12 @@ export function VenueResultCard({ result, severalDays, timesDisabled, onOpen, on
               </Text>
             ) : null}
           </View>
-          {amenities ? (
-            <Text variant="callout" tone="inkMuted">
-              {amenities}
-            </Text>
-          ) : null}
+          {/* S5A: up to 4 amenity icons, food and drink first, then parking. */}
+          <AmenityIcons
+            testID={`free-venue-${id}-amenities`}
+            amenities={result.amenities.filter((a) => a in AMENITIES).map((kind) => ({ kind }))}
+            max={4}
+          />
           {result.slots.length > 0 ? (
             <View
               testID={`free-venue-${id}-slot`}

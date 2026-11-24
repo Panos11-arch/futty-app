@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import { Modal } from 'react-native';
 
@@ -58,6 +58,17 @@ describe('PostMatchOffers', () => {
     expect(screen.getByText('€2.50')).toBeTruthy();
   });
 
+  it('S5A: each offer is a photo card with the offer price and Get code', async () => {
+    mockRpc.mockResolvedValueOnce({ data: [wrap, lemonade], error: null });
+    await render(<PostMatchOffers matchId="m1" />);
+    const card = within(await screen.findByTestId('post-match-offer-i1'));
+    expect(card.getByLabelText('Lunch wrap')).toBeTruthy();
+    expect(card.getByText('€3.00')).toBeTruthy();
+    expect(card.getByLabelText('was €4.00')).toHaveStyle({ textDecorationLine: 'line-through' });
+    expect(within(screen.getByTestId('post-match-offer-i1-get-code')).getByText('Get code')).toBeTruthy();
+    expect(screen.getByTestId('post-match-offer-i2-get-code')).toBeTruthy();
+  });
+
   it('shows nothing when no offer is on', async () => {
     mockRpc.mockResolvedValueOnce({ data: [], error: null });
     await render(<PostMatchOffers matchId="m1" />);
@@ -71,7 +82,7 @@ describe('PostMatchOffers', () => {
       error: null,
     });
     await render(<PostMatchOffers matchId="m1" />);
-    await fireEvent.press(await screen.findByLabelText('Lunch wrap, show the code'));
+    await fireEvent.press(await screen.findByTestId('post-match-offer-i1-get-code'));
     expect(mockRpc).toHaveBeenLastCalledWith('open_post_match_offer', { p_match_id: 'm1', p_item_id: 'i1' });
     expect(await screen.findByText('Show this at the counter')).toBeTruthy();
     expect(screen.getByText('K7M2QX')).toBeTruthy();
@@ -84,7 +95,7 @@ describe('PostMatchOffers', () => {
       error: null,
     });
     await render(<PostMatchOffers matchId="m1" />);
-    await fireEvent.press(await screen.findByLabelText('Lunch wrap, show the code'));
+    await fireEvent.press(await screen.findByTestId('post-match-offer-i1-get-code'));
     expect(await screen.findByText('Redeemed.')).toBeTruthy();
   });
 
@@ -94,7 +105,7 @@ describe('PostMatchOffers', () => {
       .mockResolvedValueOnce({ data: null, error: { message: 'offer_not_available' } })
       .mockResolvedValueOnce({ data: [], error: null });
     await render(<PostMatchOffers matchId="m1" />);
-    await fireEvent.press(await screen.findByLabelText('Lunch wrap, show the code'));
+    await fireEvent.press(await screen.findByTestId('post-match-offer-i1-get-code'));
     expect(mockRpc).toHaveBeenCalledTimes(3);
     expect(mockRpc).toHaveBeenLastCalledWith('post_match_offers', { p_match_id: 'm1' });
   });

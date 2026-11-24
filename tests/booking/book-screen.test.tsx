@@ -146,17 +146,17 @@ describe('Book a pitch screen', () => {
     expect(mockRpc).toHaveBeenCalledWith('book_search', expect.objectContaining({ p_venue_id: 'v1' }));
   });
 
-  it('a time opens checkout for that slot, with a light haptic', async () => {
+  it('a time opens the venue page on Book with that slot (S5), with a light haptic', async () => {
     await render(<BookScreen />);
     const v = await ready();
     const result = (v.results as { status: 'ready'; data: BookResult[] }).data[0];
     await act(async () => v.onTime(result, result.slots[0]));
     expect(mockHaptic).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/booking-payment',
+      pathname: '/venue/[id]',
       params: {
-        venueId: 'v1',
-        venueName: 'Kamares Sports Centre',
+        id: 'v1',
+        tab: 'book',
         day: '2026-11-26',
         start: '19:00',
         end: '20:30',
@@ -166,7 +166,7 @@ describe('Book a pitch screen', () => {
     });
   });
 
-  it('passes 6 per side to checkout when chosen on 5-a-side', async () => {
+  it('passes 6 per side to the venue page when chosen on 5-a-side', async () => {
     await render(<BookScreen />);
     let v = await ready();
     await act(async () => v.onQueryChange({ ...v.query!, playersPerSide: 6 }));

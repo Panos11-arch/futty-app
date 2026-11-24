@@ -22,6 +22,7 @@ import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
 import { startMatchPublishKind, takeStartMatch, waitUntilConfirmed, type PublishKind } from '@/lib/start-match';
 import { useRules } from '@/lib/use-rules';
+import { fetchVenueExtras } from '@/lib/venue-extras';
 
 // S6: how long "Publish game" waits for the payment webhook to confirm a
 // booking started from Find a match (the server refuses it before then).
@@ -35,6 +36,10 @@ export default function BookingAfterPayScreen() {
   const load = useCallback(() => fetchBookingDetail(bookingId), [bookingId]);
   const { state, reload } = useLoad(bookingId || null, load);
   const detail = state.status === 'ready' ? state.data : null;
+  // S5A: the venue's food, drink and amenities ("At the venue").
+  const venueId = detail?.venue.id ?? null;
+  const loadExtras = useCallback(() => fetchVenueExtras(venueId!), [venueId]);
+  const extras = useLoad(venueId ? `extras:${venueId}` : null, loadExtras);
 
   // S6: paid for a game started from Find a match ("Start a match"): the
   // right Publish switch starts on. Taken once, right after paying; worked
@@ -119,6 +124,7 @@ export default function BookingAfterPayScreen() {
         onPublishGame={(on) => publish('players', on)}
         preselect={preselect.current ?? null}
         onDone={() => router.replace(bookingDetailHref(bookingId))}
+        atVenue={extras.state.status === 'ready' ? extras.state.data : null}
       />
     </>
   );
