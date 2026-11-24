@@ -63,8 +63,8 @@ describe('scorers', () => {
     expect(goalsReady([], null)).toBe(false);
   });
 
-  it('a null scorer reads "Own goal or unknown"; a guest by their name', () => {
-    expect(playerName(null)).toBe('Own goal or unknown');
+  it('a null scorer reads "Own goal"; a guest by their name', () => {
+    expect(playerName(null)).toBe('Own goal');
     expect(playerName({ name: null, guestName: 'Kostas' })).toBe('Kostas');
   });
 

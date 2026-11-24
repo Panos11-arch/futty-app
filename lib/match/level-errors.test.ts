@@ -1,7 +1,14 @@
-import { describeLevelError, LEVEL_ERROR_CODES } from '@/lib/match/level-errors';
+import {
+  describeLevelError,
+  LEVEL_ERROR_CODES,
+  selfRatingRange,
+  selfRatingRangeLine,
+} from '@/lib/match/level-errors';
 
-// Every code A5a's app functions raise
-// (supabase/migrations/20261117192224_match_levels_functions.sql).
+// Every code the level functions the app calls raise
+// (supabase/migrations/20261117192224_match_levels_functions.sql, and
+// 20261124191649_match_levels_ten.sql: self_rating_out_of_range). The 1-10
+// rating calls are gone (S13B).
 const A5A_CODES = [
   'not_authenticated',
   'level_already_set',
@@ -9,17 +16,29 @@ const A5A_CODES = [
   'match_not_found',
   'not_captain',
   'competitive_locked',
-  'not_checked_in',
-  'match_not_confirmed',
-  'rating_closed',
-  'cannot_rate_self',
-  'player_not_eligible',
   'invalid_score',
-  'already_rated',
+  'self_rating_out_of_range',
   'not_pickup',
   'not_booker',
   'sides_locked',
 ];
+
+describe('selfRatingRange', () => {
+  it('reads the range from the refusal', () => {
+    expect(selfRatingRange({ message: 'self_rating_out_of_range', details: '{"low": 2, "high": 4}' })).toEqual({
+      low: 2,
+      high: 4,
+    });
+    expect(selfRatingRangeLine({ low: 2, high: 4 })).toBe('Based on your answers, pick between 2 and 4.');
+  });
+
+  it('nothing for any other error, a missing or broken detail', () => {
+    expect(selfRatingRange({ message: 'level_already_set', details: '{"low": 2, "high": 4}' })).toBeNull();
+    expect(selfRatingRange({ message: 'self_rating_out_of_range' })).toBeNull();
+    expect(selfRatingRange({ message: 'self_rating_out_of_range', details: 'nope' })).toBeNull();
+    expect(selfRatingRange({ message: 'self_rating_out_of_range', details: '{"low": "2"}' })).toBeNull();
+  });
+});
 
 describe('describeLevelError', () => {
   it('has words for every A5a code', () => {
@@ -32,10 +51,8 @@ describe('describeLevelError', () => {
     expect(words).toMatch(/\.$/);
   });
 
-  it('rating refusals say what happened', () => {
-    expect(describeLevelError({ message: 'rating_closed' })).toBe('Ratings for this match have closed.');
-    expect(describeLevelError({ message: 'already_rated' })).toBe("You've already rated this player.");
-    expect(describeLevelError({ message: 'cannot_rate_self' })).toBe("You can't rate yourself.");
+  it('a self-rating out of range, without its detail, still says what to do', () => {
+    expect(describeLevelError({ message: 'self_rating_out_of_range' })).toBe('Pick a rating closer to your answers.');
   });
 
   it('anything else: try again', () => {

@@ -39,7 +39,7 @@ describe('shareCardData', () => {
     const nikos = mockPagePlayer('p-nikos').name;
     expect(shareCardData(page)).toEqual({
       matchId: 'm1',
-      a: { label: 'Limassol Lions', score: 3, scorers: [booker, 'Own goal or unknown', booker] },
+      a: { label: 'Limassol Lions', score: 3, scorers: [booker, 'Own goal', booker] },
       b: { label: 'Nicosia Nomads', score: 1, scorers: [nikos] },
       motm: [booker, nikos],
       venue: 'Nuevo Campo',

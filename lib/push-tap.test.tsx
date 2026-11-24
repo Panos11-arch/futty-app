@@ -62,7 +62,7 @@ describe('routeForPushData', () => {
 
   // A10 (decision 1j): these open the post-match flow, so players land on it
   // after the game and again when the vote and ratings open.
-  it.each(['match_after_game', 'match_result_confirmed', 'motm_vote_open'])('%s opens the post-match flow', (type) => {
+  it.each(['match_after_game', 'match_result_confirmed', 'motm_vote_open', 'match_score_mismatch'])('%s opens the post-match flow', (type) => {
     expect(routeForPushData({ type, matchId: 'm1' })).toEqual({ pathname: '/match/after-game', params: { id: 'm1' } });
   });
 

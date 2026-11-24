@@ -1,8 +1,8 @@
 // Skill levels, ratings, competitive or casual and balance teams in the app
 // (docs/specs/match-record.md decision 1f, sections 4.8 and 5.5; 05-product
 // section 4). The server keeps every number and decides every write
-// (set_starting_level, set_match_competitive, rate_match_player,
-// balance_match_teams); these rules only decide what the app shows and which
+// (set_starting_level, set_match_competitive, balance_match_teams; the
+// S13B match ratings come from stats, lib/match/rating.ts); these rules only decide what the app shows and which
 // controls appear.
 import type { Loadable } from '@/lib/match/use-match-result';
 import type { RosterPlayer } from '@/lib/match/page';
@@ -17,17 +17,6 @@ export type PlayerLevel = {
   reliabilityPct: number;
   competitiveMatches: number;
   source: 'questionnaire' | 'default';
-};
-
-/** get_match_ratings (section 5.5). */
-export type MatchRatings = {
-  ratingsOpen: boolean;
-  /** Null when the match can't be rated (not confirmed, or a forfeit). */
-  ratingsCloseAt: string | null;
-  /** Each player's match rating, one decimal: only 3 or more ratings, only once the window has closed. */
-  players: { playerId: string; profileId: string; rating: number; count: number }[];
-  /** The caller's own ratings. */
-  myRatings: { playerId: string; score: number }[];
 };
 
 /** balance_match_teams' answer: profile ids per side and each side's average level. */
@@ -144,35 +133,6 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
   },
 ];
 
-export type RateablePlayer = { id: string; name: string; rated: boolean; kit?: AvatarKit | null };
-
-export type RatingsView =
-  /** Not confirmed, or a forfeit: no ratings at all. */
-  | { kind: 'none' }
-  | { kind: 'rate'; players: RateablePlayer[]; closesAt: string }
-  /** Open, but the viewer can't rate (not checked in, or not in the match). */
-  | { kind: 'open'; closesAt: string }
-  /** Closed: exactly the ratings the server returned (3 or more each). */
-  | { kind: 'closed'; players: MatchRatings['players'] };
-
-/**
- * Mirrors rate_match_player: a checked-in player rates every other checked-in
- * player who hasn't left (never a guest), once each. Ratings are shown only
- * as the server returns them; nothing is worked out here.
- */
-export function ratingsView(ratings: MatchRatings, roster: RosterPlayer[] | null, viewerId: string | null): RatingsView {
-  const closesAt = ratings.ratingsCloseAt;
-  if (!closesAt) return { kind: 'none' };
-  if (!ratings.ratingsOpen) return { kind: 'closed', players: ratings.players };
-  const played = (p: RosterPlayer) => p.checkedIn && p.leftAt === null && p.profileId !== null && p.guestName === null;
-  const me = roster?.find((p) => p.profileId === viewerId && played(p));
-  if (!roster || !viewerId || !me) return { kind: 'open', closesAt };
-  const rated = new Set(ratings.myRatings.map((r) => r.playerId));
-  const players = roster
-    .filter((p) => played(p) && p.profileId !== viewerId)
-    .map((p) => ({ id: p.id, name: p.name, rated: rated.has(p.id), kit: p.kit ?? null }));
-  return { kind: 'rate', players, closesAt };
-}
 
 /**
  * Competitive or casual (decision 1f.1): is_competitive from the server; a

@@ -7,7 +7,6 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import HomeScreen from '@/app/(tabs)/index';
-import { mockResultMatch } from '@/lib/match/mock';
 import type { RecentResult } from '@/lib/use-recent-results';
 import { type Owed, type OwedDebt, type OwedPayment, paymentSentence } from '@/lib/use-owed';
 
@@ -76,17 +75,14 @@ jest.mock('@/components/booking-result-form', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { BookingResultForm: ({ booking }: { booking: { id: string } }) => <Text>{`old booking form ${booking.id}`}</Text> };
 });
-jest.mock('@/components/match/result-panel', () => {
-  const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
-  return {
-    MatchResultPanel: ({ match }: { match: { match: { id: string } } }) => <Text>{`new result panel ${match.match.id}`}</Text>,
-  };
-});
-jest.mock('@/lib/match/use-match-result', () => ({
-  useOpenResultMatches: () =>
+// S13B: the games still waiting for the viewer's score come from the server (get_my_matches_to_log).
+jest.mock('@/lib/match/use-match-log', () => ({
+  useMyMatchesToLog: () =>
     mockOpenStatus === 'ready'
-      ? { status: 'ready', matches: mockOpenMatches, viewerId: 'booker', reload: mockReloadOpen }
-      : { status: 'error', message: 'PGRST201', viewerId: 'booker', reload: mockReloadOpen },
+      ? { status: 'ready', matches: mockOpenMatches, reload: mockReloadOpen }
+      : { status: 'error', message: 'boom', reload: mockReloadOpen },
+}));
+jest.mock('@/lib/match/use-match-result', () => ({
   useMatchLinks: (candidates: { bookingIds?: string[] }) => {
     mockLinkCandidates.push(candidates);
     return {
@@ -399,7 +395,16 @@ describe('Home owed banner (contract 6)', () => {
   });
 });
 
-describe('Home score logging: new matches use A2, old ones the old form', () => {
+const toLog = (over: Record<string, unknown> = {}) => ({
+  matchId: 'm1',
+  kickoffAt: '2026-11-14T17:00:00.000Z',
+  labelA: 'Bibs',
+  labelB: 'Non-bibs',
+  state: 'log',
+  ...over,
+});
+
+describe('Home score logging: new matches are logged by their captain (S13B), old ones keep the old form', () => {
   const pastBooking = (id: string) => ({ id, venue_id: 'v1', booking_day: '2026-11-01', start_time: '19:00:00' });
 
   beforeEach(() => {
@@ -486,12 +491,15 @@ describe('Home score logging: new matches use A2, old ones the old form', () => 
     expect(screen.getByText('old booking form old')).toBeTruthy();
   });
 
-  it('a booking with a match shows the result panel, never the old form', async () => {
+  it('a booking with a match shows Log the score, never the old form', async () => {
     mockUnscored = [pastBooking('new'), pastBooking('old')];
     mockLinks.bookings.set('new', 'm1');
-    mockOpenMatches = [mockResultMatch()];
+    mockOpenMatches = [toLog()];
     await render(<HomeScreen />);
-    expect(screen.getByText('new result panel m1')).toBeTruthy();
+    expect(screen.getByTestId('log-score-card-m1')).toHaveTextContent(/Log the score/);
+    expect(screen.getByText('Bibs v Non-bibs · Sat 14 Nov · 19:00')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('home-log-score-m1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
     expect(screen.queryByText('old booking form new')).toBeNull();
     expect(screen.getByText('old booking form old')).toBeTruthy();
   });
@@ -514,16 +522,16 @@ describe('Home score logging: new matches use A2, old ones the old form', () => 
     expect(screen.queryByText('Home FC vs Away FC')).toBeNull();
   });
 
-  it('a non-captain with nothing to do sees no panel on Home', async () => {
-    mockOpenMatches = [mockResultMatch({ mySide: 'a', sideACaptain: 'someone-else' })];
+  it('nothing to log (a player, or a score already logged): no card', async () => {
+    mockOpenMatches = [];
     await render(<HomeScreen />);
-    expect(screen.queryByText(/new result panel/)).toBeNull();
+    expect(screen.queryByText('Log the score')).toBeNull();
   });
 
-  it('the other side sees the panel to answer', async () => {
-    mockOpenMatches = [mockResultMatch({ submission: { submitted_by: 'x' }, mySide: 'b', sideACaptain: 'x' })];
+  it("the captains' scores differ: the card says so", async () => {
+    mockOpenMatches = [toLog({ state: 'mismatch' })];
     await render(<HomeScreen />);
-    expect(screen.getByText('new result panel m1')).toBeTruthy();
+    expect(screen.getByTestId('log-score-card-m1')).toHaveTextContent(/Scores differ/);
   });
 });
 

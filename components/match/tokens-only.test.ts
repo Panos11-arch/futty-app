@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const dir = __dirname;
-const sources = fs
-  .readdirSync(dir)
+// Subfolders too (S13B: log-score/).
+const sources = (fs.readdirSync(dir, { recursive: true }) as string[])
+  .map((f) => f.split(path.sep).join('/'))
   .filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\.(ts|tsx)$/.test(f))
   .map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')] as const);
 

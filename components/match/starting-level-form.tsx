@@ -1,7 +1,10 @@
 // The five starting questions (docs/specs/match-record.md decision 1f.2;
 // 05-product section 4.1), one per step. Finishing sends the five answers to
-// set_starting_level, which works out the level; skipping sends nothing, and
-// the server gives a provisional default the first time it is needed.
+// set_starting_level; skipping sends nothing, and the server gives a
+// provisional default the first time it is needed. S13B: the self-rating is
+// the starting level (1.0-10.0) if it is within 1 of what the server expects
+// from the answers; otherwise the player stays on the rating question, with
+// every answer kept, and is told the range the server allows.
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -11,7 +14,7 @@ import { Chip } from '@/components/ui/chip';
 import { ListRow } from '@/components/ui/list-row';
 import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
-import { describeLevelError } from '@/lib/match/level-errors';
+import { describeLevelError, selfRatingRange, selfRatingRangeLine } from '@/lib/match/level-errors';
 import { formatLevel, STARTING_QUESTIONS, type StartingAnswers } from '@/lib/match/levels';
 import { setStartingLevel } from '@/lib/match/levels-api';
 
@@ -47,7 +50,10 @@ export function StartingLevelForm({ onClose }: StartingLevelFormProps) {
   const question = STARTING_QUESTIONS[step];
   const last = step === STARTING_QUESTIONS.length - 1;
   const value = answers[question.key];
-  const choose = (v: string) => setAnswers((a) => ({ ...a, [question.key]: v }));
+  const choose = (v: string) => {
+    setAnswers((a) => ({ ...a, [question.key]: v }));
+    setError(null);
+  };
 
   const finish = async () => {
     const complete = STARTING_QUESTIONS.every((q) => answers[q.key] !== undefined);
@@ -57,7 +63,8 @@ export function StartingLevelForm({ onClose }: StartingLevelFormProps) {
     const { data, error: sendError } = await setStartingLevel(answers as StartingAnswers);
     setSending(false);
     if (sendError) {
-      setError(describeLevelError(sendError));
+      const range = selfRatingRange(sendError);
+      setError(range ? selfRatingRangeLine(range) : describeLevelError(sendError));
       return;
     }
     setResult({ level: Number((data as { level: number | string } | null)?.level ?? 0) });

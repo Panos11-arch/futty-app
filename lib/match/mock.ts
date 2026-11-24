@@ -418,6 +418,8 @@ export function mockMatchPage(overrides: Partial<MatchPage> = {}): MatchPage {
     motmVotingClosesAt: played ? PAGE_CLOSES_AT : null,
     motmOpen: played,
     goals: [],
+    assists: [],
+    ratings: [],
     motm: [],
     myVote: null,
     lineups: [],
