@@ -84,7 +84,7 @@ describe('Accept as opponent on a public opposition post (spec 13 "Invites, afte
     await fireEvent.press(screen.getByTestId('opposition-pay'));
 
     await waitFor(() => expect(mockAfterBooking).toHaveBeenCalledWith('b1', expect.anything()));
-    expect(mockAcceptPost).toHaveBeenCalledWith('p1', 'pay_all');
+    expect(mockAcceptPost).toHaveBeenCalledWith('p1', 'pay_all', false);
     expect(mockAcceptInvite).not.toHaveBeenCalled();
     expect(mockPayShare.mock.calls[0][0]).toBe('s1');
   });
@@ -103,7 +103,7 @@ describe('Accept as opponent on a public opposition post (spec 13 "Invites, afte
     await fireEvent.press(screen.getByTestId('opposition-way-each-pays'));
     await fireEvent.press(screen.getByTestId('opposition-pay'));
     expect(await screen.findByText('Invites for this game have closed.')).toBeTruthy();
-    expect(mockAcceptPost).toHaveBeenCalledWith('p1', 'each_pays_responsible');
+    expect(mockAcceptPost).toHaveBeenCalledWith('p1', 'each_pays_responsible', false);
     expect(mockPayShare).not.toHaveBeenCalled();
   });
 
@@ -114,5 +114,18 @@ describe('Accept as opponent on a public opposition post (spec 13 "Invites, afte
     expect(await screen.findByText('Arena')).toBeTruthy();
     expect(mockFetchInvite).toHaveBeenCalledWith('i1');
     expect(mockFetchPost).not.toHaveBeenCalled();
+  });
+});
+
+describe('Accept Losers pay on a public opposition post (B1d)', () => {
+  it('a Losers pay game is accepted knowingly', async () => {
+    mockFetchPost.mockResolvedValue({ ...post, losers_pay: true, losers_pay_all_cents: 4550, losers_each_pays_cents: 960, losers_spot_cents: 960 });
+    mockAcceptPost.mockResolvedValue({ accepted: { booking_id: 'b1', share_id: 's1', amount_cents: 4550 } });
+    mockPayShare.mockResolvedValue({ status: 'paid' });
+    await render(<OppositionInviteScreen />);
+    await fireEvent.press(await screen.findByRole('button', { name: 'Accept Losers pay' }));
+    await fireEvent.press(screen.getByTestId('opposition-way-pay-all'));
+    await fireEvent.press(screen.getByTestId('opposition-pay'));
+    await waitFor(() => expect(mockAcceptPost).toHaveBeenCalledWith('p1', 'pay_all', true));
   });
 });

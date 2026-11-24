@@ -121,6 +121,16 @@ describe('server calls', () => {
     expect(mockRpc).toHaveBeenLastCalledWith('accept_opposition', { p_invite_id: 'i2', p_mode: 'pay_all' });
   });
 
+  it('B1d: a Losers pay game is accepted knowingly', async () => {
+    mockRpc.mockResolvedValueOnce({ data: { booking_id: 'b1', share_id: 's9', amount_cents: 960 }, error: null });
+    await acceptOpposition('i2', 'each_pays_responsible', true);
+    expect(mockRpc).toHaveBeenLastCalledWith('accept_opposition', {
+      p_invite_id: 'i2',
+      p_mode: 'each_pays_responsible',
+      p_losers_pay: true,
+    });
+  });
+
   it('an invite that is gone is an error', async () => {
     mockRpc.mockResolvedValue({ data: [], error: null });
     await expect(fetchOppositionInvite('i9')).rejects.toThrow('This invite is no longer open.');

@@ -8,7 +8,9 @@
 //      is cancelled free (gipedo_auto_cancel_due). A cancelled booking's hold
 //      is released by the job's usual release step;
 //   3. every match with a final result settles its holds
-//      (gipedo_settle_from_results);
+//      (gipedo_settle_from_results), and every Booking v2 Losers pay match
+//      too (B1d, losers_pay_settle_from_results: each player's hold and the
+//      captain's guarantee, which has no share);
 //   4. each settlement due is carried out at Stripe: what it says is taken
 //      from the hold (a partial capture, amount_to_capture) and the rest
 //      released, or the whole hold released when it pays nothing. A hold
@@ -30,7 +32,8 @@ export type Deps = { stripe: Stripe; db: Db };
 export type DueSettlement = {
   settlement_id: string;
   booking_id: string;
-  share_id: string;
+  /** Null for a Losers pay captain's guarantee (B1d). */
+  share_id: string | null;
   stripe_payment_intent_id: string | null;
   capture_cents: number;
   hold_live: boolean;
@@ -41,7 +44,10 @@ type Outcome = 'captured' | 'released' | 'gone';
 const EXPAND = ['latest_charge.balance_transaction'];
 
 export async function runGipedoJobs(deps: Deps) {
-  const summary = { lapsed: 0, noOpponent: 0, autoCancelled: 0, settled: 0, captured: 0, released: 0, gone: 0, failed: 0 };
+  const summary = {
+    lapsed: 0, noOpponent: 0, autoCancelled: 0, settled: 0, losersPaySettled: 0,
+    captured: 0, released: 0, gone: 0, failed: 0,
+  };
 
   // Each step on its own: one failing never stops the next.
   for (const [key, fn] of [
@@ -49,6 +55,7 @@ export async function runGipedoJobs(deps: Deps) {
     ['noOpponent', 'gipedo_no_opponent_due'],
     ['autoCancelled', 'gipedo_auto_cancel_due'],
     ['settled', 'gipedo_settle_from_results'],
+    ['losersPaySettled', 'losers_pay_settle_from_results'],
   ] as const) {
     try {
       summary[key] = await rpc<number>(deps.db, fn);

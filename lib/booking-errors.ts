@@ -22,6 +22,31 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
       return "That pitch can't be booked for this game. Pick another.";
     case 'just_my_spot_removed':
       return 'Choose Pay for everyone or Pay for myself.';
+    // B1d: Losers pay (spec 13 "Losers pay (Gipedo Pano in Booking v2)").
+    case 'losers_pay_half_pitch_only':
+      return 'Losers pay is for a half pitch.';
+    case 'losers_pay_needs_way_to_pay':
+      return 'Choose Pay for everyone or Pay for myself.';
+    case 'losers_pay_too_far_ahead':
+      return ruleText(
+        (r) => `Losers pay can be booked at most ${daysText(r.gipedo_max_days)} ahead.`,
+        'Losers pay can only be booked a few days ahead.',
+      );
+    case 'accept_losers_pay':
+      return 'This game is Losers pay. Accept Losers pay to play it.';
+    case 'captain_pulls_out_side':
+      return 'As captain, you pull your whole team out instead.';
+    case 'losers_pay_play_whole_not_available':
+      return "Paying the whole pitch isn't available for Losers pay yet. You can cancel free.";
+    case 'losers_pay_pull_out_too_late':
+    case 'losers_pay_pull_out_pay_all':
+    case 'losers_pay_pull_out_alone':
+      return "Your team can't pull out of this game in the app yet.";
+    case 'not_losers_pay':
+      return "This game isn't Losers pay.";
+    case 'use_losers_pay_leave':
+    case 'use_losers_pay_pull_out':
+      return "Leaving a Losers pay game isn't in the app yet.";
     case 'cash_whole_pitch_only':
       return 'Cash is for a whole pitch only.';
     case 'half_pitch_not_available':

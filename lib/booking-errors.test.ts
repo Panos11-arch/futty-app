@@ -107,3 +107,21 @@ describe('Gipedo Pano (P8)', () => {
     );
   });
 });
+
+describe('B1d: Losers pay, in words', () => {
+  it.each([
+    ['losers_pay_half_pitch_only', 'Losers pay is for a half pitch.'],
+    ['losers_pay_needs_way_to_pay', 'Choose Pay for everyone or Pay for myself.'],
+    ['accept_losers_pay', 'This game is Losers pay. Accept Losers pay to play it.'],
+    ['captain_pulls_out_side', 'As captain, you pull your whole team out instead.'],
+    ['losers_pay_play_whole_not_available', "Paying the whole pitch isn't available for Losers pay yet. You can cancel free."],
+    ['losers_pay_pull_out_too_late', "Your team can't pull out of this game in the app yet."],
+    ['use_losers_pay_leave', "Leaving a Losers pay game isn't in the app yet."],
+  ])('%s', (code, words) => {
+    expect(describeBookingErrorMessage(code)).toBe(words);
+  });
+
+  it('the 5 days come from the rules', () => {
+    expect(describeBookingErrorMessage('losers_pay_too_far_ahead')).toMatch(/^Losers pay can (be booked at most 5 days ahead|only be booked a few days ahead)\.$/);
+  });
+});

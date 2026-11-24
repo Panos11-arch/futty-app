@@ -83,10 +83,10 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
   // P11: the forecast for the game's hours.
   const weather = useGameWeather(slot.venueId, { day: slot.day, start: slot.start, end: slot.end });
 
-  async function pay({ mode, kind, pitchIds, pay }: CheckoutPayChoice) {
+  async function pay({ mode, kind, pitchIds, losersPay, pay }: CheckoutPayChoice) {
     setPaying(true);
     setError(null);
-    const outcome = await payForSlot({ slot, mode, kind, pitchIds, pay, bookingId }, sheet);
+    const outcome = await payForSlot({ slot, mode, kind, pitchIds, losersPay, pay, bookingId }, sheet);
     setPaying(false);
     setBookingId(outcome.bookingId);
     if (outcome.status === 'paid') {

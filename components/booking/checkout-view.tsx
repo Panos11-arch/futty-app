@@ -41,6 +41,8 @@ import {
   guaranteeCents,
   guaranteeLine,
   KIND_LINES,
+  losersPayLine,
+  losersPayOffered,
   modeForWay,
   pitchDetails,
   wayLine,
@@ -53,7 +55,14 @@ import {
 import { formatEuros } from '@/lib/money/format';
 import { minutesText, ruleText } from '@/lib/rules';
 
-export type CheckoutPayChoice = { mode: PaymentMode; kind: BookingKind; pitchIds: string[]; pay: PayOptions };
+export type CheckoutPayChoice = {
+  mode: PaymentMode;
+  kind: BookingKind;
+  pitchIds: string[];
+  pay: PayOptions;
+  /** B1d: Losers pay on a half pitch. */
+  losersPay?: boolean;
+};
 
 export type CheckoutViewProps = {
   venueName: string;
@@ -144,6 +153,7 @@ function CheckoutReady({
   const [pitchKey, setPitchKey] = useState<string | null>(null);
   const [kindChoice, setKind] = useState<BookingKind>('whole');
   const [way, setWay] = useState<WayToPay | null>(null);
+  const [losersChoice, setLosers] = useState(false);
   const [credit, setCredit] = useState(false);
   const [cash, setCash] = useState(false);
   const [accepted, setAccepted] = useState(false);
@@ -155,10 +165,12 @@ function CheckoutReady({
   // Half only while the server offers it.
   const kind: BookingKind = quote.half.available ? kindChoice : 'whole';
 
-  const creditOn = credit && creditOffered(data.credit, { kind, way });
+  // B1d: Losers pay, a half pitch only, where the server offers it.
+  const losersPay = losersChoice && losersPayOffered(quote, kind);
+  const creditOn = credit && !losersPay && creditOffered(data.credit, { kind, way });
   const cashShown = cashOffered(quote, { kind, way }) && !creditOn;
   const cashOn = cash && cashShown;
-  const choice = { kind, way, cash: cashOn, credit: creditOn };
+  const choice = { kind, way, cash: cashOn, credit: creditOn, losersPay };
   const amounts = checkoutAmountsV2(data, choice);
   const guarantee = guaranteeCents(quote, choice);
   const nonRefundable = showNonRefundable(quote, now);
@@ -240,6 +252,32 @@ function CheckoutReady({
           ) : null}
         </View>
 
+        {losersPayOffered(quote, kind) ? (
+          <View style={styles.option}>
+            <View style={styles.switchRow}>
+              <Text variant="body" style={styles.switchLabel}>
+                Losers pay
+              </Text>
+              <Switch
+                testID="checkout-losers-pay"
+                accessibilityLabel="Losers pay"
+                value={losersPay}
+                disabled={bookingHeld}
+                onValueChange={(on) => choose(setLosers)(on)}
+                trackColor={{ true: colors.brand, false: colors.border }}
+                thumbColor={colors.surface}
+              />
+            </View>
+            {losersPay ? (
+              <View testID="checkout-losers-pay-line">
+                <Text variant="callout" tone="inkMuted">
+                  {losersPayLine(quote, way)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.section}>
           <SectionHeader title="Who pays" />
           <View style={styles.row}>
@@ -248,7 +286,7 @@ function CheckoutReady({
                 key={w.way}
                 testID={w.testID}
                 title={w.title}
-                price={wayPriceLabel(quote, kind, w.way)}
+                price={wayPriceLabel(quote, kind, w.way, losersPay)}
                 line={wayLine(kind, w.way)}
                 selected={way === w.way}
                 locked={bookingHeld}
@@ -278,7 +316,7 @@ function CheckoutReady({
               />
             </View>
           ) : null}
-          {creditOffered(data.credit, { kind, way }) && !cashOn ? (
+          {creditOffered(data.credit, { kind, way }) && !cashOn && !losersPay ? (
             <View style={styles.option}>
               <Chip
                 testID="checkout-credit"
@@ -349,6 +387,7 @@ function CheckoutReady({
             kind,
             pitchIds: pitch.pitch_ids,
             pay: { method: cashOn ? 'cash' : 'card', acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn },
+            ...(losersPay ? { losersPay: true } : {}),
           });
         }}
       />

@@ -128,6 +128,10 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
   - **Pay for myself:** each player's card is held for **twice** their normal each-pays share including the fee (€9.60 on a €40 5-a-side pitch; €8.00 for a Premium player's own spot). **24 hours before kickoff** (or at once if booked or accepted later), the side's captain gets a guarantee hold only for that side's spots still without a hold, at the same per-spot amount.
 - **Settlement as today:** the losing side's holds are taken in full (players' holds first, then the captain's guarantee for missing spots); the winning side's are released; a draw or dispute takes half of every hold and releases the rest. The venue always receives the full pitch price.
 - **Side B sees "Losers pay" and its hold amount before accepting.** The button reads **"Accept Losers pay"**; there's no way to accept without it.
+- **Pulling out (decided by Panos, 23 November):**
+  1. **A player on a "pay for myself" side who leaves before the match:** today's rules apply to his €4.80 share (free in the first hour, then €1 kept, less than 6 hours before kickoff nothing back); the rest of his hold is released.
+  2. **A whole "pay for myself" side pulling out more than 6 hours before kickoff:** the €1 per player is taken from each player's own hold; the rest of each hold is released.
+- **No opponent 24 hours before kickoff (decided by Panos, 23 November):** the same choice as a normal half pitch: **"Pay the whole pitch and play"** (the booking then becomes an ordinary booking, no Losers pay) or **"Cancel free"** (everything refunded, holds released). No choice by 6 hours before kickoff = cancelled free.
 
 ### Answered on 23 November (Panos)
 1. **Cash:** each player, as today: €0.80 in the app and their pitch part in cash; unticked cash comes from the booker's guarantee (example 3).

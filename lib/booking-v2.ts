@@ -48,6 +48,14 @@ export type BookingQuoteV2 = {
     side_pitch_cents: number;
     pay_all: Amount;
     pay_for_myself: ForMyself;
+    /** B1d: Losers pay's holds. Pay for everyone: the whole pitch with all
+     *  the players' fees; pay for myself: twice the share, and spot_cents
+     *  the hold per spot (the captain's guarantee covers spots without one). */
+    losers_pay: {
+      available: boolean;
+      pay_all: Amount;
+      pay_for_myself: Amount & { spot_cents: number };
+    };
   };
   in_debt: boolean;
   cash_allowed: boolean;
@@ -83,7 +91,19 @@ export type CheckoutData = { quote: BookingQuoteV2; credit: CheckoutCredit | nul
 export type BookingKind = 'whole' | 'half';
 export type WayToPay = 'pay_all' | 'pay_for_myself';
 
-export type CheckoutChoiceV2 = { kind: BookingKind; way: WayToPay | null; cash: boolean; credit: boolean };
+export type CheckoutChoiceV2 = {
+  kind: BookingKind;
+  way: WayToPay | null;
+  cash: boolean;
+  credit: boolean;
+  /** B1d: Losers pay (a half pitch, where the server offers it). */
+  losersPay?: boolean;
+};
+
+/** Losers pay is a half pitch only, where the server offers it (up to 5 days ahead). */
+export function losersPayOffered(quote: BookingQuoteV2, kind: BookingKind): boolean {
+  return kind === 'half' && quote.half.available && quote.half.losers_pay.available;
+}
 
 /** What book_slot is told. "Just my spot" is gone for Booking v2, and Losers
  *  pay (B1d) isn't offered yet. */
@@ -103,7 +123,11 @@ export function wayLine(kind: BookingKind, way: WayToPay): string {
 
 /** Each way's price on its card: one payment for everyone, or what each
  *  player pays. */
-export function wayPriceLabel(quote: BookingQuoteV2, kind: BookingKind, way: WayToPay): string {
+export function wayPriceLabel(quote: BookingQuoteV2, kind: BookingKind, way: WayToPay, losersPay = false): string {
+  if (losersPay && kind === 'half') {
+    const holds = quote.half.losers_pay;
+    return way === 'pay_all' ? formatEuros(holds.pay_all.card_cents) : `${formatEuros(holds.pay_for_myself.spot_cents)} each`;
+  }
   const prices = quote[kind];
   return way === 'pay_all' ? formatEuros(prices.pay_all.card_cents) : `${formatEuros(prices.pay_for_myself.player_cents)} each`;
 }
@@ -126,6 +150,18 @@ export type CheckoutAmountsV2 = { lines: PriceLine[]; totalCents: number; cashCe
 export function checkoutAmountsV2(data: CheckoutData, choice: CheckoutChoiceV2): CheckoutAmountsV2 | null {
   const { quote } = data;
   if (!choice.way) return null;
+  if (choice.losersPay && choice.kind === 'half') {
+    // B1d: held, not taken, until the result (no cash, no credit).
+    const hold = choice.way === 'pay_all' ? quote.half.losers_pay.pay_all : quote.half.losers_pay.pay_for_myself;
+    return {
+      lines: [
+        { label: choice.way === 'pay_all' ? 'Whole pitch' : 'Twice your part of the pitch', cents: hold.pitch_cents },
+        { label: 'Service fee', cents: hold.fee_cents },
+      ],
+      totalCents: hold.card_cents,
+      cashCents: null,
+    };
+  }
   if (choice.way === 'pay_all') {
     const all = quote[choice.kind].pay_all;
     if (choice.credit && creditOffered(data.credit, choice)) {
@@ -177,8 +213,13 @@ export function checkoutAmountsV2(data: CheckoutData, choice: CheckoutChoiceV2):
 }
 
 /** The guarantee held for unpaid spots: paying for myself only. */
-export function guaranteeCents(quote: BookingQuoteV2, choice: Pick<CheckoutChoiceV2, 'kind' | 'way' | 'cash'>): number | null {
+export function guaranteeCents(
+  quote: BookingQuoteV2,
+  choice: Pick<CheckoutChoiceV2, 'kind' | 'way' | 'cash' | 'losersPay'>,
+): number | null {
   if (choice.way !== 'pay_for_myself') return null;
+  // Losers pay: the guarantee is counted 24 hours before kickoff (losersPayLine).
+  if (choice.losersPay && choice.kind === 'half') return null;
   if (choice.kind === 'whole' && choice.cash) return quote.whole.cash.guarantee_cents;
   return quote[choice.kind].pay_for_myself.guarantee_cents;
 }
@@ -191,6 +232,22 @@ export function guaranteeLine(cents: number): string {
     (r) => `We hold ${amount} on your card for unpaid spots, taken ${hoursText(r.collection_delay_hours)} after the game.`,
     `We hold ${amount} on your card for unpaid spots, taken after the game.`,
   );
+}
+
+/** B1d (spec 13 "Losers pay"): what the hold means, from the server's
+ *  amounts. The 24 hours is the opposition lead (app_rules). */
+export function losersPayLine(quote: BookingQuoteV2, way: WayToPay | null): string {
+  const holds = quote.half.losers_pay;
+  const settle = "If your team loses, it's taken; if you win, it's released; a draw or a dispute takes half.";
+  if (way === 'pay_all') return `We hold ${formatEuros(holds.pay_all.card_cents)} on your card until the result. ${settle}`;
+  if (way === 'pay_for_myself') {
+    const spot = formatEuros(holds.pay_for_myself.spot_cents);
+    return `Each player's card is held for ${spot} until the result. ${settle} ` + ruleText(
+      (r) => `${hoursText(r.gipedo_opponent_hours)} before kickoff, we hold ${spot} on your card for each of your team's spots still without a hold.`,
+      `Before kickoff, we hold ${spot} on your card for each of your team's spots still without a hold.`,
+    );
+  }
+  return `The losing team pays the whole pitch. ${settle}`;
 }
 
 /** Spec 13's free hour in one line, from the server's numbers: free within

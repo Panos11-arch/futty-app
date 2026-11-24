@@ -3,6 +3,8 @@ import {
   guaranteeCents,
   guaranteeLine,
   KIND_LINES,
+  losersPayLine,
+  losersPayOffered,
   checkoutCancellationLine,
   creditOffered,
   modeForWay,
@@ -190,5 +192,42 @@ describe('Booking v2 checkout words (spec 15 Words rules)', () => {
     expect(describeBookingErrorMessage('cash_whole_pitch_only')).toBe('Cash is for a whole pitch only.');
     expect(describeBookingErrorMessage('half_pitch_not_available')).toBe("Half pitches aren't available yet. Book the whole pitch.");
     expect(describeBookingErrorMessage('invalid_pitch_choice')).toBe("That pitch can't be booked for this game. Pick another.");
+  });
+});
+
+// B1d (spec 13 "Losers pay"): the server's holds, as they are.
+describe('Losers pay at checkout', () => {
+  const half = { kind: 'half' as const, cash: false, credit: false, losersPay: true };
+
+  it('offered on a half pitch only, where the server offers it', () => {
+    const q = quoteV2Fixture();
+    expect(losersPayOffered(q, 'half')).toBe(true);
+    expect(losersPayOffered(q, 'whole')).toBe(false);
+    expect(losersPayOffered({ ...q, half: { ...q.half, losers_pay: { ...q.half.losers_pay, available: false } } }, 'half')).toBe(false);
+  });
+
+  it('7a: paying for everyone holds €45.50; 8a: paying for myself holds €9.60', () => {
+    expect(checkoutAmountsV2(checkoutDataFixture(), { ...half, way: 'pay_all' })).toEqual({
+      lines: [
+        { label: 'Whole pitch', cents: 4000 },
+        { label: 'Service fee', cents: 550 },
+      ],
+      totalCents: 4550,
+      cashCents: null,
+    });
+    expect(checkoutAmountsV2(checkoutDataFixture(), { ...half, way: 'pay_for_myself' })?.totalCents).toBe(960);
+    expect(wayPriceLabel(quoteV2Fixture(), 'half', 'pay_all', true)).toBe('€45.50');
+    expect(wayPriceLabel(quoteV2Fixture(), 'half', 'pay_for_myself', true)).toBe('€9.60 each');
+  });
+
+  it('no "unpaid spots" guarantee line: the guarantee is counted 24 hours before kickoff', () => {
+    expect(guaranteeCents(quoteV2Fixture(), { ...half, way: 'pay_for_myself' })).toBeNull();
+    expect(losersPayLine(quoteV2Fixture(), 'pay_for_myself')).toBe(
+      "Each player's card is held for €9.60 until the result. If your team loses, it's taken; if you win, it's released; " +
+        "a draw or a dispute takes half. 24 hours before kickoff, we hold €9.60 on your card for each of your team's spots still without a hold.",
+    );
+    expect(losersPayLine(quoteV2Fixture(), 'pay_all')).toBe(
+      "We hold €45.50 on your card until the result. If your team loses, it's taken; if you win, it's released; a draw or a dispute takes half.",
+    );
   });
 });

@@ -49,6 +49,11 @@ describe('payForSlot', () => {
     expect(mockCreateSharePayment).toHaveBeenCalledWith('s1', pay);
   });
 
+  it('B1d: Losers pay reaches the booking', async () => {
+    await payForSlot({ slot, mode: 'pay_all', kind: 'half', losersPay: true, pay: card, bookingId: null }, sheet());
+    expect(mockBookSlot).toHaveBeenCalledWith({ ...slot, mode: 'pay_all', kind: 'half', losersPay: true });
+  });
+
   it('a retry reuses the booking it already made', async () => {
     await payForSlot({ slot, mode: 'pay_all', pay: card, bookingId: 'b1' }, sheet());
     expect(mockBookSlot).not.toHaveBeenCalled();

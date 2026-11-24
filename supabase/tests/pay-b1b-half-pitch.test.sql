@@ -171,7 +171,7 @@ begin
   assert tests.error_of(format('select tests.b1b_book(%L, %L, ''half'', ''each_pays_own_spot'')', s.venue, s.booker))
          = 'just_my_spot_removed', 'no Just my spot';
   assert tests.error_of(format('select tests.b1b_book(%L, %L, ''half'', ''gipedo_pano'')', s.venue, s.booker))
-         = 'losers_pay_not_available', 'Losers pay comes in B1d';
+         = 'losers_pay_needs_way_to_pay', 'B1d: Losers pay is chosen with a way to pay (p_losers_pay)';
   v := tests.b1b_book(s.venue, s.booker, 'half', 'each_pays_responsible');
   perform public.add_booking_share_internal(v.id, v_joiner);
   assert tests.error_of(format('select public.plan_share_payment(%L, %L, ''cash'', false)',
