@@ -40,11 +40,11 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   db.respond('credit_reservations_to_release', []);
   db.respond('credit_release_started', true);
   db.respond('booking_match_syncs_due', []);
-  for (const fn of ['gipedo_lapse_offers', 'gipedo_no_opponent_due', 'gipedo_auto_cancel_due', 'gipedo_settle_from_results']) {
+  for (const fn of ['gipedo_lapse_offers', 'gipedo_no_opponent_due', 'gipedo_auto_cancel_due', 'gipedo_settle_from_results', 'losers_pay_settle_from_results']) {
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlements_due', []);
-  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due']) {
+  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due', 'losers_pay_count_guarantees']) {
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
@@ -589,4 +589,18 @@ Deno.test('records the odd cent of played half pitches', async () => {
   const summary = await runPaymentJobs(deps);
 
   strictEqual(summary.oddCent, 3);
+});
+
+// B1d: Losers pay guarantees are counted (24 hours before kickoff, the side's
+// spots still without a hold) before any guarantee hold is placed, so a
+// guarantee is never held for an amount not yet counted.
+Deno.test('counts Losers pay guarantees before placing guarantee holds', async () => {
+  const { db, deps } = setup();
+  db.respond('losers_pay_count_guarantees', 2);
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.losersPayGuarantees, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('losers_pay_count_guarantees') < order.indexOf('guarantees_due_for_hold'), true);
 });

@@ -31,6 +31,12 @@ export function quoteV2Fixture(overrides: Partial<BookingQuoteV2> = {}): Booking
       side_pitch_cents: 2000,
       pay_all: { pitch_cents: 2000, fee_cents: 275, card_cents: 2275 },
       pay_for_myself: { card_cents: 480, pitch_cents: 400, fee_cents: 80, player_cents: 480, guarantee_cents: 2000 },
+      // B1d, examples 7a and 8a: Losers pay's holds.
+      losers_pay: {
+        available: true,
+        pay_all: { pitch_cents: 4000, fee_cents: 550, card_cents: 4550 },
+        pay_for_myself: { pitch_cents: 800, fee_cents: 160, card_cents: 960, spot_cents: 960 },
+      },
     },
     in_debt: false,
     cash_allowed: true,

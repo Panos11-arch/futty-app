@@ -206,6 +206,9 @@ describe('server calls', () => {
       accepted: { booking_id: 'b1', share_id: 's1', amount_cents: 2275 },
     });
     expect(mockRpc).toHaveBeenCalledWith('accept_opposition_post', { p_post_id: 'p1', p_mode: 'pay_all' });
+    mockRpc.mockResolvedValueOnce({ data: { booking_id: 'b1', share_id: 's1', amount_cents: 4550 }, error: null });
+    await acceptOppositionPost('p1', 'pay_all', true);
+    expect(mockRpc).toHaveBeenLastCalledWith('accept_opposition_post', { p_post_id: 'p1', p_mode: 'pay_all', p_losers_pay: true });
     mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'opposition_found' } });
     expect(await acceptOppositionPost('p1', 'pay_all')).toEqual({ error: describeBookingErrorMessage('opposition_found') });
   });

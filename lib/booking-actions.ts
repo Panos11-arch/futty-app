@@ -22,6 +22,8 @@ export type BookSlotParams = {
   /** Booking v2: a whole or a half pitch. Naming it makes this a Booking v2
    *  booking on the server. */
   kind?: 'whole' | 'half';
+  /** B1d: Losers pay on a half pitch, with mode the side's way to pay. */
+  losersPay?: boolean;
 };
 
 export type PaymentMode = 'pay_all' | 'each_pays_responsible' | 'each_pays_own_spot' | 'gipedo_pano';
@@ -48,6 +50,7 @@ export async function bookSlot(params: BookSlotParams) {
     ...(params.mode === 'gipedo_pano' && params.teamId ? { p_team_id: params.teamId } : {}),
     ...(params.pitchIds ? { p_pitch_ids: params.pitchIds } : {}),
     ...(params.kind ? { p_kind: params.kind } : {}),
+    ...(params.losersPay ? { p_losers_pay: true } : {}),
   });
 }
 

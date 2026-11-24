@@ -36,7 +36,10 @@ export default function OppositionInviteScreen() {
     // same share again.
     let mine = accepted;
     if (!mine) {
-      const result = postId ? await acceptOppositionPost(postId, mode) : await acceptOpposition(inviteId, mode);
+      const losersPay = state.status === 'ready' && state.data.losers_pay === true;
+      const result = postId
+        ? await acceptOppositionPost(postId, mode, losersPay)
+        : await acceptOpposition(inviteId, mode, losersPay);
       if ('error' in result) {
         setPaying(false);
         setError(result.error);

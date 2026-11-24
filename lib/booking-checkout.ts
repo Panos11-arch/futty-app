@@ -65,6 +65,8 @@ type SlotChoice = {
   /** Booking v2 (B2): the chosen pitch or combination, and the kind. */
   pitchIds?: string[];
   kind?: 'whole' | 'half';
+  /** B1d: Losers pay (a half pitch). */
+  losersPay?: boolean;
   pay: PayOptions;
   bookingId: string | null;
 };
@@ -75,7 +77,7 @@ type SlotChoice = {
  *  next retry, or null when there is none to retry. pitchTaken: the chosen
  *  pitch was taken meanwhile, so the screen reloads the pitch list. */
 export async function payForSlot(
-  { slot, mode, teamId, pitchIds, kind, pay, bookingId }: SlotChoice,
+  { slot, mode, teamId, pitchIds, kind, losersPay, pay, bookingId }: SlotChoice,
   sheet: PaymentSheet,
 ): Promise<PayOutcome & { bookingId: string | null; pitchTaken?: true }> {
   let id = bookingId;
@@ -86,6 +88,7 @@ export async function payForSlot(
       ...(teamId ? { teamId } : {}),
       ...(pitchIds ? { pitchIds } : {}),
       ...(kind ? { kind } : {}),
+      ...(losersPay ? { losersPay } : {}),
     });
     if (error || !data) {
       const code = error?.message ?? 'Could not create the booking.';

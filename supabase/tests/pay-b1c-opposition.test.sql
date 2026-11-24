@@ -151,7 +151,7 @@ begin
   assert tests.error_of(format('select tests.b1c_accept(%L, %L, ''each_pays_own_spot'')', v_invite, s.friend))
          = 'just_my_spot_removed', '"Just my spot" is removed';
   assert tests.error_of(format('select tests.b1c_accept(%L, %L, ''gipedo_pano'')', v_invite, s.friend))
-         = 'losers_pay_not_available', 'Losers pay comes in B1d';
+         = 'losers_pay_needs_way_to_pay', 'B1d: side B keeps its own way to pay';
 
   -- Already in the booking (a side A player).
   perform public.add_booking_side_share_internal(s.booking, s.friend, 'a');

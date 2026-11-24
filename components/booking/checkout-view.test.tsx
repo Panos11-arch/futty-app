@@ -346,3 +346,31 @@ describe('CheckoutView (Booking v2)', () => {
     expect(onRetry).toHaveBeenCalled();
   });
 });
+
+// B1d (spec 13 "Losers pay"): a half pitch's Losers pay, with the server's holds.
+describe('CheckoutView: Losers pay', () => {
+  it('offered on a half pitch only; the ways to pay show the holds (7a €45.50, 8a €9.60 each)', async () => {
+    const onPay = jest.fn();
+    await render(<CheckoutView {...props(checkoutDataFixture(), { onPay })} />);
+    expect(screen.queryByTestId('checkout-losers-pay')).toBeNull();
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent(screen.getByTestId('checkout-losers-pay'), 'valueChange', true);
+    expect(within(screen.getByTestId('checkout-who-pay-all')).getByText('€45.50')).toBeTruthy();
+    expect(within(screen.getByTestId('checkout-who-each-pays')).getByText('€9.60 each')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('checkout-who-each-pays'));
+    expect(screen.getByTestId('checkout-losers-pay-line')).toBeTruthy();
+    expect(screen.queryByTestId('checkout-guarantee')).toBeNull();
+    await fireEvent.press(payButton());
+    expect(onPay).toHaveBeenCalledWith(expect.objectContaining({ mode: 'each_pays_responsible', kind: 'half', losersPay: true }));
+  });
+
+  it('off: a normal half pitch, and no losersPay sent', async () => {
+    const onPay = jest.fn();
+    await render(<CheckoutView {...props(checkoutDataFixture(), { onPay })} />);
+    await fireEvent.press(screen.getByTestId('checkout-kind-half'));
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(within(screen.getByTestId('checkout-who-pay-all')).getByText('€22.75')).toBeTruthy();
+    await fireEvent.press(payButton());
+    expect(onPay.mock.calls[0][0].losersPay).toBeUndefined();
+  });
+});

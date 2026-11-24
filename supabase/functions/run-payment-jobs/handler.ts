@@ -42,7 +42,10 @@
 //      cancelled free (booking_no_opponent_auto_cancel_due) and the release
 //      step gives everything back in the same run. Once a half pitch with
 //      an odd price is played, the cent Futty absorbs is recorded as a
-//      transfer to the venue (booking_odd_cent_due).
+//      transfer to the venue (booking_odd_cent_due). B1d: each Losers pay
+//      guarantee is counted 24 hours before kickoff, for the side's spots
+//      still without a hold (losers_pay_count_guarantees), before step 4
+//      places any guarantee hold.
 // Which ones are due is decided in the database, in Cyprus time. One item
 // failing never stops the others.
 import type Stripe from 'npm:stripe@^22';
@@ -82,7 +85,7 @@ export async function runPaymentJobs(deps: Deps) {
     creditReleased: 0,
     matchSynced: 0, matchSyncFailed: 0,
     gipedoSettled: 0, gipedoFailed: 0,
-    sideBLapsed: 0, noOpponent: 0, noOpponentReminded: 0, noOpponentCancelled: 0, oddCent: 0,
+    sideBLapsed: 0, noOpponent: 0, noOpponentReminded: 0, noOpponentCancelled: 0, oddCent: 0, losersPayGuarantees: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -143,6 +146,7 @@ export async function runPaymentJobs(deps: Deps) {
     ['noOpponentReminded', 'booking_no_opponent_reminder_due'],
     ['noOpponentCancelled', 'booking_no_opponent_auto_cancel_due'],
     ['oddCent', 'booking_odd_cent_due'],
+    ['losersPayGuarantees', 'losers_pay_count_guarantees'],
   ] as const) {
     try {
       summary[key] = await rpc<number>(deps.db, fn);

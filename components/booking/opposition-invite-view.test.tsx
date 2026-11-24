@@ -101,3 +101,36 @@ describe('OppositionInviteView (B3: side B accepts)', () => {
     expect(within(screen.getByTestId('opposition-error')).getByText('Your card was declined.')).toBeTruthy();
   });
 });
+
+// B1d (spec 13 "Losers pay"): side B sees Losers pay and its hold before
+// accepting; the button reads "Accept Losers pay" and there's no other.
+describe('OppositionInviteView: Losers pay', () => {
+  const losers = () =>
+    invite({ losers_pay: true, losers_pay_all_cents: 4550, losers_each_pays_cents: 960, losers_spot_cents: 960 });
+
+  it('says Losers pay before accepting, and the only button is "Accept Losers pay"', async () => {
+    await render(<OppositionInviteView {...props(losers())} />);
+    expect(screen.getByTestId('opposition-losers-pay')).toBeTruthy();
+    expect(screen.getByText(/The losing team pays the whole pitch/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Accept Losers pay' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Accept as captain' })).toBeNull();
+  });
+
+  it('the holds, from the server: €45.50 paying for everyone (7a), €9.60 paying for myself (8a)', async () => {
+    const onPay = jest.fn();
+    await render(<OppositionInviteView {...props(losers(), { onPay })} />);
+    await fireEvent.press(screen.getByTestId('opposition-accept'));
+    expect(screen.getAllByText('€45.50').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('€9.60').length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByTestId('opposition-way-each-pays'));
+    expect(screen.getByText(/Each player's card is held for €9\.60\. 24 hours before kickoff, we hold €9\.60/)).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('opposition-pay'));
+    expect(onPay).toHaveBeenCalledWith('each_pays_responsible');
+  });
+
+  it('not Losers pay: as before', async () => {
+    await render(<OppositionInviteView {...props()} />);
+    expect(screen.queryByTestId('opposition-losers-pay')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Accept as captain' })).toBeTruthy();
+  });
+});

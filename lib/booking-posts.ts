@@ -141,8 +141,14 @@ export async function fetchOppositionPost(postId: string): Promise<OppositionInv
 export async function acceptOppositionPost(
   postId: string,
   mode: 'pay_all' | 'each_pays_responsible',
+  losersPay = false,
 ): Promise<{ accepted: AcceptedOpposition } | { error: string }> {
-  const { data, error } = await supabase.rpc('accept_opposition_post', { p_post_id: postId, p_mode: mode });
+  // B1d: a Losers pay game is accepted knowingly ("Accept Losers pay").
+  const { data, error } = await supabase.rpc('accept_opposition_post', {
+    p_post_id: postId,
+    p_mode: mode,
+    ...(losersPay ? { p_losers_pay: true } : {}),
+  });
   if (error || !data) return { error: words(error?.message) };
   return { accepted: data as AcceptedOpposition };
 }

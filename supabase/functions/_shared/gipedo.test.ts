@@ -25,6 +25,7 @@ function setup(settlements: DueSettlement[] = []) {
   db.respond('gipedo_no_opponent_due', 0);
   db.respond('gipedo_auto_cancel_due', 0);
   db.respond('gipedo_settle_from_results', settlements.length);
+  db.respond('losers_pay_settle_from_results', 0);
   db.respond('gipedo_settlements_due', settlements);
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
   db.respond('gipedo_settlement_failed', { result: 'failed', attempts: 1 });
@@ -182,4 +183,34 @@ Deno.test('lapsed offers, no-opponent notices and automatic cancels run first; o
   const summary = await runGipedoJobs(deps);
   deepStrictEqual([summary.lapsed, summary.noOpponent, summary.autoCancelled], [0, 2, 1]);
   strictEqual(summary.released, 1);
+});
+
+// B1d (spec 13 "Losers pay"): a Booking v2 Losers pay result is settled by
+// the same machinery, before the settlements due are carried out.
+Deno.test('Losers pay: results are settled before the settlements due are carried out', async () => {
+  const { db, deps } = setup([due(1, 4550)]);
+  db.respond('losers_pay_settle_from_results', 2);
+  const summary = await runGipedoJobs(deps);
+  strictEqual(summary.losersPaySettled, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('losers_pay_settle_from_results') < order.indexOf('gipedo_settlements_due'), true);
+});
+
+Deno.test("Losers pay: a captain's guarantee (no share) is taken like any hold (example 10a: 1920)", async () => {
+  const { db, stripe, deps } = setup([due(1, 1920, { share_id: null, stripe_payment_intent_id: 'pi_guarantee' })]);
+  await runGipedoJobs(deps);
+  const capture = stripe.callsTo('paymentIntents.capture')[0];
+  strictEqual(capture.id, 'pi_guarantee');
+  strictEqual(capture.params?.amount_to_capture, 1920);
+  strictEqual(capture.idempotencyKey, 'gipedo-capture-g1-1920');
+  deepStrictEqual(db.callsTo('gipedo_settlement_done')[0].args, {
+    p_settlement_id: 'g1', p_outcome: 'captured', p_amount_cents: 1920, p_stripe_fee_cents: 74,
+  });
+});
+
+Deno.test('Losers pay: one step failing never stops the settlements', async () => {
+  const { db, stripe, deps } = setup([due(1, 960)]);
+  db.fail('losers_pay_settle_from_results', 'boom');
+  await runGipedoJobs(deps);
+  strictEqual(stripe.callsTo('paymentIntents.capture').length, 1);
 });

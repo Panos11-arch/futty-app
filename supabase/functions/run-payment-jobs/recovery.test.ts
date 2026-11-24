@@ -55,10 +55,10 @@ function world(dies: 'db_error' | 'crash') {
   });
   fake.respond('queue_money_release', 'r1');
   fake.respond('expire_venue_credits', 0);
-  for (const fn of ['gipedo_lapse_offers', 'gipedo_no_opponent_due', 'gipedo_auto_cancel_due', 'gipedo_settle_from_results']) {
+  for (const fn of ['gipedo_lapse_offers', 'gipedo_no_opponent_due', 'gipedo_auto_cancel_due', 'gipedo_settle_from_results', 'losers_pay_settle_from_results']) {
     fake.respond(fn, 0);
   }
-  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due']) {
+  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due', 'losers_pay_count_guarantees']) {
     fake.respond(fn, 0);
   }
   for (const fn of ['shares_due_for_capture', 'bookings_past_payment_window', 'guarantees_due_for_hold', 'money_releases_due',

@@ -39,6 +39,15 @@ describe('bookSlot', () => {
       expect(mockRpc).toHaveBeenCalledWith('book_slot', expect.objectContaining({ p_mode: mode, p_players_per_side: 6 }));
     },
   );
+
+  it('B1d: Losers pay is asked for by name, with the way to pay as the mode', async () => {
+    mockRpc.mockResolvedValue({ data: { id: 'b1' }, error: null });
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '5-a-side', mode: 'pay_all', kind: 'half', losersPay: true });
+    expect(mockRpc).toHaveBeenCalledWith('book_slot', expect.objectContaining({ p_mode: 'pay_all', p_kind: 'half', p_losers_pay: true }));
+    mockRpc.mockClear();
+    await bookSlot({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '19:00', format: '5-a-side', mode: 'pay_all', kind: 'half' });
+    expect(mockRpc.mock.calls[0][1]).not.toHaveProperty('p_losers_pay');
+  });
 });
 
 describe('bookSlot: Booking v2 (B2)', () => {
