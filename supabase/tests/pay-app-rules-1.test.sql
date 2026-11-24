@@ -20,7 +20,7 @@ begin
           r.collection_delay_hours) = (60, 15, 72, 6, 2), 'when money is held and taken';
   assert r.credit_expiry_months = 12, 'credit expiry';
   assert (r.gipedo_max_days, r.gipedo_opponent_hours) = (5, 24), 'Gipedo Pano (decision 5: 5 days)';
-  assert r.premium_price_label = '€3.99', 'Premium';
+  assert r.premium_price_label = '€4.99', 'Premium (decided 22 November)';
   assert (r.weather_rain_chance_pct, r.weather_heavy_rain, r.weather_wind_kmh, r.weather_thunderstorms, r.weather_heat_c)
          = (60, true, 40, true, 38), 'weather thresholds';
   assert public.cancellation_terms() = jsonb_build_object('fee_cents', 100, 'free_minutes', 60, 'refund_cutoff_hours', 6),
@@ -80,6 +80,8 @@ end $$;
 do $$
 declare
   v_user uuid := tests.create_user('rules-reader@futty.test');
+  -- Migrations that change a rule (e.g. the €4.99 Premium price) are kept too.
+  v_before bigint := (select count(*) from public.app_rules_history);
 begin
   perform tests.act_as_anon();
   assert (select fee_each_pays_cents from public.app_rules) = 80, 'anon reads the rules';
@@ -106,9 +108,13 @@ begin
     'nonsense is refused';
   perform tests.act_as_postgres();
 
-  assert (select count(*) from public.app_rules_history) = 1, 'the change is kept';
+  assert (select count(*) from public.app_rules_history) = v_before + 1, 'the change is kept';
   assert (select (old_rules ->> 'cancel_fee_cents', new_rules ->> 'cancel_fee_cents', changed_by)
-          from public.app_rules_history) = ('100'::text, '150'::text, 'service_role'::text), 'with what it was before and who changed it';
+          from public.app_rules_history where changed_by = 'service_role') = ('100'::text, '150'::text, 'service_role'::text),
+    'with what it was before and who changed it';
+  assert exists (select 1 from public.app_rules_history
+                 where old_rules ->> 'premium_price_label' = '€3.99' and new_rules ->> 'premium_price_label' = '€4.99'),
+    'the Premium price change (22 November) is kept';
 end $$;
 
 -- Changing a value changes what the server does. Everything below runs with

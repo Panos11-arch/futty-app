@@ -46,7 +46,7 @@ export function isPremiumPlayer(state: ProfileState): boolean | null {
 // permanently stuck that way — premium_monthly_v2 is the real subscription.
 export const PERSONAL_PREMIUM_SKU = 'premium_monthly_v2';
 
-/** "€3.99/mo": the store's live price once it has loaded, otherwise the
+/** "€4.99/mo": the store's live price once it has loaded, otherwise the
  *  label in the rules; empty (a placeholder) when neither is there yet. */
 export function personalPremiumPriceLabel(rules: AppRules | null, livePrice?: string | null): string {
   const price = livePrice ?? rules?.premium_price_label;

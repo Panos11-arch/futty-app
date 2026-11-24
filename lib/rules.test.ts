@@ -185,7 +185,7 @@ describe('every sentence with a rule follows app_rules', () => {
 
 describe('Premium', () => {
   it('the price: the store’s live price first, then the rules, else a placeholder', () => {
-    expect(personalPremiumPriceLabel(SPEC_RULES)).toBe('€3.99/mo');
+    expect(personalPremiumPriceLabel(SPEC_RULES)).toBe('€4.99/mo');
     expect(personalPremiumPriceLabel(CHANGED_RULES)).toBe('€4.49/mo');
     expect(personalPremiumPriceLabel(SPEC_RULES, '£3.49')).toBe('£3.49/mo');
     expect(personalPremiumPriceLabel(null)).toBe('');

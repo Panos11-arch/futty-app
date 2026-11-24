@@ -22,7 +22,7 @@ export const SPEC_RULES: AppRules = {
   credit_expiry_months: 12,
   gipedo_max_days: 5,
   gipedo_opponent_hours: 24,
-  premium_price_label: '€3.99',
+  premium_price_label: '€4.99',
   weather_rain_chance_pct: 60,
   weather_heavy_rain: true,
   weather_wind_kmh: 40,

@@ -238,7 +238,7 @@ Deno.test("spec 13's numbers as they are today, written out", () => {
     '2 hours after the match',
     'plus €0.55 per player',
     'at most 5 days ahead and at least 24 hours before kickoff',
-    '€3.99 a month',
+    '€4.99 a month',
     'no service fee on your own spot',
   ]) ok(prompt.includes(fact), fact);
 });
@@ -281,7 +281,7 @@ Deno.test('weather (P11): the thresholds follow app_rules, and forecasts are no 
 
 Deno.test('the old, wrong facts are gone', () => {
   const prompt = buildSystemPrompt(SPEC_RULES);
-  for (const stale of ['21 days', '2 days ahead', '30 minutes before kickoff', '€4.99']) {
+  for (const stale of ['21 days', '2 days ahead', '30 minutes before kickoff', '€3.99']) {
     ok(!prompt.includes(stale), `no "${stale}"`);
   }
   ok(!prompt.includes('Switching a booking between 5 v 5 and 6 v 6 after booking is coming soon'), 'switching has shipped');
