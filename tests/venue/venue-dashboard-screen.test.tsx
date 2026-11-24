@@ -304,6 +304,7 @@ describe('Venue dashboard: Today', () => {
     ['Pitches', '/venue-pitches'],
     ['Photos', '/venue-photos'],
     ['Amenities', '/venue-amenities'],
+    ['Contact', '/venue-contact'],
     ['Food and drink', '/venue-menu'],
   ])('the %s setup row opens %s for this venue (P6e)', async (label, pathname) => {
     const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;

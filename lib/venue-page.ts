@@ -188,3 +188,72 @@ export function groupMenu<T extends { category: string | null }>(items: T[]): Me
   if (loose.length > 0) groups.push({ title: groups.length > 0 ? 'Other' : null, items: loose });
   return groups;
 }
+
+// ---- S5: the venue page (03-venue-book-tab) ---------------------------
+
+export type VenueTab = 'home' | 'book' | 'facilities';
+
+/** Coming from Book a pitch (tab=book, or the time chosen there) the page
+ *  opens on Book; from anywhere else, on Home. */
+export function venueStartTab(params: { tab?: string; day?: string; start?: string }): VenueTab {
+  return params.tab === 'book' || (params.day && params.start) ? 'book' : 'home';
+}
+
+/** A pitch on Facilities: its size, any other format it hosts (never the
+ *  size twice), surface, indoor or outdoor, and Closed. */
+export function pitchLine(pitch: VenuePageData['pitches'][number]): string {
+  return [
+    pitch.size,
+    ...pitch.formats.filter((f) => f !== pitch.size),
+    pitch.surface,
+    pitch.indoor ? 'Indoor' : 'Outdoor',
+    pitch.is_open ? null : 'Closed',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** How many amenities the card under the photos names; Facilities lists them all. */
+const CARD_AMENITIES = 3;
+
+/** The card's one line: the area, then the first amenities. */
+export function venueCardLine(
+  venue: Pick<VenuePageData['venue'], 'address' | 'city'>,
+  amenities: VenuePageData['amenities'],
+): string {
+  const area = [venue.address, venue.city].filter(Boolean).join(', ');
+  const names = amenities
+    .map((a) => (a.kind === 'other' ? a.note : AMENITIES[a.kind].label))
+    .filter((n): n is string => Boolean(n))
+    .slice(0, CARD_AMENITIES);
+  return [area, ...names].filter(Boolean).join(' · ');
+}
+
+/** Call: the number as a tel: link, without spaces, brackets or dashes. */
+export function phoneUrl(phone: string | null): string | null {
+  const digits = phone?.replace(/[\s()-]/g, '') ?? '';
+  return digits ? `tel:${digits}` : null;
+}
+
+/** Website: always a web address. */
+export function websiteUrl(website: string | null): string | null {
+  const url = website?.trim();
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/** Share: the name, the area and the map link. */
+export function venueShareMessage(venue: Pick<VenuePageData['venue'], 'name' | 'address' | 'city' | 'google_maps_link'>): string {
+  const area = [venue.address, venue.city].filter(Boolean).join(', ');
+  return [venue.name, area, googleMapsUrl(venue)].filter(Boolean).join('\n');
+}
+
+/** Opening hours on Home: Monday to Sunday, "Closed" on a day without
+ *  hours; nothing when the venue has no hours at all. */
+export function openingHours(hours: VenuePageData['hours']): { day: string; hours: string }[] {
+  if (hours.length === 0) return [];
+  return DAY_NAMES.map((day, i) => {
+    const h = hours.find((x) => x.weekday === i + 1);
+    return { day, hours: h ? `${shortTime(h.opens)}–${shortTime(h.closes)}` : 'Closed' };
+  });
+}

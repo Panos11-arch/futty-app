@@ -5,7 +5,15 @@ import {
   offerWhen,
   pitchSummary,
   shortTime,
+  openingHours,
+  phoneUrl,
+  pitchLine,
+  venueCardLine,
+  venueShareMessage,
+  venueStartTab,
+  websiteUrl,
   weekdaysLabel,
+  type VenuePageData,
 } from './venue-page';
 
 describe('cancellationLines', () => {
@@ -84,4 +92,102 @@ it('sums up a pitch in one line', () => {
       is_open: true,
     }),
   ).toBe('5-a-side · Indoor');
+});
+
+// ---- S5: the venue page (03-venue-book-tab) ---------------------------
+
+const pitch = (over: Partial<VenuePageData['pitches'][number]>): VenuePageData['pitches'][number] => ({
+  id: 'p',
+  name: 'Pitch 1',
+  size: '5-a-side',
+  formats: ['5-a-side'],
+  surface: 'Artificial grass',
+  indoor: false,
+  description: null,
+  is_open: true,
+  ...over,
+});
+
+describe('pitchLine (Facilities)', () => {
+  it('names the size once, not again as a format', () => {
+    expect(pitchLine(pitch({}))).toBe('5-a-side · Artificial grass · Outdoor');
+  });
+
+  it('adds the other formats a pitch hosts, and Closed', () => {
+    expect(pitchLine(pitch({ size: '7-a-side', formats: ['7-a-side', '5-a-side'], indoor: true }))).toBe(
+      '7-a-side · 5-a-side · Artificial grass · Indoor',
+    );
+    expect(pitchLine(pitch({ surface: null, is_open: false }))).toBe('5-a-side · Outdoor · Closed');
+  });
+});
+
+describe('venueStartTab', () => {
+  it('opens on Book from Book a pitch, on Home from anywhere else', () => {
+    expect(venueStartTab({ tab: 'book' })).toBe('book');
+    expect(venueStartTab({ day: '2026-11-26', start: '20:00' })).toBe('book');
+    expect(venueStartTab({})).toBe('home');
+    expect(venueStartTab({ tab: 'facilities' })).toBe('home');
+    expect(venueStartTab({ day: '2026-11-26' })).toBe('home');
+  });
+});
+
+describe('the card under the photos', () => {
+  const data = { address: 'Kamares', city: 'Limassol' };
+  it('the area, then up to three amenities', () => {
+    expect(
+      venueCardLine(data, [
+        { kind: 'cafe_or_bar', note: null },
+        { kind: 'parking', note: 'free' },
+        { kind: 'showers', note: null },
+        { kind: 'wifi', note: null },
+      ]),
+    ).toBe('Kamares, Limassol · Café or bar · Parking · Showers');
+  });
+
+  it('an "other" amenity reads as its note; nothing missing is shown', () => {
+    expect(venueCardLine({ address: null, city: null }, [{ kind: 'other', note: 'Physio' }])).toBe('Physio');
+    expect(venueCardLine({ address: null, city: 'Limassol' }, [])).toBe('Limassol');
+    expect(venueCardLine({ address: null, city: null }, [])).toBe('');
+  });
+
+  it('Call dials the number without its spaces; Website always opens a web address', () => {
+    expect(phoneUrl('+357 25 (12) 34-56')).toBe('tel:+35725123456');
+    expect(phoneUrl(null)).toBeNull();
+    expect(phoneUrl('  ')).toBeNull();
+    expect(websiteUrl('https://arena.example.com')).toBe('https://arena.example.com');
+    expect(websiteUrl('arena.example.com')).toBe('https://arena.example.com');
+    expect(websiteUrl(null)).toBeNull();
+  });
+
+  it('Share sends the name, the area and the map link', () => {
+    expect(venueShareMessage({ name: 'Nuevo Campo', address: '2 Aristidou Street', city: 'Nicosia', google_maps_link: null })).toBe(
+      'Nuevo Campo\n2 Aristidou Street, Nicosia\nhttps://www.google.com/maps/search/?api=1&query=Nuevo%20Campo%2C%202%20Aristidou%20Street%2C%20Nicosia%2C%20Cyprus',
+    );
+    expect(venueShareMessage({ name: 'X', address: null, city: null, google_maps_link: 'https://maps/x' })).toBe(
+      'X\nhttps://maps/x',
+    );
+  });
+});
+
+describe('openingHours', () => {
+  it('one row per day, Monday first; a day without hours is Closed', () => {
+    expect(
+      openingHours([
+        { weekday: 6, opens: '08:00:00', closes: '23:59:59' },
+        { weekday: 1, opens: '15:00:00', closes: '22:30:00' },
+      ]),
+    ).toEqual([
+      { day: 'Mon', hours: '15:00–22:30' },
+      { day: 'Tue', hours: 'Closed' },
+      { day: 'Wed', hours: 'Closed' },
+      { day: 'Thu', hours: 'Closed' },
+      { day: 'Fri', hours: 'Closed' },
+      { day: 'Sat', hours: '08:00–00:00' },
+      { day: 'Sun', hours: 'Closed' },
+    ]);
+  });
+
+  it('no hours at all: nothing to show', () => {
+    expect(openingHours([])).toEqual([]);
+  });
 });

@@ -5,7 +5,7 @@
 // venue_free_pitches; credit from booking_quote), shown as it is. The player
 // only chooses; the app never sends a price.
 import { type ReactNode, useState } from 'react';
-import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Pressable, ScrollView, Switch, useWindowDimensions, View } from 'react-native';
 
 import { ChoiceCard, PitchRow } from '@/components/booking/checkout-choice';
 import {
@@ -18,6 +18,7 @@ import {
 } from '@/components/booking/checkout-parts';
 import {
   Banner,
+  Button,
   Chip,
   EmptyState,
   PriceBreakdown,
@@ -82,6 +83,13 @@ export type CheckoutViewProps = {
   now?: Date;
   /** The weather strip for the game's hours (P11). Nothing renders until one is passed in. */
   weather?: ReactNode;
+  /** 'sheet': the payment sheet on the venue page (S5, 04-payment-sheet).
+   *  The sheet titles itself with the day and time, and the pitch was chosen
+   *  on the venue page (pitchKey), so there is no pitch list; Pay is a
+   *  full-width button instead of the sticky bar. */
+  variant?: 'screen' | 'sheet';
+  /** The chosen pitch's ids, joined with commas (the sheet). */
+  pitchKey?: string | null;
 };
 
 /** "Thu 26 Nov · 20:00" (a Cyprus calendar day, read as such). */
@@ -104,6 +112,9 @@ export function heldLine(): string {
     'Your choices are fixed. Finish paying soon, or the booking is released.',
   );
 }
+
+/** How much of the screen the sheet's choices may fill before they scroll. */
+const SHEET_SCROLL_SHARE = 0.6;
 
 const WAYS: { way: WayToPay; title: string; testID: string }[] = [
   // These testIDs are the ones .maestro/flows have always used.
@@ -147,7 +158,10 @@ function CheckoutReady({
   bookingHeld,
   now: nowOverride,
   weather,
+  variant = 'screen',
+  pitchKey: chosenKey = null,
 }: Omit<CheckoutViewProps, 'quote'> & { data: CheckoutData }) {
+  const inSheet = variant === 'sheet';
   const styles = useStyles();
   const { colors } = useTheme();
   const { quote } = data;
@@ -163,9 +177,13 @@ function CheckoutReady({
   const [accepted, setAccepted] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
 
-  // The chosen pitch, or the first free one (also when the chosen one was taken).
+  // The chosen pitch, or the first free one (also when the chosen one was
+  // taken). In the sheet the venue page chose it: none if it's gone.
   const free = pitches.status === 'ready' ? pitches.data : [];
-  const pitch = free.find((p) => p.pitch_ids.join(',') === pitchKey) ?? free[0] ?? null;
+  const pitch = inSheet
+    ? (free.find((p) => p.pitch_ids.join(',') === chosenKey) ?? null)
+    : (free.find((p) => p.pitch_ids.join(',') === pitchKey) ?? free[0] ?? null);
+  const pitchGone = inSheet && pitches.status === 'ready' && pitch === null;
   // Half only while the server offers it.
   const kind: BookingKind = quote.half.available ? kindChoice : 'whole';
 
@@ -191,20 +209,36 @@ function CheckoutReady({
     way !== null && amounts !== null && pitch !== null && !quote.in_debt && (!nonRefundable || accepted) && !paying;
   const actionLabel = amounts ? (holding ? `Hold ${formatEuros(amounts.totalCents)}` : payLabel(amounts.totalCents)) : 'Choose who pays';
 
+  const submit = () => {
+    if (!canPay || !way || !pitch) return;
+    onPay({
+      mode: modeForWay(way),
+      kind,
+      pitchIds: pitch.pitch_ids,
+      pay: { method: cashOn ? 'cash' : 'card', acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn },
+      ...(losersPay ? { losersPay: true } : {}),
+    });
+  };
+
   const choose = <T,>(set: (v: T) => void) => (v: T) => {
     if (!bookingHeld) set(v);
   };
 
+  const sheetHeight = useWindowDimensions().height * SHEET_SCROLL_SHARE;
   const minutes = timeToMin(quote.end_time) - timeToMin(quote.start_time);
   const subtitle = [venueName, pitch?.label, quote.format, `${minutes} min`].filter(Boolean).join(' · ');
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+    <View style={inSheet ? styles.sheet : styles.screen}>
+      <ScrollView
+        style={inSheet ? { maxHeight: sheetHeight } : undefined}
+        contentContainerStyle={inSheet ? styles.sheetContent : styles.content}>
         <View style={styles.header}>
-          <Text variant="title" accessibilityRole="header" tabular>
-            {dayTimeLabel(quote.day, quote.start_time)}
-          </Text>
+          {inSheet ? null : (
+            <Text variant="title" accessibilityRole="header" tabular>
+              {dayTimeLabel(quote.day, quote.start_time)}
+            </Text>
+          )}
           <Text variant="body" tone="inkMuted">
             {subtitle}
           </Text>
@@ -214,34 +248,43 @@ function CheckoutReady({
 
         {weather ? <View testID="checkout-weather">{weather}</View> : null}
 
-        <View style={styles.section}>
-          <SectionHeader title="Pitch" />
-          {pitches.status === 'loading' ? (
-            <SkeletonBlock width="100%" height={56} rounded="control" />
-          ) : pitches.status === 'error' ? (
-            <Banner tone="danger" message={pitches.message} action={{ label: 'Try again', onPress: onRetry }} />
-          ) : free.length === 0 ? (
-            <View testID="checkout-pitches-empty">
-              <Text variant="body" tone="inkMuted">
-                No pitch is free at this time. Pick another time.
-              </Text>
-            </View>
-          ) : (
-            free.map((p, i) => (
-              <PitchRow
-                key={p.pitch_ids.join(',')}
-                testID={`checkout-pitch-${i + 1}`}
-                label={p.label}
-                details={pitchDetails(p)}
-                price={formatEuros(p.price_cents)}
-                selected={p === pitch}
-                locked={bookingHeld}
-                onPress={() => choose(setPitchKey)(p.pitch_ids.join(','))}
-              />
-            ))
-          )}
-        </View>
+        {pitchGone ? (
+          <View testID="checkout-pitch-gone">
+            <Banner tone="danger" message="This pitch was just taken. Pick another." />
+          </View>
+        ) : null}
 
+        {inSheet ? null : (
+          <View style={styles.section}>
+            <SectionHeader title="Pitch" />
+            {pitches.status === 'loading' ? (
+              <SkeletonBlock width="100%" height={56} rounded="control" />
+            ) : pitches.status === 'error' ? (
+              <Banner tone="danger" message={pitches.message} action={{ label: 'Try again', onPress: onRetry }} />
+            ) : free.length === 0 ? (
+              <View testID="checkout-pitches-empty">
+                <Text variant="body" tone="inkMuted">
+                  No pitch is free at this time. Pick another time.
+                </Text>
+              </View>
+            ) : (
+              free.map((p, i) => (
+                <PitchRow
+                  key={p.pitch_ids.join(',')}
+                  testID={`checkout-pitch-${i + 1}`}
+                  label={p.label}
+                  details={pitchDetails(p)}
+                  price={formatEuros(p.price_cents)}
+                  selected={p === pitch}
+                  locked={bookingHeld}
+                  onPress={() => choose(setPitchKey)(p.pitch_ids.join(','))}
+                />
+              ))
+            )}
+          </View>
+        )}
+
+        {inSheet ? <SectionHeader title="Pitch" /> : null}
         <View style={styles.row}>
           <ChoiceCard
             testID="checkout-kind-whole"
@@ -384,24 +427,19 @@ function CheckoutReady({
           </View>
         ) : null}
       </ScrollView>
-      <StickyActionBar
-        actionTestID="checkout-pay"
-        totalCents={amounts?.totalCents}
-        totalLabel={totalLabel}
-        actionLabel={actionLabel}
-        loading={paying}
-        disabled={!canPay}
-        onPress={() => {
-          if (!canPay || !way || !pitch) return;
-          onPay({
-            mode: modeForWay(way),
-            kind,
-            pitchIds: pitch.pitch_ids,
-            pay: { method: cashOn ? 'cash' : 'card', acceptNonRefundable: nonRefundable && accepted, useCredit: creditOn },
-            ...(losersPay ? { losersPay: true } : {}),
-          });
-        }}
-      />
+      {inSheet ? (
+        <Button testID="checkout-pay" label={actionLabel} onPress={submit} loading={paying} disabled={!canPay} fullWidth />
+      ) : (
+        <StickyActionBar
+          actionTestID="checkout-pay"
+          totalCents={amounts?.totalCents}
+          totalLabel={totalLabel}
+          actionLabel={actionLabel}
+          loading={paying}
+          disabled={!canPay}
+          onPress={submit}
+        />
+      )}
       <Sheet visible={rulesOpen} onClose={() => setRulesOpen(false)} title="Cancelling">
         {checkoutCancellationLines(quote.cancellation).map((line) => (
           <Text key={line} variant="body">
@@ -416,6 +454,8 @@ function CheckoutReady({
 const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
+  sheet: { gap: space.lg },
+  sheetContent: { gap: space.xl, paddingBottom: space.md },
   header: { gap: space.xs },
   section: { gap: space.md },
   row: { flexDirection: 'row', gap: space.md },
