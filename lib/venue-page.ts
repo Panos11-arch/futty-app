@@ -16,6 +16,9 @@ export type AmenityKind =
   | 'ball_hire'
   | 'first_aid'
   | 'wifi'
+  | 'restaurant'
+  | 'vending_machines'
+  | 'shop'
   | 'other';
 
 export type VenuePageData = {
@@ -92,8 +95,25 @@ export const AMENITIES: Record<AmenityKind, { label: string; icon: IconSymbolNam
   ball_hire: { label: 'Ball hire', icon: 'soccerball' },
   first_aid: { label: 'First aid', icon: 'cross.case.fill' },
   wifi: { label: 'Wi-Fi', icon: 'wifi' },
+  // S5A.
+  restaurant: { label: 'Restaurant', icon: 'fork.knife' },
+  vending_machines: { label: 'Vending machines', icon: 'takeoutbag.and.cup.and.straw.fill' },
+  shop: { label: 'Shop', icon: 'bag.fill' },
   other: { label: 'More', icon: 'ellipsis' },
 };
+
+/** Food and drink first, then parking (S5A), then the rest in list order. */
+const AMENITY_PRIORITY: AmenityKind[] = ['cafe_or_bar', 'restaurant', 'vending_machines', 'parking'];
+
+/** A venue's amenities in the order the small icon rows show them, at most `max`. */
+export function amenitiesByPriority(kinds: AmenityKind[], max = Infinity): AmenityKind[] {
+  const all = Object.keys(AMENITIES) as AmenityKind[];
+  const rank = (k: AmenityKind) => {
+    const p = AMENITY_PRIORITY.indexOf(k);
+    return p >= 0 ? p : AMENITY_PRIORITY.length + all.indexOf(k);
+  };
+  return [...kinds].sort((a, b) => rank(a) - rank(b)).slice(0, max);
+}
 
 export type CancellationTerms = { fee_cents: number; free_minutes: number; refund_cutoff_hours: number };
 
@@ -213,20 +233,9 @@ export function pitchLine(pitch: VenuePageData['pitches'][number]): string {
     .join(' · ');
 }
 
-/** How many amenities the card under the photos names; Facilities lists them all. */
-const CARD_AMENITIES = 3;
-
-/** The card's one line: the area, then the first amenities. */
-export function venueCardLine(
-  venue: Pick<VenuePageData['venue'], 'address' | 'city'>,
-  amenities: VenuePageData['amenities'],
-): string {
-  const area = [venue.address, venue.city].filter(Boolean).join(', ');
-  const names = amenities
-    .map((a) => (a.kind === 'other' ? a.note : AMENITIES[a.kind].label))
-    .filter((n): n is string => Boolean(n))
-    .slice(0, CARD_AMENITIES);
-  return [area, ...names].filter(Boolean).join(' · ');
+/** The card's one line: the area. The amenities are icons under the card (S5A). */
+export function venueCardLine(venue: Pick<VenuePageData['venue'], 'address' | 'city'>): string {
+  return [venue.address, venue.city].filter(Boolean).join(', ');
 }
 
 /** Call: the number as a tel: link, without spaces, brackets or dashes. */

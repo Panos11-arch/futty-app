@@ -1,6 +1,7 @@
 // The next booking on Home (docs/specs/15-design.md section 5): venue photo,
 // day and time in Cyprus time, format, who's in and who hasn't paid, and a
-// weather chip slot.
+// weather chip slot; S5A adds small amenity icons and "After-game offers"
+// when the venue has entered them.
 //
 // Contract 5 in docs/specs/06-coding.md: P5 rebuilt U3's placeholder here,
 // keeping the export names and props, so Home needs no change. Who's in and
@@ -18,12 +19,14 @@ import { AvatarStack } from '@/components/ui/avatar-stack';
 import { Card } from '@/components/ui/card';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Text } from '@/components/ui/text';
+import { AmenityIcons } from '@/components/venue/venue-extras';
 import { radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { openBookingDetail } from '@/lib/booking-navigation';
 import { fetchBookingRoster, rosterName, useLoad, whoHasntPaid } from '@/lib/booking-search';
 import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { formatKickoff, formatMatchDate } from '@/lib/match/format';
+import { fetchVenueExtras } from '@/lib/venue-extras';
 import type { MyBooking } from '@/lib/use-my-bookings';
 
 export type NextBookingCardProps = {
@@ -52,6 +55,11 @@ export function NextBookingCard({ booking, venue, onPress, weather, testID }: Ne
   const roster = useLoad(booking.id, loadRoster);
   const players = roster.state.status === 'ready' ? roster.state.data : [];
   const unpaid = whoHasntPaid(players);
+  // S5A: the venue's amenities and whether it has after-game offers; the
+  // card shows without them if they can't load.
+  const loadExtras = useCallback(() => fetchVenueExtras(booking.venue_id), [booking.venue_id]);
+  const extras = useLoad(`extras:${booking.venue_id}`, loadExtras);
+  const atVenue = extras.state.status === 'ready' ? extras.state.data : null;
 
   return (
     <Card
@@ -87,6 +95,16 @@ export function NextBookingCard({ booking, venue, onPress, weather, testID }: Ne
         <Text variant="callout" tone="inkMuted">
           {booking.format}
         </Text>
+        {atVenue && (atVenue.amenities.length > 0 || atVenue.hasAfterGameOffers) ? (
+          <View style={styles.rosterRow}>
+            <AmenityIcons testID="next-game-amenities" amenities={atVenue.amenities.map((kind) => ({ kind }))} max={4} />
+            {atVenue.hasAfterGameOffers ? (
+              <Text variant="caption" tone="inkMuted">
+                After-game offers
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {players.length > 0 ? (
           <View testID="next-game-roster" style={styles.rosterRow}>
             <AvatarStack people={players.map((p) => ({ id: p.share_id, name: rosterName(p) }))} />

@@ -1,7 +1,7 @@
 // QA 24 November, S4: the screen after paying is titled "Booked" and its back
 // button (and an Android back press or a swipe) goes to the booking, never
 // back towards the checkout of a booking that's already paid.
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 
 import BookingAfterPayScreen from '@/app/booking-after-pay';
 
@@ -22,9 +22,15 @@ jest.mock('expo-router', () => ({
   }),
   Stack: { Screen: ({ options }: { options: unknown }) => (mockScreenOptions(options), null) },
 }));
-jest.mock('@/components/booking/after-pay-view', () => ({ AfterPayView: () => null }));
+let mockViewProps: Record<string, unknown> | null = null;
+jest.mock('@/components/booking/after-pay-view', () => ({
+  AfterPayView: (p: Record<string, unknown>) => ((mockViewProps = p), null),
+}));
+const mockFetchExtras = jest.fn();
+jest.mock('@/lib/venue-extras', () => ({ fetchVenueExtras: (...a: unknown[]) => mockFetchExtras(...a) }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
-jest.mock('@/lib/booking-detail', () => ({ fetchBookingDetail: jest.fn(() => new Promise(() => undefined)), shareText: jest.fn() }));
+const mockFetchDetail = jest.fn((_id: string): Promise<unknown> => new Promise(() => undefined));
+jest.mock('@/lib/booking-detail', () => ({ fetchBookingDetail: (id: string) => mockFetchDetail(id), shareText: jest.fn() }));
 jest.mock('@/lib/use-rules', () => ({ useRules: () => undefined }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 
@@ -42,6 +48,16 @@ beforeEach(() => {
 });
 
 describe('Booked (the screen after paying)', () => {
+  it('S5A: loads the venue’s food, drink and amenities for "At the venue"', async () => {
+    const extras = { amenities: ['parking'], food: [], hasAfterGameOffers: false };
+    mockFetchDetail.mockResolvedValueOnce({ venue: { id: 'v1' }, v2: null });
+    mockFetchExtras.mockResolvedValueOnce(extras);
+    await render(<BookingAfterPayScreen />);
+    await waitFor(() => expect(mockViewProps?.atVenue).toEqual(extras));
+    expect(mockFetchExtras).toHaveBeenCalledWith('v1');
+  });
+
+
   it('titles the screen and names the back button after the booking', async () => {
     await render(<BookingAfterPayScreen />);
     expect(mockScreenOptions).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Booked', headerBackTitle: 'Booking' }));

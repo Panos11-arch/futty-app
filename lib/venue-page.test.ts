@@ -1,4 +1,6 @@
 import {
+  AMENITIES,
+  amenitiesByPriority,
   appleMapsUrl,
   cancellationLines,
   googleMapsUrl,
@@ -133,21 +135,10 @@ describe('venueStartTab', () => {
 
 describe('the card under the photos', () => {
   const data = { address: 'Kamares', city: 'Limassol' };
-  it('the area, then up to three amenities', () => {
-    expect(
-      venueCardLine(data, [
-        { kind: 'cafe_or_bar', note: null },
-        { kind: 'parking', note: 'free' },
-        { kind: 'showers', note: null },
-        { kind: 'wifi', note: null },
-      ]),
-    ).toBe('Kamares, Limassol · Café or bar · Parking · Showers');
-  });
-
-  it('an "other" amenity reads as its note; nothing missing is shown', () => {
-    expect(venueCardLine({ address: null, city: null }, [{ kind: 'other', note: 'Physio' }])).toBe('Physio');
-    expect(venueCardLine({ address: null, city: 'Limassol' }, [])).toBe('Limassol');
-    expect(venueCardLine({ address: null, city: null }, [])).toBe('');
+  it('the area only: S5A shows the amenities as icons under the card', () => {
+    expect(venueCardLine(data)).toBe('Kamares, Limassol');
+    expect(venueCardLine({ address: null, city: 'Limassol' })).toBe('Limassol');
+    expect(venueCardLine({ address: null, city: null })).toBe('');
   });
 
   it('Call dials the number without its spaces; Website always opens a web address', () => {
@@ -166,6 +157,24 @@ describe('the card under the photos', () => {
     expect(venueShareMessage({ name: 'X', address: null, city: null, google_maps_link: 'https://maps/x' })).toBe(
       'X\nhttps://maps/x',
     );
+  });
+});
+
+describe('S5A amenities', () => {
+  it('restaurant, vending machines and shop each have a label and their own icon', () => {
+    expect(AMENITIES.restaurant).toEqual({ label: 'Restaurant', icon: 'fork.knife' });
+    expect(AMENITIES.vending_machines).toEqual({ label: 'Vending machines', icon: 'takeoutbag.and.cup.and.straw.fill' });
+    expect(AMENITIES.shop).toEqual({ label: 'Shop', icon: 'bag.fill' });
+    const icons = Object.values(AMENITIES).map((a) => a.icon);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+
+  it('food and drink first (café or bar, restaurant, vending machines), then parking, then the rest in list order', () => {
+    expect(
+      amenitiesByPriority(['wifi', 'showers', 'parking', 'vending_machines', 'shop', 'restaurant', 'cafe_or_bar']),
+    ).toEqual(['cafe_or_bar', 'restaurant', 'vending_machines', 'parking', 'showers', 'wifi', 'shop']);
+    expect(amenitiesByPriority(['wifi', 'showers', 'parking', 'cafe_or_bar'], 2)).toEqual(['cafe_or_bar', 'parking']);
+    expect(amenitiesByPriority([])).toEqual([]);
   });
 });
 

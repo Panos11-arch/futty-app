@@ -209,6 +209,31 @@ describe('BookSearchView: the field and chips', () => {
     expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, window: { preset: 'morning', from: '06:00', to: '12:00' } });
   });
 
+  it('S5A: the Amenities chip filters on the server: café or bar, restaurant, parking, showers, changing rooms', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    expect(screen.getByTestId('book-chip-amenities').props.accessibilityState).toMatchObject({ selected: false });
+    await fireEvent.press(screen.getByTestId('book-chip-amenities'));
+    for (const kind of ['cafe_or_bar', 'restaurant', 'parking', 'showers', 'changing_rooms']) {
+      expect(screen.getByTestId(`book-amenity-${kind}`)).toBeTruthy();
+    }
+    await fireEvent.press(screen.getByTestId('book-amenity-restaurant'));
+    await fireEvent.press(screen.getByTestId('book-amenity-cafe_or_bar'));
+    await fireEvent.press(screen.getByTestId('book-amenities-see-results'));
+    expect(p.onQueryChange).toHaveBeenLastCalledWith({ ...query, amenities: ['cafe_or_bar', 'restaurant'] });
+  });
+
+  it('S5A: the Amenities chip shows on when amenities are picked; Clear takes them off', async () => {
+    const p = props({ query: { ...query, amenities: ['parking'] } });
+    await render(<BookSearchView {...p} />);
+    expect(screen.getByTestId('book-chip-amenities').props.accessibilityState).toMatchObject({ selected: true });
+    await fireEvent.press(screen.getByTestId('book-chip-amenities'));
+    expect(screen.getByTestId('book-amenity-parking').props.accessibilityState).toMatchObject({ checked: true });
+    await fireEvent.press(screen.getByTestId('book-amenities-clear'));
+    await fireEvent.press(screen.getByTestId('book-amenities-see-results'));
+    expect(p.onQueryChange).toHaveBeenLastCalledWith({ ...query, amenities: [] });
+  });
+
   it('filters, with the live count from the draft', async () => {
     const p = props();
     await render(<BookSearchView {...p} />);

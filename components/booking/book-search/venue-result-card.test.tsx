@@ -49,7 +49,9 @@ describe('VenueResultCard', () => {
     expect(screen.getByText('Kamares Sports Centre')).toBeTruthy();
     expect(screen.getByText('Kamares · Limassol')).toBeTruthy();
     expect(screen.getByText('from €6.80 per player')).toBeTruthy();
-    expect(screen.getByText('Café or bar · Parking')).toBeTruthy();
+    // S5A: the amenities as icons under the area line.
+    expect(screen.getByTestId('free-venue-v1-amenities').props.accessibilityLabel).toBe('Café or bar, Parking');
+    expect(screen.getByTestId('icon-cup.and.saucer.fill')).toBeTruthy();
     expect(screen.getByRole('button', { name: '18:00' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '19:00' })).toBeTruthy();
     expect(screen.getByLabelText('Photo of Kamares Sports Centre')).toBeTruthy();
@@ -68,6 +70,17 @@ describe('VenueResultCard', () => {
     expect(screen.getByText('Limassol')).toBeTruthy();
     expect(screen.queryByText(/per player/)).toBeNull();
     expect(screen.queryByTestId('free-venue-v1-slot')).toBeNull();
+    expect(screen.queryByTestId('free-venue-v1-amenities')).toBeNull();
+  });
+
+  it('S5A: up to 4 amenity icons, café or bar, restaurant, vending machines and parking first', async () => {
+    await renderCard({
+      result: { ...result, amenities: ['wifi', 'showers', 'parking', 'shop', 'restaurant', 'vending_machines', 'cafe_or_bar'] },
+    });
+    expect(screen.getByTestId('free-venue-v1-amenities').props.accessibilityLabel).toBe(
+      'Café or bar, Restaurant, Vending machines, Parking',
+    );
+    expect(screen.queryByTestId('icon-wifi')).toBeNull();
   });
 
   it('opens the venue from the card (free-venue-<id>-info) and checkout data from a time', async () => {

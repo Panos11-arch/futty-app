@@ -3,6 +3,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  AMENITY_FILTERS,
   calendarMonths,
   daysChipLabel,
   defaultBookQuery,
@@ -72,6 +73,7 @@ describe('defaultBookQuery', () => {
       playersPerSide: 5,
       place: { kind: 'all' },
       types: [],
+      amenities: [],
       favouritesOnly: false,
       includeUnavailable: false,
     });
@@ -219,6 +221,12 @@ describe('on the phone', () => {
   });
 });
 
+describe('the Amenities filter (S5A)', () => {
+  it('offers café or bar, restaurant, parking, showers and changing rooms, in that order', () => {
+    expect(AMENITY_FILTERS).toEqual(['cafe_or_bar', 'restaurant', 'parking', 'showers', 'changing_rooms']);
+  });
+});
+
 describe('fetchBookSearch', () => {
   const row = {
     venue_id: 'v1',
@@ -244,6 +252,7 @@ describe('fetchBookSearch', () => {
         playersPerSide: 6,
         place: { kind: 'town', town: 'Limassol' },
         types: ['indoor'],
+        amenities: ['cafe_or_bar', 'restaurant'],
         favouritesOnly: true,
         includeUnavailable: true,
       }),
@@ -261,6 +270,7 @@ describe('fetchBookSearch', () => {
       p_types: ['indoor'],
       p_favourites_only: true,
       p_include_unavailable: true,
+      p_amenities: ['cafe_or_bar', 'restaurant'],
     });
     expect(result[0]).toEqual({
       ...row,
@@ -274,7 +284,13 @@ describe('fetchBookSearch', () => {
   it('sends one venue, 5 per side off 5-a-side, and no type filter when none is ticked', async () => {
     mockRpc.mockResolvedValue({ data: [], error: null });
     await fetchBookSearch(query({ format: '7-a-side', playersPerSide: 6, place: { kind: 'venue', venueId: 'v9', name: 'X' } }), true);
-    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_town: null, p_venue_id: 'v9', p_types: null, p_players_per_side: 5 });
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({
+      p_town: null,
+      p_venue_id: 'v9',
+      p_types: null,
+      p_amenities: null,
+      p_players_per_side: 5,
+    });
     expect(mockSign).not.toHaveBeenCalled();
   });
 

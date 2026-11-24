@@ -55,7 +55,7 @@ jest.mock('@/lib/venue-today', () => ({
   cyprusNow: () => '06:00',
 }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'staff1' } }) }));
-jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), replace: jest.fn() }, useFocusEffect: jest.fn() }));
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ status: 'ready', profile: { id: 'staff1', role: mockRole }, reload: jest.fn() }),
 }));
@@ -92,6 +92,46 @@ beforeEach(() => {
 const invoke = () => jest.requireMock<typeof import('@/lib/supabase')>('@/lib/supabase').supabase.functions.invoke as jest.Mock;
 
 const rpcCalls = (name: string) => mockRpc.mock.calls.filter((c) => c[0] === name).map((c) => c[1]);
+
+const setupDone = {
+  photos: true,
+  amenities: true,
+  menu: true,
+  hours: true,
+  contact: true,
+  pitches: true,
+  prices: true,
+  complete: true,
+};
+
+describe('Venue dashboard: Set up your venue (S5A)', () => {
+  it('at the top until complete, from the server; a step opens its screen for this venue', async () => {
+    mockRpcData.venue_setup_status = { ...setupDone, menu: false, contact: false, complete: false };
+    await open();
+    const card = await screen.findByTestId('venue-setup-checklist');
+    expect(rpcCalls('venue_setup_status')).toEqual([{ p_venue_id: 'v1' }]);
+    expect(within(card).getByText('Set up your venue')).toBeTruthy();
+    expect(screen.getByTestId('venue-setup-step-menu').props.accessibilityState).toMatchObject({ checked: false });
+    const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
+    push.mockClear();
+    await fireEvent.press(screen.getByTestId('venue-setup-step-contact'));
+    expect(push.mock.calls).toEqual([[{ pathname: '/venue-contact', params: { venueId: 'v1' } }]]);
+  });
+
+  it('Phone and website shows ticked as the server says (a phone is enough; the website is optional)', async () => {
+    mockRpcData.venue_setup_status = { ...setupDone, menu: false, complete: false };
+    await open();
+    await screen.findByTestId('venue-setup-checklist');
+    expect(screen.getByTestId('venue-setup-step-contact').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('venue-setup-step-menu').props.accessibilityState).toMatchObject({ checked: false });
+  });
+
+  it('hidden once complete', async () => {
+    mockRpcData.venue_setup_status = setupDone;
+    await open();
+    expect(screen.queryByTestId('venue-setup-checklist')).toBeNull();
+  });
+});
 
 async function open() {
   await render(<VenueDashboardScreen />);
@@ -307,6 +347,8 @@ describe('Venue dashboard: Today', () => {
     ['Contact', '/venue-contact'],
     ['Food and drink', '/venue-menu'],
   ])('the %s setup row opens %s for this venue (P6e)', async (label, pathname) => {
+    // (The S5A checklist would show these too; it's complete here.)
+    mockRpcData.venue_setup_status = { ...setupDone, complete: true };
     const push = jest.requireMock<typeof import('expo-router')>('expo-router').router.push as jest.Mock;
     push.mockClear();
     await open();

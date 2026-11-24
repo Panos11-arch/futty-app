@@ -1,46 +1,49 @@
-// The venue page's Facilities tab (S5): amenities, the pitches (each format
-// named once) and the food and drink menu (P6e; S5A restyles it as cards).
+// The venue page's Facilities tab (S5, S5A): Food & drink as photo cards
+// (photo, name, price; an offer price with the normal one struck through and
+// "After game" for post-match offers), with See all opening the whole menu by
+// category; then the pitches, each format named once. The amenities are
+// icons under the page's card, on every tab. Each part is hidden when the
+// venue hasn't entered it.
 import { Image } from 'expo-image';
-import { View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 
-import { Card, EmptyState, IconSymbol, ListRow, SectionHeader, Text } from '@/components/ui';
+import { Button, Card, EmptyState, ListRow, SectionHeader, Sheet, Text } from '@/components/ui';
+import { FoodCards } from '@/components/venue/venue-extras';
 import { hairline, radius, space } from '@/constants/futty-theme';
-import { makeStyles, useTheme } from '@/lib/theme';
+import { makeStyles } from '@/lib/theme';
 import { offerPrices } from '@/lib/post-match-offers';
-import { AMENITIES, groupMenu, pitchLine, type VenuePageData } from '@/lib/venue-page';
+import { foodCard } from '@/lib/venue-extras';
+import { groupMenu, pitchLine, type VenuePageData } from '@/lib/venue-page';
+
+/** How many food and drink cards the tab shows before See all. */
+const FOOD_CARDS = 6;
+/** How much of the screen the full menu may fill before it scrolls. */
+const MENU_SHARE = 0.6;
 
 export function VenueFacilitiesTab({ data, photoUrls }: { data: VenuePageData; photoUrls: Record<string, string> }) {
   const styles = useStyles();
-  const { colors } = useTheme();
+  const { height } = useWindowDimensions();
+  const [menuOpen, setMenuOpen] = useState(false);
   const menu = data.menu ?? [];
-  if (data.amenities.length === 0 && data.pitches.length === 0 && menu.length === 0) {
+  if (data.pitches.length === 0 && menu.length === 0) {
     return <EmptyState icon="checkmark.circle.fill" message="No facilities listed yet." />;
   }
+  const cards = menu
+    .slice(0, FOOD_CARDS)
+    .map((item) => foodCard(item, item.photo_path ? (photoUrls[item.photo_path] ?? null) : null));
+
   return (
     <View style={styles.tab}>
-      {data.amenities.length > 0 ? (
-        <View style={styles.section}>
-          <SectionHeader title="Amenities" />
-          <View style={styles.amenities} testID="venue-amenities">
-            {data.amenities.map((a) => {
-              const amenity = AMENITIES[a.kind];
-              const label = a.kind === 'other' && a.note ? a.note : amenity.label;
-              const note = a.kind === 'other' ? null : a.note;
-              return (
-                <View key={a.kind} style={styles.amenity} accessible accessibilityLabel={note ? `${label}, ${note}` : label}>
-                  <IconSymbol name={amenity.icon} size={24} color={colors.ink} />
-                  <Text variant="caption" style={styles.center}>
-                    {label}
-                  </Text>
-                  {note ? (
-                    <Text variant="caption" tone="inkMuted" style={styles.center}>
-                      {note}
-                    </Text>
-                  ) : null}
-                </View>
-              );
-            })}
+      {menu.length > 0 ? (
+        <View style={styles.section} testID="venue-menu">
+          <View style={styles.header}>
+            <Text variant="headline" accessibilityRole="header" style={styles.flex}>
+              Food & drink
+            </Text>
+            <Button testID="venue-menu-see-all" label="See all" variant="plain" size="compact" onPress={() => setMenuOpen(true)} />
           </View>
+          <FoodCards testID="venue-food" cards={cards} />
         </View>
       ) : null}
 
@@ -55,9 +58,8 @@ export function VenueFacilitiesTab({ data, photoUrls }: { data: VenuePageData; p
         </View>
       ) : null}
 
-      {menu.length > 0 ? (
-        <View style={styles.section} testID="venue-menu">
-          <SectionHeader title="Food and drink" />
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Food & drink">
+        <ScrollView style={{ maxHeight: height * MENU_SHARE }} contentContainerStyle={styles.menu}>
           {groupMenu(menu).map((group) => (
             <View key={group.title ?? 'items'} style={styles.menuGroup}>
               {group.title ? (
@@ -72,8 +74,8 @@ export function VenueFacilitiesTab({ data, photoUrls }: { data: VenuePageData; p
               </Card>
             </View>
           ))}
-        </View>
-      ) : null}
+        </ScrollView>
+      </Sheet>
     </View>
   );
 }
@@ -117,9 +119,8 @@ function MenuRow({ item, photoUrl }: { item: VenuePageData['menu'][number]; phot
 const useStyles = makeStyles(({ colors }) => ({
   tab: { gap: space.xl },
   section: { gap: space.md },
-  amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
-  amenity: { width: 76, alignItems: 'center', gap: space.xs },
-  center: { textAlign: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  menu: { gap: space.md, paddingBottom: space.md },
   menuGroup: { gap: space.sm },
   menuRow: {
     flexDirection: 'row',

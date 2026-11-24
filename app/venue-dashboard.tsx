@@ -45,6 +45,7 @@ import { DayMarks } from '@/components/venue/day-marks';
 import { MarkSheet, type MarkMode } from '@/components/venue/mark-sheet';
 import { NeedPlayersSection } from '@/components/venue/need-players-section';
 import { OfferRedeemSection } from '@/components/venue/offer-redeem-section';
+import { SetupChecklist } from '@/components/venue/setup-checklist';
 import { TrainingSlotsSection } from '@/components/venue/training-slots-section';
 import { WalkInSheet } from '@/components/venue/walk-in-sheet';
 import { WeatherNudgesList } from '@/components/venue/weather-nudges';
@@ -374,6 +375,11 @@ export default function VenueDashboardScreen() {
 
         {venue ? (
           <>
+            {/* S5A: until the venue is set up. */}
+            <SetupChecklist
+              venueId={venue.id}
+              onOpen={(pathname) => router.push({ pathname, params: { venueId: venue.id } })}
+            />
             <View style={styles.wrapRow} testID="dashboard-sections">
               {SECTIONS.map((s) => (
                 <Chip

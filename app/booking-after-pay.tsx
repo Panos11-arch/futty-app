@@ -21,6 +21,7 @@ import {
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
 import { useRules } from '@/lib/use-rules';
+import { fetchVenueExtras } from '@/lib/venue-extras';
 
 export default function BookingAfterPayScreen() {
   useRules();
@@ -29,6 +30,10 @@ export default function BookingAfterPayScreen() {
   const load = useCallback(() => fetchBookingDetail(bookingId), [bookingId]);
   const { state, reload } = useLoad(bookingId || null, load);
   const detail = state.status === 'ready' ? state.data : null;
+  // S5A: the venue's food, drink and amenities ("At the venue").
+  const venueId = detail?.venue.id ?? null;
+  const loadExtras = useCallback(() => fetchVenueExtras(venueId!), [venueId]);
+  const extras = useLoad(venueId ? `extras:${venueId}` : null, loadExtras);
 
   // The open posts, kept up to date without reloading the screen, so a
   // switch turned off unpublishes the post it made.
@@ -95,6 +100,7 @@ export default function BookingAfterPayScreen() {
         onPublishOpposition={(on) => publish('opposition', on)}
         onPublishGame={(on) => publish('players', on)}
         onDone={() => router.replace(bookingDetailHref(bookingId))}
+        atVenue={extras.state.status === 'ready' ? extras.state.data : null}
       />
     </>
   );
