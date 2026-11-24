@@ -1,0 +1,88 @@
+# Journey (S5): book from the venue page. Open E2E Arena's page on its Book
+# tab, choose 5-a-side, the seeded day, an hour and the seeded time; the first
+# pitch is preselected; Continue opens the payment sheet on the page, the
+# whole pitch with the booker paying for everyone, and Pay with Stripe's test
+# card. Runs after cancel, which frees the seeded slot again.
+#
+# The amount is spec 13's worked example: a €60 5-a-side, the booker paying
+# for everyone, is €60 + 10 x €0.55 = €65.50 ("Prices and fees").
+appId: com.panosalepis.futtyapp
+name: venue-book-and-pay
+tags:
+  - e2e
+  - booking
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  DAY: ${MAESTRO_E2E_DAY}
+  START: ${MAESTRO_E2E_START.replace(':', '')}
+  VENUE_ID: e2e00000-0000-4000-8000-000000000001
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# ---- The venue page, Book tab ----------------------------------------------
+- openLink: futtyapp://venue/${VENUE_ID}?tab=book
+- extendedWaitUntil:
+    visible:
+      id: venue-tab-book
+    timeout: 30000
+- tapOn:
+    id: venue-format-5-a-side
+- tapOn:
+    id: venue-day-${DAY}
+- tapOn:
+    id: venue-length-60
+- scrollUntilVisible:
+    element:
+      id: venue-time-${START}
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: venue-time-${START}
+- scrollUntilVisible:
+    element:
+      id: venue-book-pitch-1
+    direction: DOWN
+    timeout: 30000
+- tapOn:
+    id: venue-book
+    enabled: true
+
+# ---- The payment sheet (Booking v2) ------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: checkout-kind-whole
+    timeout: 30000
+- tapOn:
+    id: checkout-kind-whole
+- tapOn:
+    id: checkout-who-pay-all
+- scrollUntilVisible:
+    element:
+      id: checkout-pay
+    direction: DOWN
+- assertVisible:
+    id: checkout-pay
+    text: 'Pay €65\.50'
+    enabled: true
+- tapOn:
+    id: checkout-pay
+- runFlow:
+    file: ../subflows/stripe-test-card.yaml
+    env:
+      PAY_LABEL: 'Pay €65\.50'
+      PAY_AMOUNT: '65\.50'
+
+# ---- The screen after paying (B3) ----------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: after-pay-done
+    timeout: 60000
+- assertNotVisible:
+    id: checkout-error
+- takeScreenshot: venue-book-and-pay-${PLATFORM}

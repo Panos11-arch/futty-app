@@ -2,15 +2,15 @@ import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 
-import { CheckoutView, type CheckoutPayChoice } from '@/components/booking/checkout-view';
+import { CheckoutView } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
 import { WeatherStrip } from '@/components/venue/weather-strip';
-import { payForSlot, payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
-import { afterBooking, afterPayment } from '@/lib/booking-navigation';
+import { payShare, type PaymentSheet, type PayOptions } from '@/lib/booking-checkout';
+import { afterPayment } from '@/lib/booking-navigation';
 import { fetchPayShareData, useLoad, type Slot } from '@/lib/booking-search';
-import { fetchCheckoutData, fetchFreePitches } from '@/lib/booking-v2';
 import { useReloadOnReturn } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
+import { useSlotCheckout } from '@/lib/use-slot-checkout';
 import { useGameWeather } from '@/lib/use-weather';
 import { haptic } from '@/lib/haptics';
 
@@ -68,56 +68,24 @@ function failed() {
 }
 
 function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; sheet: PaymentSheet }) {
-  const key = JSON.stringify(slot);
   // Booking v2 (B2): every amount from booking_quote_v2 (credit from
   // booking_quote), and the free pitches from venue_free_pitches.
-  const loadQuote = useCallback(() => fetchCheckoutData(slot), [slot]);
-  const quote = useLoad(key, loadQuote);
-  const loadPitches = useCallback(() => fetchFreePitches(slot), [slot]);
-  const pitches = useLoad(key, loadPitches);
-  // Back from "Pay what I owe": price it again, only if the debt blocked it.
-  useReloadOnReturn(quote.reload, quote.state.status === 'ready' && quote.state.data.quote.in_debt);
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const checkout = useSlotCheckout(slot, sheet);
   // P11: the forecast for the game's hours.
   const weather = useGameWeather(slot.venueId, { day: slot.day, start: slot.start, end: slot.end });
-
-  async function pay({ mode, kind, pitchIds, losersPay, pay }: CheckoutPayChoice) {
-    setPaying(true);
-    setError(null);
-    const outcome = await payForSlot({ slot, mode, kind, pitchIds, losersPay, pay, bookingId }, sheet);
-    setPaying(false);
-    setBookingId(outcome.bookingId);
-    if (outcome.status === 'paid') {
-      // B3: on to the screen after paying (invite friends, the opposition, publish).
-      haptic.success();
-      afterBooking(outcome.bookingId, router);
-    } else if (outcome.status === 'error') {
-      failed();
-      setError(outcome.message);
-      // "Pitch 2 is no longer free. Pick another.": the list without it.
-      if (outcome.pitchTaken) pitches.reload();
-    }
-  }
-
-  const retry = () => {
-    quote.reload();
-    pitches.reload();
-  };
 
   return (
     <>
       <Stack.Screen options={{ title: 'Checkout' }} />
       <CheckoutView
         venueName={venueName}
-        quote={quote.state}
-        pitches={pitches.state}
-        onRetry={retry}
-        onPay={pay}
-        paying={paying}
-        error={error}
-        bookingHeld={bookingId !== null}
+        quote={checkout.quote}
+        pitches={checkout.pitches}
+        onRetry={checkout.retry}
+        onPay={checkout.pay}
+        paying={checkout.paying}
+        error={checkout.error}
+        bookingHeld={checkout.bookingHeld}
         onPayOwed={openPayOwed}
         weather={<WeatherStrip weather={weather.weather} loading={weather.loading} />}
       />

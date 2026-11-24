@@ -121,6 +121,7 @@ const SETUP = [
   { label: 'Pitches', subtitle: 'Add, edit, close and combine pitches', icon: 'sportscourt.fill', pathname: '/venue-pitches' },
   { label: 'Photos', subtitle: 'The first one is the cover', icon: 'photo', pathname: '/venue-photos' },
   { label: 'Amenities', subtitle: 'Parking, showers and more', icon: 'checkmark.circle.fill', pathname: '/venue-amenities' },
+  { label: 'Contact', subtitle: 'Phone and website', icon: 'phone.fill', pathname: '/venue-contact' },
   { label: 'Food and drink', subtitle: 'Your menu and post-match offers', icon: 'cup.and.saucer.fill', pathname: '/venue-menu' },
 ] as const;
 
