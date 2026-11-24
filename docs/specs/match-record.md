@@ -77,7 +77,7 @@ These rules were missing or ambiguous in the specs and were decided while writin
    | 9 | 3-3-2, 3-2-3, 4-3-1, 3-4-1 |
    | 11 | 4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2, 4-5-1, 3-4-3 |
 
-   Position keys: `gk`, then `d1`, `d2`, … for the first line, `f1`, … for the last line, and `m1`, … for every line between (4-2-3-1: `gk`, `d1`–`d4`, `m1`–`m5`, `f1`). The key is what `match_players.position` holds; team of the week (A7) reads a keeper from `gk`.
+   Position keys: `gk`, then `d1`, `d2`, … for the first line, `f1`, … for the last line, and `m1`, … for every line between (4-2-3-1: `gk`, `d1`–`d4`, `m1`–`m5`, `f1`). The key is what `match_players.position` holds. (Team of the week no longer reads positions since decision 1k.)
 5. **A change of players per side clears the lineups.** `create_match_for_booking` re-syncs `players_per_side` from the booking's capacity, so a 5 v 5 switched to 6 v 6 (P12) changes it. The saved lineups then no longer fit the presets, so a trigger on `matches.players_per_side` deletes that match's lineups and clears `match_players.position`; the captains set them again. P12 needs nothing more than calling `create_match_for_booking` after the switch.
 6. **Smaller rules.** Scorers and assisters are players on that side who haven't left; guests can score (they never get stats); a null scorer is an own goal or an unknown scorer; an assist needs a scorer and can't be the scorer. The man of the match nominee is a player who checked in (1b.2), on either side, never a guest. A lineup can leave positions empty (the app shows "Need players"); each player fills at most one position.
 7. **A position belongs to a side.** A player who changes side (`choose_match_side`, `set_match_player_side`, the named-game re-sync) or leaves the match (`left_at`) loses their `match_players.position` and is taken out of the lineup; the rest of the lineup stays. A pickup that becomes a named game (decision 1b.1) has its sides rebuilt, so all its lineups and positions are cleared, as in 1e.5. The match page also leaves out any lineup entry whose player isn't on that side.
@@ -138,7 +138,7 @@ Season stats, leaderboards and team of the week (05 sections 3 and 8; 06 section
 1. **No leaderboard minimum** (agreed with the founders, 18 November). Every player with a confirmed, counted match at a venue or in a city that year is on its leaderboards. `stats_min_appearances()` is 1. The win-rate board breaks ties by more appearances, so a 100% record over 5 games ranks above one over 1 game.
 2. **Seasons.** The calendar year in Cyprus time for every confirmed match (league games included, so a player's year is complete); a league is also its own season; and all time. A match at 00:30 on 1 January in Cyprus belongs to the new year.
 3. **Forfeits count as 3-0** (18 November). The forfeiting side gets a loss and the other side a win, for every spot holder with or without a check-in (as in form, 1b.3). The 3-0 counts in a team's goals for and against and clean sheets, but no player is credited with a goal. Closes section 10, question 1, "whether a forfeit counts as a win in the winner's stats" (yes, 3-0).
-4. **Team of the week** (agreed with the founders, 18 November).
+4. ~~**Team of the week** (agreed with the founders, 18 November).~~ **Replaced by decision 1k (19 November).** Kept below for history only: the single team for all of Futty, the points table and the lineup positions no longer pick the team.
    - **One team for all of Futty**, picked once a week by `match_jobs_tick` from Monday 09:00 Cyprus time, from every confirmed match of the week before (Monday 00:00 to Monday 00:00, Cyprus time).
    - **Points per match**, by the player's position in that match's lineup (1e.4; no position counts as a midfielder):
 
@@ -209,6 +209,43 @@ The post-match flow: after a match, an optional, skippable walk through what a p
    - Tapping the `match_after_game`, `match_result_confirmed` or `motm_vote_open` push, when it carries a `matchId` (`lib/push-tap.tsx`). The confirmed and vote-open pushes bring players back when the vote and ratings actually open. Every other match type still opens the match page.
    - The match page: "Add your stats", shown only while this player has at least one step left.
    - Home's Previous game card: a game that has a match (a booking, friendly or league fixture linked to one) offers "Add your stats". This rarely shows for now. Previous game lists only old-style results (a friendly's agreed score, a league fixture's score, a booking's self-reported result). A match made since A2 appears there only if its booking, friendly or fixture also has one of those. Until Previous game reads the new match record, the pushes and the match page are the main ways in.
+
+## 1k. Team of the Week (decided by Panos, 19 November; shapes 22 November)
+
+Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15; `docs/specs/15-design.md` section 0.6, images 15 and 27).
+
+1. **Two kinds of team.**
+   - **League team:** that league's fixtures only.
+   - **General team:** only non-league games (bookings, squad games, friendlies), per busy venue and per city. League games never count towards it.
+   - Everyone can view both.
+2. **Premium only.** Only players who are Futty Premium when the team is picked (`profiles.is_premium`, read on the server at that moment) can be selected. A non-Premium player is skipped, and the next best eligible player is picked instead.
+3. **One team per format** (5, 6, 7, 9 and 11-a-side), from games in that format only. Shapes:
+
+   | Format | Keeper | Defence | Midfield | Strikers |
+   | --- | --- | --- | --- | --- |
+   | 5-a-side | 1 | 1 | 2 | 1 |
+   | 6-a-side | 1 | 2 | 2 | 1 |
+   | 7-a-side | 1 | 2 | 3 | 1 |
+   | 9-a-side | 1 | 3 | 3 | 2 |
+   | 11-a-side | 1 | 4 | 3 | 3 |
+
+4. **Selection, then placement. No positions are used.**
+   1. **Selection:** the 5, 6, 7, 9 or 11 eligible players with the best ratings for the period.
+   2. **Placement**, by what they did in that period:
+      - the most goals → the striker slots;
+      - the next, by goals + assists → midfield;
+      - the rest → defence, except the one with the fewest goals + assists, who goes in goal.
+   3. **Ties** at every step go to the higher rating, then the earlier sign-up.
+5. **The period and when it's picked:** kept from 1g.4. It is the week from Monday 00:00 to Monday 00:00, Cyprus time, picked by `match_jobs_tick` from Monday 09:00 Cyprus time.
+6. **Selected players** get `team_of_the_week`, as before.
+7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week and per scope: "You'd have made Team of the Week (<rating>). Get Futty Premium to be eligible." It opens Premium.
+   - It goes out as a push only if they switched on a new **"Premium and offers"** notification setting. That setting is off by default (Apple guideline 4.5.4).
+8. **Open points, to decide with Panos before S14:**
+   1. **What counts as a "busy venue".** 05 section 7 used "at least 4 confirmed matches that week"; 1k doesn't say.
+   2. **Area picker.** Images 15 and 27 show an "All Cyprus" area option, but 1k names only per venue and per city. Is there an all-Cyprus general team?
+   3. **Which rating, and how many ratings.** Is "best ratings for the period" the average match rating (decision 1f.4), and is the old minimum of 3 ratings kept?
+   4. **Too few players.** What is shown when fewer eligible players than the format needs played that week?
+   5. **Player of the week** (images 15 and 27). Who is it? The highest-rated player of the team is the obvious reading, but it isn't decided.
 
 ## 2. Time
 
