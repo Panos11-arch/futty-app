@@ -21,6 +21,10 @@ describe('describeBookingErrorMessage', () => {
     'beyond_booking_window',
     'mode_required',
     'invalid_payment_mode',
+    // book_search (S4)
+    'invalid_days',
+    'invalid_game_length',
+    'invalid_type',
     // create-share-payment
     'non_refundable_not_accepted',
     'cash_not_allowed',

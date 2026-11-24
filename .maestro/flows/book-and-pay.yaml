@@ -17,6 +17,8 @@ env:
   PASSWORD: ${MAESTRO_E2E_PASSWORD}
   DAY: ${MAESTRO_E2E_DAY}
   START: ${MAESTRO_E2E_START.replace(':', '')}
+  # Cyprus today: the seeded day less 2 (both are calendar dates, so UTC arithmetic is exact).
+  TODAY: ${new Date(Date.parse(MAESTRO_E2E_DAY) - 2 * 86400000).toISOString().slice(0, 10)}
   VENUE_ID: e2e00000-0000-4000-8000-000000000001
 ---
 - runFlow:
@@ -25,7 +27,7 @@ env:
       EMAIL: ${EMAIL}
       PASSWORD: ${PASSWORD}
 
-# ---- Book: day, time, length, format, then the venue --------------------
+# ---- Book a pitch (S4): format, day, time, length, then the venue's time --
 # Home → Book a pitch (S2: Book is no longer a tab).
 - runFlow:
     file: ../subflows/open-tab.yaml
@@ -35,36 +37,57 @@ env:
     id: tab-book
 - extendedWaitUntil:
     visible:
-      id: book-day-${DAY}
+      id: book-chip-format
     timeout: 30000
+# Format: 5-a-side (the format sheet keeps book-format-<f>).
 - tapOn:
-    id: book-day-${DAY}
-- scrollUntilVisible:
-    element:
-      id: book-time-${START}
-    direction: DOWN
-- tapOn:
-    id: book-time-${START}
-- scrollUntilVisible:
-    element:
-      id: book-length-60
-    direction: DOWN
-- tapOn:
-    id: book-length-60
-- scrollUntilVisible:
-    element:
-      id: book-format-5-a-side
-    direction: DOWN
+    id: book-chip-format
 - tapOn:
     id: book-format-5-a-side
+# Day: the seeded day, alone (the calendar keeps book-day-<day>).
+- tapOn:
+    id: book-chip-date
+- extendedWaitUntil:
+    visible:
+      id: book-day-${DAY}
+    timeout: 10000
+- tapOn:
+    id: book-day-${DAY}
+# The search opens on today (the seeded day is E2E_DAYS_AHEAD = 2 days after
+# it, scripts/e2e-seed/slot.ts): take it off so only the seeded day is searched.
+- tapOn:
+    id: book-day-${TODAY}
+- tapOn:
+    id: book-days-see-results
+# Time: Evening (18:00–24:00) holds the seeded start (19:00 on iOS, 20:00 on Android).
+- tapOn:
+    id: book-chip-time
+- tapOn:
+    id: book-time-preset-evening
+- tapOn:
+    id: book-time-see-results
+# Length: 60 minutes (the Filter sheet keeps book-length-<m>).
+- tapOn:
+    id: book-chip-filters
+- tapOn:
+    id: book-length-60
+- tapOn:
+    id: book-filter-see-results
+# The venue's card, then its seeded start time.
 - scrollUntilVisible:
     element:
       id: free-venue-${VENUE_ID}
     direction: DOWN
     timeout: 30000
     centerElement: true
+- scrollUntilVisible:
+    element:
+      id: book-venue-${VENUE_ID}-time-${DAY}-${START}
+    direction: DOWN
+    timeout: 10000
+    centerElement: true
 - tapOn:
-    id: free-venue-${VENUE_ID}
+    id: book-venue-${VENUE_ID}-time-${DAY}-${START}
 
 # ---- Checkout (Booking v2): the first free pitch, the whole pitch, the
 # booker paying for everyone -------------------------------------------------

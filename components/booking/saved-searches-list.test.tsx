@@ -69,11 +69,20 @@ describe('SavedSearchesList', () => {
     expect(p.onDelete).not.toHaveBeenCalled();
   });
 
-  it('none yet: says how to save one', async () => {
+  // S4: Save left Book a pitch, so a new search starts here.
+  it('none yet: one line and New search', async () => {
     const p = props({ searches: { status: 'ready', data: [] } });
     await render(<SavedSearchesList {...p} />);
-    expect(screen.getByText(/No saved searches yet/)).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Book a pitch' }));
+    expect(screen.getByText('No saved searches yet.')).toBeTruthy();
+    expect(screen.queryByText(/Book a pitch/)).toBeNull();
+    await fireEvent.press(screen.getByTestId('saved-searches-new'));
+    expect(p.onNewSearch).toHaveBeenCalled();
+  });
+
+  it('with searches: New search under them', async () => {
+    const p = props();
+    await render(<SavedSearchesList {...p} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'New search' }));
     expect(p.onNewSearch).toHaveBeenCalled();
   });
 

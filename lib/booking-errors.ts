@@ -109,6 +109,13 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
       return "This venue hasn't set a price for that format yet.";
     case 'invalid_format':
       return "This venue doesn't offer that format.";
+    // S4: Book a pitch (book_search).
+    case 'invalid_days':
+      return 'Pick up to three days from today.';
+    case 'invalid_game_length':
+      return 'Pick a game length on offer.';
+    case 'invalid_type':
+      return 'Pick indoor or outdoor.';
     case 'invalid_players_per_side':
     case 'six_a_side_not_allowed':
       return "6 v 6 isn't available at this venue — book it as 5 v 5.";

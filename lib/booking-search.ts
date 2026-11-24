@@ -4,24 +4,29 @@
 // integer cents the server computed from the venue's data: this file picks
 // which of the server's fields to show and never adds, divides or works out
 // a price, fee or total.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { minToTime, timeToMin } from '@/lib/booking';
+import { minToTime, PITCH_FORMATS, timeToMin } from '@/lib/booking';
+import type { BookingNavigator } from '@/lib/booking-navigation';
 import type { PaymentMode } from '@/lib/booking-actions';
 import type { BookingV2Info } from '@/lib/booking-opposition';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { supabase } from '@/lib/supabase';
-import { VENUE_PHOTOS_BUCKET, type CancellationTerms } from '@/lib/venue-page';
+import { VENUE_PHOTOS_BUCKET, type AmenityKind, type CancellationTerms } from '@/lib/venue-page';
 
 // ---- Server responses -------------------------------------------------
 
-/** booking_search_options(): the caller's window, in Cyprus days. */
+/** booking_search_options(): the caller's window, in Cyprus days, and the
+ *  game lengths offered (spec 13: 60, 90 or 120 minutes, 60 by default). */
 export type SearchOptions = {
   today: string;
   window_days: number;
   is_premium: boolean;
   six_on_five_available: boolean;
+  game_lengths?: number[];
+  default_game_length?: number;
 };
 
 /** One row of venues_free_at(). player_cents is what each player pays when
@@ -427,4 +432,328 @@ export function useNow(everyMs = 30_000): Date {
     return () => clearInterval(id);
   }, [everyMs]);
   return now;
+}
+
+// ---- Book a pitch (S4) ---------------------------------------------------
+// The search on image 02: a place, up to 3 days, a time window, a length and
+// a format, plus the Filter sheet. book_search (migration
+// 20261124182133_pay_s4_book_search.sql) returns each venue's free times and
+// the cheapest per-player price among them; the app only shows them.
+
+export const MAX_SEARCH_DAYS = 3;
+
+export type TimePresetId = 'all_day' | 'morning' | 'afternoon' | 'evening';
+export type TimeWindow = { preset: TimePresetId | 'specific'; from: string; to: string };
+
+/** "At what time?" (prompt S4). `to` is exclusive: a start before it. */
+export const TIME_PRESETS: { id: TimePresetId; label: string; from: string; to: string; range: string }[] = [
+  { id: 'all_day', label: 'All day', from: '00:00', to: '24:00', range: '00:00–23:59' },
+  { id: 'morning', label: 'Morning', from: '06:00', to: '12:00', range: '06:00–12:00' },
+  { id: 'afternoon', label: 'Afternoon', from: '12:00', to: '18:00', range: '12:00–18:00' },
+  { id: 'evening', label: 'Evening', from: '18:00', to: '24:00', range: '18:00–24:00' },
+];
+
+/** Specific hours: every half hour of the day (the start-time grid). */
+export function specificHours(): string[] {
+  return Array.from({ length: DAY_MINUTES / STEP_MINUTES }, (_, i) => minToTime(i * STEP_MINUTES));
+}
+
+export function timeChipLabel(window: TimeWindow): string {
+  const preset = TIME_PRESETS.find((p) => p.id === window.preset);
+  return preset ? preset.label : `${window.from}–${window.to}`;
+}
+
+export type BookPlace =
+  | { kind: 'all' }
+  | { kind: 'town'; town: string }
+  | { kind: 'venue'; venueId: string; name: string };
+
+export function placeLabel(place: BookPlace): string {
+  if (place.kind === 'town') return place.town;
+  if (place.kind === 'venue') return place.name;
+  return 'All venues';
+}
+
+export type PitchType = 'indoor' | 'outdoor';
+
+export type BookSearchQuery = {
+  days: string[];
+  window: TimeWindow;
+  minutes: number;
+  format: string;
+  playersPerSide: 5 | 6;
+  place: BookPlace;
+  types: PitchType[];
+  favouritesOnly: boolean;
+  includeUnavailable: boolean;
+};
+
+function isFormat(value: string | null): value is string {
+  return value !== null && (PITCH_FORMATS as readonly string[]).includes(value);
+}
+
+/** The lengths the server offers (booking_search_options). */
+export function offeredLengths(options: SearchOptions): number[] {
+  return options.game_lengths ?? [];
+}
+
+/** How the screen opens: the last format used (else 5-a-side), today, all
+ *  day, the server's default length, everywhere. */
+export function defaultBookQuery(options: SearchOptions, lastFormat: string | null): BookSearchQuery {
+  const all = TIME_PRESETS[0];
+  return {
+    days: [options.today],
+    window: { preset: all.id, from: all.from, to: all.to },
+    minutes: options.default_game_length ?? offeredLengths(options)[0] ?? 60,
+    format: isFormat(lastFormat) ? lastFormat : '5-a-side',
+    playersPerSide: 5,
+    place: { kind: 'all' },
+    types: [],
+    favouritesOnly: false,
+    includeUnavailable: false,
+  };
+}
+
+/** 6 v 6 only on 5-a-side where it's allowed; 5 otherwise, as before S4. */
+export function playersPerSideFor(format: string, chosen: 5 | 6, sixOnFiveAllowed: boolean): 5 | 6 {
+  return showPlayersPerSide(format, sixOnFiveAllowed) ? chosen : 5;
+}
+
+// ---- Days ------------------------------------------------------------------
+
+export type CalendarDay = { day: string; date: number; selectable: boolean };
+export type CalendarMonth = { key: string; title: string; weeks: (CalendarDay | null)[][] };
+
+function isoDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** "Choose your days": whole months, Monday first, from today's month to the
+ *  window's last day; only today through the window can be picked. Days are
+ *  Cyprus calendar dates, read as UTC dates (never the phone's zone). */
+export function calendarMonths(today: string, windowDays: number): CalendarMonth[] {
+  const strip = dateStrip(today, windowDays);
+  const window = new Set(strip);
+  const first = dayDate(today);
+  const last = dayDate(strip[strip.length - 1]);
+  const months: CalendarMonth[] = [];
+  for (
+    let m = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1));
+    m <= last;
+    m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))
+  ) {
+    const daysInMonth = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 0)).getUTCDate();
+    const lead = (m.getUTCDay() + 6) % 7;
+    const cells: (CalendarDay | null)[] = Array.from({ length: lead }, () => null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = isoDay(new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), d)));
+      cells.push({ day, date: d, selectable: window.has(day) });
+    }
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks: (CalendarDay | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    months.push({
+      key: isoDay(m).slice(0, 7),
+      title: m.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+      weeks,
+    });
+  }
+  return months;
+}
+
+/** Picks or unpicks a day; at most MAX_SEARCH_DAYS, kept in order. */
+export function toggleDay(days: string[], day: string): string[] {
+  if (days.includes(day)) return days.filter((d) => d !== day);
+  if (days.length >= MAX_SEARCH_DAYS) return days;
+  return [...days, day].sort();
+}
+
+function shortDate(day: string): string {
+  return dayDate(day)
+    .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+    .replace(',', '');
+}
+
+/** The Date chip: "Today", "Thu 26 Nov", or "Thu 26 Nov +2". */
+export function daysChipLabel(days: string[], today: string): string {
+  const first = days[0] === today ? 'Today' : shortDate(days[0]);
+  return days.length > 1 ? `${first} +${days.length - 1}` : first;
+}
+
+export type BookSlot = { day: string; start: string; end: string; player_cents: number };
+
+/** A time chip: "18:00", with the weekday when several days are searched. */
+export function slotChipLabel(slot: BookSlot, severalDays: boolean): string {
+  if (!severalDays) return slot.start;
+  return `${dayDate(slot.day).toLocaleDateString('en-GB', { weekday: 'short', timeZone: 'UTC' })} ${slot.start}`;
+}
+
+// ---- Places ----------------------------------------------------------------
+
+export type PlaceVenue = { id: string; name: string; city: string | null };
+
+/** The picker's matches: towns and venues containing the text. */
+export function filterPlaces(text: string, towns: string[], venues: PlaceVenue[]) {
+  const q = text.trim().toLowerCase();
+  if (!q) return { towns: [] as string[], venues: [] as PlaceVenue[] };
+  return {
+    towns: towns.filter((t) => t.toLowerCase().includes(q)),
+    venues: venues.filter((v) => v.name.toLowerCase().includes(q)),
+  };
+}
+
+// ---- Kept on the phone (best effort: storage failing never blocks Book) ----
+
+const RECENT_PLACES_KEY = 'futty.book.recent_places';
+const LAST_FORMAT_KEY = 'futty.book.last_format';
+const MAX_RECENT_PLACES = 5;
+
+function isPlace(value: unknown): value is BookPlace {
+  if (!value || typeof value !== 'object') return false;
+  const p = value as Record<string, unknown>;
+  if (p.kind === 'town') return typeof p.town === 'string';
+  if (p.kind === 'venue') return typeof p.venueId === 'string' && typeof p.name === 'string';
+  return false;
+}
+
+function placeKey(p: BookPlace): string {
+  return p.kind === 'town' ? `town:${p.town}` : p.kind === 'venue' ? `venue:${p.venueId}` : 'all';
+}
+
+export async function loadRecentPlaces(): Promise<BookPlace[]> {
+  try {
+    const parsed: unknown = JSON.parse((await AsyncStorage.getItem(RECENT_PLACES_KEY)) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter(isPlace).slice(0, MAX_RECENT_PLACES) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Puts a place first in Recent and returns the new list. */
+export async function saveRecentPlace(place: BookPlace): Promise<BookPlace[]> {
+  const current = await loadRecentPlaces();
+  if (place.kind === 'all') return current;
+  const next = [place, ...current.filter((p) => placeKey(p) !== placeKey(place))].slice(0, MAX_RECENT_PLACES);
+  try {
+    await AsyncStorage.setItem(RECENT_PLACES_KEY, JSON.stringify(next));
+  } catch {
+    // Not kept this time.
+  }
+  return next;
+}
+
+export async function loadLastFormat(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(LAST_FORMAT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLastFormat(format: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LAST_FORMAT_KEY, format);
+  } catch {
+    // Not kept this time.
+  }
+}
+
+// ---- Server calls ------------------------------------------------------------
+
+/** One book_search row. from_player_cents is the cheapest per-player price
+ *  among `slots` (null when there are none), worked out by the server. */
+export type BookResult = {
+  venue_id: string;
+  name: string;
+  town: string | null;
+  area: string | null;
+  photo_path: string | null;
+  amenities: AmenityKind[];
+  is_favourite: boolean;
+  from_player_cents: number | null;
+  slots: BookSlot[];
+  photoUrl: string | null;
+};
+
+export async function fetchBookSearch(q: BookSearchQuery, sixOnFiveAllowed: boolean): Promise<BookResult[]> {
+  const { data, error } = await supabase.rpc('book_search', {
+    p_days: q.days,
+    p_from: q.window.from,
+    p_to: q.window.to,
+    p_minutes: q.minutes,
+    p_format: q.format,
+    p_players_per_side: playersPerSideFor(q.format, q.playersPerSide, sixOnFiveAllowed),
+    p_town: q.place.kind === 'town' ? q.place.town : null,
+    p_venue_id: q.place.kind === 'venue' ? q.place.venueId : null,
+    p_types: q.types.length > 0 ? q.types : null,
+    p_favourites_only: q.favouritesOnly,
+    p_include_unavailable: q.includeUnavailable,
+  });
+  if (error) fail(error.message);
+  const rows = (data ?? []) as Omit<BookResult, 'photoUrl'>[];
+  const paths = rows.flatMap((r) => (r.photo_path ? [r.photo_path] : []));
+  const urls: Record<string, string> = {};
+  if (paths.length > 0) {
+    // A photo that can't be signed is left out; the card shows the dark panel.
+    const { data: signed } = await supabase.storage.from(VENUE_PHOTOS_BUCKET).createSignedUrls(paths, PHOTO_URL_SECONDS);
+    for (const s of signed ?? []) if (s.path && s.signedUrl) urls[s.path] = s.signedUrl;
+  }
+  return rows.map((r) => ({
+    ...r,
+    slots: r.slots.map((s) => ({ ...s, start: s.start.slice(0, 5), end: s.end.slice(0, 5) })),
+    photoUrl: r.photo_path ? (urls[r.photo_path] ?? null) : null,
+  }));
+}
+
+/** Saves or removes a favourite venue. The server makes the row the caller's. */
+export async function setFavourite(venueId: string, on: boolean): Promise<void> {
+  const failed = 'Couldn’t save this venue. Try again.';
+  if (on) {
+    const { error } = await supabase.from('favourite_venues').insert({ venue_id: venueId });
+    // Already a favourite (another tap won the race): nothing to do.
+    if (error && error.code !== '23505') throw new Error(failed);
+    return;
+  }
+  const { error } = await supabase.from('favourite_venues').delete().eq('venue_id', venueId);
+  if (error) throw new Error(failed);
+}
+
+/** "Missing a venue?": sent to the founders. At most 5 a day (server). */
+export async function requestVenue(venueName: string, town: string): Promise<void> {
+  const name = venueName.trim();
+  const place = town.trim();
+  if (!name || !place) throw new Error('Add the venue name and town.');
+  const { error } = await supabase.from('venue_requests').insert({ venue_name: name, town: place });
+  if (error) {
+    throw new Error(
+      error.message === 'venue_request_limit' ? 'You’ve sent 5 today. Try again tomorrow.' : 'Couldn’t send this. Try again.',
+    );
+  }
+}
+
+// ---- Where a tap goes ----------------------------------------------------
+
+export type ChosenSlot = Slot & { venueName: string };
+
+/** A free time on a card. Until S5 (Panos) builds the venue page's Book tab,
+ *  it opens checkout for that slot, as before S4. S5 changes only this
+ *  function, to open the venue page's Book tab with the same slot picked. */
+export function openTimeSlot(slot: ChosenSlot, nav: BookingNavigator): void {
+  nav.push({
+    pathname: '/booking-payment',
+    params: {
+      venueId: slot.venueId,
+      venueName: slot.venueName,
+      day: slot.day,
+      start: slot.start,
+      end: slot.end,
+      format: slot.format,
+      playersPerSide: String(slot.playersPerSide),
+    },
+  });
+}
+
+/** A card: the venue page, with no time picked. */
+export function openVenue(venueId: string, nav: BookingNavigator): void {
+  nav.push({ pathname: '/venue/[id]', params: { id: venueId } });
 }

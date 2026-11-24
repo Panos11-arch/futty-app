@@ -1,90 +1,76 @@
-// The Book flow (spec 15 section 5, "Book"; spec 13 "Booking screens"):
-// date strip -> time -> length -> format (and players per side where 6 v 6
-// is allowed) -> the venues free at that time, with the server's price per
-// player. Picking a venue or one of its times opens checkout.
+// Book a pitch (S4; image 02; Playtomic 01, 02, 05, 12, 13, 14): the
+// search field (a place, and a heart for favourites only), the chips
+// Filters · format · day · time, and the venues with their free times and
+// "from €X.XX per player" (the server's cheapest price among the times the
+// card shows). A time opens that slot; a card opens the venue page.
 //
-// A player in debt (my_owed says blocked) sees a banner linking to "Pay what
-// I owe" and can't pick a venue (spec 13, "Debt"); book_slot refuses anyway.
-import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+// A player in debt (my_owed says blocked) sees a banner linking to "Pay
+// what I owe" and can't pick a time (spec 13, "Debt"); book_slot refuses
+// anyway.
+import { useMemo, useRef, useState } from 'react';
+import { FlatList, Platform, Pressable, ScrollView, View } from 'react-native';
 
+import { ChooseDaysSheet } from '@/components/booking/book-search/choose-days-sheet';
+import { FilterSheet } from '@/components/booking/book-search/filter-sheet';
+import { FormatSheet } from '@/components/booking/book-search/format-sheet';
+import { MissingVenueSheet } from '@/components/booking/book-search/missing-venue-sheet';
+import { TimeSheet } from '@/components/booking/book-search/time-sheet';
+import { VenueResultCard } from '@/components/booking/book-search/venue-result-card';
+import { WherePicker } from '@/components/booking/book-search/where-picker';
+import { Banner, Button, Chip, EmptyState, SkeletonBlock, Text } from '@/components/ui';
+import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { radius, space } from '@/constants/futty-theme';
 import {
-  Banner,
-  Button,
-  Chip,
-  EmptyState,
-  SectionHeader,
-  SegmentedControl,
-  SkeletonBlock,
-  SkeletonText,
-  Text,
-  VenueCard,
-} from '@/components/ui';
-import { DISABLED_OPACITY } from '@/components/ui/foundation';
-import { space } from '@/constants/futty-theme';
-import { makeStyles } from '@/lib/theme';
-import { PITCH_FORMATS } from '@/lib/booking';
-import {
-  dateStrip,
-  dayChipLabel,
-  GAME_LENGTHS,
-  showPlayersPerSide,
-  timeGrid,
-  useNow,
-  type FreeAtQuery,
-  type FreeVenueWithPhoto,
-  type GameLength,
+  daysChipLabel,
+  defaultBookQuery,
+  offeredLengths,
+  placeLabel,
+  timeChipLabel,
+  type BookPlace,
+  type BookResult,
+  type BookSearchQuery,
+  type BookSlot,
   type LoadState,
+  type PlaceVenue,
   type SearchOptions,
 } from '@/lib/booking-search';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 export type BookSearchViewProps = {
   options: LoadState<SearchOptions>;
-  /** From a venue page: only this venue, with its own 6 v 6 setting. */
-  venue: { id: string; name: string; allowsSixOnFive: boolean } | null;
-  /** The server's free venues for the current query; null until it's complete. */
-  results: LoadState<FreeVenueWithPhoto[]> | null;
-  onQueryChange: (query: FreeAtQuery | null) => void;
-  onChoose: (venue: FreeVenueWithPhoto, start: string) => void;
-  onVenueInfo: (venueId: string) => void;
+  /** The search; null until the screen has read the last format used. */
+  query: BookSearchQuery | null;
+  onQueryChange: (query: BookSearchQuery) => void;
+  results: LoadState<BookResult[]>;
+  refreshing: boolean;
+  onRefresh: () => void;
   onRetryOptions: () => void;
   onRetryResults: () => void;
-  /** The debt banner's words (owedBannerMessage) when my_owed says the
-   *  player is blocked; null or absent when they can book. */
+  /** The Filter sheet's live count for its draft; null while counting. */
+  filterCount: number | null;
+  /** The Filter sheet's draft to count, or null when the sheet closes. */
+  onFilterDraft: (draft: BookSearchQuery | null) => void;
+  towns: string[];
+  venues: PlaceVenue[];
+  recents: BookPlace[];
+  onPickPlace: (place: BookPlace) => void;
+  onOpenVenue: (venueId: string) => void;
+  onTime: (venue: BookResult, slot: BookSlot) => void;
+  /** Saves or removes a favourite; rejects with the words to show. */
+  onFavourite: (venueId: string, on: boolean) => Promise<void>;
+  /** "Missing a venue?"; rejects with the words to show. */
+  onRequestVenue: (venueName: string, town: string) => Promise<void>;
+  /** The debt banner's words when my_owed says the player is blocked. */
   debtMessage?: string | null;
   onPayOwed?: () => void;
-  /** Saves the current search (day, start, length, format) for alerts. */
-  onSaveSearch?: (search: { day: string; start: string; minutes: number; format: string }) => void;
-  /** For tests; the screen uses the clock. */
-  now?: Date;
 };
 
-/** A venue's free times: the time searched first (every venue listed is free
- *  then; QA 24 November, bug 9), then the server's next free times. */
-export function freeTimes(chosen: string | null, nextStarts: string[]): string[] {
-  const times = nextStarts.map((t) => t.slice(0, 5));
-  return chosen ? [chosen, ...times.filter((t) => t !== chosen)] : times;
-}
-
-const PLAYERS_PER_SIDE = [
-  { value: '5', label: '5 v 5' },
-  { value: '6', label: '6 v 6' },
-] as const;
+type Open = 'where' | 'format' | 'days' | 'time' | 'filter' | 'missing' | null;
 
 export function BookSearchView(props: BookSearchViewProps) {
   const styles = useStyles();
-  const { options } = props;
-  if (options.status === 'loading') {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.content}>
-          <SkeletonText lines={1} variant="headline" />
-          <SkeletonBlock width="100%" height={48} rounded="control" />
-          <SkeletonBlock width="100%" height={96} />
-        </View>
-      </View>
-    );
-  }
+  const { options, query } = props;
   if (options.status === 'error') {
     return (
       <View style={styles.screen}>
@@ -96,54 +82,82 @@ export function BookSearchView(props: BookSearchViewProps) {
       </View>
     );
   }
-  return <BookSearchReady {...props} options={options.data} />;
+  if (options.status === 'loading' || !query) {
+    return (
+      <View testID="book-loading" style={[styles.screen, styles.pad]}>
+        <SkeletonBlock width="100%" height={MIN_TOUCH} rounded="control" />
+        <ResultSkeletons />
+      </View>
+    );
+  }
+  return <BookSearchReady {...props} options={options.data} query={query} />;
+}
+
+function ResultSkeletons() {
+  const styles = useStyles();
+  return (
+    <View testID="book-results-loading" style={styles.list}>
+      <SkeletonBlock width="100%" height={300} />
+      <SkeletonBlock width="100%" height={300} />
+    </View>
+  );
 }
 
 function BookSearchReady({
   options,
-  venue,
-  results,
+  query,
   onQueryChange,
-  onChoose,
-  onVenueInfo,
+  results,
+  refreshing,
+  onRefresh,
   onRetryResults,
+  filterCount,
+  onFilterDraft,
+  towns,
+  venues,
+  recents,
+  onPickPlace,
+  onOpenVenue,
+  onTime,
+  onFavourite,
+  onRequestVenue,
   debtMessage,
   onPayOwed,
-  onSaveSearch,
-  now: nowOverride,
-}: Omit<BookSearchViewProps, 'options'> & { options: SearchOptions }) {
+}: Omit<BookSearchViewProps, 'options' | 'query'> & { options: SearchOptions; query: BookSearchQuery }) {
   const styles = useStyles();
+  const { colors } = useTheme();
+  const [open, setOpen] = useState<Open>(null);
+  const missingAfterPicker = useRef(false);
+  // Favourites change at once on screen; the server catches up.
+  const [favourites, setFavourites] = useState<Record<string, boolean>>({});
+  const [favouriteError, setFavouriteError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
   const blocked = Boolean(debtMessage);
-  const choose = (v: FreeVenueWithPhoto, t: string) => {
-    if (!blocked) onChoose(v, t);
-  };
-  const clock = useNow();
-  const now = nowOverride ?? clock;
-  const days = useMemo(() => dateStrip(options.today, options.window_days), [options.today, options.window_days]);
+  const defaults = useMemo(() => defaultBookQuery(options, query.format), [options, query.format]);
+  const filtersOn =
+    query.includeUnavailable ||
+    query.types.length > 0 ||
+    query.playersPerSide !== defaults.playersPerSide ||
+    query.minutes !== defaults.minutes;
+  const severalDays = query.days.length > 1;
 
-  const [day, setDay] = useState(days[0]);
-  const [start, setStart] = useState<string | null>(null);
-  const [minutes, setMinutes] = useState<GameLength>(60);
-  const [format, setFormat] = useState<string | null>(null);
-  const [playersPerSide, setPlayersPerSide] = useState<5 | 6>(5);
+  const close = () => setOpen(null);
 
-  const times = timeGrid(day, now, minutes);
-  const sixAllowed = venue ? venue.allowsSixOnFive : options.six_on_five_available;
-  const showSides = showPlayersPerSide(format, sixAllowed);
-  const sides: 5 | 6 = showSides ? playersPerSide : 5;
-  // A start time that has passed (or belongs to another day) is no choice.
-  const startTime = start && times.includes(start) ? start : null;
+  async function toggleFavourite(venueId: string, on: boolean) {
+    setFavouriteError(null);
+    setFavourites((f) => ({ ...f, [venueId]: on }));
+    try {
+      await onFavourite(venueId, on);
+    } catch (e) {
+      setFavourites((f) => ({ ...f, [venueId]: !on }));
+      setFavouriteError(e instanceof Error ? e.message : 'Couldn’t save this venue. Try again.');
+    }
+  }
 
-  useEffect(() => {
-    onQueryChange(startTime && format ? { day, start: startTime, minutes, format, playersPerSide: sides } : null);
-    // onQueryChange is the screen's setter; the query is what matters.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, startTime, minutes, format, sides]);
+  const data = results.status === 'ready' ? results.data.map((r) => ({ ...r, is_favourite: favourites[r.venue_id] ?? r.is_favourite })) : [];
 
-  const shown = results?.status === 'ready' ? results.data.filter((v) => !venue || v.venue_id === venue.id) : [];
-
-  return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+  const header = (
+    <View style={styles.banners}>
       {debtMessage ? (
         <View testID="debt-banner">
           <Banner
@@ -153,151 +167,226 @@ function BookSearchReady({
           />
         </View>
       ) : null}
-      {venue ? (
-        <Text variant="title" accessibilityRole="header">
-          {venue.name}
-        </Text>
-      ) : null}
+      {favouriteError ? <Banner tone="danger" message={favouriteError} /> : null}
+      {sent ? <Banner tone="info" message="Venue sent" /> : null}
+    </View>
+  );
 
-      <View style={styles.section}>
-        <SectionHeader title="Day" />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-          {days.map((d) => (
-            <Chip
-              key={d}
-              testID={`book-day-${d}`}
-              label={dayChipLabel(d, options.today)}
-              selected={d === day}
-              onPress={() => setDay(d)}
-            />
-          ))}
+  return (
+    <View style={styles.screen}>
+      <View style={styles.top}>
+        <View style={styles.field}>
+          <Pressable
+            testID="book-search-field"
+            accessibilityRole="search"
+            accessibilityLabel={`Where: ${placeLabel(query.place)}`}
+            onPress={() => setOpen('where')}
+            style={styles.fieldPress}>
+            <IconSymbol name="magnifyingglass" size={ICON.small} color={colors.inkMuted} />
+            <Text variant="body" tone="inkMuted" numberOfLines={1} style={styles.fieldText}>
+              {placeLabel(query.place)}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="book-favourites"
+            accessibilityRole="button"
+            accessibilityLabel="Favourites only"
+            accessibilityState={{ selected: query.favouritesOnly }}
+            onPress={() => onQueryChange({ ...query, favouritesOnly: !query.favouritesOnly })}
+            style={styles.heart}>
+            <IconSymbol name={query.favouritesOnly ? 'heart.fill' : 'heart'} size={ICON.regular} color={colors.ink} />
+          </Pressable>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+          <Chip
+            testID="book-chip-filters"
+            label="Filters"
+            selected={filtersOn}
+            onPress={() => {
+              setOpen('filter');
+              onFilterDraft(query);
+            }}
+          />
+          <Chip testID="book-chip-format" label={query.format} selected onPress={() => setOpen('format')} />
+          <Chip
+            testID="book-chip-date"
+            label={daysChipLabel(query.days, options.today)}
+            selected={query.days.length !== 1 || query.days[0] !== options.today}
+            onPress={() => setOpen('days')}
+          />
+          <Chip
+            testID="book-chip-time"
+            label={timeChipLabel(query.window)}
+            selected={query.window.preset !== 'all_day'}
+            onPress={() => setOpen('time')}
+          />
         </ScrollView>
       </View>
 
-      <View style={styles.section}>
-        <SectionHeader title="Time" />
-        {times.length === 0 ? (
-          <Text variant="body" tone="inkMuted">
-            No more start times today. Pick another day.
-          </Text>
-        ) : (
-          <View style={styles.wrap}>
-            {times.map((t) => (
-              <Chip
-                key={t}
-                testID={`book-time-${t.replace(':', '')}`}
-                label={t}
-                tabular
-                selected={t === startTime}
-                onPress={() => setStart(t)}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title="Length" />
-        <View style={styles.wrap}>
-          {GAME_LENGTHS.map((m) => (
-            <Chip
-              key={m}
-              testID={`book-length-${m}`}
-              label={`${m} min`}
-              tabular
-              selected={m === minutes}
-              onPress={() => setMinutes(m)}
-            />
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <SectionHeader title="Format" />
-        <View style={styles.wrap}>
-          {PITCH_FORMATS.map((f) => (
-            <Chip key={f} testID={`book-format-${f}`} label={f} selected={f === format} onPress={() => setFormat(f)} />
-          ))}
-        </View>
-        {showSides ? (
-          <SegmentedControl
-            accessibilityLabel="Players per side"
-            options={[...PLAYERS_PER_SIDE]}
-            value={String(playersPerSide) as '5' | '6'}
-            onChange={(v) => setPlayersPerSide(v === '6' ? 6 : 5)}
+      {results.status === 'error' ? (
+        <View>
+          {header}
+          <EmptyState
+            icon="exclamationmark.circle.fill"
+            message={results.message}
+            action={{ label: 'Try again', onPress: onRetryResults }}
           />
-        ) : null}
-      </View>
-
-      {results ? (
-        <View style={styles.section}>
-          <SectionHeader title={venue ? 'Available' : 'Free at this time'} />
-          {results.status === 'loading' ? <SkeletonBlock width="100%" height={220} /> : null}
-          {results.status === 'error' ? (
-            <EmptyState
-              icon="exclamationmark.circle.fill"
-              message={results.message}
-              action={{ label: 'Try again', onPress: onRetryResults }}
-            />
-          ) : null}
-          {results.status === 'ready' && shown.length === 0 ? (
-            <EmptyState
-              icon="calendar"
-              message={venue ? `${venue.name} isn't free at this time. Try another time.` : 'No venue is free at this time. Try another time.'}
-            />
-          ) : null}
-          {shown.map((v) => (
-            <View key={v.venue_id} style={styles.card}>
-              {/* Blocked by debt: the card and its time chips show disabled
-                  and take no taps. VenueCard has no disabled prop yet (a
-                  components/ui change for its own PR), so it's done here. */}
-              <View
-                testID={`free-venue-${v.venue_id}-slot`}
-                pointerEvents={blocked ? 'none' : 'auto'}
-                aria-disabled={blocked}
-                style={blocked ? styles.disabled : undefined}
-              >
-                <VenueCard
-                  testID={`free-venue-${v.venue_id}`}
-                  name={v.name}
-                  area={v.city ?? v.address ?? ''}
-                  pricePerPlayerCents={v.player_cents}
-                  photoUrl={v.photoUrl}
-                  nextTimes={freeTimes(startTime, v.next_starts)}
-                  onPress={() => startTime && choose(v, startTime)}
-                  onTimePress={(t) => choose(v, t)}
-                />
-              </View>
+        </View>
+      ) : results.status === 'loading' && !refreshing ? (
+        <View style={styles.pad}>
+          {header}
+          <ResultSkeletons />
+        </View>
+      ) : (
+        <FlatList
+          testID="book-results"
+          data={data}
+          keyExtractor={(r) => r.venue_id}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={header}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <IconSymbol name="sportscourt.fill" size={ICON.regular * 2} color={colors.inkMuted} />
+              <Text variant="headline">No venues found</Text>
+              <Text variant="callout" tone="inkMuted">
+                Try other days, times or filters.
+              </Text>
               <Button
-                testID={`free-venue-${v.venue_id}-info`}
-                label="Venue info"
-                variant="plain"
-                onPress={() => onVenueInfo(v.venue_id)}
+                testID="book-missing-venue"
+                label="Missing a venue?"
+                variant="secondary"
+                onPress={() => setOpen('missing')}
               />
             </View>
-          ))}
-        </View>
-      ) : null}
-
-      {onSaveSearch && startTime && format ? (
-        <Button
-          label="Save this search"
-          variant="secondary"
-          accessibilityHint="We’ll tell you when a pitch like this frees up"
-          onPress={() => onSaveSearch({ day, start: startTime, minutes, format })}
-          fullWidth
+          }
+          renderItem={({ item }) => (
+            <VenueResultCard
+              result={item}
+              severalDays={severalDays}
+              timesDisabled={blocked}
+              onOpen={() => onOpenVenue(item.venue_id)}
+              onTime={(slot) => {
+                if (!blocked) onTime(item, slot);
+              }}
+              onFavourite={(on) => toggleFavourite(item.venue_id, on)}
+            />
+          )}
         />
-      ) : null}
-    </ScrollView>
+      )}
+
+      <WherePicker
+        visible={open === 'where'}
+        onClose={close}
+        towns={towns}
+        venues={venues}
+        recents={recents}
+        onPick={(place) => {
+          close();
+          onPickPlace(place);
+        }}
+        onMissingVenue={() => {
+          // iOS can't show the sheet while the full-screen picker is still
+          // closing: it opens once the picker has gone (onDismissed).
+          if (Platform.OS === 'ios') {
+            missingAfterPicker.current = true;
+            setOpen(null);
+          } else {
+            setOpen('missing');
+          }
+        }}
+        onDismissed={() => {
+          if (missingAfterPicker.current) {
+            missingAfterPicker.current = false;
+            setOpen('missing');
+          }
+        }}
+      />
+      <FormatSheet
+        visible={open === 'format'}
+        onClose={close}
+        value={query.format}
+        onPick={(format) => {
+          close();
+          if (format !== query.format) onQueryChange({ ...query, format, playersPerSide: 5 });
+        }}
+      />
+      <ChooseDaysSheet
+        visible={open === 'days'}
+        onClose={close}
+        today={options.today}
+        windowDays={options.window_days}
+        selected={query.days}
+        onApply={(days) => {
+          close();
+          onQueryChange({ ...query, days });
+        }}
+      />
+      <TimeSheet
+        visible={open === 'time'}
+        onClose={close}
+        value={query.window}
+        onApply={(window) => {
+          close();
+          onQueryChange({ ...query, window });
+        }}
+      />
+      <FilterSheet
+        visible={open === 'filter'}
+        onClose={() => {
+          close();
+          onFilterDraft(null);
+        }}
+        value={query}
+        defaults={defaults}
+        lengths={offeredLengths(options)}
+        sixOnFiveAllowed={options.six_on_five_available}
+        count={filterCount}
+        onDraftChange={onFilterDraft}
+        onApply={(draft) => {
+          close();
+          onFilterDraft(null);
+          onQueryChange(draft);
+        }}
+      />
+      <MissingVenueSheet
+        visible={open === 'missing'}
+        onClose={close}
+        onSend={async (name, town) => {
+          await onRequestVenue(name, town);
+          setSent(true);
+        }}
+      />
+    </View>
   );
 }
 
-const useStyles = makeStyles(({ colors }) => ({
+const useStyles = makeStyles(({ colors, hairline }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
-  section: { gap: space.md },
-  row: { gap: space.sm },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  card: { gap: space.xs },
-  disabled: { opacity: DISABLED_OPACITY },
+  pad: { padding: space.lg, gap: space.md },
+  top: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.md,
+    gap: space.md,
+    borderBottomWidth: hairline,
+    borderBottomColor: colors.border,
+  },
+  field: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.fill,
+    borderRadius: radius.control,
+    minHeight: MIN_TOUCH + space.sm,
+    paddingLeft: space.lg,
+  },
+  fieldPress: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: MIN_TOUCH },
+  fieldText: { flex: 1 },
+  heart: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
+  chips: { gap: space.sm },
+  banners: { gap: space.md },
+  list: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
+  empty: { alignItems: 'center', gap: space.md, paddingVertical: space.xxl },
 }));

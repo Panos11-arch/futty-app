@@ -1,97 +1,151 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 
 import { BookSearchView } from '@/components/booking/book-search-view';
 import {
-  endTime,
+  defaultBookQuery,
+  fetchBookSearch,
   fetchSearchOptions,
-  fetchVenuesFreeAt,
+  loadLastFormat,
+  loadRecentPlaces,
+  openTimeSlot,
+  openVenue,
+  playersPerSideFor,
+  requestVenue,
+  saveLastFormat,
+  saveRecentPlace,
+  setFavourite,
   useLoad,
-  type FreeAtQuery,
-  type FreeVenueWithPhoto,
+  type BookPlace,
+  type BookResult,
+  type BookSearchQuery,
+  type LoadState,
 } from '@/lib/booking-search';
+import { haptic } from '@/lib/haptics';
+import { fetchSearchPlaces } from '@/lib/saved-searches';
 import { useDebtBlock } from '@/lib/use-owed';
-import { useVenuePage } from '@/lib/use-venue-page';
 import { useRules } from '@/lib/use-rules';
+import { useVenues } from '@/lib/use-venues';
 
-/** Book a pitch (P5): the server's window, free venues and prices; checkout
- *  happens on booking-payment. From a venue page (venueId), only that venue. */
+/** What the search is keyed on: a venue by its id only (its name is just for show). */
+function searchKey(q: BookSearchQuery): string {
+  const place = q.place.kind === 'venue' ? { kind: 'venue', venueId: q.place.venueId } : q.place;
+  return JSON.stringify({ ...q, place });
+}
+
+/** Book a pitch (S4; image 02): the server's free venues and times for the
+ *  search, with each card's cheapest per-player price. A time opens that
+ *  slot (openTimeSlot), a card the venue page. From a venue page (venueId),
+ *  the search starts on that venue. */
 export default function BookScreen() {
-  // Spec 13's rules for the numbers in this screen's text (P10): loads them
-  // and re-renders when they arrive.
+  // Spec 13's rules for the numbers in this screen's text (P10).
   useRules();
   const { venueId } = useLocalSearchParams<{ venueId?: string }>();
   const options = useLoad('options', fetchSearchOptions);
-  const venuePage = useVenuePage(venueId);
+  const places = useLoad('places', fetchSearchPlaces);
+  const live = useVenues({ liveOnly: true });
   // Only debt blocks booking (spec 13, "Debt"); checked again on return.
   const debt = useDebtBlock();
 
-  const [query, setQuery] = useState<FreeAtQuery | null>(null);
-  const loadFree = useCallback(() => fetchVenuesFreeAt(query!), [query]);
-  const results = useLoad(query ? JSON.stringify(query) : null, loadFree);
+  const [query, setQuery] = useState<BookSearchQuery | null>(null);
+  const [recents, setRecents] = useState<BookPlace[]>([]);
+  const [draft, setDraft] = useState<BookSearchQuery | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // From a venue page the screen waits for that venue's own 6 v 6 setting.
-  const venue =
-    venueId && venuePage.state.status === 'ready'
-      ? {
-          id: venueId,
-          name: venuePage.state.data.venue.name,
-          allowsSixOnFive: venuePage.state.data.venue.allows_6v6_on_5s === true,
-        }
-      : null;
-  const optionsState =
-    venueId && venuePage.state.status === 'loading'
-      ? ({ status: 'loading' } as const)
-      : venueId && (venuePage.state.status === 'error' || venuePage.state.status === 'not_found')
-        ? ({ status: 'error', message: "Couldn't load this venue." } as const)
-        : options.state;
+  const optionsData = options.state.status === 'ready' ? options.state.data : null;
+  const six = optionsData?.six_on_five_available ?? false;
+  const venues = live.status === 'ready' ? live.venues.map((v) => ({ id: v.id, name: v.name, city: v.city })) : [];
+  const towns = places.state.status === 'ready' ? places.state.data.map((p) => p.city) : [];
 
-  function choose(v: FreeVenueWithPhoto, start: string) {
-    if (!query) return;
-    const end = endTime(start, query.minutes);
-    if (!end) return;
-    router.push({
-      pathname: '/booking-payment',
-      params: {
-        venueId: v.venue_id,
-        venueName: v.name,
-        day: query.day,
-        start,
-        end,
-        format: query.format,
-        playersPerSide: String(query.playersPerSide),
-      },
+  // The opening search: the last format used (on the phone), today, all day.
+  useEffect(() => {
+    if (!optionsData || query) return;
+    let cancelled = false;
+    loadLastFormat().then((last) => {
+      if (cancelled) return;
+      const q = defaultBookQuery(optionsData, last);
+      setQuery(venueId ? { ...q, place: { kind: 'venue', venueId, name: '' } } : q);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [optionsData, query, venueId]);
+
+  useEffect(() => {
+    loadRecentPlaces().then(setRecents);
+  }, []);
+
+  const results = useLoad(query ? searchKey(query) : null, () => fetchBookSearch(query!, six));
+  const count = useLoad(draft ? `count:${searchKey(draft)}` : null, () => fetchBookSearch(draft!, six));
+
+  // While pulling to refresh, keep showing the last results.
+  const lastReady = useRef<BookResult[] | null>(null);
+  if (results.state.status === 'ready') lastReady.current = results.state.data;
+  const shownResults: LoadState<BookResult[]> =
+    refreshing && results.state.status === 'loading' && lastReady.current
+      ? { status: 'ready', data: lastReady.current }
+      : results.state;
+
+  // A venue from a venue page shows its name once the venues are in.
+  const shownQuery =
+    query && query.place.kind === 'venue' && !query.place.name
+      ? { ...query, place: { ...query.place, name: venues.find((v) => v.id === venueId)?.name ?? '' } }
+      : query;
+
+  function changeQuery(next: BookSearchQuery) {
+    if (query && next.format !== query.format) void saveLastFormat(next.format);
+    setQuery(next);
+  }
+
+  async function refresh() {
+    setRefreshing(true);
+    await results.reload();
+    setRefreshing(false);
   }
 
   return (
-    <BookSearchView
-      options={optionsState}
-      venue={venue}
-      results={query ? results.state : null}
-      onQueryChange={setQuery}
-      onChoose={choose}
-      onVenueInfo={(id) => {
-        // With a time chosen, the venue page shows that time's forecast (P11).
-        const end = query ? endTime(query.start, query.minutes) : null;
-        router.push({
-          pathname: '/venue/[id]',
-          params: query && end ? { id, day: query.day, start: query.start, end } : { id },
-        });
-      }}
-      onRetryOptions={() => {
-        options.reload();
-        venuePage.reload();
-      }}
-      onRetryResults={results.reload}
-      debtMessage={debt.message}
-      onPayOwed={() => router.push('/account/payments/owed')}
-      onSaveSearch={(s) =>
-        router.push({
-          pathname: '/saved-search',
-          params: { day: s.day, start: s.start, minutes: String(s.minutes), format: s.format },
-        })
-      }
-    />
+    <>
+      <Stack.Screen options={{ title: 'Search' }} />
+      <BookSearchView
+        options={options.state}
+        query={shownQuery}
+        onQueryChange={changeQuery}
+        results={shownResults}
+        refreshing={refreshing}
+        onRefresh={refresh}
+        onRetryOptions={options.reload}
+        onRetryResults={results.reload}
+        filterCount={draft && count.state.status === 'ready' ? count.state.data.length : null}
+        onFilterDraft={setDraft}
+        towns={towns}
+        venues={venues}
+        recents={recents}
+        onPickPlace={(place) => {
+          if (query) setQuery({ ...query, place });
+          void saveRecentPlace(place).then(setRecents);
+        }}
+        onOpenVenue={(id) => openVenue(id, router)}
+        onTime={(venue, slot) => {
+          if (!query) return;
+          haptic.tap();
+          openTimeSlot(
+            {
+              venueId: venue.venue_id,
+              venueName: venue.name,
+              day: slot.day,
+              start: slot.start,
+              end: slot.end,
+              format: query.format,
+              playersPerSide: playersPerSideFor(query.format, query.playersPerSide, six),
+            },
+            router,
+          );
+        }}
+        onFavourite={setFavourite}
+        onRequestVenue={requestVenue}
+        debtMessage={debt.message}
+        onPayOwed={() => router.push('/account/payments/owed')}
+      />
+    </>
   );
 }

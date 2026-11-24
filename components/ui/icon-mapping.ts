@@ -85,6 +85,9 @@ export const MAPPING = {
   'wifi': 'wifi',
   'arrow.triangle.turn.up.right.diamond.fill': 'directions',
   'map.fill': 'map',
+  // S4: favourite venues.
+  heart: 'favorite-border',
+  'heart.fill': 'favorite',
 } as IconMapping;
 
 /** Every icon name the app may use (for tests). */
