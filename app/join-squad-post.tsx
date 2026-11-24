@@ -14,6 +14,7 @@ import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
+import { getBookingPostQuotes, type BookingPostQuote } from '@/lib/booking-posts';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { formatMatchWhen } from '@/lib/match/format';
@@ -42,6 +43,9 @@ export default function JoinSquadPostScreen() {
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const [price, setPrice] = useState<SquadPostPrice | null>(null);
+  // B4: a Booking v2 post's quote for its side (booking_post_quotes); null
+  // for an older post, which keeps squad_post_price and its old wording.
+  const [quote, setQuote] = useState<BookingPostQuote | null>(null);
   const [blockNotice, setBlockNotice] = useState<BlockNotice | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +63,17 @@ export default function JoinSquadPostScreen() {
       .then(({ data }) => {
         if (data) setPrice(data);
       });
+  }, [post?.id, post?.venue_booking_id]);
+
+  useEffect(() => {
+    if (!post?.venue_booking_id) return;
+    let current = true;
+    getBookingPostQuotes([post.id]).then((quotes) => {
+      if (current) setQuote(quotes?.get(post.id) ?? null);
+    });
+    return () => {
+      current = false;
+    };
   }, [post?.id, post?.venue_booking_id]);
 
   // The venue may have closed new bookings for this time. A block stops new
@@ -115,7 +130,7 @@ export default function JoinSquadPostScreen() {
     // this booking has a price.
     const { data: share, error: shareError } = await supabase
       .from('booking_payment_shares')
-      .select('id')
+      .select('id, status')
       .eq('booking_id', post.venue_booking_id)
       .eq('profile_id', authData.user.id)
       .maybeSingle();
@@ -132,6 +147,13 @@ export default function JoinSquadPostScreen() {
       // add_booking_share_internal. Genuinely nothing to authorize.
       setBusy(false);
       router.back();
+      return;
+    }
+
+    if ((share as { status?: string }).status === 'covered') {
+      // B4: his side paid for everyone; he plays for nothing.
+      setBusy(false);
+      router.replace({ pathname: '/booking/[id]', params: { id: post.venue_booking_id } });
       return;
     }
 
@@ -239,7 +261,22 @@ export default function JoinSquadPostScreen() {
           </Text>
         </View>
 
-        {price ? (
+        {quote && quote.join_cents === 0 ? (
+          <Card testID="share-price">
+            <Text variant="body">Your captain paid for everyone: nothing to pay.</Text>
+          </Card>
+        ) : quote && quote.join_cents !== null ? (
+          <Card testID="share-price">
+            <PriceBreakdown
+              lines={[
+                { label: 'Pitch', cents: quote.join_pitch_cents ?? 0 },
+                { label: 'Service fee', cents: quote.join_fee_cents ?? 0 },
+              ]}
+              totalCents={quote.join_cents}
+              totalLabel="Your share"
+            />
+          </Card>
+        ) : price && !quote ? (
           <Card testID="share-price">
             <PriceBreakdown
               lines={
@@ -264,10 +301,12 @@ export default function JoinSquadPostScreen() {
           </View>
         ) : null}
 
-        <Text variant="callout" tone="inkMuted">
-          Your card is only held, not charged — you&apos;re only charged once the match is confirmed with a full
-          roster.
-        </Text>
+        {quote ? null : (
+          <Text variant="callout" tone="inkMuted">
+            Your card is only held, not charged — you&apos;re only charged once the match is confirmed with a full
+            roster.
+          </Text>
+        )}
 
         {error ? (
           <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
@@ -275,7 +314,11 @@ export default function JoinSquadPostScreen() {
           </Text>
         ) : null}
 
-        <Button label="Join and pay my share" fullWidth onPress={joinAndPay} loading={busy} />
+        {quote && !quote.open ? (
+          <Banner tone="info" message="This game is no longer open." />
+        ) : (
+          <Button label={quote ? 'Join' : 'Join and pay my share'} fullWidth onPress={joinAndPay} loading={busy} />
+        )}
       </ScrollView>
     </SafeAreaView>
   );

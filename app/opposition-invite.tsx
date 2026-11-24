@@ -1,5 +1,6 @@
 // Side B's accept screen (B3, Booking v2): from an "opposition_invite"
-// notification. "Accept as captain", choose how side B pays, then pay or
+// notification, or (B4) from a public opposition post in "Find a game"
+// (postId: "Accept as opponent"). "Accept as captain", choose how side B pays, then pay or
 // hold within the payment window; then on to the screen after paying, to
 // invite side B's players.
 import { usePaymentSheet } from '@stripe/stripe-react-native';
@@ -11,6 +12,7 @@ import { OppositionInviteView } from '@/components/booking/opposition-invite-vie
 import { payShare } from '@/lib/booking-checkout';
 import { afterBooking } from '@/lib/booking-navigation';
 import { acceptOpposition, fetchOppositionInvite, type AcceptedOpposition } from '@/lib/booking-opposition';
+import { acceptOppositionPost, fetchOppositionPost } from '@/lib/booking-posts';
 import { useLoad } from '@/lib/booking-search';
 import { useRules } from '@/lib/use-rules';
 
@@ -18,9 +20,10 @@ const card = { method: 'card' as const, acceptNonRefundable: false, useCredit: f
 
 export default function OppositionInviteScreen() {
   useRules();
-  const { inviteId = '' } = useLocalSearchParams<{ inviteId: string }>();
-  const load = useCallback(() => fetchOppositionInvite(inviteId), [inviteId]);
-  const { state, reload } = useLoad(inviteId || null, load);
+  const { inviteId = '', postId = '' } = useLocalSearchParams<{ inviteId: string; postId: string }>();
+  const id = postId || inviteId;
+  const load = useCallback(() => (postId ? fetchOppositionPost(postId) : fetchOppositionInvite(inviteId)), [inviteId, postId]);
+  const { state, reload } = useLoad(id || null, load);
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
   const [accepted, setAccepted] = useState<AcceptedOpposition | null>(null);
   const [paying, setPaying] = useState(false);
@@ -33,7 +36,7 @@ export default function OppositionInviteScreen() {
     // same share again.
     let mine = accepted;
     if (!mine) {
-      const result = await acceptOpposition(inviteId, mode);
+      const result = postId ? await acceptOppositionPost(postId, mode) : await acceptOpposition(inviteId, mode);
       if ('error' in result) {
         setPaying(false);
         setError(result.error);
@@ -60,7 +63,7 @@ export default function OppositionInviteScreen() {
     <>
       <Stack.Screen options={{ title: 'Play against us?' }} />
       <OppositionInviteView
-        state={inviteId ? state : { status: 'error', message: 'This invite is no longer open.' }}
+        state={id ? state : { status: 'error', message: 'This invite is no longer open.' }}
         onRetry={reload}
         onPay={pay}
         paying={paying}

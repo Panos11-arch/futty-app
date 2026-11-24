@@ -58,10 +58,12 @@ export function useSquadPosts(postType: 'players' | 'opposition') {
     const { data: posts, error } = await supabase
       .from('squad_posts')
       .select(
-        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, venue_booking_id, created_at, position_needed, level_needed, payment_mode, venues(name, city)'
+        'id, venue_id, scheduled_at, format, type, level, posted_by, team_id, players_needed, status, matched_team_id, venue_booking_id, created_at, position_needed, level_needed, payment_mode, side, venues(name, city)'
       )
       .eq('type', postType)
-      .neq('status', 'cancelled')
+      // Open or matched: a cancelled or closed post (full, unpublished, or an
+      // opposition post 24 hours before kickoff) can't be joined or taken on.
+      .in('status', ['open', 'matched'])
       // A post for a game that's already started/passed is nothing anyone
       // can join or offer against any more — drop it rather than let stale
       // dates pile up in the browse list.
