@@ -118,6 +118,14 @@ describe('Venue dashboard: Set up your venue (S5A)', () => {
     expect(push.mock.calls).toEqual([[{ pathname: '/venue-contact', params: { venueId: 'v1' } }]]);
   });
 
+  it('Phone and website shows ticked as the server says (a phone is enough; the website is optional)', async () => {
+    mockRpcData.venue_setup_status = { ...setupDone, menu: false, complete: false };
+    await open();
+    await screen.findByTestId('venue-setup-checklist');
+    expect(screen.getByTestId('venue-setup-step-contact').props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId('venue-setup-step-menu').props.accessibilityState).toMatchObject({ checked: false });
+  });
+
   it('hidden once complete', async () => {
     mockRpcData.venue_setup_status = setupDone;
     await open();

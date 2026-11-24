@@ -8,7 +8,8 @@
 --   3. The dashboard's "Set up your venue" checklist (venue_setup_status):
 --      photos, amenities, food & drink, opening hours, phone and website,
 --      pitches and prices, each done once the venue has entered it; staff of
---      that venue only.
+--      that venue only. "Phone and website" is done with a phone: the
+--      website is optional (Panos, 24 November).
 begin;
 
 update public.venues set is_live = false;
@@ -110,7 +111,8 @@ declare
 begin
   delete from public.opening_hours where venue_id = v_venue;
   delete from public.price_rules where venue_id = v_venue;
-  update public.venues set phone = null, website = null where id = v_venue;
+  -- A website alone isn't enough: the phone is what's needed.
+  update public.venues set phone = null, website = 'https://s5a.example.com' where id = v_venue;
 
   perform tests.act_as(v_owner);
   s := public.venue_setup_status(v_venue);
@@ -123,7 +125,8 @@ begin
   insert into public.venue_amenities (venue_id, kind) values (v_venue, 'shop');
   insert into public.venue_menu_items (venue_id, name, price_cents, active) values (v_venue, 'Old pie', 300, false);
   insert into public.opening_hours (venue_id, weekday, opens, closes) values (v_venue, 1, '08:00', '23:00');
-  update public.venues set phone = '+357 25 123456' where id = v_venue;
+  -- A phone with no website: done (the website is optional).
+  update public.venues set phone = '+357 25 123456', website = null where id = v_venue;
   perform tests.create_pitch(v_venue, 'Pitch 1', '5-a-side', null, 1);
 
   perform tests.act_as(v_owner);
@@ -131,19 +134,18 @@ begin
   assert (s ->> 'photos')::boolean and (s ->> 'amenities')::boolean and (s ->> 'hours')::boolean
      and (s ->> 'pitches')::boolean, format('the parts entered are done, got %s', s);
   assert not (s ->> 'menu')::boolean, 'a switched-off item doesn''t count';
-  assert not (s ->> 'contact')::boolean, 'phone and website: both';
+  assert (s ->> 'contact')::boolean, 'a phone is enough, no website needed';
   assert not (s ->> 'prices')::boolean and not (s ->> 'complete')::boolean, 'no price yet, not complete';
 
   perform tests.act_as_postgres();
   insert into public.venue_menu_items (venue_id, name, price_cents) values (v_venue, 'Frappé', 350);
-  update public.venues set website = 'https://s5a.example.com' where id = v_venue;
   perform tests.set_price(v_venue, '5-a-side', 6000);
 
   perform tests.act_as(v_owner);
   s := public.venue_setup_status(v_venue);
   assert s = jsonb_build_object('photos', true, 'amenities', true, 'menu', true, 'hours', true, 'contact', true,
                                 'pitches', true, 'prices', true, 'complete', true),
-    format('everything entered: complete, got %s', s);
+    format('everything entered, no website: complete, got %s', s);
 
   -- Refused: another venue's staff, a player, signed out.
   perform tests.act_as(v_other);

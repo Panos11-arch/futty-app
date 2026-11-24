@@ -215,9 +215,10 @@ grant execute on function public.book_search(date[], time, time, integer, text, 
 -- ---- 3. The setup checklist --------------------------------------------------
 
 -- Each part is done once the venue has entered it: a photo, an amenity, an
--- active food or drink item, opening hours, both a phone and a website, a
--- pitch, and a price (the venue page's own test for bookable). complete
--- when all seven are done. Staff of that venue only.
+-- active food or drink item, opening hours, a phone ("Phone and website":
+-- the website is optional, decided by Panos on 24 November), a pitch, and a
+-- price (the venue page's own test for bookable). complete when all seven
+-- are done. Staff of that venue only.
 create or replace function public.venue_setup_status(p_venue_id uuid)
 returns jsonb
 language plpgsql
@@ -242,7 +243,7 @@ begin
     'amenities', exists (select 1 from public.venue_amenities a where a.venue_id = p_venue_id),
     'menu', exists (select 1 from public.venue_menu_items i where i.venue_id = p_venue_id and i.active),
     'hours', exists (select 1 from public.opening_hours h where h.venue_id = p_venue_id),
-    'contact', v_venue.phone is not null and v_venue.website is not null,
+    'contact', v_venue.phone is not null,
     'pitches', exists (select 1 from public.pitches p where p.venue_id = p_venue_id),
     'prices', exists (select 1 from public.price_rules r where r.venue_id = p_venue_id));
   return v || jsonb_build_object('complete', not exists (select 1 from jsonb_each(v) e where e.value = 'false'::jsonb));
