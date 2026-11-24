@@ -32,16 +32,18 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
         (r) => `Losers pay can be booked at most ${daysText(r.gipedo_max_days)} ahead.`,
         'Losers pay can only be booked a few days ahead.',
       );
+    case 'losers_pay_too_soon':
+      return ruleText(
+        (r) => `Losers pay must be booked at least ${hoursText(r.gipedo_opponent_hours)} before kickoff.`,
+        'Losers pay must be booked further ahead.',
+      );
     case 'accept_losers_pay':
       return 'This game is Losers pay. Accept Losers pay to play it.';
     case 'captain_pulls_out_side':
       return 'As captain, you pull your whole team out instead.';
     case 'losers_pay_play_whole_not_available':
-      return "Paying the whole pitch isn't available for Losers pay yet. You can cancel free.";
-    case 'losers_pay_pull_out_too_late':
-    case 'losers_pay_pull_out_pay_all':
-    case 'losers_pay_pull_out_alone':
-      return "Your team can't pull out of this game in the app yet.";
+      // Decided 24 November: on Losers pay the holds pay for the whole pitch.
+      return 'On Losers pay your holds pay for the whole pitch: tap Play the whole pitch.';
     case 'not_losers_pay':
       return "This game isn't Losers pay.";
     case 'use_losers_pay_leave':

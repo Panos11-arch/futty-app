@@ -54,4 +54,41 @@ describe('NoOpponentPanel (spec 13 "No side B by 24 hours before kickoff")', () 
     expect(screen.getByTestId('nop-pay-whole')).toBeTruthy();
     expect(onCancelFree).not.toHaveBeenCalled();
   });
+
+  it('Losers pay, paying for everyone: the hold pays for the whole pitch (example 12a)', async () => {
+    const onPayWhole = jest.fn().mockResolvedValue(null);
+    await render(
+      <NoOpponentPanel
+        testID="nop"
+        info={{ amount_cents: 0, choose_by: info.choose_by, losers_pay: true, taken_cents: 4550 }}
+        onPayWhole={onPayWhole}
+        onCancelFree={jest.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Play the whole pitch' })).toBeTruthy();
+    expect(screen.getByTestId('nop-losers-pay')).toHaveTextContent(
+      "Your €45.50 hold is taken as the whole pitch's payment. Nothing more to pay.",
+    );
+    await fireEvent.press(screen.getByTestId('nop-pay-whole'));
+    expect(onPayWhole).toHaveBeenCalled();
+  });
+
+  it('Losers pay, paying for myself: €4.80 from each hold, a €40.00 guarantee (example 12b)', async () => {
+    await render(
+      <NoOpponentPanel
+        testID="nop"
+        info={{ amount_cents: 0, choose_by: info.choose_by, losers_pay: true, taken_cents: 480, player_cents: 480, guarantee_cents: 4000 }}
+        onPayWhole={jest.fn()}
+        onCancelFree={jest.fn()}
+      />,
+    );
+    expect(screen.getByTestId('nop-losers-pay')).toHaveTextContent(
+      'Each player pays €4.80 from their hold and the rest is released. We hold €40.00 on your card for unpaid spots.',
+    );
+  });
+
+  it('not Losers pay: no Losers pay line', async () => {
+    await render(<NoOpponentPanel testID="nop" info={info} onPayWhole={jest.fn()} onCancelFree={jest.fn()} />);
+    expect(screen.queryByTestId('nop-losers-pay')).toBeNull();
+  });
 });

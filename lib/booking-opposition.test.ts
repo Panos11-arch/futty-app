@@ -7,6 +7,8 @@ import {
   noOpponentLines,
   payOtherHalf,
   payWholeLabel,
+  playWholeFromHolds,
+  losersPayWholeLine,
   publishBooking,
   rosterBySide,
   searchTeams,
@@ -62,6 +64,18 @@ describe('the no-opponent choice (spec 13 "No side B by 24 hours before kickoff"
     });
     expect(payWholeLabel(2275)).toBe('Pay €22.75 and play');
     expect(payWholeLabel(2400)).toBe('Pay €24.00 and play');
+  });
+
+  it('on Losers pay the holds pay for it: nothing more to pay (examples 12a and 12b)', () => {
+    expect(payWholeLabel(0, true)).toBe('Play the whole pitch');
+    expect(losersPayWholeLine({ losers_pay: true, taken_cents: 4550 })).toBe(
+      "Your €45.50 hold is taken as the whole pitch's payment. Nothing more to pay.",
+    );
+    expect(losersPayWholeLine({ losers_pay: true, taken_cents: 480, player_cents: 480, guarantee_cents: 4000 })).toBe(
+      'Each player pays €4.80 from their hold and the rest is released. We hold €40.00 on your card for unpaid spots.',
+    );
+    expect(losersPayWholeLine({ losers_pay: false, taken_cents: 4550 })).toBeNull();
+    expect(losersPayWholeLine({})).toBeNull();
   });
 });
 
@@ -149,6 +163,15 @@ describe('server calls', () => {
     expect(mockRpc).toHaveBeenCalledWith('publish_booking', { p_booking_id: 'b1', p_kind: 'opposition' });
     expect(await unpublishPost('post1')).toBeNull();
     expect(mockRpc).toHaveBeenCalledWith('unpublish_post', { p_post_id: 'post1' });
+  });
+
+  it('"Pay the whole pitch and play" on Losers pay is one server call, no payment sheet', async () => {
+    mockRpc.mockResolvedValue({ data: { result: 'play_whole' }, error: null });
+    expect(await playWholeFromHolds('b1')).toBeNull();
+    expect(mockRpc).toHaveBeenCalledWith('booking_no_opponent_choice', { p_booking_id: 'b1', p_choice: 'play_whole' });
+    expect(mockInvoke).not.toHaveBeenCalled();
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'choice_closed' } });
+    expect(await playWholeFromHolds('b1')).toEqual(expect.any(String));
   });
 
   it('Home’s choices', async () => {

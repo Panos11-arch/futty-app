@@ -25,7 +25,19 @@ export type V2Side = {
   state: 'paid' | 'held' | 'unpaid' | 'left';
 };
 
-export type NoOpponentInfo = {
+/** Losers pay (spec 13, decided 24 November): "Pay the whole pitch and play"
+ *  is paid by the holds, so there's nothing more to pay (amount_cents 0).
+ *  Paying for everyone, taken_cents is the captain's hold that's taken;
+ *  paying for myself, player_cents is what each player's hold gives and
+ *  guarantee_cents the whole pitch's guarantee for unpaid spots. */
+export type LosersPayWhole = {
+  losers_pay?: boolean;
+  taken_cents?: number | null;
+  player_cents?: number | null;
+  guarantee_cents?: number | null;
+};
+
+export type NoOpponentInfo = LosersPayWhole & {
   due: boolean;
   choice: 'play_whole' | 'cancel' | 'auto_cancel' | null;
   pitch_cents: number;
@@ -84,7 +96,7 @@ export type OppositionInvite = {
 export type AcceptedOpposition = { booking_id: string; share_id: string | null; amount_cents: number; pay_by?: string };
 
 /** One row of my_no_opponent_choices(), for Home. */
-export type NoOpponentChoice = {
+export type NoOpponentChoice = LosersPayWhole & {
   booking_id: string;
   venue_name: string;
   booking_day: string;
@@ -135,9 +147,24 @@ export function noOpponentLines(info: Pick<NoOpponentInfo, 'choose_by'>): { titl
   };
 }
 
-/** The button says what happens, with the server's amount. */
-export function payWholeLabel(amountCents: number): string {
-  return `Pay ${formatEuros(amountCents)} and play`;
+/** The button says what happens, with the server's amount. On Losers pay
+ *  the holds pay for it, so there's no amount to pay. */
+export function payWholeLabel(amountCents: number, losersPay = false): string {
+  return losersPay ? 'Play the whole pitch' : `Pay ${formatEuros(amountCents)} and play`;
+}
+
+/** On Losers pay, what playing the whole pitch takes from the holds (the
+ *  server's amounts); null otherwise. */
+export function losersPayWholeLine(info: LosersPayWhole): string | null {
+  if (!info.losers_pay) return null;
+  if (info.player_cents != null) {
+    const guarantee =
+      info.guarantee_cents != null ? ` We hold ${formatEuros(info.guarantee_cents)} on your card for unpaid spots.` : '';
+    return `Each player pays ${formatEuros(info.player_cents)} from their hold and the rest is released.${guarantee}`;
+  }
+  return info.taken_cents != null
+    ? `Your ${formatEuros(info.taken_cents)} hold is taken as the whole pitch's payment. Nothing more to pay.`
+    : 'Your hold pays for the whole pitch. Nothing more to pay.';
 }
 
 // ---- Server calls -------------------------------------------------------
@@ -218,6 +245,13 @@ export async function fetchNoOpponentChoices(): Promise<NoOpponentChoice[]> {
 /** "Cancel free": everyone gets their money back. Error words, or null. */
 export async function cancelFree(bookingId: string): Promise<string | null> {
   const { error } = await supabase.rpc('booking_no_opponent_choice', { p_booking_id: bookingId, p_choice: 'cancel' });
+  return error ? words(error.message) : null;
+}
+
+/** "Pay the whole pitch and play" on Losers pay: the holds pay for it, so
+ *  it's one server call, no payment sheet. Error words, or null. */
+export async function playWholeFromHolds(bookingId: string): Promise<string | null> {
+  const { error } = await supabase.rpc('booking_no_opponent_choice', { p_booking_id: bookingId, p_choice: 'play_whole' });
   return error ? words(error.message) : null;
 }
 

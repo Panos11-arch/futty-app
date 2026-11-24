@@ -495,13 +495,14 @@ begin
   assert tests.error_of(format('select public.gipedo_pull_out(%L)', s.booking)) = 'use_losers_pay_pull_out',
     'not Gipedo Pano''s pull-out';
   assert public.booking_detail(s.booking) -> 'gipedo' = 'null'::jsonb, 'no Gipedo Pano panel';
-  assert tests.error_of(format('select public.losers_pay_pull_out(%L)', s.booking)) = 'losers_pay_pull_out_alone',
-    'a lone side pulling out: not decided yet';
   perform tests.act_as_postgres();
   perform tests.set_kickoff(s.booking, now() + interval '20 hours');
   perform public.booking_no_opponent_due();
+  -- A lone side pulling out and "Pay the whole pitch and play" (decided 24
+  -- November): pay-b1d-losers-pay-rules.test.sql. The holds pay for the
+  -- whole pitch, never a payment sheet.
   assert tests.error_of(format('select public.plan_other_half_payment(%L, %L)', s.booking, s.booker))
-         = 'losers_pay_play_whole_not_available', '"Pay the whole pitch and play": not decided yet';
+         = 'losers_pay_play_whole_not_available', '"Pay the whole pitch and play" on Losers pay needs no payment';
 end $$;
 
 -- 11. What the app shows, from the server: the checkout's holds, side B's

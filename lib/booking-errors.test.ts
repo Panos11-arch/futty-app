@@ -114,11 +114,14 @@ describe('B1d: Losers pay, in words', () => {
     ['losers_pay_needs_way_to_pay', 'Choose Pay for everyone or Pay for myself.'],
     ['accept_losers_pay', 'This game is Losers pay. Accept Losers pay to play it.'],
     ['captain_pulls_out_side', 'As captain, you pull your whole team out instead.'],
-    ['losers_pay_play_whole_not_available', "Paying the whole pitch isn't available for Losers pay yet. You can cancel free."],
-    ['losers_pay_pull_out_too_late', "Your team can't pull out of this game in the app yet."],
+    ['losers_pay_play_whole_not_available', 'On Losers pay your holds pay for the whole pitch: tap Play the whole pitch.'],
     ['use_losers_pay_leave', "Leaving a Losers pay game isn't in the app yet."],
   ])('%s', (code, words) => {
     expect(describeBookingErrorMessage(code)).toBe(words);
+  });
+
+  it('the 24 hours come from the rules (decided 24 November)', () => {
+    expect(describeBookingErrorMessage('losers_pay_too_soon')).toBe('Losers pay must be booked at least 24 hours before kickoff.');
   });
 
   it('the 5 days come from the rules', () => {
