@@ -1,6 +1,7 @@
 -- P6e audit fix 2: the roster's can_unmark_arrived follows the same rule as
 -- venue_unmark_arrived since 20261117192228_match_ratings_unmark: false once
--- the player has voted for man of the match or rated a player in the match.
+-- the player has voted for man of the match (or, before S13B removed the
+-- 1-10 ratings, rated a player) in the match.
 begin;
 
 do $$
@@ -34,26 +35,26 @@ begin
   assert tests.error_as(v_owner, format('select public.venue_mark_arrived(%L, %L)', v_m, v_p)) is null, 'p ticked';
   assert tests.error_as(v_owner, format('select public.venue_mark_arrived(%L, %L)', v_m, v_r)) is null, 'r ticked';
 
-  -- Before anyone rates, a venue tick can be undone.
+  -- Before anyone votes, a venue tick can be undone.
   perform tests.act_as(v_owner);
   v_roster := public.venue_booking_roster(v_b.id);
   perform tests.act_as_postgres();
   select e into v_row from jsonb_array_elements(v_roster -> 'players') e where e ->> 'profile_id' = v_p::text;
-  assert (v_row ->> 'can_unmark_arrived')::boolean, format('p can be undone before rating, got %s', v_row);
+  assert (v_row ->> 'can_unmark_arrived')::boolean, format('p can be undone before voting, got %s', v_row);
 
-  -- p rates q; r is only rated (by q).
-  assert tests.rate(v_p, v_m, v_q, 8) is null, 'p rates';
-  assert tests.rate(v_q, v_m, v_r, 6) is null, 'r is rated';
+  -- p votes for q; r is only voted for (by q).
+  assert tests.error_as(v_p, format('select public.cast_motm_vote(%L, %L)', v_m, tests.player_id(v_m, v_q))) is null, 'p votes';
+  assert tests.error_as(v_q, format('select public.cast_motm_vote(%L, %L)', v_m, tests.player_id(v_m, v_r))) is null, 'r is voted for';
 
   perform tests.act_as(v_owner);
   v_roster := public.venue_booking_roster(v_b.id);
   perform tests.act_as_postgres();
   select e into v_row from jsonb_array_elements(v_roster -> 'players') e where e ->> 'profile_id' = v_p::text;
-  assert not (v_row ->> 'can_unmark_arrived')::boolean, format('p rated: no undo, got %s', v_row);
+  assert not (v_row ->> 'can_unmark_arrived')::boolean, format('p voted: no undo, got %s', v_row);
   assert tests.error_as(v_owner, format('select public.venue_unmark_arrived(%L, %L)', v_m, v_p)) = 'check_in_used',
     'and the server refuses it, as the roster says';
   select e into v_row from jsonb_array_elements(v_roster -> 'players') e where e ->> 'profile_id' = v_r::text;
-  assert (v_row ->> 'can_unmark_arrived')::boolean, format('r was only rated: can be undone, got %s', v_row);
+  assert (v_row ->> 'can_unmark_arrived')::boolean, format('r was only voted for: can be undone, got %s', v_row);
   select e into v_row from jsonb_array_elements(v_roster -> 'players') e where e ->> 'profile_id' = v_q::text;
   assert not (v_row ->> 'can_unmark_arrived')::boolean, format('q checked in by QR, not a venue tick, got %s', v_row);
 end $$;

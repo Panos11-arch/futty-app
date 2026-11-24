@@ -29,10 +29,9 @@ begin
     perform tests.form_player(v_m, absent, 'b', true, false);
   end loop;
 
-  -- Agreed: the booker submits 4-2, a Non-bibs player accepts.
-  assert tests.error_as(booker, format('select public.submit_match_result(%L, 4, 2)', m)) is null, 'submit';
+  -- S13B: the booker logs 4-2; one captain, so it is confirmed at once.
   assert tests.notified(bib, 'motm_vote_open', m) = 0, 'not before confirmation';
-  assert tests.error_as(nonbib, format('select public.respond_to_match_result(%L, true)', m)) is null, 'accept';
+  assert tests.log_result(booker, m, 4, 2) ->> 'status' = 'confirmed', 'the booker logs';
   assert tests.notified(booker, 'motm_vote_open', m) = 1, 'booker';
   assert tests.notified(bib, 'motm_vote_open', m) = 1, 'bib';
   assert tests.notified(nonbib, 'motm_vote_open', m) = 1, 'nonbib';
@@ -50,9 +49,9 @@ begin
   assert tests.error_as(booker, format('select public.captain_mark_attendance(%L, %L)', m, array[late, bib])) is null, 'tick again';
   assert tests.notified(late, 'motm_vote_open', m) = 1 and tests.notified(bib, 'motm_vote_open', m) = 1, 'still once';
 
-  -- At the deadline: an unanswered submission stands; the job runs twice.
-  insert into public.match_result_submissions (match_id, side, side_a_score, side_b_score, submitted_by, submitted_at)
-  values (m_deadline, 'a', 1, 0, booker, now() - interval '24 hours');
+  -- At the deadline: a single captain's score stands; the job runs twice.
+  insert into public.match_score_entries (match_id, side, entered_by, side_a_score, side_b_score, entered_at)
+  values (m_deadline, 'a', booker, 1, 0, now() - interval '24 hours');
   update public.matches set result_deadline_at = now() - interval '5 minutes' where id = m_deadline;
   perform tests.act_as_service_role();
   perform public.match_jobs_tick();

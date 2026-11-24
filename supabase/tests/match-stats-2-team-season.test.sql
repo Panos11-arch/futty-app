@@ -34,15 +34,16 @@ declare
   v_rows jsonb;
   v_rater uuid;
 begin
-  -- t1: p (Lions) is man of the match and rated 7 by three opponents.
+  -- t1: p (Lions) is man of the match, voted by three opponents. S13B
+  -- ratings: p won 2-0 = 6.5 + 0.6 + 0.5 clean sheet + 0.3 = 7.9; the
+  -- opponents lost 0-2 = 6.5 − 0.3 − 0.2 = 6.0.
   perform tests.form_player(t1, p, 'a', true, true);
   foreach v_rater in array array[r1, r2, r3] loop
     perform tests.form_player(t1, v_rater, 'b', true, true);
-    insert into public.match_ratings (match_id, rater_profile_id, rated_player_id, score)
-    values (t1, v_rater, tests.player_id(t1, p), 7);
     insert into public.motm_votes (match_id, voter_profile_id, nominee_player_id)
     values (t1, v_rater, tests.player_id(t1, p));
   end loop;
+  perform public.match_compute_ratings(t1);
 
   perform tests.act_as(reader);
   select * into v from public.team_season_stats where team_id = t and season_kind = 'year' and season_year = 2026;
@@ -55,13 +56,13 @@ begin
     format('11 + 3 (t6) for, 6 + 3 (t8) against, got %s, %s', v.goals_for, v.goals_against);
   assert v.clean_sheets = 3, format('clean sheets in t1, t3 and the t6 forfeit, got %s', v.clean_sheets);
   assert v.longest_win_run = 3, format('t1 to t3, got %s', v.longest_win_run);
-  assert v.motm = 1 and v.average_rating = 7.00, format('p''s award and rating, got %s, %s', v.motm, v.average_rating);
+  assert v.motm = 1 and v.average_rating = 7.90, format('p''s award and rating, got %s, %s', v.motm, v.average_rating);
 
   perform tests.act_as(reader);
   select * into v from public.team_season_stats where team_id = o and season_kind = 'year' and season_year = 2026;
   perform tests.act_as_postgres();
   assert (v.played, v.won, v.drawn, v.lost) = (8, 2, 1, 5), format('the others: W2 D1 L5, got %s', v);
-  assert v.longest_win_run = 2 and v.motm = 0 and v.average_rating is null, format('the others: t7, t8 in a row, got %s', v);
+  assert v.longest_win_run = 2 and v.motm = 0 and v.average_rating = 6.00, format('the others: t7, t8 in a row, got %s', v);
 
   perform tests.act_as(reader);
   select * into v from public.team_season_stats where team_id = t and season_kind = 'all';

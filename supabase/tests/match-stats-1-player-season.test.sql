@@ -4,26 +4,17 @@
 --   or held a spot in a confirmed forfeit (1b.3), which is a loss for the
 --   side that forfeited (1g.3). Seasons: the calendar year in Cyprus time
 --   (league games included), each league, and all time (1g.2). A match
---   rating counts once its window has closed and it has 3 ratings; a man of
---   the match once voting has closed (ties shared).
+--   rating (S13B, from stats) counts as soon as it is computed; a man of the
+--   match once voting has closed (ties shared).
 begin;
 
--- Three raters each give p_profile p_score in p_match (written directly:
--- the rules for who may rate are A5a's tests).
-create function tests.a7_rated(p_match uuid, p_profile uuid, p_score integer)
+-- p_match's S13B ratings, computed as on confirmation (the formula is
+-- match-s13b-1-ratings' test).
+create function tests.a7_rated(p_match uuid)
 returns void
-language plpgsql
+language sql
 as $$
-declare
-  i integer;
-  v_rater uuid;
-begin
-  for i in 1..3 loop
-    v_rater := tests.create_user(format('a7-rater-%s@futty.test', left(gen_random_uuid()::text, 8)));
-    insert into public.match_ratings (match_id, rater_profile_id, rated_player_id, score)
-    values (p_match, v_rater, tests.player_id(p_match, p_profile), p_score);
-  end loop;
-end;
+  select public.match_compute_ratings(p_match);
 $$;
 
 -- A goal in p_match for p_scorer's side (assisted by p_assist, if given).
@@ -93,7 +84,7 @@ begin
   returning id into v_fixture;
   update public.matches set league_fixture_id = v_fixture where id = m8;
 
-  -- m1: a 3-1 win. p scores twice and sets up q; rated 8; man of the match.
+  -- m1: a 3-1 win. p scores twice and sets up q; man of the match.
   perform tests.form_player(m1, p, 'a', true, true);
   perform tests.form_player(m1, q, 'a', true, true);
   perform tests.form_player(m1, o1, 'b', true, true);
@@ -102,10 +93,11 @@ begin
   perform tests.a7_goal(m1, p);
   perform tests.a7_goal(m1, q, p);
   perform tests.a7_goal(m1, o1);
-  perform tests.a7_rated(m1, p, 8);
   perform tests.a7_vote(m1, q, p);
   perform tests.a7_vote(m1, o1, p);
   perform tests.a7_vote(m1, o2, q);
+  -- Rated: 6.5 + 0.6 win + 1.6 goals + 0.5 assist − 0.1 conceded + 0.3 MOTM = 9.4.
+  perform tests.a7_rated(m1);
   -- m2: a 1-1 draw. m3: p's side forfeited; p held a spot but never came.
   perform tests.form_player(m2, p, 'a', true, true);
   perform tests.form_player(m3, p, 'a', true, false);
@@ -129,8 +121,8 @@ begin
   assert v_s.win_pct = 40, format('40%% wins, got %s', v_s.win_pct);
   assert v_s.goals = 2 and v_s.assists = 1, format('2 goals, 1 assist, got %s, %s', v_s.goals, v_s.assists);
   assert v_s.motm = 1, format('1 man of the match, got %s', v_s.motm);
-  assert v_s.average_rating = 8.00 and v_s.rated_matches = 1,
-    format('average rating 8.00 over 1 match, got %s over %s', v_s.average_rating, v_s.rated_matches);
+  assert v_s.average_rating = 9.40 and v_s.rated_matches = 1,
+    format('average rating 9.40 over 1 match, got %s over %s', v_s.average_rating, v_s.rated_matches);
   assert v_s.level_start = 3.00 and v_s.level_end = 3.35,
     format('level 3.00 to 3.35, got %s to %s', v_s.level_start, v_s.level_end);
 
@@ -153,8 +145,8 @@ begin
   assert v_s.lost = 1 and v_s.goals = 1 and v_s.win_pct = 0, format('o1 lost and scored, got %s', v_s);
 end $$;
 
--- 4. A rating and a man of the match count only once their windows close;
--- tied votes are shared.
+-- 4. A rating counts as soon as it is computed (S13B); a man of the match
+-- once voting closes, when the rating takes its +0.3; tied votes are shared.
 do $$
 declare
   p uuid := tests.create_user('a7s1w-p@futty.test');
@@ -168,27 +160,23 @@ begin
   perform tests.form_player(m, p, 'a', true, true);
   perform tests.form_player(m, q, 'a', true, true);
   perform tests.form_player(m, r, 'b', true, true);
-  perform tests.a7_rated(m, p, 6);
   perform tests.a7_vote(m, q, p);
   perform tests.a7_vote(m, p, q);
+  perform tests.a7_rated(m);
 
+  -- Won 1-0: 6.5 + 0.6 + 0.5 clean sheet = 7.6, shown at once.
   v_s := tests.a7_season(r, p, 'year', v_year);
-  assert v_s.appearances = 1 and v_s.average_rating is null and v_s.motm = 0,
-    format('windows open: no rating, no man of the match yet, got %s', v_s);
+  assert v_s.appearances = 1 and v_s.average_rating = 7.60 and v_s.motm = 0,
+    format('voting open: the rating, no man of the match yet, got %s', v_s);
 
   update public.matches set confirmed_at = now() - interval '24 hours' where id = m;
+  perform public.match_ratings_tick();
   v_s := tests.a7_season(r, p, 'year', v_year);
-  assert v_s.average_rating = 6.00 and v_s.motm = 1, format('windows closed, got %s', v_s);
+  assert v_s.average_rating = 7.90 and v_s.motm = 1, format('voting closed: +0.3, got %s', v_s);
   v_s := tests.a7_season(r, q, 'year', v_year);
-  assert v_s.motm = 1, format('a tie is shared, got %s', v_s);
+  assert v_s.motm = 1 and v_s.average_rating = 7.90, format('a tie is shared, got %s', v_s);
   v_s := tests.a7_season(r, r, 'year', v_year);
-  assert v_s.motm = 0 and v_s.average_rating is null, format('r: neither, got %s', v_s);
-
-  -- Two ratings aren't a match rating.
-  delete from public.match_ratings where match_id = m
-    and rater_profile_id = (select rater_profile_id from public.match_ratings where match_id = m limit 1);
-  v_s := tests.a7_season(r, p, 'year', v_year);
-  assert v_s.average_rating is null and v_s.rated_matches = 0, format('2 ratings: none, got %s', v_s);
+  assert v_s.motm = 0 and v_s.average_rating = 6.10, format('r lost 0-1: 6.1, got %s', v_s);
 
   -- A guest never gets stats; a player who left doesn't count.
   perform tests.guest_player(m, 'a', 'Guest');

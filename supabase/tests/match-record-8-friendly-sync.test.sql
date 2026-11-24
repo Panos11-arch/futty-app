@@ -207,8 +207,8 @@ begin
   assert tests.mr_as(v_p1, format('select public.choose_match_side(%L, %L)', v_match, 'b')) is null, 'picks Non-bibs';
   update public.matches set kickoff_at = now() - interval '1 hour', ends_at = now() - interval '30 minutes',
     result_deadline_at = now() + interval '23 hours 30 minutes' where id = v_match;
-  assert tests.mr_as(v_booking.created_by, format('select public.submit_match_result(%L, 2, 1)', v_match)) is null,
-    'the booker submits for Bibs';
+  assert tests.log_result(v_booking.created_by, v_match, 2, 1) ->> 'status' = 'confirmed',
+    'the booker logs the score';
   v_before := tests.mr_snapshot(v_match);
 
   v_teams := tests.mr_teams(v_booking, 'mr8b');

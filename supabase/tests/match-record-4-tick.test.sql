@@ -73,8 +73,9 @@ declare
   v_second jsonb;
   v_snapshot text;
 begin
-  insert into public.match_result_submissions (match_id, side, side_a_score, side_b_score, submitted_by, submitted_at)
-  values (v_silent_match, 'a', 3, 2, v_silent.created_by, now() - interval '28 hours');
+  -- S13B: one captain's score, logged before the deadline.
+  insert into public.match_score_entries (match_id, side, entered_by, side_a_score, side_b_score, entered_at)
+  values (v_silent_match, 'a', v_silent.created_by, 3, 2, now() - interval '28 hours');
   -- The payment code's trigger (pay_match_sync) voids a cancelled booking's
   -- match at once. Off here, so the tick's own void path is tested.
   alter table public.venue_bookings disable trigger booking_match_on_booking;
@@ -101,10 +102,11 @@ begin
   select count(*)::text || v_snapshot into v_snapshot from public.notifications;
   v_second := tests.mr_tick();
   -- (A3b adds the reminder counts, A5a the level update, A7 the team of
-  -- the week and A11 the streak badges: also nothing the second time.)
-  assert v_second = jsonb_build_object('played', 0, 'confirmed', 0, 'no_result', 0, 'voided', 0,
+  -- the week, A11 the streak badges and S13B disputes and final ratings:
+  -- also nothing the second time.)
+  assert v_second = jsonb_build_object('played', 0, 'confirmed', 0, 'disputed', 0, 'no_result', 0, 'voided', 0,
                                        'reminder_24h', 0, 'reminder_2h', 0, 'followed_team_match', 0, 'after_game', 0,
-                                       'levels', 0, 'team_of_the_week', 0, 'streak_badges', 0),
+                                       'ratings', 0, 'levels', 0, 'team_of_the_week', 0, 'streak_badges', 0),
     format('nothing to do the second time, got %s', v_second);
   assert (select count(*)::text || string_agg(id || status || coalesce(confirmed_at::text, '') || updated_at, ',' order by id)
           from public.matches) is not null;

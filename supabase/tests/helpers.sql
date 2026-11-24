@@ -1058,6 +1058,135 @@ begin
 end;
 $$;
 
+-- S13B: logging after the game and ratings.
+
+-- A match that kicked off 2 hours ago and waits for its result (played),
+-- with p_a players on side a and p_b on side b, all checked in. Side a's
+-- first player captains it; a named game (not p_pickup) has side b's first
+-- player as its captain too. a and b list the profiles, captains first.
+create or replace function tests.s13b_match(p_a integer, p_b integer, p_pickup boolean default true,
+                                            out match uuid, out cap_a uuid, out cap_b uuid, out a uuid[], out b uuid[])
+language plpgsql
+as $$
+declare
+  v uuid;
+  i integer;
+begin
+  insert into public.matches (kind, format, players_per_side, kickoff_at, ends_at, status, result_deadline_at)
+  values (case when p_pickup then 'pickup' else 'named' end, '5-a-side', 5, now() - interval '2 hours',
+          now() - interval '1 hour', 'played', now() + interval '23 hours')
+  returning id into match;
+  a := '{}';
+  b := '{}';
+  for i in 1 .. p_a loop
+    v := tests.create_user(format('s13b-a%s-%s@futty.test', i, gen_random_uuid()));
+    perform tests.form_player(match, v, 'a', true, true);
+    a := a || v;
+  end loop;
+  for i in 1 .. p_b loop
+    v := tests.create_user(format('s13b-b%s-%s@futty.test', i, gen_random_uuid()));
+    perform tests.form_player(match, v, 'b', true, true);
+    b := b || v;
+  end loop;
+  cap_a := a[1];
+  cap_b := case when p_pickup then null else b[1] end;
+  insert into public.match_sides (match_id, side, label, captain_profile_id) values
+    (match, 'a', 'Bibs', cap_a),
+    (match, 'b', 'Non-bibs', cap_b);
+end;
+$$;
+
+-- One side's stats for log_match_result: p_profiles with p_goals (and
+-- p_assists) each, plus p_own own goals.
+create or replace function tests.s13b_side(p_match uuid, p_profiles uuid[], p_goals integer[],
+                                           p_assists integer[] default null, p_own integer default 0)
+returns jsonb
+language sql
+stable
+as $$
+  select jsonb_build_object(
+    'players', coalesce(jsonb_agg(jsonb_build_object(
+                 'playerId', tests.player_id(p_match, x.profile),
+                 'goals', x.goals,
+                 'assists', coalesce(p_assists[x.n], 0)) order by x.n), '[]'),
+    'ownGoals', p_own)
+  from unnest(p_profiles, p_goals) with ordinality x(profile, goals, n);
+$$;
+
+-- p_user logs p_a:p_b with p_stats; returns log_match_result's answer.
+create or replace function tests.s13b_log(p_user uuid, p_match uuid, p_a integer, p_b integer, p_stats jsonb)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v jsonb;
+begin
+  perform tests.act_as(p_user);
+  v := public.log_match_result(p_match, p_a, p_b, p_stats);
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- The error log_match_result raises for p_user, or null.
+create or replace function tests.s13b_log_error(p_user uuid, p_match uuid, p_a integer, p_b integer, p_stats jsonb)
+returns text
+language sql
+as $$
+  select tests.error_as(p_user, format('select public.log_match_result(%L, %s, %s, %L)', p_match, p_a, p_b, p_stats));
+$$;
+
+-- p_by logs p_a:p_b through log_match_result, for tests about what follows
+-- a result: the goals of every side he writes are logged without scorers.
+create or replace function tests.log_result(p_by uuid, p_match uuid, p_a integer, p_b integer)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_stats jsonb := '{}';
+  v_side text;
+  v jsonb;
+begin
+  foreach v_side in array coalesce(public.match_side_writer(p_match, p_by), '{}') loop
+    v_stats := v_stats || jsonb_build_object(v_side, jsonb_build_object(
+      'players', '[]'::jsonb, 'ownGoals', case v_side when 'a' then p_a else p_b end));
+  end loop;
+  perform tests.act_as(p_by);
+  v := public.log_match_result(p_match, p_a, p_b, v_stats);
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- Two captains disagree until the match is disputed: p_a logs 1:0 once, and
+-- p_b answers with scores that never match.
+create or replace function tests.dispute_result(p_a uuid, p_b uuid, p_match uuid)
+returns void
+language plpgsql
+as $$
+declare
+  i integer := 0;
+begin
+  perform tests.log_result(p_a, p_match, 1, 0);
+  while (select status from public.matches where id = p_match) <> 'disputed' loop
+    i := i + 1;
+    perform tests.log_result(p_b, p_match, 0, i);
+  end loop;
+end;
+$$;
+
+-- p_profile's stored match rating in p_match.
+create or replace function tests.s13b_rating(p_match uuid, p_profile uuid)
+returns numeric
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select rating from public.match_player_ratings
+  where match_id = p_match and player_id = tests.player_id(p_match, p_profile);
+$$;
+
 revoke all on function tests.create_user(text, jsonb) from public;
 revoke all on function tests.create_venue(uuid, numeric, integer, time, time) from public;
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
