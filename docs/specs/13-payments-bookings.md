@@ -143,7 +143,10 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
   2. **A whole "pay for myself" side pulling out more than 6 hours before kickoff:** the €1 per player is taken from each player's own hold; the rest of each hold is released.
   3. **A "pay for everyone" side pulling out more than 6 hours before kickoff (24 November):** **€1 per player of his side** (€5 on 5 v 5) is taken from the captain's hold; the rest is released (example 13).
   4. **Any side pulling out less than 6 hours before kickoff (24 November) pays as the losing side:** its holds are taken in full as if it lost (players' holds, then the captain's guarantee for spots without one); the other side's holds are released. The venue gets the full pitch (examples 14a and 14b). The other side's game goes ahead and nothing reopens.
+     - **After that, the remaining side plays for nothing (decided by Panos, 24 November):** its holds are released, a player who joins it afterwards is covered (no hold, nothing to pay), and no opposition post can open for the booking.
+     - **The remaining side's captain is told:** "The other team pulled out. They pay for the pitch, and your hold is released."
   5. **A side on its own (no opponent yet) pulling out (24 November):** the same as a pull-out: €1 per player of his side kept (from the captain's hold when paying for everyone, from each player's own hold when paying for myself), the rest released, and the booking is cancelled (examples 15a and 15b). **Once the 24-hour choice is open, "Cancel free" applies instead.**
+     - **Paying for myself, only the players who hold pay the €1 (confirmed by Panos, 24 November):** a spot that never held pays nothing, so 3 holds give €3.00 (example 15b).
   - After a side pulls out more than 6 hours before kickoff, the other side keeps the slot and its opposition invite reopens, as when a side cancels.
 - **No opponent 24 hours before kickoff (decided by Panos, 23 November):** the same choice as a normal half pitch: **"Pay the whole pitch and play"** or **"Cancel free"** (everything refunded, holds released). No choice by 6 hours before kickoff = cancelled free.
   - **"Pay the whole pitch and play" on Losers pay (decided by Panos, 24 November):** it becomes an **ordinary whole-pitch booking with the same way to pay, no Losers pay**, and there's no payment sheet: the holds pay for it.
@@ -168,6 +171,11 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 4. **A side on its own pulling out:** the same as a pull-out; once the 24-hour choice is open, "Cancel free" instead (examples 15a and 15b).
 5. **Losers pay needs booking at least 24 hours before kickoff** (24 hours to 5 days ahead), as today's Gipedo Pano.
 6. **A player leaving a pay-for-myself side after the guarantee was counted:** the captain gets a €9.60 hold for that spot at once (example 16).
+
+### Answered on 24 November (Panos): questions from #181
+1. **A side on its own, paying for myself, pulling out:** €1 from each player who holds, as built; spots never held pay nothing (example 15b).
+2. **After a side pulls out less than 6 hours before kickoff,** the remaining side plays for nothing: new joiners are covered (no hold) and no opposition post can open.
+3. **The remaining side's notification:** "The other team pulled out. They pay for the pitch, and your hold is released."
 
 ### Where the old modes are still used (to change in B1–B5)
 - **App:** ~~`components/booking/checkout-view.tsx` (including the "Just my spot" text), `lib/booking-actions.ts`, `lib/booking-search.ts`~~ (done in B2: the checkout uses `booking_quote_v2`, `venue_free_pitches` and `book_slot` with the chosen pitch and kind; `lib/booking-search.ts` keeps the old `booking_quote` only for venue credit; its unused `checkoutAmounts` was removed in B5), `lib/booking-detail.ts`, `lib/use-owed.ts`, `lib/rules.ts`, `lib/terms.ts`, `lib/terms-el.ts`, `lib/squads.ts`, `app/squads.tsx`.
