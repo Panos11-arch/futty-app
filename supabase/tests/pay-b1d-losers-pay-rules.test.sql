@@ -160,6 +160,7 @@ begin
   v_player := (tests.lp_players(s.booking, s.booker, 0, p_unheld => 1))[1];
   perform tests.lp_choice_open(s.booking);
   perform tests.act_as(s.booker);
+  assert (public.booking_detail(s.booking) #>> '{v2,losers_pay}')::boolean, 'the booking says it''s Losers pay';
   d := public.booking_detail(s.booking) #> '{v2,no_opponent}';
   select * into c from public.my_no_opponent_choices() x where x.booking_id = s.booking;
   perform tests.act_as_postgres();
@@ -177,6 +178,9 @@ begin
   assert (select (losers_pay, booking_kind, no_opponent_choice, payment_mode) from public.venue_bookings where id = s.booking)
          = (false, 'whole'::text, 'play_whole'::text, 'pay_all'::text), 'an ordinary whole-pitch booking, paid for everyone';
   assert not exists (select 1 from public.booking_sides where booking_id = s.booking), 'no sides';
+  perform tests.act_as(s.booker);
+  assert not (public.booking_detail(s.booking) #>> '{v2,losers_pay}')::boolean, 'no longer Losers pay';
+  perform tests.act_as_postgres();
   assert not exists (select 1 from public.booking_payment_shares where booking_id = s.booking and side is not null), 'no side on shares';
   assert (tests.share_of(s.booking, v_player)).status = 'covered', 'the player is still covered';
   t := tests.lp_sum(s.booking, 'play_whole');

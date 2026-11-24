@@ -1057,7 +1057,7 @@ begin
 end;
 $$;
 
--- As in 20261124090000_pay_b3_after_pay.sql, plus 24 November: on Losers pay, what the holds pay for the whole pitch.
+-- As in 20261124090000_pay_b3_after_pay.sql, plus 24 November: whether it's Losers pay and, on Losers pay, what the holds pay for the whole pitch.
 create or replace function public.booking_v2_detail(p_booking_id uuid, p_uid uuid)
 returns jsonb
 language plpgsql
@@ -1101,6 +1101,7 @@ begin
 
   return jsonb_build_object(
     'kind', v_booking.booking_kind,
+    'losers_pay', v_booking.losers_pay,  -- 24 November: the app's ways out of a Losers pay game
     'pitch_label', public.pitch_choice_label(array(select bp.pitch_id from public.booking_pitches bp
                                                    where bp.booking_id = p_booking_id)),
     'captain_of', v_captain_of,
