@@ -44,7 +44,7 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlements_due', []);
-  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due']) {
+  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due']) {
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
@@ -566,6 +566,20 @@ Deno.test('asks for the no-opponent choice and cancels free after the cut-off, b
   strictEqual(order.indexOf('booking_no_opponent_due') < order.indexOf('booking_no_opponent_auto_cancel_due'), true);
   strictEqual(order.indexOf('booking_no_opponent_auto_cancel_due') < order.indexOf('bookings_with_money_to_release'), true,
     'cancelled bookings are released in the same run');
+});
+
+// B3: the lone captain who hasn't chosen is reminded 2 hours before the
+// 6-hour cut-off, after the 24-hour ask and before the cut-off cancels.
+Deno.test('reminds the lone captain before the cut-off, between the ask and the free cancel', async () => {
+  const { db, deps } = setup();
+  db.respond('booking_no_opponent_reminder_due', 2);
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.noOpponentReminded, 2);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('booking_no_opponent_due') < order.indexOf('booking_no_opponent_reminder_due'), true);
+  strictEqual(order.indexOf('booking_no_opponent_reminder_due') < order.indexOf('booking_no_opponent_auto_cancel_due'), true);
 });
 
 Deno.test('records the odd cent of played half pitches', async () => {

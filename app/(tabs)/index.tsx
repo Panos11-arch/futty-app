@@ -4,6 +4,7 @@ import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-card';
+import { NoOpponentChoices } from '@/components/booking/no-opponent-choices';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
 import { MatchResultPanel } from '@/components/match/result-panel';
@@ -667,6 +668,8 @@ export default function HomeScreen() {
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
         <QuickActions />
         <OwedBanner />
+        {/* B3: a half pitch still without an opponent: the captain's choice. */}
+        <NoOpponentChoices />
         <NextGameSection />
         <LogScoreSection onScored={recentResults.reload} />
         <RecentResultsSection recentResults={recentResults} />

@@ -36,7 +36,9 @@
 //      reopens (booking_side_b_lapse_due). It runs before step 3, so what
 //      he started at Stripe is released in the same run. 24 hours before
 //      kickoff with no side B, the lone captain is asked to choose
-//      (booking_no_opponent_due); with no choice by 6 hours before, it's
+//      (booking_no_opponent_due), and reminded once 2 hours before the
+//      6-hour cut-off (B3, booking_no_opponent_reminder_due, the lead from
+//      app_rules); with no choice by 6 hours before, it's
 //      cancelled free (booking_no_opponent_auto_cancel_due) and the release
 //      step gives everything back in the same run. Once a half pitch with
 //      an odd price is played, the cent Futty absorbs is recorded as a
@@ -80,7 +82,7 @@ export async function runPaymentJobs(deps: Deps) {
     creditReleased: 0,
     matchSynced: 0, matchSyncFailed: 0,
     gipedoSettled: 0, gipedoFailed: 0,
-    sideBLapsed: 0, noOpponent: 0, noOpponentCancelled: 0, oddCent: 0,
+    sideBLapsed: 0, noOpponent: 0, noOpponentReminded: 0, noOpponentCancelled: 0, oddCent: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -138,6 +140,7 @@ export async function runPaymentJobs(deps: Deps) {
   for (const [key, fn] of [
     ['sideBLapsed', 'booking_side_b_lapse_due'],
     ['noOpponent', 'booking_no_opponent_due'],
+    ['noOpponentReminded', 'booking_no_opponent_reminder_due'],
     ['noOpponentCancelled', 'booking_no_opponent_auto_cancel_due'],
     ['oddCent', 'booking_odd_cent_due'],
   ] as const) {

@@ -1,4 +1,4 @@
-import { afterPayment, bookingDetailHref, linkedBookingId, openBookingDetail } from './booking-navigation';
+import { afterBooking, afterPayment, bookingDetailHref, linkedBookingId, openBookingDetail } from './booking-navigation';
 
 function nav() {
   return { push: jest.fn(), replace: jest.fn() };
@@ -14,6 +14,15 @@ describe('booking navigation', () => {
     afterPayment('b1', n);
     expect(n.replace).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } });
     expect(n.push).not.toHaveBeenCalled();
+  });
+
+  it('a new Booking v2 booking, once paid, goes to the screen after paying (B3)', () => {
+    const n = nav();
+    afterBooking('b1', n);
+    expect(n.replace).toHaveBeenCalledWith({ pathname: '/booking-after-pay', params: { bookingId: 'b1' } });
+    const m = nav();
+    afterBooking(null, m);
+    expect(m.replace).toHaveBeenCalledWith('/my-bookings');
   });
 
   it('paid without a booking id: My Bookings', () => {

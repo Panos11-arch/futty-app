@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PriceLine } from '@/components/ui/price-breakdown';
 import { minToTime, timeToMin } from '@/lib/booking';
 import type { PaymentMode } from '@/lib/booking-actions';
+import type { BookingV2Info } from '@/lib/booking-opposition';
 import { describeBookingErrorMessage } from '@/lib/booking-errors';
 import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { supabase } from '@/lib/supabase';
@@ -196,6 +197,9 @@ export type BookingDetail = {
    *  with their ids and what they can do; another player gets accepted
    *  names only. */
   venue_players?: VenuePlayerEntry[];
+  /** B3: a Booking v2 booking's kind, sides, opposition, posts and
+   *  no-opponent choice; null for bookings made before Booking v2. */
+  v2?: BookingV2Info | null;
 };
 
 export type VenuePlayerEntry = {
