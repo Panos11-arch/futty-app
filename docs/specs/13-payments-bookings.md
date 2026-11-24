@@ -143,7 +143,7 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
   2. **A whole "pay for myself" side pulling out more than 6 hours before kickoff:** the €1 per player is taken from each player's own hold; the rest of each hold is released.
   3. **A "pay for everyone" side pulling out more than 6 hours before kickoff (24 November):** **€1 per player of his side** (€5 on 5 v 5) is taken from the captain's hold; the rest is released (example 13).
   4. **Any side pulling out less than 6 hours before kickoff (24 November) pays as the losing side:** its holds are taken in full as if it lost (players' holds, then the captain's guarantee for spots without one); the other side's holds are released. The venue gets the full pitch (examples 14a and 14b). The other side's game goes ahead and nothing reopens.
-     - **After that, the remaining side plays for nothing (decided by Panos, 24 November):** its holds are released, a player who joins it afterwards is covered (no hold, nothing to pay), and no opposition post can open for the booking.
+     - **After that, the remaining side plays for nothing (decided by Panos, 24 November):** its holds are released, every player on it who hasn't placed a hold yet is covered (no hold asked, and a hold request already started is cancelled; decided 24 November, question 1 from #185), a player who joins it afterwards is covered too (no hold, nothing to pay), and no opposition post can open for the booking.
      - **The remaining side's captain is told:** "The other team pulled out. They pay for the pitch, and your hold is released."
   5. **A side on its own (no opponent yet) pulling out (24 November):** the same as a pull-out: €1 per player of his side kept (from the captain's hold when paying for everyone, from each player's own hold when paying for myself), the rest released, and the booking is cancelled (examples 15a and 15b). **Once the 24-hour choice is open, "Cancel free" applies instead.**
      - **Paying for myself, only the players who hold pay the €1 (confirmed by Panos, 24 November):** a spot that never held pays nothing, so 3 holds give €3.00 (example 15b).
@@ -175,6 +175,7 @@ Every example is a **€40.00 5-a-side pitch, 10 players (5 v 5), one hour**: ea
 ### Answered on 24 November (Panos): questions from #181
 1. **A side on its own, paying for myself, pulling out:** €1 from each player who holds, as built; spots never held pay nothing (example 15b).
 2. **After a side pulls out less than 6 hours before kickoff,** the remaining side plays for nothing: new joiners are covered (no hold) and no opposition post can open.
+4. **(Question 1 from #185) Players already on the remaining side who haven't placed a hold yet** are covered too: no hold is asked and any hold request they started is cancelled. Players who already hold are released, as before.
 3. **The remaining side's notification:** "The other team pulled out. They pay for the pitch, and your hold is released."
 
 ### Where the old modes are still used (to change in B1–B5)
