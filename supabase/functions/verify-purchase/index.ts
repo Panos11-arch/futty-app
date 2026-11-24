@@ -1,15 +1,13 @@
-// Called by the app right after expo-iap reports a completed purchase —
-// verifies it against Apple's own servers before granting anything, then
-// flips profiles.is_premium. Nothing in the client's own claim (that a
-// purchase "succeeded") is trusted; Apple's live API is the only source of
-// truth this writes from. Deployment steps at the bottom.
-//
-// NOT wired up from the app yet — app/premium.tsx still needs the real
-// expo-iap purchase flow once that package is installed and its current API
-// can be read directly from node_modules (see lib/premium.ts).
+// Called by the app right after expo-iap reports a completed purchase of
+// Premium or Premium Plus (P1). Verifies it against Apple's own servers
+// before granting anything; see handler.ts for the rules. Nothing in the
+// client's own claim is trusted: Apple's live API is the only source of
+// truth this writes from, and apply_premium_subscription (service role)
+// sets profiles.premium_tier and is_premium. Deployment steps at the bottom.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { APPLE_BUNDLE_ID, fetchAppleSubscriptionStatus, fetchAppleTransaction } from '../_shared/apple-app-store.ts';
+import { APPLE_BUNDLE_ID, fetchAppleSubscriptionState, fetchAppleTransaction } from '../_shared/apple-app-store.ts';
+import { verifyPurchase } from './handler.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -27,60 +25,38 @@ Deno.serve(async (req) => {
   });
   const { data: userData, error: userError } = await supabaseAsUser.auth.getUser();
   if (userError || !userData.user) return new Response('Unauthorized', { status: 401 });
-  const profileId = userData.user.id;
 
-  let body: { transactionId?: string; productId?: string };
+  let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
-  const { transactionId, productId } = body;
-  if (!transactionId || !productId) {
-    return new Response('Missing transactionId/productId', { status: 400 });
-  }
-
-  const transaction = await fetchAppleTransaction(transactionId);
-  if (!transaction) {
-    return new Response(JSON.stringify({ error: 'Apple could not verify this transaction' }), {
-      status: 402,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  if (transaction.bundleId !== APPLE_BUNDLE_ID || transaction.productId !== productId) {
-    return new Response(JSON.stringify({ error: 'Transaction does not match this app/product' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const status = await fetchAppleSubscriptionStatus(transaction.originalTransactionId, productId);
-  if (!status) {
-    return new Response(JSON.stringify({ error: 'Could not read subscription status' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
 
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-  await supabaseAdmin.from('premium_subscriptions').upsert(
+  const result = await verifyPurchase(
     {
-      profile_id: profileId,
-      platform: 'ios',
-      product_id: productId,
-      original_transaction_id: transaction.originalTransactionId,
-      status: status.active ? 'active' : 'expired',
-      expires_at: status.expiresAt ? new Date(status.expiresAt).toISOString() : null,
-      updated_at: new Date().toISOString(),
+      bundleId: APPLE_BUNDLE_ID,
+      fetchTransaction: fetchAppleTransaction,
+      fetchSubscription: fetchAppleSubscriptionState,
+      apply: async (a) => {
+        const { data, error } = await supabaseAdmin.rpc('apply_premium_subscription', {
+          p_profile_id: a.profileId,
+          p_platform: 'ios',
+          p_product_id: a.productId,
+          p_original_transaction_id: a.originalTransactionId,
+          p_active: a.active,
+          p_expires_at: a.expiresAt,
+        });
+        return { tier: (data as string | null) ?? null, error: error?.message ?? null };
+      },
     },
-    { onConflict: 'platform,original_transaction_id' }
+    userData.user.id,
+    body,
   );
 
-  await supabaseAdmin.from('profiles').update({ is_premium: status.active }).eq('id', profileId);
-
-  return new Response(JSON.stringify({ active: status.active }), {
+  return new Response(JSON.stringify(result.body), {
+    status: result.status,
     headers: { 'Content-Type': 'application/json' },
   });
 });
@@ -98,7 +74,8 @@ DEPLOYMENT:
      supabase secrets set ASC_ISSUER_ID=<Issuer ID, shown on the same page>
      supabase secrets set ASC_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8)"
 
-3. Deploy:
+3. Push the P1 migration (20261124220000_pay_p1_premium_plus.sql: the
+   tier and apply_premium_subscription) first, then deploy:
      supabase functions deploy verify-purchase
 
 4. Once expo-iap is installed and wired up client-side, call this right

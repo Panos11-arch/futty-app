@@ -33,6 +33,8 @@ export type AppRules = {
   gipedo_max_days: number;
   gipedo_opponent_hours: number;
   premium_price_label: string;
+  /** P1: Premium Plus's price label (€7.99), while the store's price loads. */
+  premium_plus_price_label: string;
   weather_rain_chance_pct: number;
   weather_heavy_rain: boolean;
   weather_wind_kmh: number;
@@ -53,8 +55,11 @@ const INTEGER_RULES = [
 
 const BOOLEAN_RULES = ['weather_heavy_rain', 'weather_thunderstorms'] as const satisfies readonly (keyof AppRules)[];
 
+/** The price labels (P1: Premium and Premium Plus). */
+const LABEL_RULES = ['premium_price_label', 'premium_plus_price_label'] as const satisfies readonly (keyof AppRules)[];
+
 /** The columns to read: exactly the rules, nothing else. */
-export const RULE_COLUMNS = [...INTEGER_RULES, ...BOOLEAN_RULES, 'premium_price_label'].join(', ');
+export const RULE_COLUMNS = [...INTEGER_RULES, ...BOOLEAN_RULES, ...LABEL_RULES].join(', ');
 
 /** A complete, valid set of rules, or null. A broken row is never half-used. */
 export function parseRules(row: unknown): AppRules | null {
@@ -62,9 +67,9 @@ export function parseRules(row: unknown): AppRules | null {
   const r = row as Record<string, unknown>;
   for (const key of INTEGER_RULES) if (!Number.isInteger(r[key])) return null;
   for (const key of BOOLEAN_RULES) if (typeof r[key] !== 'boolean') return null;
-  if (typeof r.premium_price_label !== 'string' || r.premium_price_label === '') return null;
+  for (const key of LABEL_RULES) if (typeof r[key] !== 'string' || r[key] === '') return null;
   const rules = {} as Record<string, unknown>;
-  for (const key of [...INTEGER_RULES, ...BOOLEAN_RULES, 'premium_price_label'] as const) rules[key] = r[key];
+  for (const key of [...INTEGER_RULES, ...BOOLEAN_RULES, ...LABEL_RULES] as const) rules[key] = r[key];
   return rules as AppRules;
 }
 

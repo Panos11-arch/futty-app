@@ -27,6 +27,8 @@ export type AppRules = {
   gipedo_max_days: number;
   gipedo_opponent_hours: number;
   premium_price_label: string;
+  /** P1: Premium Plus's price label (€7.99). */
+  premium_plus_price_label: string;
   weather_rain_chance_pct: number;
   weather_heavy_rain: boolean;
   weather_wind_kmh: number;
@@ -47,6 +49,9 @@ const INTEGER_RULES = [
 const BOOLEAN_RULES = ['weather_heavy_rain', 'weather_thunderstorms'] as const satisfies readonly (keyof AppRules)[];
 
 /** Checks a row from the database is a complete set of rules. */
+/** The price labels (P1: Premium and Premium Plus). */
+const LABEL_RULES = ['premium_price_label', 'premium_plus_price_label'] as const satisfies readonly (keyof AppRules)[];
+
 export function parseRules(row: unknown): AppRules {
   if (!row || typeof row !== 'object') throw new Error('app_rules_missing');
   const r = row as Record<string, unknown>;
@@ -56,11 +61,11 @@ export function parseRules(row: unknown): AppRules {
   for (const key of BOOLEAN_RULES) {
     if (typeof r[key] !== 'boolean') throw new Error(`app_rules_invalid: ${key}`);
   }
-  if (typeof r.premium_price_label !== 'string' || r.premium_price_label === '') {
-    throw new Error('app_rules_invalid: premium_price_label');
+  for (const key of LABEL_RULES) {
+    if (typeof r[key] !== 'string' || r[key] === '') throw new Error(`app_rules_invalid: ${key}`);
   }
   const rules = {} as Record<string, unknown>;
-  for (const key of [...INTEGER_RULES, ...BOOLEAN_RULES, 'premium_price_label'] as const) rules[key] = r[key];
+  for (const key of [...INTEGER_RULES, ...BOOLEAN_RULES, ...LABEL_RULES] as const) rules[key] = r[key];
   return rules as AppRules;
 }
 

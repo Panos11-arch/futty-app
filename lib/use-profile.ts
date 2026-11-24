@@ -31,6 +31,8 @@ export type Profile = {
    *  this app introduced. */
   role: 'player' | 'venue_owner';
   is_premium: boolean;
+  /** P1: 'basic', 'premium' or 'premium_plus', set only by verified purchases. */
+  premium_tier?: 'basic' | 'premium' | 'premium_plus';
   xp: number;
   played: number;
   won: number;
@@ -80,7 +82,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number'
+        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, premium_tier, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number'
       )
       .eq('id', user.id)
       .maybeSingle();

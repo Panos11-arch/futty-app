@@ -15,6 +15,8 @@
 
 import { decodeJwt, importPKCS8, SignJWT } from 'npm:jose@5';
 
+import { type SubscriptionState, subscriptionStateFrom } from './premium.ts';
+
 const ASC_KEY_ID = Deno.env.get('ASC_KEY_ID')!;
 const ASC_ISSUER_ID = Deno.env.get('ASC_ISSUER_ID')!;
 const ASC_PRIVATE_KEY_PEM = Deno.env.get('ASC_PRIVATE_KEY')!;
@@ -50,7 +52,7 @@ export type AppleTransaction = {
  *  originalTransactionId — the stable id used everywhere else in this
  *  system. Deliberately does not treat this call's own expiresDate as the
  *  final word on "is this active"; for subscriptions use
- *  fetchAppleSubscriptionStatus, which is the endpoint Apple actually
+ *  fetchAppleSubscriptionState, which is the endpoint Apple actually
  *  designed for that question. */
 export async function fetchAppleTransaction(transactionId: string): Promise<AppleTransaction | null> {
   const jwt = await signAppStoreConnectJwt();
@@ -77,24 +79,23 @@ export async function fetchAppleTransaction(transactionId: string): Promise<Appl
   return null;
 }
 
-/** The authoritative "is this subscription currently active" check —
- *  Apple's Get All Subscription Statuses endpoint, built specifically for
- *  this question, keyed by originalTransactionId.
+/** The authoritative "what is this subscription now" check: Apple's Get
+ *  All Subscription Statuses endpoint, keyed by originalTransactionId. It
+ *  returns the product the subscription is on now (P1: after an upgrade or
+ *  a downgrade within the "Futty Premium Monthly" group it is on another
+ *  product with the same original transaction) and whether it's active (see
+ *  subscriptionStateFrom in _shared/premium.ts).
  *
  *  Right after a purchase, this endpoint can briefly return an empty `data`
  *  array before Apple's backend finishes indexing the new transaction
  *  (observed directly: a real sandbox purchase came back with `{"data":[]}`
- *  a couple of seconds after completing). Deliberately does NOT sleep-and-
- *  retry for that here — Supabase's Edge Runtime kills a function that sits
- *  idle too long (observed directly: a 4-attempt/2s-delay retry loop got
- *  killed mid-request with shutdown reason "EarlyDrop"). Instead this stays
- *  a single fast pass; the caller leaves the purchase transaction unfinished
- *  on an inactive/empty result, so pressing buy again a few seconds later
- *  naturally retries via a fresh, fast invocation once Apple has caught up. */
-export async function fetchAppleSubscriptionStatus(
-  originalTransactionId: string,
-  productId: string
-): Promise<{ active: boolean; expiresAt: number | null } | null> {
+ *  a couple of seconds after completing). That is null here, and callers
+ *  write nothing. Deliberately does NOT sleep-and-retry: Supabase's Edge
+ *  Runtime kills a function that sits idle too long (observed directly: a
+ *  4-attempt/2s-delay retry loop got killed mid-request with shutdown
+ *  reason "EarlyDrop"). The app leaves the purchase transaction unfinished
+ *  on an inactive result, so pressing buy again retries. */
+export async function fetchAppleSubscriptionState(originalTransactionId: string): Promise<SubscriptionState | null> {
   const jwt = await signAppStoreConnectJwt();
 
   for (const host of APPLE_HOSTS) {
@@ -102,7 +103,7 @@ export async function fetchAppleSubscriptionStatus(
       headers: { Authorization: `Bearer ${jwt}` },
     });
 
-    // See the matching comment in fetchAppleTransaction above — try every
+    // See the matching comment in fetchAppleTransaction above: try every
     // host before giving up, since production can 401 rather than 404.
     if (!res.ok) continue;
 
@@ -111,28 +112,22 @@ export async function fetchAppleSubscriptionStatus(
         lastTransactions?: { originalTransactionId: string; status: number; signedTransactionInfo: string }[];
       }[];
     };
-
     if (!body.data || body.data.length === 0) continue; // try the other host
 
-    for (const group of body.data) {
-      for (const last of group.lastTransactions ?? []) {
-        if (last.originalTransactionId !== originalTransactionId) continue;
-        const info = decodeJwt(last.signedTransactionInfo) as { productId?: string; expiresDate?: number };
-        if (info.productId !== productId) continue;
-        // Status: 1 active, 2 expired, 3 in billing retry, 4 in billing
-        // grace period, 5 revoked. Apple's own guidance is to keep access
-        // during the grace period (4), same as active.
-        return { active: last.status === 1 || last.status === 4, expiresAt: info.expiresDate ?? null };
-      }
-    }
-
-    // Data existed but had no matching/current entry — a real answer, not a
-    // propagation gap, so trust it immediately.
-    return { active: false, expiresAt: null };
+    // This call is authenticated (our own signed JWT) over TLS to Apple's
+    // real host, so decodeJwt reads the payload without re-verifying it.
+    const groups = body.data.map((group) => ({
+      lastTransactions: (group.lastTransactions ?? []).map((last) => ({
+        originalTransactionId: last.originalTransactionId,
+        status: last.status,
+        info: decodeJwt(last.signedTransactionInfo) as { productId?: string; expiresDate?: number },
+      })),
+    }));
+    return subscriptionStateFrom(groups, originalTransactionId);
   }
 
-  // Neither host had any data at all — most likely still propagating.
-  return { active: false, expiresAt: null };
+  // Neither host had any data at all: most likely still propagating.
+  return null;
 }
 
 /** Decodes (WITHOUT cryptographic verification) an incoming App Store Server
@@ -140,7 +135,7 @@ export async function fetchAppleSubscriptionStatus(
  *  transaction id — used only as an untrusted lookup key to know what to
  *  re-check. Never treat anything else in this payload (status, dates,
  *  notificationType, etc.) as trustworthy; the caller must re-confirm via
- *  fetchAppleSubscriptionStatus before changing anything. */
+ *  fetchAppleSubscriptionState before changing anything. */
 export function extractOriginalTransactionId(signedPayload: string): string | null {
   try {
     const outer = decodeJwt(signedPayload) as { data?: { signedTransactionInfo?: string } };
