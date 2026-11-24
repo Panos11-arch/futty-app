@@ -27,6 +27,9 @@ export type SquadPost = {
    *  ("Any" in the UI maps to null here). */
   position_needed: string | null;
   level_needed: string | null;
+  /** Booking v2 (B1e): the side a post is for. An opposition post with a
+   *  side is always a Booking v2 one; a whole pitch's players post has none. */
+  side?: 'a' | 'b' | null;
 };
 
 /** "Looking for goalkeeper, Gold level or above" — the quote-style callout

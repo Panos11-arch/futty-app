@@ -48,6 +48,21 @@ jest.mock('@/lib/squads', () => ({
   getSquadPostPrices: (...args: unknown[]) => mockPrices(...args),
 }));
 jest.mock('@/components/match/head-to-head', () => ({ TeamHeadToHead: () => null }));
+// B4: Booking v2 quotes and my publishable games; none unless a test sets them.
+const mockQuotes = jest.fn();
+const mockPublishable = jest.fn();
+const mockPublish = jest.fn();
+const mockUnpublish = jest.fn();
+jest.mock('@/lib/booking-opposition', () => ({
+  ...jest.requireActual('@/lib/booking-opposition'),
+  publishBooking: (...args: unknown[]) => mockPublish(...args),
+  unpublishPost: (...args: unknown[]) => mockUnpublish(...args),
+}));
+jest.mock('@/lib/booking-posts', () => ({
+  ...jest.requireActual('@/lib/booking-posts'),
+  getBookingPostQuotes: (...args: unknown[]) => mockQuotes(...args),
+  fetchPublishableBookings: (...args: unknown[]) => mockPublishable(...args),
+}));
 
 const base = {
   venue_id: 'v1',
@@ -87,6 +102,8 @@ beforeEach(() => {
   params.mockSearchParams = {};
   mockMyTeams = { status: 'ready', teams: [] };
   mockPrices.mockResolvedValue(new Map());
+  mockQuotes.mockResolvedValue(new Map());
+  mockPublishable.mockResolvedValue([]);
 });
 
 describe('Squads', () => {
@@ -288,5 +305,129 @@ describe.each(ZONES_AND_SEASONS)('Squads times, phone on %s in %s', (zone, seaso
     mockPosts = { status: 'ready', posts: [post] };
     await render(<SquadsScreen />);
     expect(screen.getByText(`${kickoff.date} · ${kickoff.clock}`)).toBeTruthy();
+  });
+});
+
+// B4 (spec 13 "Publish game"): Booking v2 posts, priced by the server for
+// their side, with Join, Accept as opponent, Unpublish and "Your games".
+describe('Squads: Booking v2 posts', () => {
+  const v2Quote = (over: Record<string, unknown> = {}) => ({
+    post_id: 'pp1',
+    kind: 'players',
+    side: 'a',
+    mine: false,
+    open: true,
+    closes_at: '2099-11-20T18:00:00Z',
+    join_cents: 480,
+    join_pitch_cents: 400,
+    join_fee_cents: 80,
+    pay_all_cents: null,
+    each_pays_cents: null,
+    guarantee_cents: null,
+    ...over,
+  });
+  const v2Opposition = { ...oppositionPost, id: 'op2', side: 'b', team_id: null, team_name: null, players_needed: 5 };
+  const game = {
+    booking_id: 'bk1',
+    venue_name: 'Arena',
+    booking_day: '2099-11-20',
+    start_time: '20:00:00',
+    end_time: '21:00:00',
+    format: '5-a-side',
+    pitch_label: 'Pitch 1',
+    kind: 'half',
+    side: 'a',
+    open_spots: 4,
+    players_post_id: null,
+    opposition_post_id: null,
+    can_publish_players: true,
+    can_publish_opposition: true,
+  };
+
+  it('a players post: the server\'s price for its side, and Join', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', v2Quote()]]));
+    mockPosts = { status: 'ready', posts: [playersPost] };
+    await render(<SquadsScreen />);
+    expect(await screen.findByText('€4.80 each')).toBeTruthy();
+    expect(mockQuotes).toHaveBeenCalledWith(['pp1']);
+    expect(screen.queryByRole('button', { name: 'Join and pay my share' })).toBeNull();
+    await fireEvent.press(screen.getByTestId('post-join'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/join-squad-post', params: { postId: 'pp1' } });
+  });
+
+  it('my own post: Unpublish closes it and the list reloads', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', v2Quote({ mine: true })]]));
+    mockUnpublish.mockResolvedValue(null);
+    mockPosts = { status: 'ready', posts: [playersPost] };
+    await render(<SquadsScreen />);
+    await fireEvent.press(await screen.findByTestId('post-unpublish'));
+    await waitFor(() => expect(mockUnpublish).toHaveBeenCalledWith('pp1'));
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('a game I joined: View booking', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', v2Quote({ open: false })]]));
+    mockPosts = { status: 'ready', posts: [{ ...playersPost, joined_by_me: true }] };
+    await render(<SquadsScreen />);
+    await fireEvent.press(await screen.findByTestId('post-view-booking'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } });
+  });
+
+  it('a closed post leaves the list', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', v2Quote({ open: false })]]));
+    mockPosts = { status: 'ready', posts: [playersPost] };
+    await render(<SquadsScreen />);
+    expect(await screen.findByText('Nothing open right now — check back soon.')).toBeTruthy();
+  });
+
+  it('an opposition post: side B\'s price and Accept as opponent, never the old offer', async () => {
+    params.mockSearchParams = { view: 'opposition' };
+    let resolve: (m: Map<string, unknown>) => void = () => {};
+    mockQuotes.mockReturnValue(new Promise((r) => (resolve = r)));
+    mockPosts = { status: 'ready', posts: [v2Opposition] };
+    await render(<SquadsScreen />);
+    // Still loading: no action at all.
+    expect(screen.queryByRole('button', { name: 'Offer to play them' })).toBeNull();
+    resolve(
+      new Map([
+        ['op2', v2Quote({ post_id: 'op2', kind: 'opposition', side: 'b', join_cents: null, pay_all_cents: 2275, each_pays_cents: 480, guarantee_cents: 2000 })],
+      ]),
+    );
+    expect(await screen.findByText('€22.75 for your side, or €4.80 each')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('post-accept-opponent'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/opposition-invite', params: { postId: 'op2' } });
+  });
+
+  it('Your games: publish my open spots, then the list reloads', async () => {
+    mockPublishable.mockResolvedValue([game]);
+    mockPublish.mockResolvedValue(null);
+    mockPosts = { status: 'ready', posts: [] };
+    await render(<SquadsScreen />);
+    await fireEvent.press(await screen.findByTestId('publish-game-button-bk1'));
+    await waitFor(() => expect(mockPublish).toHaveBeenCalledWith('bk1', 'players'));
+    expect(mockReload).toHaveBeenCalled();
+    expect(mockPublishable).toHaveBeenCalledTimes(2);
+  });
+
+  it('Your games on the opposition view: publish an opposition post; unpublish one', async () => {
+    params.mockSearchParams = { view: 'opposition' };
+    mockPublishable.mockResolvedValue([game, { ...game, booking_id: 'bk2', opposition_post_id: 'op9' }]);
+    mockPublish.mockResolvedValue(null);
+    mockUnpublish.mockResolvedValue(null);
+    mockPosts = { status: 'ready', posts: [] };
+    await render(<SquadsScreen />);
+    await fireEvent.press(await screen.findByTestId('publish-game-button-bk1'));
+    await waitFor(() => expect(mockPublish).toHaveBeenCalledWith('bk1', 'opposition'));
+    await fireEvent.press(await screen.findByTestId('publish-game-button-bk2'));
+    await waitFor(() => expect(mockUnpublish).toHaveBeenCalledWith('op9'));
+  });
+
+  it('Your games: the server\'s refusal in words', async () => {
+    mockPublishable.mockResolvedValue([game]);
+    mockPublish.mockResolvedValue('This game is full.');
+    mockPosts = { status: 'ready', posts: [] };
+    await render(<SquadsScreen />);
+    await fireEvent.press(await screen.findByTestId('publish-game-button-bk1'));
+    expect(await screen.findByText('This game is full.')).toBeTruthy();
   });
 });

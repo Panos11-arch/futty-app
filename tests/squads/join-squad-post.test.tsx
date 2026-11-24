@@ -48,6 +48,12 @@ jest.mock('@/lib/squads', () => ({
   cancelPendingShare: (...args: unknown[]) => mockCancelPending(...args),
   getSquadPostBlockNotice: (...args: unknown[]) => mockBlockNotice(...args),
 }));
+// B4: a Booking v2 post's quote; none (an older post) unless a test sets one.
+const mockQuotes = jest.fn();
+jest.mock('@/lib/booking-posts', () => ({
+  ...jest.requireActual('@/lib/booking-posts'),
+  getBookingPostQuotes: (...args: unknown[]) => mockQuotes(...args),
+}));
 jest.mock('@/lib/booking-shares', () => ({
   createSharePayment: (...args: unknown[]) => mockCreateSharePayment(...args),
 }));
@@ -87,6 +93,7 @@ beforeEach(() => {
   mockBlockNotice.mockResolvedValue(null);
   mockJoin.mockResolvedValue({ error: null });
   mockCreateSharePayment.mockResolvedValue({ data: { clientSecret: 'cs_1' }, error: null });
+  mockQuotes.mockResolvedValue(new Map());
 });
 
 describe('Join squad post', () => {
@@ -231,5 +238,51 @@ describe.each(ZONES_AND_SEASONS)('Join squad post times, phone on %s in %s', (zo
     mockPosts = { status: 'ready', posts: [{ ...post, scheduled_at: kickoff.iso }] };
     await render(<JoinSquadPostScreen />);
     expect(screen.getByText(`Gold · Nicosia · ${kickoff.date} · ${kickoff.clock}`)).toBeTruthy();
+  });
+});
+
+// B4 (spec 13 "Publish game"): joiners pay as their side pays.
+describe('Join a Booking v2 post', () => {
+  const quote = (over: Record<string, unknown> = {}) => ({
+    post_id: 'pp1',
+    kind: 'players',
+    side: 'b',
+    mine: false,
+    open: true,
+    closes_at: '2099-11-20T18:00:00Z',
+    join_cents: 480,
+    join_pitch_cents: 400,
+    join_fee_cents: 80,
+    pay_all_cents: null,
+    each_pays_cents: null,
+    guarantee_cents: null,
+    ...over,
+  });
+
+  it('pay for myself: the server\'s €4.80 for his side, then the payment sheet', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', quote()]]));
+    await render(<JoinSquadPostScreen />);
+    expect(await screen.findByText('€4.80')).toBeTruthy();
+    expect(screen.queryByText('€6.80')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Join' }));
+    await waitFor(() => expect(mockCreateSharePayment).toHaveBeenCalledWith('share1'));
+    expect(mockJoin).toHaveBeenCalledWith('pp1');
+  });
+
+  it('pay for everyone: nothing to pay, no payment sheet, on to the booking', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', quote({ join_cents: 0, join_pitch_cents: 0, join_fee_cents: 0 })]]));
+    mockShare = { id: 'share1', status: 'covered' } as { id: string };
+    await render(<JoinSquadPostScreen />);
+    expect(await screen.findByText('Your captain paid for everyone: nothing to pay.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Join' }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } }));
+    expect(mockCreateSharePayment).not.toHaveBeenCalled();
+  });
+
+  it('a closed post can\'t be joined', async () => {
+    mockQuotes.mockResolvedValue(new Map([['pp1', quote({ open: false })]]));
+    await render(<JoinSquadPostScreen />);
+    expect(await screen.findByText('This game is no longer open.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Join' })).toBeNull();
   });
 });

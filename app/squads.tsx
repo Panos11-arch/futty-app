@@ -1,9 +1,11 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PostActions } from '@/components/booking/post-actions';
+import { PublishGames } from '@/components/booking/publish-games';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,15 @@ import { Text, type TextTone } from '@/components/ui/text';
 import { colors, hairline, radius, space } from '@/constants/futty-theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
+import { publishBooking, unpublishPost } from '@/lib/booking-opposition';
+import {
+  fetchPublishableBookings,
+  getBookingPostQuotes,
+  isPostShown,
+  type BookingPostQuote,
+  type PublishableBooking,
+} from '@/lib/booking-posts';
+import { useLoad } from '@/lib/booking-search';
 import { createSharePayment } from '@/lib/booking-shares';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { formatMatchWhen } from '@/lib/match/format';
@@ -92,12 +103,15 @@ function ErrorText({ children }: { children: string }) {
 function PlayersPostCard({
   post,
   price,
+  quote,
   onChanged,
 }: {
   post: SquadPostWithDetails;
   /** The server's price per player; none while loading, on error or when
    *  the server has none for this post. */
   price?: SquadPostPrice;
+  /** B4: a Booking v2 post's quote (booking_post_quotes); none for older posts. */
+  quote?: BookingPostQuote;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -137,7 +151,7 @@ function PlayersPostCard({
           value={full ? 'Full' : String(spotsLeft)}
           tone={full ? 'inkMuted' : 'ink'}
         />
-        {price ? <Fact label="Price" value={`${formatEuros(price.share_cents)} each`} /> : null}
+        {price && !quote ? <Fact label="Price" value={`${formatEuros(price.share_cents)} each`} /> : null}
       </View>
 
       {post.roster.length > 0 ? (
@@ -155,17 +169,82 @@ function PlayersPostCard({
         </View>
       ) : null}
 
-      {error ? <ErrorText>{error}</ErrorText> : null}
-
-      {post.joined_by_me ? (
-        <Button label="Cancel" variant="secondary" onPress={leave} loading={busy} />
+      {quote ? (
+        <V2Actions post={post} quote={quote} onChanged={onChanged} />
       ) : (
-        <Button
-          label={full ? 'Full' : 'Join and pay my share'}
-          onPress={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
-          disabled={full}
-        />
+        <>
+          {error ? <ErrorText>{error}</ErrorText> : null}
+          {post.joined_by_me ? (
+            <Button label="Cancel" variant="secondary" onPress={leave} loading={busy} />
+          ) : (
+            <Button
+              label={full ? 'Full' : 'Join and pay my share'}
+              onPress={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
+              disabled={full}
+            />
+          )}
+        </>
       )}
+    </Card>
+  );
+}
+
+/** B4: a Booking v2 post's action (Join, Accept as opponent, Unpublish, View
+ *  booking), priced by the server for its side. */
+function V2Actions({ post, quote, onChanged }: { post: SquadPostWithDetails; quote: BookingPostQuote; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function unpublish() {
+    setBusy(true);
+    setError(null);
+    const failed = await unpublishPost(post.id);
+    setBusy(false);
+    if (failed) setError(failed);
+    else onChanged();
+  }
+
+  return (
+    <PostActions
+      kind={post.type}
+      quote={quote}
+      joinedByMe={post.joined_by_me}
+      busy={busy}
+      error={error}
+      onUnpublish={unpublish}
+      onJoin={() => router.push({ pathname: '/join-squad-post', params: { postId: post.id } })}
+      onAccept={() => router.push({ pathname: '/opposition-invite', params: { postId: post.id } })}
+      onView={() => {
+        if (post.venue_booking_id) router.push({ pathname: '/booking/[id]', params: { id: post.venue_booking_id } });
+      }}
+    />
+  );
+}
+
+/** B4: a Booking v2 opposition post: side B's price and "Accept as
+ *  opponent", from the server. Its quote may still be loading. */
+function V2OppositionPostCard({
+  post,
+  quote,
+  onChanged,
+}: {
+  post: SquadPostWithDetails;
+  quote?: BookingPostQuote;
+  onChanged: () => void;
+}) {
+  return (
+    <Card testID="opposition-post" style={styles.card}>
+      <View style={styles.cardHead}>
+        <Text variant="headline">{post.team_name ?? post.venue_name}</Text>
+        <Text variant="callout" tone="inkMuted">
+          {post.venue_name} · {post.venue_city ?? 'Unknown city'} · {post.format}
+        </Text>
+      </View>
+      <View style={styles.facts}>
+        <Fact label="When" value={formatMatchWhen(post.scheduled_at)} />
+        <Fact label="Players a side" value={String(post.players_needed ?? 0)} />
+      </View>
+      {quote ? <V2Actions post={post} quote={quote} onChanged={onChanged} /> : <SkeletonText lines={1} />}
     </Card>
   );
 }
@@ -419,6 +498,63 @@ function usePlayerPostPrices(posts: SquadPostWithDetails[] | null): Map<string, 
   return prices;
 }
 
+/** B4: each Booking v2 post's quote (booking_post_quotes), for both views.
+ *  Null while loading or on error: older posts' cards don't need it, and
+ *  Booking v2 opposition posts wait for it. */
+function useBookingPostQuotes(posts: SquadPostWithDetails[] | null): Map<string, BookingPostQuote> | null {
+  const [quotes, setQuotes] = useState<Map<string, BookingPostQuote> | null>(null);
+  // Refetched when a post fills, closes or is matched, not on every render.
+  const key = posts ? posts.map((p) => `${p.id}:${p.status}:${p.joined_count}`).join(',') : null;
+
+  useEffect(() => {
+    setQuotes(null);
+    if (key === null) return;
+    let current = true;
+    const ids = key ? key.split(',').map((k) => k.split(':')[0]) : [];
+    getBookingPostQuotes(ids).then((result) => {
+      if (current) setQuotes(result);
+    });
+    return () => {
+      current = false;
+    };
+  }, [key]);
+
+  return quotes;
+}
+
+/** B4: "Your games": publish or unpublish the games I captain. */
+function YourGames({ kind, onChanged }: { kind: View_; onChanged: () => void }) {
+  const load = useCallback(() => fetchPublishableBookings(), []);
+  const { state, reload } = useLoad<PublishableBooking[]>('mine', load);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(bookingId: string, action: () => Promise<string | null>) {
+    setBusyId(bookingId);
+    setError(null);
+    const failed = await action();
+    setBusyId(null);
+    if (failed) setError(failed);
+    void reload();
+    onChanged();
+  }
+
+  if (state.status !== 'ready') return null;
+  return (
+    <PublishGames
+      kind={kind}
+      games={state.data}
+      busyId={busyId}
+      error={error}
+      onPublish={(bookingId) => void run(bookingId, () => publishBooking(bookingId, kind))}
+      onUnpublish={(postId) => {
+        const game = state.data.find((g) => g.players_post_id === postId || g.opposition_post_id === postId);
+        void run(game?.booking_id ?? postId, () => unpublishPost(postId));
+      }}
+    />
+  );
+}
+
 export default function SquadsScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10): loads them
   // and re-renders when they arrive.
@@ -427,11 +563,16 @@ export default function SquadsScreen() {
   const [view, setView] = useState<View_>(params.view === 'opposition' ? 'opposition' : 'players');
   const posts = useSquadPosts(view);
   const prices = usePlayerPostPrices(view === 'players' && posts.status === 'ready' ? posts.posts : null);
+  const quotes = useBookingPostQuotes(posts.status === 'ready' ? posts.posts : null);
+  const shown =
+    posts.status === 'ready' ? posts.posts.filter((post) => isPostShown(quotes?.get(post.id) ?? null, post.joined_by_me)) : [];
 
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={setView} accessibilityLabel="Posts" />
+
+        <YourGames kind={view} onChanged={posts.reload} />
 
         {posts.status === 'loading' ? (
           <Card testID="squads-skeleton">
@@ -445,19 +586,25 @@ export default function SquadsScreen() {
             action={{ label: 'Try again', onPress: posts.reload }}
           />
         ) : null}
-        {posts.status === 'ready' && posts.posts.length === 0 ? (
+        {posts.status === 'ready' && shown.length === 0 ? (
           <EmptyState icon="person.2.fill" message="Nothing open right now — check back soon." />
         ) : null}
 
-        {posts.status === 'ready'
-          ? posts.posts.map((post) =>
-              view === 'players' ? (
-                <PlayersPostCard key={post.id} post={post} price={prices?.get(post.id)} onChanged={posts.reload} />
-              ) : (
-                <OppositionPostCard key={post.id} post={post} onChanged={posts.reload} />
-              )
-            )
-          : null}
+        {shown.map((post) =>
+          view === 'players' ? (
+            <PlayersPostCard
+              key={post.id}
+              post={post}
+              price={prices?.get(post.id)}
+              quote={quotes?.get(post.id)}
+              onChanged={posts.reload}
+            />
+          ) : quotes?.get(post.id) || post.side ? (
+            <V2OppositionPostCard key={post.id} post={post} quote={quotes?.get(post.id)} onChanged={posts.reload} />
+          ) : (
+            <OppositionPostCard key={post.id} post={post} onChanged={posts.reload} />
+          )
+        )}
       </ScrollView>
     </SafeAreaView>
   );
