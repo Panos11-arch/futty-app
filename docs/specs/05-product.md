@@ -42,12 +42,12 @@ The QR check-in is worth doing well: it proves attendance for stats, and it give
 | :---- | :---- | :---- | :---- |
 | Form guide | Last 5 confirmed matches the player played in, any team or pickup | Last 5 matches as that team | Coloured W, D, L chips. A forfeit shows as "L (forfeit)". Shown on profiles, team cards and opposition posts |
 | Recent matches | List on the player's profile | List on the team's profile | Score, opponent, venue, date; tap opens the match page |
-| Reminders and notifications | Own games: 24 hours and 2 hours before (who's in, who hasn't paid), and after (confirm score, vote MOTM, rate, rebook) | Followers of a team: "X play Y tonight", "Result: X 5–3 Y", "X want an opponent on Thursday" | Uses the existing push tokens and notifications table. A scheduled job every 15 minutes finds games in each window. Settings per notification type; quiet hours |
+| Reminders and notifications | Own games: 24 hours and 2 hours before (who's in, who hasn't paid), and after (captains log the score, vote MOTM, rebook) | Followers of a team: "X play Y tonight", "Result: X 5–3 Y", "X want an opponent on Thursday" | Uses the existing push tokens and notifications table. A scheduled job every 15 minutes finds games in each window. Settings per notification type; quiet hours |
 | Head-to-head | Optional: "you've played against X 4 times" | Record between two named teams: won, drawn, lost, goals, last 3 results | Shown on the opposition post before accepting, on the fixture and on the match page |
-| Match page | Their goals, assists, rating, MOTM | Score, scorers, lineups, MOTM, venue, date | Opens after the score is confirmed; scorers can be added for 24 hours |
-| Man of the match | Vote once, not for yourself | Shown on the team's match list | Only players who played can vote; voting closes 24 hours after the score is confirmed; ties are shared |
-| Player ratings | Each player rates teammates and opponents 1–10 after the game | Team average per match | Individual votes hidden; a match rating shows only with 3 or more votes; feeds the skill level |
-| Skill level | A level from 1.0 to 7.0 on every profile | Team level \= average of its regular players | See section 4 |
+| Match page | Their goals, assists, rating, MOTM | Score, scorers, lineups, MOTM, venue, date | Opens after the score is confirmed; the captain logs the score, goals and assists after the game (S13B) and can correct goals and assists for 24 hours |
+| Man of the match | Vote once, not for yourself | Shown on the team's match list | Only players who played can vote; voting closes 24 hours after the score is confirmed; ties are shared. Decided by the vote only (S13B), and worth +0.3 in the match rating |
+| Player ratings | A rating per match from the match's stats, SofaScore style (S13B, decided 21–22 November): no positions, no 1–10 votes | Team average per match | Computed by the server for every player who checked in; see section 4.1. Shown as a coloured badge; feeds the skill level, season averages and Team of the Week |
+| Skill level | A level from 1.0 to 10.0 on every profile (S13B, decided 22 November; was 1.0–7.0) | Team level \= average of its regular players | See section 4 |
 | Lineups on a pitch | See where you're playing before kickoff | Captain sets the formation and positions | See section 5 |
 | Shareable cards | "I scored 3", MOTM, season recap | Result card, team of the week | See section 6 |
 | Team of the week | Selected players get a notification and a card | Shown per venue and per league | See section 7 |
@@ -57,12 +57,18 @@ The QR check-in is worth doing well: it proves attendance for stats, and it give
 
 What it's for: matching players to "Need players" posts of the right standard, suggesting fair opponents, and a "balance teams" button that splits a pickup game into two even sides. Playtomic's level system is the model.
 
-1. **Starting level.** Five questions at sign-up: how long you've played, the highest level you played at, how often you play now, position, and how you rate yourself. That gives a starting level, marked "provisional".  
-2. **After every confirmed match.** Each side's expected result is worked out from the average levels of the two sides. Winning against a stronger side moves your level up more; losing to a weaker side moves it down more (an Elo-style update). Moves are bigger for the first 10 matches, then settle.  
-3. **Ratings nudge it.** Your average rating from that match moves your level by at most 0.1 either way, so one generous friend can't inflate it.  
-4. **Provisional until 5 matches.** Show the level with a "provisional" tag until then.
+Changed by S13B (decided by Panos, 21 and 22 November; OK'd by Anghelo, owner of this section). Levels run from 1.0 to 10.0, shown with one decimal; every stored level was converted once: new = 1 + (old − 1) × 1.5.
 
-Anti-gaming for ratings: only players who were checked in can rate; 24-hour window; you can't rate yourself; with 6 or more votes the highest and lowest are dropped; someone who gives everyone 10 (or 1\) gets their votes down-weighted.
+1. **Starting level.** Five questions at sign-up: how long you've played, the highest level you played at, how often you play now, position (profile and player card only), and how you rate yourself (1–10). The server works out an expected rating from the first three answers: expected = 3 + round(7 × points / 3.7), with years 0 / 0.3 / 0.6 / 0.8, highest level 0 / 0.7 / 1.5 / 2.2 and how often 0 / 0.2 / 0.5 / 0.7 (so 3–10). The player may pick the expected rating ±1 (never below 1 or above 10); outside that range the server refuses and the app stays on the rating question: "Based on your answers, pick between <low> and <high>." The pick is the starting level (7 → 7.0), marked "provisional". A player with no answers starts at 4.0.  
+2. **After every confirmed competitive match.** Each side's expected result is worked out from the average levels of the two sides: E = 1 / (1 + 10^((opponents' average − own side's average) / 3)). K = 0.60 for the first 10 competitive matches, then 0.30; move = K × (S − E) × (1 − reliability / 200). Winning against a stronger side moves your level up more; losing to a weaker side moves it down more.  
+3. **The match rating nudges it.** By 0.15 × (rating − 6.5) / 3.5, never more than 0.15 either way. The level stays within 1.0–10.0. Every constant is in `app_rules`.  
+4. **Provisional until 5 matches.** Show the level with a "provisional" tag until then. Casual, forfeit and disputed matches never move a level.
+
+### 4.1 Match ratings (S13B)
+
+One formula for every player who checked in, whatever position they played (in 5-a-side a defender often scores and a forward doesn't, and many players never set a position): start at 6.5; win +0.6, draw +0.2, loss −0.3; each goal +0.8; each assist +0.5; clean sheet +0.5 (every player on the team); each goal the team conceded −0.1, at most −1.0; Man of the Match +0.3 (ties share it, once voting has closed); then limited to 3.0–10.0 and shown with one decimal. Computed by the server when the match is confirmed and again after any correction; every weight is in `app_rules`. Clean sheets and goals conceded come from the score. Disputed matches have no ratings. The colour bands: 9.0+, 8.0–8.9, 7.0–7.9, 6.5–6.9, 6.0–6.4, below 6.0.
+
+Logging after the game (S13B, `match-record.md` decision 1l): only the captain logs the score, goals and assists; two captains' scores must match (3 tries) or the match is disputed.
 
 ## 5\. Lineups on a pitch
 
@@ -93,6 +99,7 @@ Anti-gaming for ratings: only players who were checked in can rate; 24-hour wind
 - Season \= calendar year for casual games, the league season for league games.  
 - Player: appearances, wins, draws, losses, win %, goals, assists, MOTMs, average rating, level over time.  
 - Team: the same, plus goals for and against, clean sheets, longest winning run.  
+- Average rating is the S13B match rating (section 4.1).  
 - Leaderboards per venue and per city (top scorers, most MOTMs, best win rate), with a minimum number of appearances so one lucky game doesn't top the table.  
 - Updated every time a match is confirmed. Year-end recap card in December.
 

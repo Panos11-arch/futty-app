@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
-import { E2E_VENUE } from './config';
+import { E2E_LOG_MATCHES, E2E_VENUE } from './config';
 import { startingLevelOffered } from '../../lib/match/levels';
 import {
   connectAccountKey,
   connectAccountParams,
   E2E_UNTOUCHED_LEVEL,
+  e2eLogScoreMatch,
   e2eStartingLevel,
   readSeedEnv,
   seedMain,
@@ -149,7 +150,7 @@ describe('a starting level for each test login', () => {
     const row = e2eStartingLevel('user-1');
     expect(row).toEqual({
       profile_id: 'user-1',
-      level: 4,
+      level: 5.5,
       provisional: true,
       reliability_pct: 0,
       competitive_matches: 0,
@@ -180,5 +181,37 @@ describe('a starting level for each test login', () => {
     const moved = { ...untouched, competitiveMatches: 2 };
     expect(moved.competitiveMatches).not.toBe(E2E_UNTOUCHED_LEVEL.competitive_matches);
     expect(startingLevelOffered(moved)).toBe(false);
+  });
+});
+
+describe('a game waiting for its score (S13B, log-score.yaml)', () => {
+  const now = new Date('2026-11-24T18:00:00.000Z');
+
+  it('a pickup at the E2E venue, played 2 hours ago, waiting for the result for 23 more hours', () => {
+    const rows = e2eLogScoreMatch('ios', 'cap', 'other', now);
+    expect(rows.match).toEqual({
+      id: E2E_LOG_MATCHES.ios.matchId,
+      kind: 'pickup',
+      format: '5-a-side',
+      players_per_side: 5,
+      venue_id: E2E_VENUE.id,
+      kickoff_at: '2026-11-24T16:00:00.000Z',
+      ends_at: '2026-11-24T17:00:00.000Z',
+      result_deadline_at: '2026-11-25T17:00:00.000Z',
+      status: 'played',
+    });
+  });
+
+  it('the first login captains Bibs; the second plays Non-bibs; fixed ids per platform', () => {
+    const rows = e2eLogScoreMatch('android', 'cap', 'other', now);
+    expect(rows.sides).toEqual([
+      { match_id: E2E_LOG_MATCHES.android.matchId, side: 'a', label: 'Bibs', captain_profile_id: 'cap' },
+      { match_id: E2E_LOG_MATCHES.android.matchId, side: 'b', label: 'Non-bibs', captain_profile_id: null },
+    ]);
+    expect(rows.players.map((p) => [p.id, p.profile_id, p.side])).toEqual([
+      [E2E_LOG_MATCHES.android.captainPlayerId, 'cap', 'a'],
+      [E2E_LOG_MATCHES.android.otherPlayerId, 'other', 'b'],
+    ]);
+    expect(E2E_LOG_MATCHES.ios.matchId).not.toBe(E2E_LOG_MATCHES.android.matchId);
   });
 });

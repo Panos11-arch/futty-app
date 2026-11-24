@@ -84,6 +84,8 @@ These rules were missing or ambiguous in the specs and were decided while writin
 
 ## 1f. Decisions (17 November, Anghelo, A5a; to confirm with Panos)
 
+> **Partly replaced by decision 1l (S13B, 22 November):** the starting level (1f.2), the update constants and the 1.0–7.0 scale (1f.3) and the 1–10 ratings (1f.4) are replaced; 1f.1, 1f.5 (default level now 4.0) and 1f.6 stand.
+
 Skill level, ratings and competitive matches (05 section 4; 12 section 2, rows 2 and 3). Closes section 10, questions 3 and 4.
 
 1. **Competitive or casual.** A flag on the match, not on the booking: `matches.competitive` stays null until a captain chooses, and `matches.is_competitive = coalesce(competitive, kind = 'named')`.
@@ -189,6 +191,8 @@ Weekly streaks and streak badges.
 
 ## 1j. Decisions (18 November, Anghelo, A10; to confirm with Panos)
 
+> **Replaced by decision 1l (S13B, 22 November):** the intro, the steps and the ratings step are gone. A captain logs Score → Goals → Assists → Review; everyone else gets the Man of the Match vote. The pushes still open the after-game screen.
+
 The post-match flow: after a match, an optional, skippable walk through what a player can still add.
 
 1. **The steps, in order.**
@@ -244,6 +248,20 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
 6. **Selected players** get `team_of_the_week`, as before.
 7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week and per scope: "You'd have made Team of the Week (<rating>). Get Futty Premium to be eligible." It opens Premium.
    - It goes out as a push only if they switched on a new **"Premium and offers"** notification setting. That setting is off by default (Apple guideline 4.5.4).
+
+## 1l. Logging after the game, ratings and levels (S13B; decided by Panos, 21 and 22 November)
+
+Recorded and built in S13B. Spec 05 sections 3, 4 and 4.1 changed with Anghelo's OK. Rules on money stay spec 13's.
+
+1. **No positions.** No position is logged or used for ratings, Team of the Week or stats (in 5-a-side a defender often scores and a forward doesn't, and many players never set one).
+2. **Sides.** Pickup games keep Bibs v Non-bibs, picked before the game (the booker can move anyone). A saved team playing another team shows the two team names. A Booking v2 half pitch whose side B has its own captain (an opposition invite accepted, a matched opponent) is a game between two captains: side a = the booking's own players and side A's captain, side b = side B's players and side B's captain (`create_match_for_booking`, Panos's function). The same captain on both halves stays a pickup.
+3. **Only a captain logs** (`log_match_result`), from kickoff until `result_deadline_at`: Score (both sides, always) → Goals → Assists → Review, with a progress bar (0, 33, 66, 100%). Goals: a top-down pitch, each player a circle with − / +. Both halves are open only when every player of the other side is in his own booking (a pickup, or he paid for both sides); otherwise only his half, the other locked with its score ("Logged by their captain"). The server refuses goals or assists for any player outside the sides he writes (`not_your_player`). Each logged side's goals plus own goals equal its score; assists are optional and never more than the side's goals. Review is text only.
+4. **One captain** (a pickup): his Confirm makes the score final. Nothing checks his goals and assists; a "Report wrong score" for players in the match is proposed as a follow-up.
+5. **Two captains:** each logs both scores and his own side's goals and assists. The first matching pair confirms the match. A pair that differs is a failed try: both captains are told (`match_score_mismatch`) and can change theirs; after `app_rules.match_score_tries` (3) failed tries the match is disputed (no ratings, levels or power ranking; in a league or tournament the organiser decides). A captain who changes his own side's score logs its goals and assists again; changing only the other side's keeps them. At the deadline: two different scores → disputed; one captain's score → confirmed (as before); none → `no_result`. A disputed Losers pay game settles 50/50, as spec 13 says. The chat between the two captains comes with S13.
+6. **Corrections:** the same captains, their own sides' goals and assists, for 24 hours after confirmation (`set_match_stats`). The score is final.
+7. **Ratings:** spec 05 section 4.1. Only players who checked in (1b.2); ties for Man of the Match share the +0.3. Computed on confirmation, after a correction and when voting closes; `match_rating_shown` reads them, so season stats and Team of the Week use them. Past confirmed matches were rated once from what they had logged (from the score alone where no goals were logged). The 1–10 vote rows stay in `match_ratings`, unused; `rate_match_player` and `get_match_ratings` are no longer the app's.
+8. **Levels:** spec 05 section 4, on 1.0–10.0.
+9. **Assists** are tallies per player (`match_assists`); goals stay one row per goal in `match_goals` (null scorer = own goal). Older matches keep their paired assists on their goals; both count.
 
 ## 2. Time
 

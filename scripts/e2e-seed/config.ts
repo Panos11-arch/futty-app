@@ -48,3 +48,20 @@ export const E2E_PRICE_CENTS = 6000;
  *  offers (07:00 to 23:30, spec 13 "Booking screens") is inside the hours.
  *  Test data only: no venue rule depends on it. */
 export const E2E_OPENING_HOURS = { opens: '07:00', closes: '24:00' } as const;
+
+/** S13B: a pickup each platform's first login booked, played 2 hours ago
+ *  and waiting for its score, so log-score.yaml can log it. Bibs: the first
+ *  login (its captain); Non-bibs: the second. Fixed ids, so the flow can tap
+ *  a player (log-score-goal-plus-<player id>). Re-made on every run. */
+export const E2E_LOG_MATCHES: Record<Platform, { matchId: string; captainPlayerId: string; otherPlayerId: string }> = {
+  ios: {
+    matchId: 'e2e00000-0000-4000-8000-000000000021',
+    captainPlayerId: 'e2e00000-0000-4000-8000-000000000031',
+    otherPlayerId: 'e2e00000-0000-4000-8000-000000000032',
+  },
+  android: {
+    matchId: 'e2e00000-0000-4000-8000-000000000022',
+    captainPlayerId: 'e2e00000-0000-4000-8000-000000000033',
+    otherPlayerId: 'e2e00000-0000-4000-8000-000000000034',
+  },
+};
