@@ -5,6 +5,10 @@ import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-librar
 
 import { navigationRoutes } from './routes';
 
+// The first router render loads the whole route tree; under the full suite's
+// load it can take longer than Jest's default 5 seconds.
+jest.setTimeout(30_000);
+
 // renderRouter doesn't await React Native Testing Library 14's async render,
 // and redirects settle on (fake) timers, so let both finish.
 async function settle() {
@@ -44,6 +48,16 @@ describe('tab bar', () => {
   it('shows exactly Home, Book, Play and Profile, in that order', async () => {
     await open('/');
     expect(tabNames()).toEqual(['Home', 'Book', 'Play', 'Profile']);
+  });
+
+  // QA 24 November, bug 6: VoiceOver counts only the tabs on the bar.
+  it('each tab reads its place among the 4 tabs on the bar, never "of 7"', async () => {
+    await open('/');
+    const labels = screen
+      .getAllByRole('button')
+      .map((b) => b.props.accessibilityLabel as string | undefined)
+      .filter((label): label is string => !!label && /, tab/.test(label));
+    expect(labels).toEqual(['Home, tab, 1 of 4', 'Book, tab, 2 of 4', 'Play, tab, 3 of 4', 'Profile, tab, 4 of 4']);
   });
 
   it('opens Play from its tab', async () => {

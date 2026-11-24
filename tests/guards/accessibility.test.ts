@@ -7,7 +7,7 @@
 // Clipping at Dynamic Type XL can't be seen from Jest: check each screen on
 // the phone (the list is in the U8 pull request).
 import { pressables } from './pressables';
-import { NON_UI_SOURCES } from './sources';
+import { ALL_SOURCES, NON_UI_SOURCES } from './sources';
 
 const MIN_TOUCH = 44;
 
@@ -58,6 +58,32 @@ describe('the accessibility check', () => {
     expect(fontScalingBlocks('<Text allowFontScaling={false}>x</Text>')).not.toEqual([]);
     expect(fontScalingBlocks('<Text maxFontSizeMultiplier={1.2}>x</Text>')).not.toEqual([]);
     expect(fontScalingBlocks('<Text maxFontSizeMultiplier={2}>x</Text>')).toEqual([]);
+  });
+});
+
+/** QA 24 November, bug 8: a testID is for the Maestro tests, never spoken.
+ *  React Native gives Android's accessibility tree a testID only as the
+ *  view's resource id (ReactAccessibilityDelegate), which TalkBack doesn't
+ *  read; it's spoken only if a screen copies it into a label. Flags labels
+ *  built from a testID, and kebab-case labels that read like one. */
+function testIdLabels(text: string): string[] {
+  const fromTestId = text.match(/(?:accessibilityLabel|aria-label)\s*=\s*\{[^}]*testID[^}]*\}/g) ?? [];
+  const kebab = text.match(/(?:accessibilityLabel|aria-label)\s*=\s*["'][a-z0-9]+(?:-[a-z0-9]+)+["']/g) ?? [];
+  return [...fromTestId, ...kebab];
+}
+
+describe('the testID check', () => {
+  it('catches a label taken from a testID or written like one', () => {
+    expect(testIdLabels('<View accessibilityLabel={testID} />')).toHaveLength(1);
+    expect(testIdLabels('<View accessibilityLabel={props.testID ?? title} />')).toHaveLength(1);
+    expect(testIdLabels('<View accessibilityLabel="player-level" />')).toHaveLength(1);
+    expect(testIdLabels('<View testID="player-level" accessibilityLabel="Level 6.4" />')).toEqual([]);
+  });
+});
+
+describe.each(ALL_SOURCES)('%s', (file, text) => {
+  it('never reads a testID aloud', () => {
+    expect(testIdLabels(text)).toEqual([]);
   });
 });
 

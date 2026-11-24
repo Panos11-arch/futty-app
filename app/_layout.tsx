@@ -3,7 +3,7 @@ import { Sentry } from '@/lib/sentry';
 
 import { IBMPlexMono_500Medium, IBMPlexMono_600SemiBold } from '@expo-google-fonts/ibm-plex-mono';
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { ThemeProvider } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute, ThemeProvider } from '@react-navigation/native';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -22,6 +22,7 @@ import { colors, FuttyNavigationTheme, type } from '@/constants/futty-theme';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useNeedsProfileSetup } from '@/lib/auth-providers';
+import { tabsBackTitle } from '@/lib/navigation-a11y';
 import { PushTapHandler } from '@/lib/push-tap';
 
 export const unstable_settings = {
@@ -97,7 +98,12 @@ export function RootNavigator() {
     <View style={{ flex: 1 }}>
       <Stack>
         <Stack.Protected guard={inApp}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="(tabs)"
+            // A pushed screen's back button reads the tab it returns to,
+            // never "(tabs)" (QA 24 November, bug 7).
+            options={({ route }) => ({ headerShown: false, title: tabsBackTitle(getFocusedRouteNameFromRoute(route)) })}
+          />
           <Stack.Screen
             name="modal"
             options={{ presentation: 'modal', title: 'Modal', ...brandedHeaderOptions }}

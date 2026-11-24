@@ -34,7 +34,9 @@ const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 50 : 58;
 const LAUNCHER = MIN_TOUCH + space.md;
 
 /** Screens where the launcher would cover Book, Pay or the booking sheet
- *  (F9): it's hidden there until the Futty AI redesign (S13A) moves it. */
+ *  (F9), or a form's last button and its error (QA 24 November: Edit
+ *  profile's "Save changes", the Booked screen's "Go to booking"): it's
+ *  hidden there until the Futty AI redesign (S13A) moves it. */
 export function hidesLauncher(segments: string[]): boolean {
   const [first, second] = segments;
   return (
@@ -42,6 +44,8 @@ export function hidesLauncher(segments: string[]): boolean {
     first === 'venue' ||
     first === 'booking' ||
     first === 'booking-payment' ||
+    first === 'booking-after-pay' ||
+    first === 'edit-profile' ||
     (first === 'account' && second === 'payments')
   );
 }
