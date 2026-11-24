@@ -1,13 +1,37 @@
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DocEmailLink, DocFAQ, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
+import { FuttyAiChat } from '@/components/futty-ai-chat';
+import { MenuRow, MenuSection } from '@/components/menu-row';
 import { space } from '@/constants/futty-theme';
 
-/** The FAQ here is also on the website, site/support/index.html — keep the
- *  two in sync. */
+/** Help (S2, spec 15 section 0.9): Futty AI, How Futty works, Terms and
+ *  Privacy policy live here, then the support email and the FAQ. The FAQ is
+ *  also on the website, site/support/index.html: keep the two in sync. */
 export default function HelpScreen() {
+  const [aiOpen, setAiOpen] = useState(false);
+
   return (
     <DocScreen>
+      <MenuSection>
+        <MenuRow testID="help-futty-ai" icon="bubble.left.fill" label="Ask Futty AI" onPress={() => setAiOpen(true)} />
+        <MenuRow
+          testID="help-how-it-works"
+          icon="info.circle.fill"
+          label="How Futty works"
+          onPress={() => router.push('/account/how-it-works')}
+        />
+        <MenuRow testID="help-terms" icon="doc.text.fill" label="Terms of use" onPress={() => router.push('/account/terms')} />
+        <MenuRow
+          testID="help-privacy"
+          icon="lock.shield.fill"
+          label="Privacy policy"
+          onPress={() => router.push('/account/privacy-policy')}
+        />
+      </MenuSection>
+
       <DocParagraph>
         Pitch booking, squads, and leagues for 5/7/9/11-a-side football in Cyprus.
       </DocParagraph>
@@ -19,8 +43,8 @@ export default function HelpScreen() {
       <DocHeading>Common questions</DocHeading>
       <View style={styles.faqs}>
         <DocFAQ question="How do I book a pitch?">
-          Open the Book tab, pick a day, city, format, and duration, then tap an open slot on any
-          venue to reserve it.
+          Tap Book a pitch on Home, pick a day, city, format, and duration, then tap an open slot on
+          any venue to reserve it.
         </DocFAQ>
         <DocFAQ question="How do I find players or opposition for a game?">
           From your booking, or from the Players/Match quick actions on Home, you can post that you
@@ -39,6 +63,8 @@ export default function HelpScreen() {
           Go to Account &gt; Settings &gt; Delete account. You&apos;ll need to cancel any upcoming bookings first. If you can&apos;t sign in, email us at the address above and we&apos;ll do it for you.
         </DocFAQ>
       </View>
+
+      <FuttyAiChat visible={aiOpen} onClose={() => setAiOpen(false)} />
     </DocScreen>
   );
 }

@@ -11,7 +11,7 @@ import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { hairline, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
-import { personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
+import { isPremiumPlayer, personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { usePremiumStorePrice } from '@/lib/use-premium-store-price';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
@@ -64,7 +64,7 @@ export default function GoPremiumScreen() {
       icon: 'star.fill',
       title: 'Personal Premium',
       priceLabel: personalPremiumPriceLabel(rules, storePrice),
-      active: profile.status === 'ready' && profile.profile.is_premium,
+      active: isPremiumPlayer(profile) === true,
     },
     {
       plan: 'team-9-a-side',

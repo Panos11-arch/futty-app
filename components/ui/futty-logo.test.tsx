@@ -5,6 +5,8 @@ import { FuttyLogo } from '@/components/ui/futty-logo';
 import { flatStyle, loadWithFile } from '@/components/ui/test-utils';
 import { colors } from '@/constants/futty-theme';
 
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+
 let mockProfile: Record<string, unknown>;
 const mockReload = jest.fn();
 const mockFocusEffects: (() => void)[] = [];

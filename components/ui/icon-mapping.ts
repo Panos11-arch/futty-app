@@ -25,6 +25,7 @@ export const MAPPING = {
   'shield.fill': 'shield',
   globe: 'public',
   'person.fill': 'person',
+  'line.3.horizontal': 'menu',
   pencil: 'edit',
   'bell.fill': 'notifications',
   'phone.fill': 'phone',

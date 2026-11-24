@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { PlayerLevelSummary } from '@/components/match/player-level';
@@ -10,7 +9,6 @@ import { StreakCard } from '@/components/stats/streak-card';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
-import { FuttyLogo } from '@/components/ui/futty-logo';
 import { IconButton } from '@/components/ui/icon-button';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -18,7 +16,9 @@ import { radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { avatarKit } from '@/lib/avatar';
+import { isPremiumPlayer } from '@/lib/premium';
 import { type Profile, useProfile } from '@/lib/use-profile';
+import { isVenueStaff } from '@/lib/venue-staff';
 
 // A5b (docs/specs/match-record.md decision 1f.6): the skill level from
 // player_levels replaces the XP bar and tier. Games, wins and goals below are
@@ -152,11 +152,11 @@ function ProfileStatus() {
           <MenuSection>
             <MenuRow
               icon="star.fill"
-              label={profile.profile.is_premium ? 'Manage Premium' : 'Go Premium'}
-              sublabel={profile.profile.is_premium ? undefined : 'Futty Premium'}
+              label={isPremiumPlayer(profile) ? 'Manage Premium' : 'Go Premium'}
+              sublabel={isPremiumPlayer(profile) ? undefined : 'Futty Premium'}
               onPress={() => router.push('/account/premium')}
             />
-            {profile.profile.role === 'venue_owner' ? (
+            {isVenueStaff(profile) ? (
               <MenuRow
                 icon="building.columns.fill"
                 label="Venue dashboard"
@@ -184,15 +184,9 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <View testID="profile-screen" style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View style={styles.titleRow}>
-            <FuttyLogo />
-            <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header">
-              Profile
-            </Text>
-          </View>
           <Text variant="callout" tone="inkMuted">
             {user?.email}
           </Text>
@@ -204,7 +198,7 @@ export default function ProfileScreen() {
           <MenuRow icon="rectangle.portrait.and.arrow.right" label="Sign out" destructive onPress={signOut} />
         </MenuSection>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -212,7 +206,6 @@ const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   header: { gap: space.xs },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   card: { gap: space.lg },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   identity: { flex: 1, gap: space.xs },

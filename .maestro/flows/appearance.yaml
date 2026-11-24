@@ -17,15 +17,11 @@ env:
     env:
       EMAIL: ${EMAIL}
       PASSWORD: ${PASSWORD}
-- runFlow:
-    file: ../subflows/open-tab.yaml
-    env:
-      TAB: profile
-- scrollUntilVisible:
-    element:
-      text: 'Account & settings'
-- tapOn: 'Account & settings'
-- tapOn: 'Settings'
+# The header menu opens Account (S2).
+- tapOn:
+    id: header-menu
+- tapOn:
+    id: account-settings
 - tapOn:
     id: settings-appearance
 - assertVisible:

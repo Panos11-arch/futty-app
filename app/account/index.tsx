@@ -4,19 +4,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
+import { isPremiumPlayer } from '@/lib/premium';
 import { useProfile } from '@/lib/use-profile';
+import { isVenueStaff } from '@/lib/venue-staff';
 import { space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 
-/** The account menu (opened from the person icon in Home's header, separate
- *  from the bell). Deliberately flat: every leaf here is one tap from this
- *  screen, and no section goes deeper than section → one more page — see
- *  AGENTS.md's "avoid nested menus deeper than what's specified" rule this
- *  hierarchy was written against. */
+/**
+ * Account, opened from the menu button in every tab's header (S2, spec 15
+ * section 0.5): My bookings, Payments, Saved searches, Premium, Settings,
+ * Help, and Venue dashboard for venue staff only. Messages joins in S13.
+ * "More" holds what has no other place yet (spec 15 section 0.9): Play
+ * (Teams, Matches, Leagues) until S6–S9, Leaderboards until S15, and Your
+ * activity until S8. Terms, Privacy policy and How Futty works are in Help.
+ * Every row is one tap from here.
+ */
 export default function AccountMenuScreen() {
   const styles = useStyles();
   const { signOut } = useAuth();
   const profile = useProfile();
+  const premium = isPremiumPlayer(profile) === true;
 
   async function shareProfile() {
     const name = profile.status === 'ready' ? profile.profile.username ?? profile.profile.full_name : null;
@@ -29,44 +36,87 @@ export default function AccountMenuScreen() {
 
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView testID="account-menu" contentContainerStyle={styles.content}>
         <MenuSection>
-          <MenuRow icon="crown.fill" label="Go Premium" onPress={() => router.push('/account/premium')} />
-          <MenuRow icon="square.and.arrow.up" label="Share profile" onPress={shareProfile} />
-        </MenuSection>
-
-        <MenuSection title="Your account">
-          <MenuRow icon="pencil" label="Edit profile" onPress={() => router.push('/edit-profile')} />
-          <MenuRow icon="sportscourt.fill" label="My bookings" onPress={() => router.push('/my-bookings')} />
-          <MenuRow icon="magnifyingglass" label="Saved searches" onPress={() => router.push('/account/saved-searches')} />
-          <MenuRow icon="flag.checkered" label="Your activity" onPress={() => router.push('/account/activity')} />
-          <MenuRow icon="creditcard.fill" label="Your payments" onPress={() => router.push('/account/payments')} />
-          <MenuRow icon="gearshape.fill" label="Settings" onPress={() => router.push('/account/settings')} />
-        </MenuSection>
-
-        {profile.status === 'ready' && profile.profile.role === 'venue_owner' ? (
-          <MenuSection title="Venue owner">
+          <MenuRow
+            testID="account-my-bookings"
+            icon="sportscourt.fill"
+            label="My bookings"
+            onPress={() => router.push('/my-bookings')}
+          />
+          <MenuRow
+            testID="account-payments"
+            icon="creditcard.fill"
+            label="Payments"
+            onPress={() => router.push('/account/payments')}
+          />
+          <MenuRow
+            testID="account-saved-searches"
+            icon="magnifyingglass"
+            label="Saved searches"
+            onPress={() => router.push('/account/saved-searches')}
+          />
+          <MenuRow
+            testID="account-premium"
+            icon="crown.fill"
+            label={premium ? 'Manage Premium' : 'Go Premium'}
+            onPress={() => router.push('/account/premium')}
+          />
+          <MenuRow
+            testID="account-settings"
+            icon="gearshape.fill"
+            label="Settings"
+            onPress={() => router.push('/account/settings')}
+          />
+          <MenuRow
+            testID="account-help"
+            icon="questionmark.circle.fill"
+            label="Help"
+            onPress={() => router.push('/account/help')}
+          />
+          {isVenueStaff(profile) ? (
             <MenuRow
+              testID="account-venue-dashboard"
               icon="building.columns.fill"
               label="Venue dashboard"
               onPress={() => router.push('/venue-dashboard')}
             />
-          </MenuSection>
-        ) : null}
-
-        <MenuSection title="Support">
-          <MenuRow icon="questionmark.circle.fill" label="Help" onPress={() => router.push('/account/help')} />
-          <MenuRow icon="info.circle.fill" label="How Futty works" onPress={() => router.push('/account/how-it-works')} />
+          ) : null}
         </MenuSection>
 
-        <MenuSection title="Legal information">
-          <MenuRow icon="doc.text.fill" label="Terms of use" onPress={() => router.push('/account/terms')} />
-          <MenuRow icon="lock.shield.fill" label="Privacy policy" onPress={() => router.push('/account/privacy-policy')} />
+        <MenuSection title="More">
+          {/* tab-play: this row now does the old Play tab's job (.maestro). */}
+          <MenuRow testID="tab-play" icon="sportscourt.fill" label="Play" onPress={() => router.push('/play')} />
+          <MenuRow
+            testID="account-leaderboards"
+            icon="trophy.fill"
+            label="Leaderboards"
+            onPress={() => router.push('/match/leaderboards')}
+          />
+          <MenuRow
+            testID="account-activity"
+            icon="flag.checkered"
+            label="Your activity"
+            onPress={() => router.push('/account/activity')}
+          />
+          <MenuRow
+            testID="account-edit-profile"
+            icon="pencil"
+            label="Edit profile"
+            onPress={() => router.push('/edit-profile')}
+          />
+          <MenuRow testID="account-share-profile" icon="square.and.arrow.up" label="Share profile" onPress={shareProfile} />
         </MenuSection>
 
         <View style={styles.logoutSection}>
           <MenuSection>
-            <MenuRow icon="rectangle.portrait.and.arrow.right" label="Log out" destructive onPress={signOut} />
+            <MenuRow
+              testID="account-log-out"
+              icon="rectangle.portrait.and.arrow.right"
+              label="Log out"
+              destructive
+              onPress={signOut}
+            />
           </MenuSection>
         </View>
       </ScrollView>

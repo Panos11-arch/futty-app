@@ -2,24 +2,21 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
-import { HapticTab } from '@/components/haptic-tab';
+import { AppHeader } from '@/components/navigation/app-header';
+import { FuttyTabBar } from '@/components/navigation/futty-tab-bar';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { hairline } from '@/constants/futty-theme';
-import { useTheme } from '@/lib/theme';
-import { tabAccessibilityLabel, VISIBLE_TABS } from '@/lib/navigation-a11y';
+import { type BarItemName, tabAccessibilityLabel, VISIBLE_TABS } from '@/lib/navigation-a11y';
 
-import { openBookWizard } from './book';
-
-/** Each tab's screen-reader label counts only the tabs on the bar (QA 24
+/** Each tab's screen-reader label counts only the items on the bar (QA 24
  *  November, bug 6). */
-function tabLabel(name: (typeof VISIBLE_TABS)[number]['name']) {
+function tabLabel(name: BarItemName) {
   const index = VISIBLE_TABS.findIndex((t) => t.name === name);
   return tabAccessibilityLabel(VISIBLE_TABS[index].title, index, Platform.OS);
 }
 
-/** A hidden route: expo-router renders no tab button for it. */
-const HIDDEN = { href: null } as const;
+/** A hidden route: no place on the bar, no header (it redirects). */
+const HIDDEN = { href: null, headerShown: false } as const;
 
 function tabIcon(name: IconSymbolName) {
   function TabIcon({ color }: { color: string }) {
@@ -28,26 +25,21 @@ function tabIcon(name: IconSymbolName) {
   return TabIcon;
 }
 
-// Four tabs (docs/specs/15-design.md section 4). Team, Leagues and Community
-// live inside Play now; their routes stay (hidden from the bar) and redirect
-// to the matching Play segment so old links and notifications still work.
-// Each tab's button has a testID for the Maestro tests (.maestro).
+// S2 (docs/specs/15-design.md section 0.5): Home, Community, the Card button,
+// Rankings and Profile, with the fixed header (wordmark or tab name, bell,
+// menu). Book and Play are no longer tabs: /book opens the booking wizard
+// (app/book.tsx) and Play stays as a hidden route, opened from Account →
+// Play, until S6–S9 move its segments. /team and /leagues still redirect to
+// Play so old links and notifications work. Each tab's button has a testID
+// for the Maestro tests (.maestro).
 export default function TabLayout() {
-  const { colors, type } = useTheme();
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarActiveTintColor: colors.positive,
-        tabBarInactiveTintColor: colors.inkMuted,
-        tabBarLabelStyle: type.caption,
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.tabBarBorder,
-          borderTopWidth: hairline,
-        },
-      }}>
+      tabBar={(props) => <FuttyTabBar {...props} />}
+      screenOptions={({ route }) => ({
+        headerShown: true,
+        header: ({ options }) => <AppHeader title={options.title ?? route.name} home={route.name === 'index'} />,
+      })}>
       <Tabs.Screen
         name="index"
         options={{
@@ -58,29 +50,21 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="book"
+        name="community"
         options={{
-          title: 'Book',
-          tabBarIcon: tabIcon('calendar'),
-          tabBarButtonTestID: 'tab-book',
-          tabBarAccessibilityLabel: tabLabel('book'),
+          title: 'Community',
+          tabBarIcon: tabIcon('person.2.fill'),
+          tabBarButtonTestID: 'tab-community',
+          tabBarAccessibilityLabel: tabLabel('community'),
         }}
-        listeners={({ navigation }) => ({
-          // Book opens the booking wizard as a pushed screen, as before, over
-          // whichever tab you're on.
-          tabPress: (event) => {
-            event.preventDefault();
-            openBookWizard(navigation);
-          },
-        })}
       />
       <Tabs.Screen
-        name="play"
+        name="rankings"
         options={{
-          title: 'Play',
-          tabBarIcon: tabIcon('sportscourt.fill'),
-          tabBarButtonTestID: 'tab-play',
-          tabBarAccessibilityLabel: tabLabel('play'),
+          title: 'Rankings',
+          tabBarIcon: tabIcon('trophy.fill'),
+          tabBarButtonTestID: 'tab-rankings',
+          tabBarAccessibilityLabel: tabLabel('rankings'),
         }}
       />
       <Tabs.Screen
@@ -92,9 +76,9 @@ export default function TabLayout() {
           tabBarAccessibilityLabel: tabLabel('profile'),
         }}
       />
+      <Tabs.Screen name="play" options={{ href: null, title: 'Play' }} />
       <Tabs.Screen name="team" options={HIDDEN} />
       <Tabs.Screen name="leagues" options={HIDDEN} />
-      <Tabs.Screen name="community" options={HIDDEN} />
     </Tabs>
   );
 }

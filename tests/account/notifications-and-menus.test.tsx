@@ -9,7 +9,7 @@ import PrivacySettingsScreen from '@/app/account/settings/privacy';
 import SecuritySettingsScreen from '@/app/account/settings/security';
 import NotificationsScreen, { groupByDay } from '@/app/notifications';
 import { DocFAQ } from '@/components/doc-screen';
-import { FuttyAiChat } from '@/components/futty-ai-chat';
+import HelpScreen from '@/app/account/help';
 import { loadWithFile } from '@/components/ui/test-utils';
 import { colors } from '@/constants/futty-theme';
 
@@ -188,25 +188,75 @@ describe('Notifications', () => {
   });
 });
 
-describe('Account menu', () => {
-  it('grouped rows in sentence case, same targets', async () => {
-    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner' } };
-    const view = await render(<AccountMenuScreen />);
-    expect(view.toJSON()).toMatchSnapshot();
-    for (const [label, target] of [
-      ['Edit profile', '/edit-profile'],
-      ['My bookings', '/my-bookings'],
-      ['Your activity', '/account/activity'],
-      ['Your payments', '/account/payments'],
-      ['Venue dashboard', '/venue-dashboard'],
-      ['Terms of use', '/account/terms'],
-      ['Privacy policy', '/account/privacy-policy'],
+describe('Account menu (S2: the header menu opens it)', () => {
+  it('lists the rows and each goes to its route', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner', is_premium: false } };
+    await render(<AccountMenuScreen />);
+    for (const [testID, label, target] of [
+      ['account-my-bookings', 'My bookings', '/my-bookings'],
+      ['account-payments', 'Payments', '/account/payments'],
+      ['account-saved-searches', 'Saved searches', '/account/saved-searches'],
+      ['account-premium', 'Go Premium', '/account/premium'],
+      ['account-settings', 'Settings', '/account/settings'],
+      ['account-help', 'Help', '/account/help'],
+      ['account-venue-dashboard', 'Venue dashboard', '/venue-dashboard'],
+      ['tab-play', 'Play', '/play'],
+      ['account-leaderboards', 'Leaderboards', '/match/leaderboards'],
+      ['account-activity', 'Your activity', '/account/activity'],
+      ['account-edit-profile', 'Edit profile', '/edit-profile'],
     ]) {
-      await fireEvent.press(screen.getByRole('button', { name: label }));
+      expect(screen.getByRole('button', { name: label })).toBeTruthy();
+      await fireEvent.press(screen.getByTestId(testID));
       expect(router.push).toHaveBeenLastCalledWith(target);
     }
-    await fireEvent.press(screen.getByRole('button', { name: 'Log out' }));
+    await fireEvent.press(screen.getByTestId('account-log-out'));
     expect(mockSignOut).toHaveBeenCalled();
+  });
+
+  it('shows the spec rows first, in the spec order', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner', is_premium: false } };
+    await render(<AccountMenuScreen />);
+    const ids = screen.getAllByTestId(/^(account-(?!menu)|tab-play)/).map((n) => n.props.testID);
+    expect(ids.slice(0, 7)).toEqual([
+      'account-my-bookings',
+      'account-payments',
+      'account-saved-searches',
+      'account-premium',
+      'account-settings',
+      'account-help',
+      'account-venue-dashboard',
+    ]);
+  });
+
+  it('shows Venue dashboard to venue staff only', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player', is_premium: false } };
+    await render(<AccountMenuScreen />);
+    expect(screen.queryByTestId('account-venue-dashboard')).toBeNull();
+    expect(screen.queryByText('Venue dashboard')).toBeNull();
+  });
+
+  it('hides Venue dashboard while the profile loads', async () => {
+    mockProfile = { status: 'loading' };
+    await render(<AccountMenuScreen />);
+    expect(screen.queryByTestId('account-venue-dashboard')).toBeNull();
+  });
+
+  it('has no Messages row yet (S13 adds it with its screen)', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner', is_premium: true } };
+    await render(<AccountMenuScreen />);
+    expect(screen.queryByText('Messages')).toBeNull();
+  });
+
+  it('says Manage Premium to a Premium player (from the server)', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player', is_premium: true } };
+    await render(<AccountMenuScreen />);
+    expect(screen.getByRole('button', { name: 'Manage Premium' })).toBeTruthy();
+  });
+
+  it('moved Terms, Privacy policy and How Futty works into Help', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player', is_premium: false } };
+    await render(<AccountMenuScreen />);
+    for (const label of ['Terms of use', 'Privacy policy', 'How Futty works']) expect(screen.queryByText(label)).toBeNull();
   });
 
   it('Share profile shares the same message', async () => {
@@ -215,6 +265,26 @@ describe('Account menu', () => {
     await render(<AccountMenuScreen />);
     await fireEvent.press(screen.getByRole('button', { name: 'Share profile' }));
     expect(share).toHaveBeenCalledWith({ message: 'Play with me on Futty — find me as @ann.' });
+  });
+});
+
+describe('Help (S2: Futty AI, How Futty works, Terms and Privacy live here)', () => {
+  it.each([
+    ['help-how-it-works', 'How Futty works', '/account/how-it-works'],
+    ['help-terms', 'Terms of use', '/account/terms'],
+    ['help-privacy', 'Privacy policy', '/account/privacy-policy'],
+  ])('%s opens %s', async (testID, label, target) => {
+    await render(<HelpScreen />);
+    expect(screen.getByRole('button', { name: label })).toBeTruthy();
+    await fireEvent.press(screen.getByTestId(testID));
+    expect(router.push).toHaveBeenLastCalledWith(target);
+  });
+
+  it('tells you to book from Home, not the old Book tab', async () => {
+    await render(<HelpScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'How do I book a pitch?' }));
+    expect(screen.getByText(/Tap Book a pitch on Home/)).toBeTruthy();
+    expect(screen.queryByText(/Book tab/)).toBeNull();
   });
 });
 
@@ -237,26 +307,40 @@ describe('Doc FAQ', () => {
   });
 });
 
-describe('Futty AI chat', () => {
+describe('Futty AI chat (opened from Help)', () => {
+  async function openFromHelp() {
+    await render(<HelpScreen />);
+    await fireEvent.press(screen.getByTestId('help-futty-ai'));
+  }
+
+  it('Help has an Ask Futty AI row; the chat opens only from it', async () => {
+    await render(<HelpScreen />);
+    expect(screen.getByRole('button', { name: 'Ask Futty AI' })).toBeTruthy();
+    expect(screen.queryByLabelText('Message to Futty AI')).toBeNull();
+  });
+
   it('same bubbles as the fixture chat, and sends the whole conversation', async () => {
-    mockSendAi.mockResolvedValue({ data: { reply: 'Open the Book tab.' }, error: null });
-    await render(<FuttyAiChat />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Open Futty AI' }));
+    mockSendAi.mockResolvedValue({ data: { reply: 'Tap Book a pitch.' }, error: null });
+    await openFromHelp();
     await fireEvent.changeText(screen.getByLabelText('Message to Futty AI'), ' How do I book? ');
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByText('Open the Book tab.');
+    await screen.findByText('Tap Book a pitch.');
     expect(mockSendAi).toHaveBeenCalledWith([{ role: 'user', content: 'How do I book?' }]);
     expect(StyleSheet.flatten(screen.getByTestId('bubble-mine').props.style).backgroundColor).toBe(colors.brandSoft);
     expect(StyleSheet.flatten(screen.getByTestId('bubble-theirs').props.style).backgroundColor).toBe(colors.surface);
   });
 
-  it('shows the same error when Futty AI can’t be reached', async () => {
+  it('shows the same error when Futty AI can not be reached', async () => {
     mockSendAi.mockResolvedValue({ data: null, error: { message: 'x' } });
-    await render(<FuttyAiChat />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Open Futty AI' }));
+    await openFromHelp();
     await fireEvent.changeText(screen.getByLabelText('Message to Futty AI'), 'hi');
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     expect(await screen.findByText("Couldn't reach Futty AI — try again in a moment.")).toBeTruthy();
+  });
+
+  it('there is no floating Futty AI button any more', async () => {
+    await render(<HelpScreen />);
+    expect(screen.queryByRole('button', { name: 'Open Futty AI' })).toBeNull();
   });
 });
 

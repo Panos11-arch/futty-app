@@ -25,6 +25,7 @@ import { preferences } from '@/lib/preferences';
 import { registerForPushNotifications, unregisterPushNotifications } from '@/lib/push-notifications';
 import { useNotificationSettings } from '@/lib/use-notification-settings';
 import { useProfile } from '@/lib/use-profile';
+import { isVenueStaff } from '@/lib/venue-staff';
 
 function describePushFailure(reason: string) {
   switch (reason) {
@@ -243,9 +244,9 @@ export default function NotificationSettingsScreen() {
   const s = useNotificationSettings();
   const profile = useProfile();
   // Venue staff, decided as Profile decides whether to show the Venue dashboard entry.
-  const isVenueStaff = profile.status === 'ready' && profile.profile.role === 'venue_owner';
-  const sections = s.status === 'ready' ? sectionsForViewer(s.sections, isVenueStaff) : [];
-  const alwaysSent = s.status === 'ready' ? alwaysSentForViewer(s.alwaysSent, isVenueStaff) : [];
+  const isStaff = isVenueStaff(profile);
+  const sections = s.status === 'ready' ? sectionsForViewer(s.sections, isStaff) : [];
+  const alwaysSent = s.status === 'ready' ? alwaysSentForViewer(s.alwaysSent, isStaff) : [];
   const [writeError, setWriteError] = useState<string | null>(null);
 
   async function toggle(type: string, enabled: boolean) {

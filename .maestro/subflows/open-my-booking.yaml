@@ -1,5 +1,5 @@
 # Restarts the app (still signed in) and opens the e2e login's only
-# upcoming booking from Profile > My bookings. Restarting loads the booking
+# upcoming booking from the header menu > Account > My bookings. Restarting loads the booking
 # again, which is how a flow sees a status the webhook changed: the booking
 # screen doesn't refresh by itself.
 appId: com.panosalepis.futtyapp
@@ -10,16 +10,10 @@ appId: com.panosalepis.futtyapp
     visible:
       id: home-screen
     timeout: 30000
-- runFlow:
-    file: open-tab.yaml
-    env:
-      TAB: profile
-- scrollUntilVisible:
-    element:
-      id: profile-my-bookings
-    direction: DOWN
 - tapOn:
-    id: profile-my-bookings
+    id: header-menu
+- tapOn:
+    id: account-my-bookings
 - extendedWaitUntil:
     visible:
       id: my-bookings-list

@@ -1,4 +1,3 @@
-import { useSegments } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,38 +7,11 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { hairline, radius, shadow, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
 import { sendFuttyAiMessage, type ChatMessage } from '@/lib/futty-ai';
 import { type Block, parseReply } from '@/lib/futty-ai-markdown';
 
-// Approximate react-navigation bottom tab bar height — only mounted on the
-// tab screens (app/(tabs)/*), which is when the launcher needs to sit above
-// it rather than under it. There's no way to read the real height from here:
-// this component lives in the root layout, a sibling of <Tabs>, not inside
-// it, so useBottomTabBarHeight (which needs that inner context) isn't
-// available.
-const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 50 : 58;
-
-/** Launcher size: a 56 pt round button. */
-const LAUNCHER = MIN_TOUCH + space.md;
-
-/** Screens where the launcher would cover Book, Pay or the booking sheet
- *  (F9), or a form's last button and its error (QA 24 November: Edit
- *  profile's "Save changes", the Booked screen's "Go to booking"): it's
- *  hidden there until the Futty AI redesign (S13A) moves it. */
-export function hidesLauncher(segments: string[]): boolean {
-  const [first, second] = segments;
-  return (
-    first === 'book' ||
-    first === 'venue' ||
-    first === 'booking' ||
-    first === 'booking-payment' ||
-    first === 'booking-after-pay' ||
-    first === 'edit-profile' ||
-    (first === 'account' && second === 'payments')
-  );
-}
 
 /** The keyboard view's props: the body starts below the top safe area and
  *  the popup's header, so it needs that offset or the input bar ends up
@@ -81,16 +53,19 @@ function Reply({ text }: { text: string }) {
   );
 }
 
-export function FuttyAiChat() {
+/**
+ * The Futty AI chat (S2: no floating button any more; it covered buttons
+ * such as Pay). Account → Help opens it, and S13A adds a "?" in the header
+ * of Book, the venue page and the payment sheet.
+ */
+export function FuttyAiChat({ visible: open, onClose }: { visible: boolean; onClose: () => void }) {
   const styles = useStyles();
   const { colors } = useTheme();
-  const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
-  const segments = useSegments();
   const scrollRef = useRef<ScrollView>(null);
 
   // Keep the last message in view when the keyboard opens (F9).
@@ -100,12 +75,8 @@ export function FuttyAiChat() {
     return () => sub.remove();
   }, [open]);
 
-  // Root layout renders this once for every screen, tabs and pushed screens
-  // alike — only the tab screens have a bottom tab bar to clear.
-  const onTabScreen = segments[0] === '(tabs)';
-
   function close() {
-    setOpen(false);
+    onClose();
   }
 
   async function send() {
@@ -134,30 +105,8 @@ export function FuttyAiChat() {
 
   const sendDisabled = !input.trim() || busy;
 
-  const showLauncher = !hidesLauncher(segments);
-
   return (
     <>
-      {/* Fixed to the bottom-right corner, above the tab bar on tab screens —
-          pointerEvents="box-none" on this wrapper is what lets touches pass
-          through to whatever's behind it everywhere except the button itself. */}
-      {showLauncher ? (
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.launcherWrap,
-            { bottom: insets.bottom + (onTabScreen ? TAB_BAR_HEIGHT : 0) + space.lg },
-          ]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open Futty AI"
-            onPress={() => setOpen(true)}
-            style={({ pressed }) => [styles.launcher, pressed && styles.launcherPressed]}>
-            <IconSymbol name="bubble.left.fill" size={ICON.regular} color={colors.onBrand} />
-          </Pressable>
-        </View>
-      ) : null}
-
       <PopupModal visible={open} onClose={close} title="Futty AI">
         <KeyboardAvoidingView style={styles.flex} {...chatKeyboardProps(Platform.OS, insets.top)}>
           <ScrollView
@@ -235,24 +184,6 @@ export function FuttyAiChat() {
 
 const useStyles = makeStyles(({ colors, type }) => ({
   flex: { flex: 1 },
-  launcherWrap: {
-    position: 'absolute',
-    right: space.lg,
-    // zIndex so the launcher always sits above scrollable screen content
-    // instead of getting drawn under it on Android. Nothing beneath it is
-    // raised either, and the one shadow comes from the theme (U8).
-    zIndex: 50,
-  },
-  launcher: {
-    width: LAUNCHER,
-    height: LAUNCHER,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow,
-  },
-  launcherPressed: { opacity: 0.8 },
   messages: { padding: space.lg, gap: space.sm, flexGrow: 1 },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowMine: { justifyContent: 'flex-end' },

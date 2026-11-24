@@ -1,4 +1,4 @@
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
@@ -20,7 +20,6 @@ import type { MatchedContact, UnmatchedContact } from '@/lib/contacts';
 import { shareContactInvite } from '@/lib/invite';
 import { listTeams, type TeamListing } from '@/lib/community';
 import { submitReport } from '@/lib/moderation';
-import { playHref } from '@/lib/play-segments';
 import { useAuth } from '@/lib/auth';
 import { useBlocks } from '@/lib/use-blocks';
 import { useContacts } from '@/lib/use-contacts';
@@ -387,8 +386,8 @@ function TeamsTab() {
   );
 }
 
-/** Contacts and teams, shown in Play's Community segment
- *  (app/(tabs)/play.tsx). Scrolls itself. */
+/** Contacts and teams: the Community tab (S2; restyled in S7)
+ *  Scrolls itself. */
 export function CommunityContent() {
   const styles = useStyles();
   const [view, setView] = useState<CommunityView>('contacts');
@@ -425,12 +424,18 @@ export function CommunityContent() {
   );
 }
 
-/** /community is no longer a tab: it opens Play on Community. */
-export default function CommunityRoute() {
-  return <Redirect href={playHref('community')} />;
+/** The Community tab (S2, spec 15 section 0.5). The header comes from the tab layout. */
+export default function CommunityScreen() {
+  const styles = useStyles();
+  return (
+    <View testID="community-screen" style={styles.screen}>
+      <CommunityContent />
+    </View>
+  );
 }
 
 const useStyles = makeStyles(({ colors }) => ({
+  screen: { flex: 1, backgroundColor: colors.canvas },
   hidden: { display: 'none' },
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },

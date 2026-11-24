@@ -55,6 +55,7 @@ import { useAuth } from '@/lib/auth';
 import { loadCheckInQr } from '@/lib/check-in';
 import { supabase } from '@/lib/supabase';
 import { useProfile } from '@/lib/use-profile';
+import { isVenueStaff } from '@/lib/venue-staff';
 import { useWeatherNudges } from '@/lib/use-weather';
 import type { WeatherNudge } from '@/lib/weather';
 import {
@@ -341,7 +342,7 @@ export default function VenueDashboardScreen() {
     );
   }
 
-  if (profile.status !== 'ready' || profile.profile.role !== 'venue_owner') {
+  if (!isVenueStaff(profile)) {
     return (
       <SafeAreaView style={styles.screen} edges={['bottom']}>
         <EmptyState icon="lock.fill" message="This screen is only available to venue owner accounts." />

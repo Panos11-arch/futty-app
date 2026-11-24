@@ -1,0 +1,101 @@
+# Journey e (S2): the fixed tab bar and header. Each tab opens with its name
+# in the header, the Card button opens the My card sheet, the bell opens
+# notifications, and the menu opens Account, from which Play and Help (with
+# Futty AI) are reachable. The seeded e2e login is a Basic player, not venue
+# staff, so Account has no Venue dashboard row.
+appId: com.panosalepis.futtyapp
+name: navigation
+tags:
+  - e2e
+  - navigation
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- takeScreenshot: nav-home-${PLATFORM}
+
+# ---- Tabs ------------------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: community
+- assertVisible:
+    id: community-screen
+- assertVisible:
+    id: tab-bar
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: rankings
+- assertVisible:
+    id: rankings-screen
+- assertVisible:
+    id: rankings-totw
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: profile
+- assertVisible:
+    id: profile-screen
+# The bar stays put while Profile scrolls.
+- scroll
+- assertVisible:
+    id: tab-bar
+- assertVisible:
+    id: tab-home
+
+# ---- Card button -----------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: card
+- assertVisible:
+    id: my-card-sheet
+- takeScreenshot: nav-my-card-${PLATFORM}
+- tapOn:
+    id: my-card-open-profile
+- assertVisible:
+    id: profile-screen
+
+# ---- Header ----------------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- tapOn:
+    id: header-bell
+- assertVisible: 'Notifications'
+- back
+- tapOn:
+    id: header-menu
+- assertVisible:
+    id: account-my-bookings
+- assertNotVisible:
+    id: account-venue-dashboard
+- takeScreenshot: nav-account-${PLATFORM}
+
+# ---- Play stays reachable --------------------------------------------------
+- tapOn:
+    id: tab-play
+- assertVisible:
+    id: play-screen
+- assertVisible:
+    id: tab-bar
+
+# ---- Help → Futty AI -------------------------------------------------------
+- tapOn:
+    id: header-menu
+- tapOn:
+    id: account-help
+- tapOn:
+    id: help-futty-ai
+- assertVisible: 'Futty AI'
+- takeScreenshot: navigation-${PLATFORM}

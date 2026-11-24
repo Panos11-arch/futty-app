@@ -36,3 +36,12 @@ export function useReduceMotion(): boolean {
   }, []);
   return reduce || inApp;
 }
+
+/** The tab bar's row, above the home indicator: the same with or without the Card button (S2). */
+export const TAB_BAR_HEIGHT = 64;
+
+/** The Card button's circle (S2): bigger than a tab icon, level with the tabs, never taller than the bar. */
+export const CARD_BUTTON = 56;
+
+/** The Futty F inside the Card button. */
+export const CARD_LOGO = 32;

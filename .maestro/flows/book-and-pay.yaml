@@ -26,10 +26,13 @@ env:
       PASSWORD: ${PASSWORD}
 
 # ---- Book: day, time, length, format, then the venue --------------------
+# Home → Book a pitch (S2: Book is no longer a tab).
 - runFlow:
     file: ../subflows/open-tab.yaml
     env:
-      TAB: book
+      TAB: home
+- tapOn:
+    id: tab-book
 - extendedWaitUntil:
     visible:
       id: book-day-${DAY}
