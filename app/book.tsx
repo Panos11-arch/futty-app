@@ -22,6 +22,7 @@ import {
   type LoadState,
 } from '@/lib/booking-search';
 import { haptic } from '@/lib/haptics';
+import { armStartMatch } from '@/lib/start-match';
 import { fetchSearchPlaces } from '@/lib/saved-searches';
 import { useDebtBlock } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
@@ -40,7 +41,15 @@ function searchKey(q: BookSearchQuery): string {
 export default function BookScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10).
   useRules();
-  const { venueId } = useLocalSearchParams<{ venueId?: string }>();
+  const { venueId, startMatch } = useLocalSearchParams<{ venueId?: string; startMatch?: string }>();
+  // S6: opened from Find a match's "Start a match": once paid, Publish starts
+  // on. Armed while this screen is open, whichever way the player goes to pay.
+  const fromStartMatch = startMatch === '1';
+  useEffect(() => {
+    if (!fromStartMatch) return;
+    armStartMatch(true);
+    return () => armStartMatch(false);
+  }, [fromStartMatch]);
   const options = useLoad('options', fetchSearchOptions);
   const places = useLoad('places', fetchSearchPlaces);
   const live = useVenues({ liveOnly: true });

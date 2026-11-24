@@ -121,6 +121,30 @@ describe('AfterPayView (B3: the screen after paying)', () => {
     expect(p.onPublishGame).toHaveBeenCalledWith(true);
   });
 
+  // S6: a game started from Find a match ("Start a match").
+  it('preselected "Publish game" starts on and publishes once; it can still go off', async () => {
+    const p = props(bookerDetail({ v2: openHalf }), { preselect: 'players' });
+    await render(<AfterPayView {...p} />);
+    await waitFor(() => expect(p.onPublishGame).toHaveBeenCalledWith(true));
+    expect(p.onPublishGame).toHaveBeenCalledTimes(1);
+    expect(p.onPublishOpposition).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('after-pay-publish-game').props.value).toBe(true));
+    await fireEvent(screen.getByTestId('after-pay-publish-game'), 'valueChange', false);
+    expect(p.onPublishGame).toHaveBeenLastCalledWith(false);
+  });
+
+  it('preselected opposition "Publish" starts on; nothing is preselected without it', async () => {
+    const p = props(bookerDetail({ v2: openHalf }), { preselect: 'opposition' });
+    await render(<AfterPayView {...p} />);
+    await waitFor(() => expect(p.onPublishOpposition).toHaveBeenCalledWith(true));
+    expect(p.onPublishGame).not.toHaveBeenCalled();
+
+    const plain = props(bookerDetail({ v2: openHalf }));
+    await render(<AfterPayView {...plain} />);
+    expect(plain.onPublishGame).not.toHaveBeenCalled();
+    expect(plain.onPublishOpposition).not.toHaveBeenCalled();
+  });
+
   it('a refused publish shows why and the switch goes back', async () => {
     const p = props(bookerDetail({ v2: openHalf }), { onPublishGame: jest.fn(async () => 'Every spot is taken.') });
     await render(<AfterPayView {...p} />);

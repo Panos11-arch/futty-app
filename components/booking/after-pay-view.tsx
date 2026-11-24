@@ -3,7 +3,7 @@
 // and the share menu; the friends list comes with S20); on a half pitch,
 // side A's captain's "Invite opposition" (players and teams, plus a
 // "Publish" switch); and "Publish game". Nothing here has an amount.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Switch, View } from 'react-native';
 
 import {
@@ -37,6 +37,9 @@ export type AfterPayViewProps = {
   onPublishOpposition: (on: boolean) => Promise<string | null>;
   onPublishGame: (on: boolean) => Promise<string | null>;
   onDone: () => void;
+  /** S6: a game started from Find a match: this switch starts on (and
+   *  publishes). The player can still switch it off. */
+  preselect?: 'players' | 'opposition' | null;
 };
 
 export function AfterPayView(props: AfterPayViewProps) {
@@ -68,12 +71,15 @@ function PublishSwitch({
   label,
   line,
   initial,
+  preselected = false,
   onChange,
 }: {
   testID: string;
   label: string;
   line: string;
   initial: boolean;
+  /** Starts on: publishes once, as if switched on. */
+  preselected?: boolean;
   onChange: (on: boolean) => Promise<string | null>;
 }) {
   const styles = useStyles();
@@ -94,6 +100,12 @@ function PublishSwitch({
       setError(message);
     }
   }
+
+  useEffect(() => {
+    if (preselected && !initial) void change(true);
+    // Once, when the switch first shows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={styles.group}>
@@ -128,6 +140,7 @@ function AfterPayReady({
   onPublishOpposition,
   onPublishGame,
   onDone,
+  preselect = null,
 }: Omit<AfterPayViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const styles = useStyles();
   const { booking, venue } = detail;
@@ -322,6 +335,7 @@ function AfterPayReady({
               label="Publish"
               line="Any team can take it on in Find a game."
               initial={v2!.posts.opposition !== null}
+              preselected={preselect === 'opposition'}
               onChange={onPublishOpposition}
             />
           </View>
@@ -335,6 +349,7 @@ function AfterPayReady({
               label="Publish game"
               line="Anyone can join your open spots in Find a game."
               initial={v2?.posts.players != null}
+              preselected={preselect === 'players'}
               onChange={onPublishGame}
             />
           </View>
