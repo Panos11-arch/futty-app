@@ -12,7 +12,14 @@ import { Banner, Chip, SectionHeader, SegmentedControl, SkeletonBlock, Text } fr
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { hairline, radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
-import { dateStrip, GAME_LENGTHS, showPlayersPerSide, type LoadState, type SearchOptions } from '@/lib/booking-search';
+import {
+  dateStrip,
+  GAME_LENGTHS,
+  offeredLengths,
+  showPlayersPerSide,
+  type LoadState,
+  type SearchOptions,
+} from '@/lib/booking-search';
 import { pitchDetails, type FreePitch } from '@/lib/booking-v2';
 import { formatEuros } from '@/lib/money/format';
 import type { VenueFormatsState, VenueSlotsState } from '@/lib/use-venue-slots';
@@ -72,6 +79,10 @@ export function VenueBookTab({ book, allowsSixOnFive }: { book: VenueBookProps; 
 
   const days = dateStrip(options.data.today, options.data.window_days);
   const sides = showPlayersPerSide(selection.format, allowsSixOnFive);
+  // The lengths the server offers (booking_search_options); the app's own
+  // list only if an older server sends none.
+  const offered = offeredLengths(options.data);
+  const lengths: readonly number[] = offered.length > 0 ? offered : GAME_LENGTHS;
   const now = book.now ?? new Date();
 
   return (
@@ -136,9 +147,9 @@ export function VenueBookTab({ book, allowsSixOnFive }: { book: VenueBookProps; 
 
       <View style={styles.section}>
         <SectionHeader title={`Time · ${selection.minutes} min`} />
-        {GAME_LENGTHS.length > 1 ? (
+        {lengths.length > 1 ? (
           <View style={styles.wrap}>
-            {GAME_LENGTHS.map((m) => (
+            {lengths.map((m) => (
               <Chip
                 key={m}
                 testID={`venue-length-${m}`}

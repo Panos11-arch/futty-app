@@ -333,18 +333,18 @@ describe('where a tap goes', () => {
   const nav = { push: jest.fn(), replace: jest.fn() };
   beforeEach(() => nav.push.mockClear());
 
-  // For S5 (Panos): openTimeSlot is the one place to change so a time opens
-  // the venue page's Book tab with this slot picked.
-  it('a time opens checkout for that slot', () => {
+  // S5: a time opens the venue page's Book tab with this slot picked; its
+  // Continue opens the payment sheet there.
+  it('a time opens the venue page on Book, with that slot picked', () => {
     openTimeSlot(
       { venueId: 'v1', venueName: 'Kamares', day: '2026-11-26', start: '18:00', end: '19:30', format: '5-a-side', playersPerSide: 6 },
       nav,
     );
     expect(nav.push).toHaveBeenCalledWith({
-      pathname: '/booking-payment',
+      pathname: '/venue/[id]',
       params: {
-        venueId: 'v1',
-        venueName: 'Kamares',
+        id: 'v1',
+        tab: 'book',
         day: '2026-11-26',
         start: '18:00',
         end: '19:30',

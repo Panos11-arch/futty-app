@@ -322,6 +322,20 @@ describe('VenuePageView: Book', () => {
     expect(p.book.onSelect).toHaveBeenLastCalledWith({ ...selection, start: '20:00' });
   });
 
+  it('the lengths the server offers; no length chips when it offers one', async () => {
+    const base = props(ready(full), { tab: 'book' });
+    const options = (lengths: number[]) => ({
+      status: 'ready' as const,
+      data: { today: '2026-11-26', window_days: 6, is_premium: false, six_on_five_available: false, game_lengths: lengths },
+    });
+    await render(<VenuePageView {...base} book={{ ...base.book, options: options([60, 90]) }} />);
+    expect(screen.getByTestId('venue-length-90')).toBeTruthy();
+    expect(screen.queryByTestId('venue-length-120')).toBeNull();
+    await render(<VenuePageView {...base} book={{ ...base.book, options: options([60]) }} />);
+    expect(screen.queryByTestId('venue-length-60')).toBeNull();
+    expect(screen.getByText('Time · 60 min')).toBeTruthy();
+  });
+
   it('6 v 6 only where the venue allows it on 5-a-side', async () => {
     const allowing = { ...full, venue: { ...full.venue, allows_6v6_on_5s: true } };
     const p = props(ready(allowing), { tab: 'book' });

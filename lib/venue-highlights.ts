@@ -1,6 +1,6 @@
 // The venue page's Home tab (S5): top players and recent results at the
 // venue, from venue_highlights (supabase/migrations/
-// 20261124180100_match_venue_highlights.sql). Names come from
+// 20261124200100_match_venue_highlights.sql). Names come from
 // get_public_profiles, as on every other list.
 import type { AvatarKit } from '@/lib/avatar';
 import { getPublicNames } from '@/lib/match/profile-api';

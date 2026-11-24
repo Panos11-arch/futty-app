@@ -110,6 +110,12 @@ describe('the venue page screen', () => {
     expect(mockWeather).toHaveBeenLastCalledWith('v1', { day: '2026-11-27', start: '20:00', end: '21:30' });
   });
 
+  it('from Book a pitch with 6 v 6 chosen: keeps it', async () => {
+    mockParams = { id: 'v1', tab: 'book', day: '2026-11-27', start: '20:00', end: '21:00', format: '5-a-side', playersPerSide: '6' };
+    await render(<VenueScreen />);
+    expect(view().book.selection).toEqual({ day: '2026-11-27', start: '20:00', minutes: 60, format: '5-a-side', playersPerSide: 6 });
+  });
+
   it('tab=book opens on Book with today, the first format and no time yet', async () => {
     mockParams = { id: 'v1', tab: 'book' };
     await render(<VenueScreen />);

@@ -27,15 +27,23 @@ import { venueSlot, type BookSelection } from '@/lib/venue-book';
 import { fetchVenueHighlights } from '@/lib/venue-highlights';
 import { appleMapsUrl, googleMapsUrl, venueShareMessage, venueStartTab, type VenueTab } from '@/lib/venue-page';
 
-type Params = { id: string; tab?: string; day?: string; start?: string; end?: string; format?: string };
+type Params = {
+  id: string;
+  tab?: string;
+  day?: string;
+  start?: string;
+  end?: string;
+  format?: string;
+  playersPerSide?: string;
+};
 
 const openPayOwed = () => router.push('/account/payments/owed');
 
-/** The game length from Book a pitch's start and end, or an hour. */
-function lengthOf(start?: string, end?: string): number {
-  if (!start || !end) return 60;
+/** The game length from Book a pitch's start and end; none without them. */
+function lengthOf(start?: string, end?: string): number | undefined {
+  if (!start || !end) return undefined;
   const minutes = timeToMin(end) - timeToMin(start);
-  return minutes > 0 ? minutes : 60;
+  return minutes > 0 ? minutes : undefined;
 }
 
 export default function VenueScreen() {
@@ -61,15 +69,17 @@ export default function VenueScreen() {
     start: params.start?.slice(0, 5) ?? null,
     minutes: lengthOf(params.start, params.end),
     format: params.format ?? null,
-    playersPerSide: 5,
+    playersPerSide: params.playersPerSide === '6' ? 6 : 5,
   }));
   const [pitchKey, setPitchKey] = useState<string | null>(null);
   const today = options.state.status === 'ready' ? options.state.data.today : null;
+  // The server's default length (booking_search_options), else an hour.
+  const defaultLength = (options.state.status === 'ready' && options.state.data.default_game_length) || 60;
   const firstFormat = formats.status === 'ready' ? (formats.formats[0] ?? null) : null;
   const selection: BookSelection = {
     day: chosen.day ?? today ?? '',
     start: chosen.start ?? null,
-    minutes: chosen.minutes ?? 60,
+    minutes: chosen.minutes ?? defaultLength,
     format: chosen.format ?? firstFormat,
     playersPerSide: chosen.playersPerSide ?? 5,
   };

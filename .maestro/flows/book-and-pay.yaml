@@ -89,15 +89,24 @@ env:
 - tapOn:
     id: book-venue-${VENUE_ID}-time-${DAY}-${START}
 
-# ---- Checkout (Booking v2): the first free pitch, the whole pitch, the
-# booker paying for everyone -------------------------------------------------
+# ---- The venue page's Book tab (S5): the slot is picked, the first free
+# pitch preselected; Continue opens the payment sheet ----------------------
 - extendedWaitUntil:
     visible:
-      id: checkout-pitch-1
+      id: venue-book-pitch-1
     timeout: 30000
-- runFlow: ../subflows/weather-settled.yaml
 - tapOn:
-    id: checkout-pitch-1
+    id: venue-book-pitch-1
+- tapOn:
+    id: venue-book
+    enabled: true
+
+# ---- The payment sheet (Booking v2): the whole pitch, the booker paying
+# for everyone -----------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: checkout-kind-whole
+    timeout: 30000
 - tapOn:
     id: checkout-kind-whole
 - scrollUntilVisible:
@@ -106,6 +115,10 @@ env:
     direction: DOWN
 - tapOn:
     id: checkout-who-pay-all
+- scrollUntilVisible:
+    element:
+      id: checkout-pay
+    direction: DOWN
 - assertVisible:
     id: checkout-pay
     text: 'Pay €65\.50'

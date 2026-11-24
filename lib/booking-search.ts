@@ -735,15 +735,14 @@ export async function requestVenue(venueName: string, town: string): Promise<voi
 
 export type ChosenSlot = Slot & { venueName: string };
 
-/** A free time on a card. Until S5 (Panos) builds the venue page's Book tab,
- *  it opens checkout for that slot, as before S4. S5 changes only this
- *  function, to open the venue page's Book tab with the same slot picked. */
+/** A free time on a card: the venue page's Book tab with that slot picked
+ *  (S5). Its Continue opens the payment sheet there. */
 export function openTimeSlot(slot: ChosenSlot, nav: BookingNavigator): void {
   nav.push({
-    pathname: '/booking-payment',
+    pathname: '/venue/[id]',
     params: {
-      venueId: slot.venueId,
-      venueName: slot.venueName,
+      id: slot.venueId,
+      tab: 'book',
       day: slot.day,
       start: slot.start,
       end: slot.end,

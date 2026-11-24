@@ -1,6 +1,6 @@
 // A venue's phone and website (S5), set by its own staff from the
 // dashboard. The server checks the caller and both values
-// (set_venue_contact, supabase/migrations/20261124180000_pay_venue_contact.sql).
+// (set_venue_contact, supabase/migrations/20261124200000_pay_venue_contact.sql).
 import { SERVER_ERROR_FALLBACK } from '@/lib/booking-errors';
 import { supabase } from '@/lib/supabase';
 
