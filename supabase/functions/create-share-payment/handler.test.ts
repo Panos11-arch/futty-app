@@ -65,7 +65,8 @@ Deno.test('EUR 60 5 v 5, each pays: holds 680, saves the card, keyed on the shar
     customer: 'cus_1',
     setup_future_usage: 'off_session',
     capture_method: 'manual',
-    automatic_payment_methods: { enabled: true },
+    // A hold: only a card, Apple Pay or Google Pay (QA 24 November, S3).
+    payment_method_types: ['card'],
     metadata: { kind: 'share', share_id: 's1', booking_id: 'b1', profile_id: 'p1', method: 'card', fee_cents: '80' },
   });
   strictEqual(create.idempotencyKey, 'share-s1-680-card-manual-after-none');
@@ -89,6 +90,36 @@ Deno.test('the Stripe amount is the server\'s amount for every worked example', 
     const { stripe, deps } = setup(plan(share));
     await createSharePayment(deps, caller, { shareId: 's1' });
     strictEqual(stripe.callsTo('paymentIntents.create')[0].params?.amount, share.amount_cents);
+  }
+});
+
+// QA 24 November (S3): a payment that places a hold (Pay for myself, Losers
+// pay, a Pay for everyone hold in its free hour) or keeps the card for the
+// captain's guarantee offers only a card in Stripe's sheet: card, Apple Pay
+// and Google Pay (wallets are cards). Amazon Pay, Satispay, Link and the like
+// can't be held or charged later. Only a payment taken at once, with no
+// guarantee behind it, keeps Stripe's automatic methods.
+Deno.test('holds and guarantee cards: card only; a payment taken at once for everyone: automatic', async () => {
+  const cases: [string, Record<string, unknown>, Record<string, unknown>][] = [
+    ['pay for myself, held', plan({ payment_mode: 'each_pays_responsible' }), { payment_method_types: ['card'] }],
+    ['own spot, held', plan(), { payment_method_types: ['card'] }],
+    ['pay for myself, taken at once (the card stays for the guarantee)',
+      plan({ payment_mode: 'each_pays_responsible', capture_method: 'immediate', non_refundable: true }), { payment_method_types: ['card'] }],
+    ['Losers pay hold (8a: EUR 9.60)', plan({ payment_mode: 'each_pays_responsible', amount_cents: 960, pitch_cents: 800, fee_cents: 160 }),
+      { payment_method_types: ['card'] }],
+    ['pay for everyone, held in the free hour (7a: EUR 45.50)', plan({ payment_mode: 'pay_all', is_booker: true, amount_cents: 4550, pitch_cents: 4000, fee_cents: 550 }),
+      { payment_method_types: ['card'] }],
+    ['pay for everyone, taken at once', plan({ payment_mode: 'pay_all', is_booker: true, amount_cents: 6550, pitch_cents: 6000, fee_cents: 550, capture_method: 'immediate', non_refundable: true }),
+      { automatic_payment_methods: { enabled: true } }],
+  ];
+  for (const [name, planned, methods] of cases) {
+    const { stripe, deps } = setup(planned);
+    await createSharePayment(deps, caller, { shareId: 's1', acceptNonRefundable: true });
+    const params = stripe.callsTo('paymentIntents.create')[0].params as Record<string, unknown>;
+    const chosen = Object.fromEntries(
+      Object.entries(params).filter(([k]) => k === 'payment_method_types' || k === 'automatic_payment_methods'),
+    );
+    deepStrictEqual(chosen, methods, name);
   }
 });
 
@@ -233,6 +264,9 @@ Deno.test('paying with credit again after it timed out gets a fresh SetupIntent'
   strictEqual(stripe.callsTo('setupIntents.retrieve')[0].id, 'seti_old');
   const [created] = stripe.callsTo('setupIntents.create');
   strictEqual(created.idempotencyKey, 'setup-share-s1-card-after-none-setup-seti_old');
+  // The card is kept for a guarantee: card only (QA 24 November, S3).
+  deepStrictEqual(created.params?.payment_method_types, ['card']);
+  strictEqual(created.params?.automatic_payment_methods, undefined);
   const args = db.callsTo('attach_share_setup')[0].args as Record<string, unknown>;
   strictEqual(args.p_setup_intent_id, 'seti_new');
   strictEqual(args.p_use_credit, true);
@@ -327,4 +361,14 @@ Deno.test('P8 review: a Gipedo Pano opponent offering again gets a new key from 
 
   strictEqual(res.status, 200);
   strictEqual(stripe.callsTo('paymentIntents.create')[0].idempotencyKey, 'share-s1-offer-2-6550-card-manual-after-none');
+});
+
+Deno.test('a booking made before P4a: its hold is card only too', async () => {
+  const { stripe, deps } = setup(plan({ payment_mode: null }));
+  const res = await createSharePayment(deps, caller, { shareId: 's1' });
+  strictEqual(res.status, 200);
+  const params = stripe.callsTo('paymentIntents.create')[0].params as Record<string, unknown>;
+  strictEqual(params.capture_method, 'manual');
+  deepStrictEqual(params.payment_method_types, ['card']);
+  strictEqual(params.automatic_payment_methods, undefined);
 });

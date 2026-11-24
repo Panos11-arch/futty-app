@@ -68,6 +68,20 @@ type Plan = {
 
 const ERROR_STATUS: Record<string, number> = { share_not_found: 404, not_your_share: 403 };
 
+/** QA 24 November (S3): a payment that places a hold (Pay for myself, Losers
+ *  pay, any hold in the free hour) or keeps the card for the captain's
+ *  guarantee offers only a card in Stripe's sheet: card, Apple Pay and
+ *  Google Pay, which are cards. Other wallets (Amazon Pay, Satispay, Link)
+ *  can't be held or charged off-session later. */
+export const CARD_ONLY = { payment_method_types: ['card'] };
+const AUTOMATIC = { automatic_payment_methods: { enabled: true } };
+
+/** Whether a Booking v2 share's payment is a hold or keeps the card for a
+ *  guarantee: held (manual capture), or any way to pay but Pay for everyone. */
+export function holdsCard(plan: Pick<Plan, 'payment_mode'>, captureMethod: string): boolean {
+  return captureMethod === 'manual' || plan.payment_mode !== 'pay_all';
+}
+
 // An intent the player confirmed (or is confirming): never cancelled or replaced.
 const SETTLED_INTENT = new Set(['requires_capture', 'processing', 'succeeded']);
 // A SetupIntent the player can still confirm.
@@ -141,7 +155,8 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
     const setupIntent = reused ?? await deps.stripe.setupIntents.create({
       customer: customerId,
       usage: 'off_session',
-      automatic_payment_methods: { enabled: true },
+      // The card is kept for the guarantee: card only.
+      ...CARD_ONLY,
       metadata: { kind: 'share_card', share_id: plan.share_id, booking_id: plan.booking_id },
     }, { idempotencyKey: idempotencyKeys.shareCardSetup(plan.share_id, plan.payment_method, previous, previousSetup) });
     try {
@@ -185,7 +200,7 @@ export async function createSharePayment(deps: Deps, caller: Caller, body: Body)
     customer: customerId,
     setup_future_usage: 'off_session',
     capture_method: captureMethod,
-    automatic_payment_methods: { enabled: true },
+    ...(holdsCard(plan, captureMethod) ? CARD_ONLY : AUTOMATIC),
     metadata: {
       kind: 'share',
       share_id: plan.share_id,
@@ -280,7 +295,8 @@ async function legacySharePayment(deps: Deps, caller: Caller, plan: Plan): Promi
     amount: plan.amount_cents,
     currency: 'eur',
     capture_method: 'manual',
-    automatic_payment_methods: { enabled: true },
+    // A hold, as every share was before P4a.
+    ...CARD_ONLY,
     metadata: { share_id: plan.share_id, booking_id: plan.booking_id, profile_id: caller.id },
   }, { idempotencyKey: idempotencyKeys.legacyShareIntent(plan.share_id, plan.stripe_payment_intent_id) });
 

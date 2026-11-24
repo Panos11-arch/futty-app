@@ -20,7 +20,8 @@ Deno.test('the booker gets an on-session SetupIntent for a new guarantee card', 
   deepStrictEqual(create.params, {
     customer: 'cus_1',
     usage: 'off_session',
-    automatic_payment_methods: { enabled: true },
+    // The guarantee is held on this card later: card only (QA 24 November, S3).
+    payment_method_types: ['card'],
     metadata: { kind: 'guarantee_card', guarantee_id: 'g1', profile_id: 'p1', booking_id: 'b1' },
   });
   strictEqual(create.idempotencyKey, 'guarantee-card-g1-after-pm_old');
