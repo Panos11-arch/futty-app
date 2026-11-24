@@ -1,12 +1,24 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { colors, hairline, type } from '@/constants/futty-theme';
+import { tabAccessibilityLabel, VISIBLE_TABS } from '@/lib/navigation-a11y';
 
 import { openBookWizard } from './book';
+
+/** Each tab's screen-reader label counts only the tabs on the bar (QA 24
+ *  November, bug 6). */
+function tabLabel(name: (typeof VISIBLE_TABS)[number]['name']) {
+  const index = VISIBLE_TABS.findIndex((t) => t.name === name);
+  return tabAccessibilityLabel(VISIBLE_TABS[index].title, index, Platform.OS);
+}
+
+/** A hidden route: expo-router renders no tab button for it. */
+const HIDDEN = { href: null } as const;
 
 function tabIcon(name: IconSymbolName) {
   function TabIcon({ color }: { color: string }) {
@@ -34,10 +46,23 @@ export default function TabLayout() {
           borderTopWidth: hairline,
         },
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: tabIcon('house.fill'), tabBarButtonTestID: 'tab-home' }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: tabIcon('house.fill'),
+          tabBarButtonTestID: 'tab-home',
+          tabBarAccessibilityLabel: tabLabel('index'),
+        }}
+      />
       <Tabs.Screen
         name="book"
-        options={{ title: 'Book', tabBarIcon: tabIcon('calendar'), tabBarButtonTestID: 'tab-book' }}
+        options={{
+          title: 'Book',
+          tabBarIcon: tabIcon('calendar'),
+          tabBarButtonTestID: 'tab-book',
+          tabBarAccessibilityLabel: tabLabel('book'),
+        }}
         listeners={({ navigation }) => ({
           // Book opens the booking wizard as a pushed screen, as before, over
           // whichever tab you're on.
@@ -47,11 +72,27 @@ export default function TabLayout() {
           },
         })}
       />
-      <Tabs.Screen name="play" options={{ title: 'Play', tabBarIcon: tabIcon('sportscourt.fill'), tabBarButtonTestID: 'tab-play' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person.fill'), tabBarButtonTestID: 'tab-profile' }} />
-      <Tabs.Screen name="team" options={{ href: null }} />
-      <Tabs.Screen name="leagues" options={{ href: null }} />
-      <Tabs.Screen name="community" options={{ href: null }} />
+      <Tabs.Screen
+        name="play"
+        options={{
+          title: 'Play',
+          tabBarIcon: tabIcon('sportscourt.fill'),
+          tabBarButtonTestID: 'tab-play',
+          tabBarAccessibilityLabel: tabLabel('play'),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: tabIcon('person.fill'),
+          tabBarButtonTestID: 'tab-profile',
+          tabBarAccessibilityLabel: tabLabel('profile'),
+        }}
+      />
+      <Tabs.Screen name="team" options={HIDDEN} />
+      <Tabs.Screen name="leagues" options={HIDDEN} />
+      <Tabs.Screen name="community" options={HIDDEN} />
     </Tabs>
   );
 }

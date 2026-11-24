@@ -84,7 +84,11 @@ describe('the floating button', () => {
     [['booking', '[id]']],
     [['booking-payment']],
     [['account', 'payments', 'owed']],
-  ])('is hidden on %j (booking, venue and payment screens)', async (segments) => {
+    // QA 24 November, bug 3 and S6: it covered "Save changes" and the error
+    // above it, and "Go to booking".
+    [['edit-profile']],
+    [['booking-after-pay']],
+  ])('is hidden on %j (booking, venue, payment and form screens)', async (segments) => {
     mockSegments = segments;
     await render(<FuttyAiChat />);
     expect(screen.queryByRole('button', { name: 'Open Futty AI' })).toBeNull();
