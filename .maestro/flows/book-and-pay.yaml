@@ -95,6 +95,7 @@ env:
     visible:
       id: venue-book-pitch-1
     timeout: 30000
+- runFlow: ../subflows/weather-settled.yaml
 - tapOn:
     id: venue-book-pitch-1
 - tapOn:
