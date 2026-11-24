@@ -136,18 +136,19 @@ Booking detail, debt and credit keep their section 5 rows, in the new look.
 | `app/account/settings/*` | Account → Settings, plus Appearance and Accessibility | S1, S2 (Dimitris) |
 | `app/my-bookings.tsx` | Account → My bookings | S2 |
 | `app/booking/[id].tsx` | Home → Upcoming matches card, and My bookings | unchanged |
-| `app/booking-payment.tsx` | The payment sheet (04) | B2 restyle (Panos) |
+| `app/booking-payment.tsx` | The payment sheet (04), restyled with the venue page | S5 (Panos) |
 | `app/booking-after-pay.tsx`, `app/losers-pay-leave.tsx` | Unchanged, from the payment sheet and booking detail | — |
 | `app/venue/[id].tsx` | Venue page, Home \| Book \| Facilities (03) | S5, S5A (Panos) |
 | `app/squads.tsx`, `app/join-squad-post.tsx` | Home → Games needing players; Find a match; Community posts (**Join squad**) | S6, S7 |
-| `app/matchmaking.tsx` | Find a match → **Find me an opponent** (05) | S6 (Dimitris) |
+| `app/matchmaking.tsx` | Find a match → **Find me an opponent** (05) | S20C (Anghelo) |
 | `app/opposition-invite.tsx` | "You've been matched" (06) | S20C (Anghelo) |
 | `app/match/after-game.tsx` | Home → **Log the score** (07–11) | S13B (Anghelo) |
 | `app/match/[id].tsx` | Any result row or card | unchanged |
 | `app/match/team-of-the-week.tsx` | Rankings → Team of the Week (15, 27) | S14, S15 (Anghelo) |
 | `app/match/leaderboards.tsx` | No place agreed yet: Account menu until S15 decides | S15 |
 | `app/upcoming-fixtures.tsx`, `app/previous-games.tsx` | Home → Upcoming matches; Profile → Recent games → All games; a competition's Matches tab | S3, S8, S10 |
-| `app/fixture-chat.tsx`, `app/fixture-confirmed.tsx` | The fixture, and Account → Messages | S10, S11 |
+| `app/fixture-chat.tsx` | The fixture, and Account → Messages, restyled with the messages components | S13 (Dimitris) |
+| `app/fixture-confirmed.tsx` | The fixture | S10, S11 |
 | `app/team-profile.tsx`, `app/player-profile.tsx` | Any team name or badge; any player name or avatar | S8 |
 | `app/notifications.tsx` | Header bell | S2 |
 | `app/edit-profile.tsx`, `app/edit-avatar.tsx` | Profile → Edit profile; player card → Edit | S8, S19 |
