@@ -73,7 +73,7 @@ Build shareable cards generated on the phone: result card (score, teams, scorers
 ### A7
 
 ```
-Build team of the week (every Monday morning Cyprus time, per venue with at least 4 confirmed matches that week, otherwise city-wide, plus per league; best average rating per position with at least 3 ratings; ties by man-of-the-match awards then goals; notify selected players with a card), season stats for players and teams (calendar year for casual games, league season for leagues), and leaderboards per venue and city with a minimum number of appearances. Update on every confirmed match. Tests for selection and ties. Plan first.
+(Team of the week below is superseded by `match-record.md` decision 1k, 19 November.) Build team of the week (every Monday morning Cyprus time, per venue with at least 4 confirmed matches that week, otherwise city-wide, plus per league; best average rating per position with at least 3 ratings; ties by man-of-the-match awards then goals; notify selected players with a card), season stats for players and teams (calendar year for casual games, league season for leagues), and leaderboards per venue and city with a minimum number of appearances. Update on every confirmed match. Tests for selection and ties. Plan first.
 ```
 
 ### A9

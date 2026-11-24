@@ -69,7 +69,7 @@ Anti-gaming for ratings: only players who were checked in can rate; 24-hour wind
 - Formation presets per format: for example 1-2-1 or 2-2 for 5-a-side, 2-3-1 for 7-a-side, and so on up to 11-a-side.  
 - The captain or booker drags players from the squad list onto positions on a drawn pitch. Empty positions show a "Need players" button.  
 - Shown before the game (who's playing where, who hasn't paid under option 2\) and on the match page afterwards.  
-- The position played feeds team of the week (a keeper is picked as a keeper).  
+- ~~The position played feeds team of the week.~~ Since 19 November team of the week uses no positions (`match-record.md` decision 1k).  
 - Build note: a drawn pitch with drag and drop; the repo already includes the gesture and animation libraries, and needs an SVG drawing library added.
 
 ## 6\. Shareable cards
@@ -81,6 +81,8 @@ Anti-gaming for ratings: only players who were checked in can rate; 24-hour wind
 - Every card is free marketing; this is the main reason to build it early.
 
 ## 7\. Team of the week
+
+**Replaced on 19 November by `match-record.md` decision 1k:** a league team and a general team (non-league games, per busy venue and per city), one per format, Premium players only, places from goals and assists rather than positions. The text below is kept for history only.
 
 - Picked every Monday morning (Cyprus time) for each venue with at least 4 confirmed matches that week, otherwise for the whole city; leagues get their own.  
 - The best average match rating per position, with at least 3 ratings each; ties broken by MOTMs, then goals.  
@@ -195,3 +197,24 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 - If fewer players join than the booking is for, the players who joined split the full pitch price after the match. Six hours before kickoff everyone is told and can ask the venue for a player or post a public request; the venue can also offer a player from its dashboard.
 - Venues that allow it offer "6 v 6" on 5-a-side pitches: the same pitch price split 12 ways. Details in 13.
 
+
+## 16. Age and safety (decided by Panos, 19 November)
+
+Recorded in S0; built in S12. These rules win over anything earlier in the specs that contradicts them. Every check runs on the server: the app is never trusted for a player's age.
+
+- **A1. Date of birth.** Sign-up asks for the date of birth. It is stored on `profiles` and never shown to anyone, and only the player and the server can read it. Existing players are asked once, the next time they open the app. It is added to the privacy policy, in the app and on the website (the site test keeps them matching).
+- **A2. Minimum age 14.** Younger players are refused with: "You must be 14 or older to use Futty."
+- **A3. Minor** means under 18 on today's date in Cyprus time (Asia/Nicosia). This is worked out on the server only.
+- **A4. Adults and minors.** Friend requests and every private chat refuse adult–minor pairs, on the server.
+- **A5. What others see of a minor.**
+  - Only their first name.
+  - They don't appear in adults' player search.
+  - Adults see no "Add friend" for them.
+- **A6. Fixture chat.** In the existing fixture chat, free text is refused if either captain is a minor. Date proposals and scores keep working.
+- **A7. Reports.** A report that involves a minor raises an urgent admin alert.
+
+Open points, to decide with Panos before S12:
+
+1. **A1:** what happens if an existing player skips the date-of-birth question, or gives a date under 14.
+2. **A7:** how the urgent admin alert is delivered, and to whom.
+3. **A4 and A6, a player who turns 18:** do existing friendships and chats with them simply follow today's Cyprus date? (A3 suggests yes.)
