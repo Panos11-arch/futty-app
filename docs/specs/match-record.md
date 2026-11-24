@@ -216,7 +216,8 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
 
 1. **Two kinds of team.**
    - **League team:** that league's fixtures only.
-   - **General team:** only non-league games (bookings, squad games, friendlies), per busy venue and per city. League games never count towards it.
+   - **General team:** only non-league games (bookings, squad games, friendlies). League games never count towards it. Each week, per format, there is one for **All Cyprus** (all non-league games), one per city and one per busy venue (decided 24 November).
+   - **A busy venue** has 4 or more confirmed matches that week (decided 24 November).
    - Everyone can view both.
 2. **Premium only.** Only players who are Futty Premium when the team is picked (`profiles.is_premium`, read on the server at that moment) can be selected. A non-Premium player is skipped, and the next best eligible player is picked instead.
 3. **One team per format** (5, 6, 7, 9 and 11-a-side), from games in that format only. Shapes:
@@ -230,22 +231,19 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
    | 11-a-side | 1 | 4 | 3 | 3 |
 
 4. **Selection, then placement. No positions are used.**
-   1. **Selection:** the 5, 6, 7, 9 or 11 eligible players with the best ratings for the period.
-   2. **Placement**, by what they did in that period:
-      - the most goals → the striker slots;
-      - the next, by goals + assists → midfield;
-      - the rest → defence, except the one with the fewest goals + assists, who goes in goal.
-   3. **Ties** at every step go to the higher rating, then the earlier sign-up.
+   1. **Selection:** the 5, 6, 7, 9 or 11 eligible players with the best average match rating (S13B) over the period. A player needs at least 1 match in the period (decided 24 November).
+   2. **Placement** uses per-game figures from that period, not totals (decided 24 November):
+      - the most goals per game → the striker slots;
+      - the next, by goals + assists per game → midfield;
+      - the rest → defence, except the one with the lowest goals + assists per game, who goes in goal.
+      - Worked example: 10 goals in 1 game (10.0 per game) ranks above 20 goals in 5 games (4.0 per game).
+   3. **Ties** at every step go to more games played in the period, then the higher rating, then the earlier sign-up (decided 24 November).
+   4. **Too few eligible players:** the team shows the filled slots and marks the rest "No eligible player". It is never hidden (decided 24 November).
+   5. **Player of the week:** the highest-rated player in that team, with the same tie rules (decided 24 November).
 5. **The period and when it's picked:** kept from 1g.4. It is the week from Monday 00:00 to Monday 00:00, Cyprus time, picked by `match_jobs_tick` from Monday 09:00 Cyprus time.
 6. **Selected players** get `team_of_the_week`, as before.
 7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week and per scope: "You'd have made Team of the Week (<rating>). Get Futty Premium to be eligible." It opens Premium.
    - It goes out as a push only if they switched on a new **"Premium and offers"** notification setting. That setting is off by default (Apple guideline 4.5.4).
-8. **Open points, to decide with Panos before S14:**
-   1. **What counts as a "busy venue".** 05 section 7 used "at least 4 confirmed matches that week"; 1k doesn't say.
-   2. **Area picker.** Images 15 and 27 show an "All Cyprus" area option, but 1k names only per venue and per city. Is there an all-Cyprus general team?
-   3. **Which rating, and how many ratings.** Is "best ratings for the period" the average match rating (decision 1f.4), and is the old minimum of 3 ratings kept?
-   4. **Too few players.** What is shown when fewer eligible players than the format needs played that week?
-   5. **Player of the week** (images 15 and 27). Who is it? The highest-rated player of the team is the obvious reading, but it isn't decided.
 
 ## 2. Time
 

@@ -202,8 +202,8 @@ Don't copy: live minute-by-minute events, heatmaps, xG or momentum graphs (they 
 
 Recorded in S0; built in S12. These rules win over anything earlier in the specs that contradicts them. Every check runs on the server: the app is never trusted for a player's age.
 
-- **A1. Date of birth.** Sign-up asks for the date of birth. It is stored on `profiles` and never shown to anyone, and only the player and the server can read it. Existing players are asked once, the next time they open the app. It is added to the privacy policy, in the app and on the website (the site test keeps them matching).
-- **A2. Minimum age 14.** Younger players are refused with: "You must be 14 or older to use Futty."
+- **A1. Date of birth.** Sign-up asks for the date of birth. It is stored on `profiles` and never shown to anyone, and only the player and the server can read it. Existing players are asked the next time they open the app; until they enter it they can't use the app, and they can't skip past it (decided 24 November). It is added to the privacy policy, in the app and on the website (the site test keeps them matching).
+- **A2. Minimum age 14.** A date of birth under 14 refuses sign-up, and locks an existing account, both with: "You must be 14 or older to use Futty." A locked player can contact support (decided 24 November).
 - **A3. Minor** means under 18 on today's date in Cyprus time (Asia/Nicosia). This is worked out on the server only.
 - **A4. Adults and minors.** Friend requests and every private chat refuse adult–minor pairs, on the server.
 - **A5. What others see of a minor.**
@@ -211,10 +211,5 @@ Recorded in S0; built in S12. These rules win over anything earlier in the specs
   - They don't appear in adults' player search.
   - Adults see no "Add friend" for them.
 - **A6. Fixture chat.** In the existing fixture chat, free text is refused if either captain is a minor. Date proposals and scores keep working.
-- **A7. Reports.** A report that involves a minor raises an urgent admin alert.
-
-Open points, to decide with Panos before S12:
-
-1. **A1:** what happens if an existing player skips the date-of-birth question, or gives a date under 14.
-2. **A7:** how the urgent admin alert is delivered, and to whom.
-3. **A4 and A6, a player who turns 18:** do existing friendships and chats with them simply follow today's Cyprus date? (A3 suggests yes.)
+- **A7. Reports.** A report that involves a minor raises an urgent admin alert: an email to the founders, plus the report flagged "Urgent" at the top of the admin screen (decided 24 November).
+- **Turning 18** (decided 24 November). Everything follows today's Cyprus date automatically. From the day a player turns 18, the adult–minor limits (A4–A6) stop applying to them, and their existing friendships and chats stay.
