@@ -33,7 +33,8 @@ export default function SavedSearchesScreen() {
         error={error}
         onDelete={remove}
         onRetry={searches.reload}
-        onNewSearch={() => router.push('/book')}
+        // S4: Save left Book a pitch; a new search opens the form directly.
+        onNewSearch={() => router.push('/saved-search')}
       />
     </>
   );

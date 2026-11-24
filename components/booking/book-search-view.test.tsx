@@ -1,270 +1,289 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+// S4: Book a pitch (image 02). The search field, chips and sheets, the
+// results list in each state, and where each tap goes.
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
-import { BookSearchView, type BookSearchViewProps, freeTimes } from '@/components/booking/book-search-view';
+import { BookSearchView, type BookSearchViewProps } from '@/components/booking/book-search-view';
 import { DISABLED_OPACITY } from '@/components/ui/foundation';
 import { loadWithFile } from '@/components/ui/test-utils';
-import type { FreeVenueWithPhoto, SearchOptions } from '@/lib/booking-search';
+import { defaultBookQuery, type BookResult, type SearchOptions } from '@/lib/booking-search';
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 34, left: 0 }),
 }));
-jest.mock('expo-haptics', () => ({ impactAsync: jest.fn(() => Promise.resolve()), ImpactFeedbackStyle: { Light: 'light' } }));
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'light' },
+  NotificationFeedbackType: { Success: 'success', Error: 'error' },
+}));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
 loadWithFile(Image);
 
-const options = (six: boolean): SearchOptions => ({
-  today: '2026-11-12',
+const options: SearchOptions = {
+  today: '2026-11-24',
   window_days: 7,
   is_premium: false,
-  six_on_five_available: six,
-});
+  six_on_five_available: true,
+  game_lengths: [60, 90, 120],
+  default_game_length: 60,
+};
+const query = defaultBookQuery(options, null);
 
-const nuevo: FreeVenueWithPhoto = {
+const kamares: BookResult = {
   venue_id: 'v1',
-  name: 'Nuevo Campo',
-  city: 'Nicosia',
-  address: null,
+  name: 'Kamares Sports Centre',
+  town: 'Limassol',
+  area: 'Kamares',
   photo_path: null,
   photoUrl: null,
-  pitch_cents: 6000,
-  player_cents: 680,
-  next_starts: ['19:30:00', '20:00:00'],
+  amenities: ['parking'],
+  is_favourite: false,
+  from_player_cents: 680,
+  slots: [
+    { day: '2026-11-24', start: '18:00', end: '19:00', player_cents: 680 },
+    { day: '2026-11-24', start: '19:00', end: '20:00', player_cents: 680 },
+  ],
 };
-const other: FreeVenueWithPhoto = { ...nuevo, venue_id: 'v2', name: 'Lefkothea', player_cents: 580 };
-
-// 08:00 in Cyprus on 12 November.
-const now = new Date('2026-11-12T06:00:00Z');
+const nuevo: BookResult = { ...kamares, venue_id: 'v2', name: 'Nuevo Campo', area: 'Germasogeia', from_player_cents: 580 };
 
 function props(overrides: Partial<BookSearchViewProps> = {}): BookSearchViewProps {
   return {
-    options: { status: 'ready', data: options(false) },
-    venue: null,
-    results: null,
+    options: { status: 'ready', data: options },
+    query,
     onQueryChange: jest.fn(),
-    onChoose: jest.fn(),
-    onVenueInfo: jest.fn(),
+    results: { status: 'ready', data: [kamares, nuevo] },
+    refreshing: false,
+    onRefresh: jest.fn(),
     onRetryOptions: jest.fn(),
     onRetryResults: jest.fn(),
-    now,
+    filterCount: 2,
+    onFilterDraft: jest.fn(),
+    towns: ['Limassol', 'Nicosia'],
+    venues: [{ id: 'v1', name: 'Kamares Sports Centre', city: 'Limassol (Kamares)' }],
+    recents: [],
+    onPickPlace: jest.fn(),
+    onOpenVenue: jest.fn(),
+    onTime: jest.fn(),
+    onFavourite: jest.fn(() => Promise.resolve()),
+    onRequestVenue: jest.fn(() => Promise.resolve()),
     ...overrides,
   };
 }
 
-async function pickSlot(format = '5-a-side') {
-  await fireEvent.press(screen.getByRole('button', { name: '19:00' }));
-  await fireEvent.press(screen.getByRole('button', { name: format }));
-}
-
-describe('BookSearchView', () => {
-  it('shows a date strip of today plus the server’s window (7 days for a standard account)', async () => {
-    await render(<BookSearchView {...props()} />);
-    expect(screen.getByRole('button', { name: 'Today' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Thu 19' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Fri 20' })).toBeNull();
+describe('BookSearchView: states', () => {
+  it('shows skeletons while the options or the search load', async () => {
+    await render(<BookSearchView {...props({ options: { status: 'loading' } })} />);
+    expect(screen.getByTestId('book-loading')).toBeTruthy();
+    await render(<BookSearchView {...props({ query: null })} />);
+    expect(screen.getByTestId('book-loading')).toBeTruthy();
+    await render(<BookSearchView {...props({ results: { status: 'loading' } })} />);
+    expect(screen.getByTestId('book-results-loading')).toBeTruthy();
+    expect(screen.getByTestId('book-search-field')).toBeTruthy();
   });
 
-  it('14 days for Premium', async () => {
-    await render(<BookSearchView {...props({ options: { status: 'ready', data: { ...options(false), window_days: 14 } } })} />);
-    expect(screen.getByRole('button', { name: 'Thu 26' })).toBeTruthy();
-  });
-
-  it('hides times already past in Cyprus today', async () => {
-    await render(<BookSearchView {...props()} />);
-    expect(screen.queryByRole('button', { name: '07:30' })).toBeNull();
-    expect(screen.getByRole('button', { name: '08:30' })).toBeTruthy();
-  });
-
-  it('asks the server for venues once a time and format are picked, 60 minutes by default', async () => {
-    const p = props();
+  it('shows one line and Try again when the options fail', async () => {
+    const p = props({ options: { status: 'error', message: 'Couldn’t load. Try again.' } });
     await render(<BookSearchView {...p} />);
-    await pickSlot('7-a-side');
-    expect(p.onQueryChange).toHaveBeenLastCalledWith({
-      day: '2026-11-12',
-      start: '19:00',
-      minutes: 60,
-      format: '7-a-side',
-      playersPerSide: 5,
-    });
-    await fireEvent.press(screen.getByRole('button', { name: '90 min' }));
-    expect(p.onQueryChange).toHaveBeenLastCalledWith(expect.objectContaining({ minutes: 90 }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(p.onRetryOptions).toHaveBeenCalled();
   });
 
-  it('hides start times where the chosen length would run past midnight', async () => {
-    await render(<BookSearchView {...props()} />);
-    expect(screen.getByRole('button', { name: '23:00' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '23:30' })).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: '120 min' }));
-    expect(screen.getByRole('button', { name: '22:00' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '22:30' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '23:00' })).toBeNull();
-  });
-
-  it('hides "players per side" when no venue allows 6 v 6', async () => {
-    await render(<BookSearchView {...props()} />);
-    await pickSlot();
-    expect(screen.queryByLabelText('Players per side')).toBeNull();
-  });
-
-  it('shows "players per side" after 5-a-side when a venue allows 6 v 6, and sends 6', async () => {
-    const p = props({ options: { status: 'ready', data: options(true) } });
+  it('shows one line and Try again when the search fails', async () => {
+    const p = props({ results: { status: 'error', message: 'Pick up to three days from today.' } });
     await render(<BookSearchView {...p} />);
-    await pickSlot('7-a-side');
-    expect(screen.queryByLabelText('Players per side')).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: '5-a-side' }));
-    expect(screen.getByLabelText('Players per side')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('tab', { name: '6 v 6' }));
-    expect(p.onQueryChange).toHaveBeenLastCalledWith(expect.objectContaining({ playersPerSide: 6 }));
-  });
-
-  it('from a venue page, follows that venue’s own 6 v 6 setting', async () => {
-    await render(
-      <BookSearchView
-        {...props({ options: { status: 'ready', data: options(true) }, venue: { id: 'v1', name: 'Nuevo Campo', allowsSixOnFive: false } })}
-      />,
-    );
-    await pickSlot();
-    expect(screen.queryByLabelText('Players per side')).toBeNull();
-  });
-
-  it('shows the server’s price per player unchanged (680 → €6.80)', async () => {
-    await render(<BookSearchView {...props({ results: { status: 'ready', data: [nuevo] } })} />);
-    await pickSlot();
-    expect(screen.getByText('€6.80 per player')).toBeTruthy();
-  });
-
-  it('a card or a time chip opens checkout; "Venue info" opens the venue page', async () => {
-    const p = props({ results: { status: 'ready', data: [nuevo] } });
-    await render(<BookSearchView {...p} />);
-    await pickSlot();
-    await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
-    expect(p.onChoose).toHaveBeenLastCalledWith(nuevo, '19:00');
-    await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:30' }));
-    expect(p.onChoose).toHaveBeenLastCalledWith(nuevo, '19:30');
-    await fireEvent.press(screen.getByRole('button', { name: 'Venue info' }));
-    expect(p.onVenueInfo).toHaveBeenCalledWith('v1');
-  });
-
-  // QA 24 November, bug 9: the time searched is free at every venue listed,
-  // so its chip comes first, then the server's next free times.
-  it('shows the chosen time first among each venue’s free times', async () => {
-    const p = props({ results: { status: 'ready', data: [nuevo, { ...other, next_starts: ['21:00:00'] }] } });
-    await render(<BookSearchView {...p} />);
-    await pickSlot();
-    const chips = (id: string) =>
-      within(screen.getByTestId(id))
-        .getAllByRole('button')
-        .map((b) => b.props.accessibilityLabel)
-        .filter((label: string) => /^\d\d:\d\d$/.test(label));
-    expect(chips('free-venue-v1')).toEqual(['19:00', '19:30', '20:00']);
-    expect(chips('free-venue-v2')).toEqual(['19:00', '21:00']);
-    await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:00' }));
-    expect(p.onChoose).toHaveBeenLastCalledWith(nuevo, '19:00');
-  });
-
-  it('from a venue page, lists only that venue', async () => {
-    await render(
-      <BookSearchView
-        {...props({ results: { status: 'ready', data: [other, nuevo] }, venue: { id: 'v1', name: 'Nuevo Campo', allowsSixOnFive: false } })}
-      />,
-    );
-    await pickSlot();
-    expect(screen.getByText('€6.80 per player')).toBeTruthy();
-    expect(screen.queryByText('€5.80 per player')).toBeNull();
-  });
-
-  it('says so when nothing is free', async () => {
-    await render(<BookSearchView {...props({ results: { status: 'ready', data: [] } })} />);
-    await pickSlot();
-    expect(screen.getByText('No venue is free at this time. Try another time.')).toBeTruthy();
-  });
-
-  it('shows an error with a retry', async () => {
-    const p = props({ results: { status: 'error', message: 'Network down' } });
-    await render(<BookSearchView {...p} />);
-    await pickSlot();
+    expect(screen.getByText('Pick up to three days from today.')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(p.onRetryResults).toHaveBeenCalled();
   });
+
+  it('shows the cards with the server’s from price', async () => {
+    await render(<BookSearchView {...props()} />);
+    expect(screen.getByText('Kamares Sports Centre')).toBeTruthy();
+    expect(screen.getByText('from €6.80 per player')).toBeTruthy();
+    expect(screen.getByText('from €5.80 per player')).toBeTruthy();
+    expect(screen.getByText('Germasogeia · Limassol')).toBeTruthy();
+  });
+
+  it('shows the empty state with Missing a venue?, which sends a venue', async () => {
+    const p = props({ results: { status: 'ready', data: [] } });
+    await render(<BookSearchView {...p} />);
+    expect(screen.getByText('No venues found')).toBeTruthy();
+    expect(screen.getByText('Try other days, times or filters.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('book-missing-venue'));
+    await fireEvent.changeText(screen.getByTestId('missing-venue-name'), 'Kamares Arena');
+    await fireEvent.changeText(screen.getByTestId('missing-venue-town'), 'Limassol');
+    await fireEvent.press(screen.getByTestId('missing-venue-send'));
+    expect(p.onRequestVenue).toHaveBeenCalledWith('Kamares Arena', 'Limassol');
+    expect(await screen.findByText('Venue sent')).toBeTruthy();
+  });
+
+  it('from the picker, a venue not found opens Missing a venue? (Android: at once)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await render(<BookSearchView {...props()} />);
+    await fireEvent.press(screen.getByTestId('book-search-field'));
+    await fireEvent.changeText(screen.getByTestId('book-where-input'), 'zzz');
+    await fireEvent.press(screen.getByTestId('book-where-missing-venue'));
+    expect(screen.getByTestId('missing-venue-name')).toBeTruthy();
+    jest.restoreAllMocks();
+  });
+
+  it('pulls to refresh', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    const list = screen.getByTestId('book-results');
+    await fireEvent(list, 'refresh');
+    expect(p.onRefresh).toHaveBeenCalled();
+  });
 });
 
-describe('debt banner (spec 13, "Debt")', () => {
-  const debtMessage = 'You owe €6.80. Pay it before booking.';
+describe('BookSearchView: the field and chips', () => {
+  it('shows the place, and the chips Filters, format, day and time', async () => {
+    await render(<BookSearchView {...props()} />);
+    expect(within(screen.getByTestId('book-search-field')).getByText('All venues')).toBeTruthy();
+    expect(screen.getByTestId('book-chip-filters')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '5-a-side' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Today' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'All day' })).toBeTruthy();
+  });
 
-  it('blocks booking and links to payment when the player owes money', async () => {
-    const p = props({ results: { status: 'ready', data: [nuevo] }, debtMessage, onPayOwed: jest.fn() });
+  it('labels the chips from the search', async () => {
+    const q = {
+      ...query,
+      days: ['2026-11-26'],
+      window: { preset: 'evening' as const, from: '18:00', to: '24:00' },
+      place: { kind: 'town' as const, town: 'Limassol' },
+    };
+    await render(<BookSearchView {...props({ query: q })} />);
+    expect(within(screen.getByTestId('book-search-field')).getByText('Limassol')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Thu 26 Nov' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Evening' })).toBeTruthy();
+  });
+
+  it('opens the picker from the field and picks a place', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-search-field'));
+    await fireEvent.changeText(screen.getByTestId('book-where-input'), 'nic');
+    await fireEvent.press(screen.getByTestId('book-where-town-Nicosia'));
+    expect(p.onPickPlace).toHaveBeenCalledWith({ kind: 'town', town: 'Nicosia' });
+  });
+
+  it('turns favourites only on and off with the heart in the field', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    const heart = screen.getByTestId('book-favourites');
+    expect(heart.props.accessibilityState).toMatchObject({ selected: false });
+    await fireEvent.press(heart);
+    expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, favouritesOnly: true });
+  });
+
+  it('picks a format', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-chip-format'));
+    await fireEvent.press(screen.getByTestId('book-format-7-a-side'));
+    expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, format: '7-a-side', playersPerSide: 5 });
+  });
+
+  it('picks days', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-chip-date'));
+    await fireEvent.press(screen.getByTestId('book-day-2026-11-26'));
+    await fireEvent.press(screen.getByTestId('book-days-see-results'));
+    expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, days: ['2026-11-24', '2026-11-26'] });
+  });
+
+  it('picks a time', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-chip-time'));
+    await fireEvent.press(screen.getByTestId('book-time-preset-morning'));
+    await fireEvent.press(screen.getByTestId('book-time-see-results'));
+    expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, window: { preset: 'morning', from: '06:00', to: '12:00' } });
+  });
+
+  it('filters, with the live count from the draft', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-chip-filters'));
+    expect(p.onFilterDraft).toHaveBeenLastCalledWith(query);
+    expect(screen.getByRole('button', { name: 'See 2 results' })).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('book-length-90'));
+    expect(p.onFilterDraft).toHaveBeenLastCalledWith({ ...query, minutes: 90 });
+    await fireEvent.press(screen.getByTestId('book-filter-see-results'));
+    expect(p.onQueryChange).toHaveBeenCalledWith({ ...query, minutes: 90 });
+    expect(p.onFilterDraft).toHaveBeenLastCalledWith(null);
+  });
+
+  it('marks Filters when a filter is on', async () => {
+    await render(<BookSearchView {...props({ query: { ...query, types: ['indoor'] } })} />);
+    expect(screen.getByTestId('book-chip-filters').props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it('shows Filters unmarked with the default filters', async () => {
+    await render(<BookSearchView {...props()} />);
+    expect(screen.getByTestId('book-chip-filters').props.accessibilityState).toMatchObject({ selected: false });
+  });
+});
+
+describe('BookSearchView: taps on a card', () => {
+  it('a time opens that slot; the card opens the venue', async () => {
+    const p = props();
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-venue-v1-time-2026-11-24-1900'));
+    expect(p.onTime).toHaveBeenCalledWith(kamares, kamares.slots[1]);
+    await fireEvent.press(screen.getByTestId('free-venue-v2-info'));
+    expect(p.onOpenVenue).toHaveBeenCalledWith('v2');
+  });
+
+  it('saves a favourite at once, and puts it back with one line when that fails', async () => {
+    const p = props({ onFavourite: jest.fn(() => Promise.reject(new Error('Couldn’t save this venue. Try again.'))) });
+    await render(<BookSearchView {...p} />);
+    await fireEvent.press(screen.getByTestId('book-venue-v1-heart'));
+    expect(p.onFavourite).toHaveBeenCalledWith('v1', true);
+    expect(await screen.findByText('Couldn’t save this venue. Try again.')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('book-venue-v1-heart').props.accessibilityLabel).toBe('Save Kamares Sports Centre'),
+    );
+  });
+
+  it('shows the saved heart while the server saves it', async () => {
+    let saved = () => {};
+    const p = props({ onFavourite: jest.fn(() => new Promise<void>((resolve) => (saved = resolve))) });
+    await render(<BookSearchView {...p} />);
+    const pressing = fireEvent.press(screen.getByTestId('book-venue-v1-heart'));
+    await waitFor(() =>
+      expect(screen.getByTestId('book-venue-v1-heart').props.accessibilityLabel).toBe('Remove Kamares Sports Centre'),
+    );
+    saved();
+    await pressing;
+    expect(screen.getByTestId('book-venue-v1-heart').props.accessibilityLabel).toBe('Remove Kamares Sports Centre');
+  });
+});
+
+describe('BookSearchView: debt', () => {
+  const debtMessage = 'You owe €6.80 from a past booking. Pay it to book again.';
+
+  it('shows the banner with Pay what I owe, and blocks the times', async () => {
+    const p = props({ debtMessage, onPayOwed: jest.fn() });
     await render(<BookSearchView {...p} />);
     expect(within(screen.getByTestId('debt-banner')).getByText(debtMessage)).toBeTruthy();
-
-    await pickSlot();
-    await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
-    await fireEvent.press(within(screen.getByTestId('free-venue-v1')).getByRole('button', { name: '19:30' }));
-    expect(p.onChoose).not.toHaveBeenCalled();
-    // The card and its time chips show disabled and take no taps.
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
+    expect(p.onPayOwed).toHaveBeenCalled();
     const slot = screen.getByTestId('free-venue-v1-slot');
     expect(slot.props.pointerEvents).toBe('none');
-    expect(slot.props['aria-disabled']).toBe(true);
-    expect(StyleSheet.flatten(slot.props.style)?.opacity).toBe(DISABLED_OPACITY);
-
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay what I owe' }));
-    expect(p.onPayOwed).toHaveBeenCalledTimes(1);
+    expect(StyleSheet.flatten(slot.props.style).opacity).toBe(DISABLED_OPACITY);
   });
 
-  it('shows no banner and books as usual when nothing is owed', async () => {
-    const p = props({ results: { status: 'ready', data: [nuevo] }, debtMessage: null, onPayOwed: jest.fn() });
-    await render(<BookSearchView {...p} />);
+  it('shows no banner when not in debt', async () => {
+    await render(<BookSearchView {...props()} />);
     expect(screen.queryByTestId('debt-banner')).toBeNull();
-    await pickSlot();
-    const slot = screen.getByTestId('free-venue-v1-slot');
-    expect(slot.props.pointerEvents).toBe('auto');
-    expect(StyleSheet.flatten(slot.props.style)?.opacity).toBeUndefined();
-    await fireEvent.press(screen.getByRole('button', { name: /Nuevo Campo, Nicosia/ }));
-    expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
-  });
-
-  it('saves the search once a time and a format are chosen (saved searches)', async () => {
-    const onSaveSearch = jest.fn();
-    await render(<BookSearchView {...props({ onSaveSearch })} />);
-    expect(screen.queryByRole('button', { name: 'Save this search' })).toBeNull();
-    await pickSlot();
-    await fireEvent.press(screen.getByRole('button', { name: '90 min' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Save this search' }));
-    expect(onSaveSearch).toHaveBeenCalledWith({ day: '2026-11-12', start: '19:00', minutes: 90, format: '5-a-side' });
-  });
-});
-
-describe('BookSearchView: testIDs for the Maestro tests (.maestro)', () => {
-  it('names each day, time, length and format by its value, and each venue card and its info button', async () => {
-    const p = props({ results: { status: 'ready', data: [nuevo] } });
-    await render(<BookSearchView {...p} />);
-    await fireEvent.press(screen.getByTestId('book-day-2026-11-14'));
-    await fireEvent.press(screen.getByTestId('book-time-1900'));
-    await fireEvent.press(screen.getByTestId('book-length-90'));
-    await fireEvent.press(screen.getByTestId('book-format-5-a-side'));
-    expect(p.onQueryChange).toHaveBeenLastCalledWith({
-      day: '2026-11-14',
-      start: '19:00',
-      minutes: 90,
-      format: '5-a-side',
-      playersPerSide: 5,
-    });
-    await fireEvent.press(screen.getByTestId('free-venue-v1'));
-    expect(p.onChoose).toHaveBeenCalledWith(nuevo, '19:00');
-    await fireEvent.press(screen.getByTestId('free-venue-v1-info'));
-    expect(p.onVenueInfo).toHaveBeenCalledWith('v1');
-  });
-});
-
-describe('freeTimes', () => {
-  it('puts the chosen time first, once, then the server’s next free times', () => {
-    expect(freeTimes('19:00', ['19:30:00', '20:00:00'])).toEqual(['19:00', '19:30', '20:00']);
-    expect(freeTimes('19:00', ['19:00:00', '21:00:00'])).toEqual(['19:00', '21:00']);
-    expect(freeTimes(null, ['19:30:00'])).toEqual(['19:30']);
-    expect(freeTimes('19:00', [])).toEqual(['19:00']);
   });
 });

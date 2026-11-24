@@ -1,0 +1,55 @@
+# S4 journey: Book a pitch → "Where do you want to play?" → a venue Futty
+# doesn't have → Missing a venue? → send its name and town to the founders.
+# The server takes 5 a player a day, so a re-run the same day may get the
+# limit line instead; either answer means the journey works.
+appId: com.panosalepis.futtyapp
+name: book-missing-venue
+tags:
+  - e2e
+  - booking
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- tapOn:
+    id: tab-book
+- extendedWaitUntil:
+    visible:
+      id: book-search-field
+    timeout: 30000
+- tapOn:
+    id: book-search-field
+- tapOn:
+    id: book-where-input
+- inputText: Zzyzx Arena
+- extendedWaitUntil:
+    visible:
+      id: book-where-missing-venue
+    timeout: 10000
+- tapOn:
+    id: book-where-missing-venue
+- tapOn:
+    id: missing-venue-name
+- inputText: Zzyzx Arena
+- tapOn:
+    id: missing-venue-town
+- inputText: Limassol
+- hideKeyboard
+- tapOn:
+    id: missing-venue-send
+- extendedWaitUntil:
+    visible:
+      text: 'Venue sent|You.ve sent 5 today. Try again tomorrow.'
+    timeout: 15000
+- takeScreenshot: book-missing-venue-${PLATFORM}

@@ -43,6 +43,7 @@ function flowIds(): { file: string; id: string }[] {
 function sample(id: string): string {
   return id
     .replace('${DAY}', '2026-11-23')
+    .replace('${TODAY}', '2026-11-21')
     .replace('${START}', '1900')
     .replace('${VENUE_ID}', E2E_VENUE.id)
     .replace('${TAB}', 'profile')
@@ -70,11 +71,12 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the five journeys and their subflows', () => {
+  it('has the six journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
       'flows/book-and-pay.yaml',
+      'flows/book-missing-venue.yaml',
       'flows/cancel.yaml',
       'flows/navigation.yaml',
       'flows/sign-in.yaml',
@@ -95,10 +97,19 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'book-missing-venue']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }
+  });
+
+  // S4: a card opens the venue page, so checkout is reached from the card's
+  // seeded start time, on the seeded day only.
+  it('book-and-pay books from the seeded time on the card, with only the seeded day searched', () => {
+    const text = read(path.join(maestroDir, 'flows', 'book-and-pay.yaml')).replace(/\r\n/g, '\n');
+    expect(text).toContain('tapOn:\n    id: book-venue-${VENUE_ID}-time-${DAY}-${START}');
+    expect(text).not.toMatch(/tapOn:\n {4}id: free-venue-\$\{VENUE_ID\}\n/);
+    expect(text.indexOf('id: book-day-${TODAY}')).toBeGreaterThan(text.indexOf('id: book-day-${DAY}'));
   });
 
   it('every id a flow uses is a testID the app has', () => {

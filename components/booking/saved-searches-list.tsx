@@ -43,11 +43,10 @@ export function SavedSearchesList({ searches, deletingId, error, onDelete, onRet
   if (searches.data.length === 0) {
     return (
       <View style={styles.screen}>
-        <EmptyState
-          icon="magnifyingglass"
-          message="No saved searches yet. Save one from Book a pitch and we’ll tell you when a slot frees up."
-          action={{ label: 'Book a pitch', onPress: onNewSearch }}
-        />
+        <EmptyState icon="magnifyingglass" message="No saved searches yet." />
+        <View style={styles.newEmpty}>
+          <Button testID="saved-searches-new" label="New search" onPress={onNewSearch} />
+        </View>
       </View>
     );
   }
@@ -74,6 +73,7 @@ export function SavedSearchesList({ searches, deletingId, error, onDelete, onRet
           </View>
         </Card>
       ))}
+      <Button testID="saved-searches-new" label="New search" variant="secondary" onPress={onNewSearch} fullWidth />
     </ScrollView>
   );
 }
@@ -83,4 +83,5 @@ const useStyles = makeStyles(({ colors }) => ({
   content: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   text: { flex: 1, gap: space.xs },
+  newEmpty: { alignItems: 'center' },
 }));
