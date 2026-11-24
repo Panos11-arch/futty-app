@@ -34,7 +34,6 @@ import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { FuttyAiChat } from '@/components/futty-ai-chat';
 import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
 import { PremiumIconSync } from '@/components/premium-icon-sync';
@@ -118,11 +117,9 @@ export function RootNavigator() {
   const inApp = signedIn && !needsProfileSetup;
 
   return (
-    // Explicit flex:1, not a bare Fragment — FuttyAiChat's launcher is
-    // absolutely positioned against this box (item 9: it was rendering too
-    // high, overlapping the status bar). <Stack>'s screens are native-screens
-    // views that don't reliably hand a bare Fragment ancestor a full-height
-    // box to measure "bottom" against; a real flex:1 View guarantees it.
+    // Explicit flex:1, not a bare Fragment, so the overlays below (push
+    // taps, the Premium icon) always have a full-height box. The floating
+    // Futty AI button is gone (S2): Account → Help opens the chat.
     <View style={{ flex: 1 }}>
       <Stack>
         <Stack.Protected guard={inApp}>
@@ -276,10 +273,6 @@ export function RootNavigator() {
           <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-      {/* Global overlay, not a screen — available from every tab/pushed
-          screen rather than needing its own route. Signed-in only, since it
-          calls an authenticated Edge Function. */}
-      {inApp ? <FuttyAiChat /> : null}
       {inApp ? <PushTapHandler /> : null}
       {/* The Premium home-screen icon, checked once per launch. */}
       {inApp ? <PremiumIconSync /> : null}

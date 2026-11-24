@@ -1,14 +1,13 @@
 // Futty AI (F9): the input stays above the keyboard, replies render their
-// Markdown without raw asterisks, and the button hides where it would cover
-// Book, Pay or the booking sheet.
+// Markdown without raw asterisks, and since S2 there is no floating button:
+// Account → Help opens the chat.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { Keyboard, Platform } from 'react-native';
+import { useState } from 'react';
+import { Keyboard, Platform, Pressable } from 'react-native';
 
 import { chatKeyboardProps, FuttyAiChat } from '@/components/futty-ai-chat';
 import { POPUP_HEADER_HEIGHT } from '@/components/popup-modal';
 
-let mockSegments: string[] = ['(tabs)'];
-jest.mock('expo-router', () => ({ useSegments: () => mockSegments }));
 
 const mockSend = jest.fn();
 jest.mock('@/lib/futty-ai', () => ({ sendFuttyAiMessage: (...a: unknown[]) => mockSend(...a) }));
@@ -24,16 +23,26 @@ jest.mock('@/components/ui/icon-symbol', () =>
 const originalOS = Platform.OS;
 beforeEach(() => {
   jest.clearAllMocks();
-  mockSegments = ['(tabs)'];
   Platform.OS = 'ios';
 });
 afterAll(() => {
   Platform.OS = originalOS;
 });
 
+/** What Help does: a row that opens the chat (app/account/help.tsx). */
+function Harness() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable accessibilityRole="button" accessibilityLabel="Ask Futty AI" onPress={() => setOpen(true)} />
+      <FuttyAiChat visible={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
 async function openChat() {
-  await render(<FuttyAiChat />);
-  await fireEvent.press(screen.getByRole('button', { name: 'Open Futty AI' }));
+  await render(<Harness />);
+  await fireEvent.press(screen.getByRole('button', { name: 'Ask Futty AI' }));
 }
 
 describe('the input stays visible above the keyboard', () => {
@@ -47,9 +56,9 @@ describe('the input stays visible above the keyboard', () => {
   it('listens for the keyboard while the chat is open, to scroll to the last message', async () => {
     const remove = jest.fn();
     const addListener = jest.spyOn(Keyboard, 'addListener').mockReturnValue({ remove } as never);
-    await render(<FuttyAiChat />);
+    await render(<Harness />);
     expect(addListener).not.toHaveBeenCalledWith('keyboardDidShow', expect.any(Function));
-    await fireEvent.press(screen.getByRole('button', { name: 'Open Futty AI' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask Futty AI' }));
     expect(addListener).toHaveBeenCalledWith('keyboardDidShow', expect.any(Function));
     await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
     expect(remove).toHaveBeenCalled();
@@ -77,26 +86,10 @@ describe('replies render bold, lists and line breaks', () => {
   });
 });
 
-describe('the floating button', () => {
-  it.each([
-    [['book']],
-    [['venue', '[id]']],
-    [['booking', '[id]']],
-    [['booking-payment']],
-    [['account', 'payments', 'owed']],
-    // QA 24 November, bug 3 and S6: it covered "Save changes" and the error
-    // above it, and "Go to booking".
-    [['edit-profile']],
-    [['booking-after-pay']],
-  ])('is hidden on %j (booking, venue, payment and form screens)', async (segments) => {
-    mockSegments = segments;
-    await render(<FuttyAiChat />);
+describe('no floating button (S2)', () => {
+  it('renders nothing while closed: Account → Help opens it', async () => {
+    await render(<FuttyAiChat visible={false} onClose={jest.fn()} />);
     expect(screen.queryByRole('button', { name: 'Open Futty AI' })).toBeNull();
-  });
-
-  it.each([[['(tabs)']], [['my-bookings']], [['account', 'settings']]])('shows on %j', async (segments) => {
-    mockSegments = segments;
-    await render(<FuttyAiChat />);
-    expect(screen.getByRole('button', { name: 'Open Futty AI' })).toBeTruthy();
+    expect(screen.queryByLabelText('Message to Futty AI')).toBeNull();
   });
 });

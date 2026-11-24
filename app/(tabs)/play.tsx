@@ -1,18 +1,15 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View } from 'react-native';
 
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
-import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { parsePlaySegment, PLAY_SEGMENTS, type PlaySegment } from '@/lib/play-segments';
 
 import { PreviousGamesList } from '../previous-games';
 import { UpcomingFixturesList } from '../upcoming-fixtures';
-import { CommunityContent } from './community';
 import { LeaguesContent } from './leagues';
 import { TeamContent } from './team';
 
@@ -36,10 +33,11 @@ function MatchesContent() {
 }
 
 /**
- * Play: teams, matches, leagues and community (docs/specs/15-design.md
- * section 4). The title and segments stay fixed; each segment's content
+ * Play: teams, matches and leagues (docs/specs/15-design.md
+ * section 0.9). Not a tab since S2: Account → Play opens it, and the tab
+ * layout's header shows its name. The segments stay fixed; each segment's content
  * scrolls itself, so a list inside one is never nested in another scroller.
- * Links to /team, /leagues and /community redirect here with ?segment=.
+ * Links to /team and /leagues redirect here with ?segment=.
  */
 export default function PlayScreen() {
   const styles = useStyles();
@@ -66,11 +64,8 @@ export default function PlayScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <View testID="play-screen" style={styles.screen}>
       <View style={styles.header}>
-        <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header">
-          Play
-        </Text>
         <SegmentedControl
           options={SEGMENT_OPTIONS}
           value={segment}
@@ -88,11 +83,10 @@ export default function PlayScreen() {
             {value === 'teams' ? <TeamContent teamId={params.teamId} /> : null}
             {value === 'matches' ? <MatchesContent /> : null}
             {value === 'leagues' ? <LeaguesContent /> : null}
-            {value === 'community' ? <CommunityContent /> : null}
           </View>
         ) : null
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

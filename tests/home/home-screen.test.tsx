@@ -162,9 +162,12 @@ describe('Home', () => {
     Object.values(mockReloads).forEach((fn) => fn.mockClear());
   });
 
-  it('keeps the header', async () => {
+  // S2: the tab layout draws the header (components/navigation/app-header.tsx),
+  // so Home has no title of its own; its Book a pitch button carries tab-book.
+  it('draws no header of its own, and Book a pitch carries tab-book', async () => {
     await render(<HomeScreen />);
-    expect(screen.getByRole('header', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'Home' })).toBeNull();
+    expect(screen.getByTestId('tab-book')).toBeTruthy();
   });
 
   it('has a testID for the Maestro tests (.maestro)', async () => {
@@ -384,7 +387,7 @@ describe('Home owed banner (contract 6)', () => {
     mockOwedState = { status: 'error', message: 'offline' };
     await render(<HomeScreen />);
     expect(screen.queryByTestId('owed-banner')).toBeNull();
-    expect(screen.getByRole('header', { name: 'Home' })).toBeTruthy();
+    expect(screen.getByTestId('home-screen')).toBeTruthy();
     expect(screen.getByText('No games booked')).toBeTruthy();
   });
 

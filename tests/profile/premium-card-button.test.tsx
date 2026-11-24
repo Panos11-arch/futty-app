@@ -1,12 +1,16 @@
-// U9: the Profile tab's logo turns Premium right after a Premium purchase,
-// when the player comes back to the tab, not on the next mount. Uses the real
+// U9, since S2 on the tab bar's Card button: it turns Premium right after a
+// Premium purchase, when the player comes back to the tab, not on the next
+// mount; Profile's Premium row follows. Uses the real
 // useProfile against a fake profiles table: the purchase is the server
 // setting profiles.is_premium (the app never sets it).
 import { act, render, screen, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 
 import ProfileScreen from '@/app/(tabs)/profile';
+import { CardButton } from '@/components/navigation/card-button';
 import { loadWithFile } from '@/components/ui/test-utils';
+import { lightPalette } from '@/constants/futty-theme';
 
 const mockRow = {
   id: 'me',
@@ -63,10 +67,18 @@ jest.mock('@/components/stats/streak-card', () => ({ StreakCard: () => null }));
 
 loadWithFile(Image);
 
-it('a Premium purchase, then focusing the Profile tab, shows the Premium logo', async () => {
-  await render(<ProfileScreen />);
+const circle = () => StyleSheet.flatten(screen.getByTestId('tab-card-circle').props.style).backgroundColor;
+
+it('a Premium purchase, then focusing the tab, turns the Card button Premium', async () => {
+  await render(
+    <>
+      <ProfileScreen />
+      <CardButton onPress={jest.fn()} />
+    </>,
+  );
   expect(await screen.findByText('Ann Lee')).toBeTruthy();
-  expect(screen.getByTestId('futty-logo-basic')).toBeTruthy();
+  expect(circle()).toBe(lightPalette.cardBasicBg);
+  expect(screen.getByRole('button', { name: /Go Premium/ })).toBeTruthy();
 
   // The purchase: the server sets is_premium (verified store receipt).
   mockRow.is_premium = true;
@@ -74,6 +86,6 @@ it('a Premium purchase, then focusing the Profile tab, shows the Premium logo', 
   // Back on the Profile tab.
   await act(async () => mockFocusEffects.forEach((effect) => effect()));
 
-  await waitFor(() => expect(screen.getByTestId('futty-logo-premium')).toBeTruthy());
-  expect(screen.queryByTestId('futty-logo-basic')).toBeNull();
+  await waitFor(() => expect(circle()).toBe(lightPalette.cardPremiumBg));
+  expect(screen.getByRole('button', { name: /Manage Premium/ })).toBeTruthy();
 });

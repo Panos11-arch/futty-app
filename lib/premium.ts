@@ -20,6 +20,20 @@ export function openablePlan<P extends string>(plan: P, teamPremiumEnabled: bool
   return !teamPremiumEnabled && plan.startsWith('team-') ? 'personal' : plan;
 }
 
+type ProfileState = { status: string; profile?: { is_premium?: boolean | null } };
+
+/**
+ * Whether the signed-in player is on Premium, from the server's
+ * profiles.is_premium (read through useProfile()): null until it has loaded.
+ * The Card button, the Futty logo and the Premium screen all ask here, so a
+ * new plan (Premium Plus) changes one function. Team Premium belongs to a
+ * team, not the player, and doesn't count.
+ */
+export function isPremiumPlayer(state: ProfileState): boolean | null {
+  if (state.status !== 'ready') return null;
+  return state.profile?.is_premium === true;
+}
+
 // Premium's booking window, price and service fee are spec 13's rules
 // (public.app_rules, P10): read them through lib/rules.ts, never copy them
 // here. book_slot enforces the windows; Premium comes only from

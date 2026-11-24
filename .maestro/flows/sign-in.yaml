@@ -18,7 +18,12 @@ env:
 - assertVisible:
     id: home-screen
 - assertVisible:
+    id: tab-home
+# Home's Book a pitch button (it does the old Book tab's job).
+- assertVisible:
     id: tab-book
+- assertVisible:
+    id: header-menu
 - assertNotVisible:
     id: sign-in-email
 - takeScreenshot: sign-in-${PLATFORM}

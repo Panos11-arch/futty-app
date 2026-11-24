@@ -1,11 +1,12 @@
-// The Play tab's sections (docs/specs/15-design.md section 4). Old routes
-// (/team, /leagues, /community) redirect here with the matching segment.
+// Play's sections (docs/specs/15-design.md section 0.9). Play is no longer a
+// tab (S2): it opens from Account → Play until S6–S9 move each segment.
+// Community has its own tab now. Old routes (/team, /leagues) redirect here
+// with the matching segment.
 
 export const PLAY_SEGMENTS = [
   { value: 'teams', label: 'Teams' },
   { value: 'matches', label: 'Matches' },
   { value: 'leagues', label: 'Leagues' },
-  { value: 'community', label: 'Community' },
 ] as const;
 
 export type PlaySegment = (typeof PLAY_SEGMENTS)[number]['value'];

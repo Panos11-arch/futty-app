@@ -65,6 +65,17 @@ type BaseTokens = {
   scrim: string;
   tabBar: string;
   tabBarBorder: string;
+  /** The selected tab's pill (S2) */
+  tabSelectedBg: string;
+  /** The selected tab's icon and label: dark on light, mint on dark */
+  tabSelectedInk: string;
+  /** The Card button (S2): Basic is a mint circle with a dark F */
+  cardBasicBg: string;
+  cardBasicLogo: string;
+  /** Premium is a black circle with the neon F (the logo's own colour) */
+  cardPremiumBg: string;
+  /** The thin ring around the Premium circle: dark mode only */
+  cardButtonRing: string;
   /** Logo only (components/ui/futty-logo.tsx). Never UI. The F. */
   logoMint: string;
   /** Logo only. The Premium logo's background. */
@@ -136,6 +147,12 @@ export const lightPalette: Palette = withAliases({
   scrim: 'rgba(5, 16, 11, 0.55)',
   tabBar: '#FFFFFF',
   tabBarBorder: '#E4E7EB',
+  tabSelectedBg: 'rgba(0, 255, 156, 0.12)',
+  tabSelectedInk: '#03140C',
+  cardBasicBg: '#00FF9C',
+  cardBasicLogo: '#03140C',
+  cardPremiumBg: '#000000',
+  cardButtonRing: 'transparent',
   ...identity,
 });
 
@@ -176,6 +193,12 @@ export const darkPalette: Palette = withAliases({
   scrim: 'rgba(0, 0, 0, 0.65)',
   tabBar: '#0B1215',
   tabBarBorder: '#1E2A26',
+  tabSelectedBg: 'rgba(0, 255, 156, 0.16)',
+  tabSelectedInk: '#00FF9C',
+  cardBasicBg: '#00FF9C',
+  cardBasicLogo: '#03140C',
+  cardPremiumBg: '#000000',
+  cardButtonRing: '#00FF9C',
   ...identity,
 });
 

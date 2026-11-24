@@ -1,6 +1,7 @@
-# Taps a tab in the tab bar: TAB is home, book, play or profile
-# (app/(tabs)/_layout.tsx, tabBarButtonTestID). Book opens the booking
-# wizard over the current tab.
+# Taps an item in the tab bar (S2): TAB is home, community, card, rankings
+# or profile (app/(tabs)/_layout.tsx, components/navigation/futty-tab-bar.tsx).
+# Book and Play are no longer tabs: tab-book is Home's Book a pitch button
+# and tab-play is Account's Play row.
 appId: com.panosalepis.futtyapp
 ---
 - tapOn:

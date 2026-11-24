@@ -81,13 +81,12 @@ function nestedScrollers(root: Node) {
 }
 
 describe('Play', () => {
-  it('shows the four segments, Teams first by default', async () => {
+  it('shows the three segments (Community is its own tab since S2), Teams first', async () => {
     await openPlay('/play');
     expect(screen.getAllByRole('tab').map((t) => t.props.accessibilityLabel)).toEqual([
       'Teams',
       'Matches',
       'Leagues',
-      'Community',
     ]);
     expect(selectedTab()).toBe('Teams');
     expect(screen.getByText(/not on a team yet/)).toBeTruthy();
@@ -97,7 +96,6 @@ describe('Play', () => {
     ['teams', 'Teams'],
     ['matches', 'Matches'],
     ['leagues', 'Leagues'],
-    ['community', 'Community'],
   ])('?segment=%s selects %s', async (segment, label) => {
     await openPlay(`/play?segment=${segment}`);
     expect(selectedTab()).toBe(label);
@@ -111,8 +109,7 @@ describe('Play', () => {
     expect(screen.getByText(/No upcoming fixtures/)).toBeTruthy();
     await choose('Leagues');
     expect(screen.getByText('Matchmaking')).toBeTruthy();
-    await choose('Community');
-    expect(screen.getByText('Contacts')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Community' })).toBeNull();
   });
 
   it('keeps the URL in step when you switch, so a later link to the old segment still applies', async () => {
@@ -144,10 +141,10 @@ describe('Play scrolling', () => {
     errors.mockRestore();
   });
 
-  it('has no outer ScrollView: the header is fixed and segments scroll themselves', async () => {
+  it('has no outer ScrollView: the segments are fixed and each scrolls itself', async () => {
     await openPlay('/play');
-    for (const label of ['Matches', 'Leagues', 'Community']) await choose(label);
-    for (const segment of ['teams', 'matches', 'leagues', 'community']) {
+    for (const label of ['Matches', 'Leagues']) await choose(label);
+    for (const segment of ['teams', 'matches', 'leagues']) {
       const container = screen.getByTestId(`play-segment-${segment}`, { includeHiddenElements: true });
       let node = (container as unknown as Node).parent;
       while (node) {
@@ -163,7 +160,7 @@ describe('Play scrolling', () => {
   it('never nests a virtualized list in a ScrollView, in any segment', async () => {
     const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
     await openPlay('/play');
-    for (const label of ['Matches', 'Leagues', 'Community']) await choose(label);
+    for (const label of ['Matches', 'Leagues']) await choose(label);
     expect(nestedScrollers(screen.container as unknown as Node)).toBe(0);
     expect(errors.mock.calls.flat().join('\n')).not.toMatch(/VirtualizedLists should never be nested/);
     errors.mockRestore();

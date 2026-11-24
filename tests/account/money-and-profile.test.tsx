@@ -132,13 +132,19 @@ describe('Profile', () => {
     expect(mockProfileReload).toHaveBeenCalledTimes(1);
   });
 
-  it('the header shows the basic logo to a basic player and the Premium logo to a Premium player (U9)', async () => {
+  // S2: the tab layout's header names the tab, and Premium shows on the tab
+  // bar's Card button (components/navigation/card-button.test.tsx) and the
+  // Premium screen's logo (U9), so Profile draws no title or logo of its own.
+  it('draws no title or logo of its own; the Premium row follows the server', async () => {
     mockProfile = { status: 'ready', profile };
     const view = await render(<ProfileScreen />);
-    expect(screen.getByTestId('futty-logo-basic')).toBeTruthy();
+    expect(screen.queryByRole('header', { name: 'Profile' })).toBeNull();
+    expect(screen.queryByTestId('futty-logo-basic')).toBeNull();
+    expect(screen.getByRole('button', { name: /Go Premium/ })).toBeTruthy();
     mockProfile = { status: 'ready', profile: { ...profile, is_premium: true } };
     await view.rerender(<ProfileScreen />);
-    expect(screen.getByTestId('futty-logo-premium')).toBeTruthy();
+    expect(screen.queryByTestId('futty-logo-premium')).toBeNull();
+    expect(screen.getByRole('button', { name: /Manage Premium/ })).toBeTruthy();
   });
 
   it('My bookings has a testID for the Maestro tests (.maestro)', async () => {

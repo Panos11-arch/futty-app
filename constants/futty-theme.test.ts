@@ -76,6 +76,31 @@ describe('colour tokens (spec 15 section 0.2)', () => {
     });
   });
 
+  // S2 (spec 15 section 0.5): the selected tab's pill and the Card button.
+  it('has the tab bar and Card button tokens in both modes', () => {
+    expect(lightPalette).toMatchObject({
+      tabSelectedBg: lightPalette.greenSoft,
+      tabSelectedInk: '#03140C',
+      cardBasicBg: '#00FF9C',
+      cardBasicLogo: '#03140C',
+      cardPremiumBg: '#000000',
+      cardButtonRing: 'transparent',
+    });
+    expect(darkPalette).toMatchObject({
+      tabSelectedBg: darkPalette.greenSoft,
+      tabSelectedInk: '#00FF9C',
+      cardBasicBg: '#00FF9C',
+      cardBasicLogo: '#03140C',
+      cardPremiumBg: '#000000',
+      cardButtonRing: '#00FF9C',
+    });
+  });
+
+  it('the selected tab reads clearly: dark ink on the light bar, mint on the dark bar', () => {
+    expect(contrast(lightPalette.tabSelectedInk, lightPalette.tabBar)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(darkPalette.tabSelectedInk, darkPalette.tabBar)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('light and dark have exactly the same tokens', () => {
     expect(Object.keys(darkPalette).sort()).toEqual(Object.keys(lightPalette).sort());
   });

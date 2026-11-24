@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View } from 'react-native';
 
 import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-card';
 import { NoOpponentChoices } from '@/components/booking/no-opponent-choices';
@@ -13,13 +12,12 @@ import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { IconButton } from '@/components/ui/icon-button';
 import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { radius, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { dateKeyAndTimeToDate } from '@/lib/days';
 import { canLogFixtureScore } from '@/lib/fixtures';
@@ -27,14 +25,13 @@ import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches'
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
 import { openIfOffers } from '@/lib/post-match-offers';
-import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
+import { isPremiumPlayer, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { viewerRole, type ResultMatch } from '@/lib/match/result';
 import { useStartingLevelOffer } from '@/lib/match/use-levels';
 import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
-import { useNotifications } from '@/lib/use-notifications';
 import { debtBlockMessage, type Owed, owedBannerMessage, owedToName, useOwed, useReloadOnReturn } from '@/lib/use-owed';
 import { useProfile } from '@/lib/use-profile';
 import { type RecentResult, useRecentResults } from '@/lib/use-recent-results';
@@ -199,7 +196,7 @@ function QuickActions() {
   return (
     <View style={styles.quickActions}>
       <View style={styles.quickAction}>
-        <Button label="Book a pitch" onPress={openBook} fullWidth />
+        <Button testID="tab-book" label="Book a pitch" onPress={openBook} fullWidth />
       </View>
       <View style={styles.quickAction}>
         <Button label="Find a game" variant="secondary" onPress={openFindGame} fullWidth />
@@ -561,7 +558,7 @@ function NeedPlayersSection() {
 
 function PremiumSection() {
   const profile = useProfile();
-  const isPremium = profile.status === 'ready' && profile.profile.is_premium;
+  const isPremium = isPremiumPlayer(profile) === true;
 
   return (
     <Card padded={false}>
@@ -583,34 +580,6 @@ function PremiumSection() {
         />
       ) : null}
     </Card>
-  );
-}
-
-/** Home's header (docs/specs/15-design.md section 4): a large title, the
- *  notifications bell with a dot while anything is unread, and the account
- *  menu (app/account/index.tsx). */
-export function HomeHeader() {
-  const styles = useStyles();
-  const notifications = useNotifications();
-  const unread = notifications.unreadCount;
-
-  return (
-    <View style={styles.header}>
-      <Text variant={Platform.OS === 'ios' ? 'display' : 'title'} accessibilityRole="header" style={styles.headerTitle}>
-        Home
-      </Text>
-      <View style={styles.headerActions}>
-        <View>
-          <IconButton
-            icon="bell.fill"
-            accessibilityLabel={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
-            onPress={() => router.push('/notifications')}
-          />
-          {unread > 0 ? <View testID="unread-dot" style={styles.unreadDot} pointerEvents="none" /> : null}
-        </View>
-        <IconButton icon="person.fill" accessibilityLabel="Account menu" onPress={() => router.push('/account')} />
-      </View>
-    </View>
   );
 }
 
@@ -669,10 +638,6 @@ export default function HomeScreen() {
 
   return (
     <View testID="home-screen" style={styles.screen}>
-      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-        <HomeHeader />
-      </SafeAreaView>
-
       {/* The quick actions come first: nothing that loads sits above them, so
           they never move under a finger (a moved Pressable drops the tap). */}
       <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
@@ -694,25 +659,6 @@ export default function HomeScreen() {
 
 const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
-  headerSafeArea: { backgroundColor: colors.canvas },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    paddingHorizontal: space.lg,
-    paddingTop: space.sm,
-  },
-  headerTitle: { flex: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
-  unreadDot: {
-    position: 'absolute',
-    top: space.md - space.xs,
-    right: space.md - space.xs,
-    width: space.sm,
-    height: space.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.danger,
-  },
   body: { flex: 1 },
   bodyContent: {
     paddingHorizontal: space.lg,

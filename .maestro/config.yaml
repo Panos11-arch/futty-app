@@ -13,3 +13,4 @@ executionOrder:
     - book-and-pay
     - cancel
     - appearance
+    - navigation

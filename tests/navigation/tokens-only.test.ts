@@ -4,7 +4,19 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = path.join(__dirname, '..', '..');
-const files = ['app/(tabs)/_layout.tsx', 'app/(tabs)/book.tsx', 'app/(tabs)/play.tsx', 'lib/play-segments.ts'];
+const files = [
+  'app/(tabs)/_layout.tsx',
+  'app/(tabs)/play.tsx',
+  'app/(tabs)/rankings.tsx',
+  'app/(tabs)/community.tsx',
+  'app/account/index.tsx',
+  'app/account/help.tsx',
+  'lib/play-segments.ts',
+  'components/navigation/app-header.tsx',
+  'components/navigation/card-button.tsx',
+  'components/navigation/futty-tab-bar.tsx',
+  'components/navigation/my-card-sheet.tsx',
+];
 
 describe.each(files)('%s uses tokens only', (file) => {
   const text = fs.readFileSync(path.join(root, file), 'utf8');
