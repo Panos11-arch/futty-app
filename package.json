@@ -13,9 +13,10 @@
     "test": "jest"
   },
   "dependencies": {
-    "@expo-google-fonts/archivo-black": "^0.4.1",
+    "@expo-google-fonts/cairo": "^0.4.2",
     "@expo-google-fonts/ibm-plex-mono": "^0.4.2",
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/lexend": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.6.0",

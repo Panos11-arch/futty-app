@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BookingResultForm } from '@/components/booking-result-form';
@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { dateKeyAndTimeToDate } from '@/lib/days';
 import { cyprusWallTime } from '@/lib/calendar/cyprus-time';
 import { formatMatchWhen } from '@/lib/match/format';
@@ -22,6 +23,7 @@ import { useVenues } from '@/lib/use-venues';
  *  overflow behind Home's "View all" link) and Play's Matches segment
  *  (app/(tabs)/play.tsx) each wrap it. */
 export function PreviousGamesList() {
+  const styles = useStyles();
   const unscoredBookings = useMyUnscoredBookings();
   const venuesState = useVenues();
   const matchLinks = useMatchLinks({
@@ -106,6 +108,7 @@ export function PreviousGamesList() {
 /** The overflow behind the home screen's "View all" link, not just the
  *  couple shown inline there. */
 export default function PreviousGamesScreen() {
+  const styles = useStyles();
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -115,8 +118,8 @@ export default function PreviousGamesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, paddingBottom: space.xxl },
   list: { gap: space.md },
-});
+}));

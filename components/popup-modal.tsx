@@ -1,11 +1,12 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 /**
  * The one popup/modal shell for the whole app (items 1 & 2) — every full-
@@ -64,6 +65,7 @@ export function PopupModal({
    *  step content slides. */
   subHeader?: ReactNode;
 }>) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const plain = !backgroundImage;
 
@@ -82,7 +84,7 @@ export function PopupModal({
             )}
 
             {title ? (
-              <Text variant="headline" tone={dark ? 'onBrand' : 'ink'} accessibilityRole="header" style={styles.title}>
+              <Text variant="headline" tone={dark ? 'onNight' : 'ink'} accessibilityRole="header" style={styles.title}>
                 {title}
               </Text>
             ) : (
@@ -109,7 +111,7 @@ export function PopupModal({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: { flex: 1 },
   canvas: { backgroundColor: colors.canvas },
   header: {
@@ -141,4 +143,4 @@ const styles = StyleSheet.create({
     borderTopWidth: hairline,
     borderTopColor: colors.border,
   },
-});
+}));

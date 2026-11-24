@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 type IconName = ComponentProps<typeof IconSymbol>['name'];
 
@@ -29,8 +30,10 @@ export function Chip({
   icon?: IconName;
   onPress: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const tone = selected ? 'brand' : 'ink';
-  const iconColor = selected ? colors.brand : colors.inkMuted;
+  const iconColor = selected ? colors.positive : colors.inkMuted;
 
   return (
     <Pressable
@@ -55,7 +58,7 @@ export function Chip({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   chip: {
     minHeight: MIN_TOUCH,
     paddingHorizontal: space.md,
@@ -70,4 +73,4 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: colors.brandSoft, borderColor: colors.brandSoft },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   dimmed: { opacity: DISABLED_OPACITY },
-});
+}));

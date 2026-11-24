@@ -11,7 +11,8 @@ import { useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 
 import { Button, Text, TextField } from '@/components/ui';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { checkLinkFor, normaliseCode, scanWords } from '@/lib/check-in';
 
 export type CheckInScannerProps = {
@@ -24,6 +25,7 @@ export type CheckInScannerProps = {
 const QR_ONLY = { barcodeTypes: ['qr' as const] };
 
 export function CheckInScanner({ matchId, onSubmit, onCancel }: CheckInScannerProps) {
+  const styles = useStyles();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState<'scan' | 'type'>('scan');
   const [problem, setProblem] = useState<string | null>(null);
@@ -145,7 +147,7 @@ export function CheckInScanner({ matchId, onSubmit, onCancel }: CheckInScannerPr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   stack: { gap: space.md },
   camera: {
     height: space.xxl * 9,
@@ -153,4 +155,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.ink,
   },
-});
+}));

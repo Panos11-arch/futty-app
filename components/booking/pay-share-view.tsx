@@ -2,7 +2,7 @@
 // (a "payment due" notification, a joiner, a booker coming back). Every
 // amount is booking_detail's `me`, shown as it is.
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   CancellationRules,
@@ -22,7 +22,8 @@ import {
   StickyActionBar,
   Text,
 } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { PayOptions } from '@/lib/booking-checkout';
 import { showNonRefundable, slotLabel, useNow, type LoadState, type PayShareData } from '@/lib/booking-search';
 
@@ -45,6 +46,7 @@ const SETTLED: Record<string, string> = {
 };
 
 export function PayShareView(props: PayShareViewProps) {
+  const styles = useStyles();
   const { data } = props;
   if (data.status === 'loading') {
     return (
@@ -74,6 +76,7 @@ function PayShareReady({
   onPayOwed,
   now: nowOverride,
 }: Omit<PayShareViewProps, 'data' | 'onRetry'> & { data: PayShareData }) {
+  const styles = useStyles();
   const clock = useNow();
   const now = nowOverride ?? clock;
   const [accepted, setAccepted] = useState(false);
@@ -173,8 +176,8 @@ function PayShareReady({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
-});
+}));

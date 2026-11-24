@@ -6,7 +6,7 @@
 // A player in debt (my_owed says blocked) sees a banner linking to "Pay what
 // I owe" and can't pick a venue (spec 13, "Debt"); book_slot refuses anyway.
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   Banner,
@@ -21,7 +21,8 @@ import {
   VenueCard,
 } from '@/components/ui';
 import { DISABLED_OPACITY } from '@/components/ui/foundation';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { PITCH_FORMATS } from '@/lib/booking';
 import {
   dateStrip,
@@ -71,6 +72,7 @@ const PLAYERS_PER_SIDE = [
 ] as const;
 
 export function BookSearchView(props: BookSearchViewProps) {
+  const styles = useStyles();
   const { options } = props;
   if (options.status === 'loading') {
     return (
@@ -110,6 +112,7 @@ function BookSearchReady({
   onSaveSearch,
   now: nowOverride,
 }: Omit<BookSearchViewProps, 'options'> & { options: SearchOptions }) {
+  const styles = useStyles();
   const blocked = Boolean(debtMessage);
   const choose = (v: FreeVenueWithPhoto, t: string) => {
     if (!blocked) onChoose(v, t);
@@ -289,7 +292,7 @@ function BookSearchReady({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
@@ -297,4 +300,4 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   card: { gap: space.xs },
   disabled: { opacity: DISABLED_OPACITY },
-});
+}));

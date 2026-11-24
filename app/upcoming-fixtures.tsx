@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
@@ -12,7 +12,8 @@ import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import {
   canLogFixtureScore,
   FIXTURE_SCHEDULING_WINDOW_DAYS,
@@ -26,6 +27,7 @@ import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 const RESOLVE_WINDOW_MS = FIXTURE_SCHEDULING_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 function ResolveOutcomeButton({ fixtureId, onChanged }: { fixtureId: string; onChanged: () => void }) {
+  const styles = useStyles();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,8 @@ function FixtureRow({
   myCaptainTeamIds: Set<string>;
   onChanged: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const isCaptain = myCaptainTeamIds.has(fixture.home_team_id) || myCaptainTeamIds.has(fixture.away_team_id);
   const when = formatFixtureWhen(fixture);
 
@@ -123,6 +127,7 @@ function FixtureRow({
 /** Your league fixtures still to play. No scrolling of its own: the screen
  *  below and Play's Matches segment (app/(tabs)/play.tsx) each wrap it. */
 export function UpcomingFixturesList() {
+  const styles = useStyles();
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
 
@@ -173,6 +178,7 @@ export function UpcomingFixturesList() {
 }
 
 export default function UpcomingFixturesScreen() {
+  const styles = useStyles();
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -182,11 +188,11 @@ export default function UpcomingFixturesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { padding: space.lg, paddingBottom: space.xxl },
   list: { gap: space.md },
   stack: { gap: space.sm },
   iconRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-});
+}));

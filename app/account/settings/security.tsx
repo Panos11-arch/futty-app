@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Switch } from 'react-native';
+import { Platform, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/card';
 import { ListRow } from '@/components/ui/list-row';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAppLock } from '@/lib/app-lock';
 
 export default function SecuritySettingsScreen() {
+  const styles = useStyles();
   const { supported, enabled, label, setEnabled } = useAppLock();
   const [busy, setBusy] = useState(false);
 
@@ -53,7 +55,7 @@ export default function SecuritySettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg },
-});
+}));

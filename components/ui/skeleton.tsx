@@ -1,6 +1,7 @@
-import { StyleSheet, View, type DimensionValue } from 'react-native';
+import { View, type DimensionValue } from 'react-native';
 
-import { colors, radius, space, type } from '@/constants/futty-theme';
+import { radius, space, type TypeVariant } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 // Skeletons are still blocks in the shape of the content: no shimmer, so
 // nothing moves on screen while loading (motion only explains change).
@@ -12,6 +13,7 @@ export type SkeletonBlockProps = {
 };
 
 export function SkeletonBlock({ width, height, rounded = 'card' }: SkeletonBlockProps) {
+  const styles = useStyles();
   return (
     <View
       testID="skeleton-block"
@@ -22,8 +24,9 @@ export function SkeletonBlock({ width, height, rounded = 'card' }: SkeletonBlock
   );
 }
 
-export function SkeletonText({ lines = 2, variant = 'body' }: { lines?: number; variant?: keyof typeof type }) {
-  const { lineHeight } = type[variant];
+export function SkeletonText({ lines = 2, variant = 'body' }: { lines?: number; variant?: TypeVariant }) {
+  const styles = useStyles();
+  const { lineHeight } = useTheme().type[variant];
   return (
     <View accessible accessibilityLabel="Loading" style={styles.lines}>
       {Array.from({ length: lines }, (_, i) => (
@@ -41,8 +44,8 @@ export function SkeletonText({ lines = 2, variant = 'body' }: { lines?: number; 
   );
 }
 
-const styles = StyleSheet.create({
-  fill: { backgroundColor: colors.border },
+const useStyles = makeStyles(({ colors }) => ({
+  fill: { backgroundColor: colors.fill },
   lines: { gap: space.sm },
   line: { borderRadius: radius.pill },
-});
+}));

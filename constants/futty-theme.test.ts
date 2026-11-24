@@ -2,7 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import * as theme from '@/constants/futty-theme';
-import { colors, KIT_COLOUR_NAMES, kitColours, mono, type } from '@/constants/futty-theme';
+import {
+  colors,
+  darkPalette,
+  fontFamilies,
+  highContrast,
+  KIT_COLOUR_NAMES,
+  kitColours,
+  lightPalette,
+  mono,
+  type,
+  type Palette,
+} from '@/constants/futty-theme';
 
 // WCAG 2.x relative luminance and contrast ratio, computed here rather than
 // trusted from a design tool.
@@ -24,23 +35,76 @@ function contrast(a: string, b: string) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-describe('colour tokens', () => {
-  it('has the values from the design brief', () => {
-    expect(colors).toEqual({
+const palettes: [string, Palette][] = [
+  ['light', lightPalette],
+  ['dark', darkPalette],
+  ['light, high contrast', { ...lightPalette, ...highContrast.light }],
+  ['dark, high contrast', { ...darkPalette, ...highContrast.dark }],
+];
+
+describe('colour tokens (spec 15 section 0.2)', () => {
+  it('has the light values from the spec', () => {
+    expect(lightPalette).toMatchObject({
+      green: '#00FF9C',
+      greenInk: '#03140C',
+      night: '#05100B',
       ink: '#0B1215',
-      inkMuted: '#5B6470',
-      surface: '#FFFFFF',
+      muted: '#5B6470',
       canvas: '#F4F5F7',
+      surface: '#FFFFFF',
       border: '#E4E7EB',
-      brand: '#0E5A3A',
-      brandSoft: '#E7F1EC',
-      success: '#1F7A45',
+      greenSoft: 'rgba(0, 255, 156, 0.12)',
       warning: '#8A5C00',
+      warningLight: '#FFF6DA',
       danger: '#B42318',
-      onBrand: '#FFFFFF',
-      logoMint: '#00FF9C',
-      logoBlack: '#000000',
     });
+  });
+
+  it('has the proposed dark values (S1 PR)', () => {
+    expect(darkPalette).toMatchObject({
+      canvas: '#05100B',
+      surface: '#0F1A16',
+      surfaceRaised: '#16231E',
+      border: '#1E2A26',
+      ink: '#F4F5F7',
+      muted: '#8FA39A',
+      green: '#00FF9C',
+      greenInk: '#03140C',
+      positive: '#00FF9C',
+      tabBar: '#0B1215',
+      tabBarBorder: '#1E2A26',
+    });
+  });
+
+  it('light and dark have exactly the same tokens', () => {
+    expect(Object.keys(darkPalette).sort()).toEqual(Object.keys(lightPalette).sort());
+  });
+
+  it('high contrast only overrides tokens that exist', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      for (const key of Object.keys(highContrast[mode])) expect(lightPalette).toHaveProperty(key);
+    }
+  });
+
+  it('keeps the old names as aliases, so existing screens keep working', () => {
+    for (const p of [lightPalette, darkPalette]) {
+      expect(p.inkMuted).toBe(p.muted);
+      expect(p.brand).toBe(p.green);
+      expect(p.brandSoft).toBe(p.greenSoft);
+      expect(p.onBrand).toBe(p.greenInk);
+      expect(p.success).toBe(p.positive);
+    }
+  });
+
+  it('`colors` is the light palette (for tests and lib code only; screens use useTheme)', () => {
+    expect(colors).toBe(lightPalette);
+  });
+
+  it('positive is a darker text green, not the logo green, in light mode', () => {
+    expect(lightPalette.positive).toBe('#12804A');
+    expect(lightPalette.positive).not.toBe(lightPalette.green);
+    expect(contrast(lightPalette.positive, lightPalette.canvas)).toBeCloseTo(4.57, 2);
+    expect(contrast(lightPalette.positive, lightPalette.surface)).toBeCloseTo(4.99, 2);
   });
 
   it('uses the logo colours only for the logo (U9), so the rest of the app keeps its colours', () => {
@@ -59,19 +123,45 @@ describe('colour tokens', () => {
     expect(hits).toEqual(['components/ui/futty-logo.tsx']);
   });
 
-  const textColours = ['ink', 'inkMuted', 'brand', 'success', 'warning', 'danger'] as const;
-  const backgrounds = ['surface', 'canvas'] as const;
+  // Every pair a screen draws text in. Each must pass WCAG AA (4.5:1) in
+  // light, dark and both high-contrast modes.
+  const textOn: [keyof Palette, keyof Palette][] = [
+    ['ink', 'canvas'],
+    ['ink', 'surface'],
+    ['ink', 'surfaceRaised'],
+    ['ink', 'fill'],
+    ['muted', 'canvas'],
+    ['muted', 'surface'],
+    ['muted', 'fill'],
+    ['positive', 'canvas'],
+    ['positive', 'surface'],
+    ['warning', 'canvas'],
+    ['warning', 'surface'],
+    ['warning', 'warningLight'],
+    ['danger', 'canvas'],
+    ['danger', 'surface'],
+    ['danger', 'dangerLight'],
+    ['info', 'surface'],
+    ['info', 'infoLight'],
+    ['greenInk', 'green'],
+    ['onNight', 'night'],
+    ['onNightMuted', 'night'],
+    ['onFormWin', 'formWin'],
+    ['onFormDraw', 'formDraw'],
+    ['onFormLoss', 'formLoss'],
+    ['onRatingTop', 'ratingTop'],
+    ['onDanger', 'dangerFill'],
+  ];
 
-  for (const fg of textColours) {
-    for (const bg of backgrounds) {
-      it(`${fg} on ${bg} has a contrast ratio of at least 4.5`, () => {
-        expect(contrast(colors[fg], colors[bg])).toBeGreaterThanOrEqual(4.5);
-      });
-    }
-  }
+  describe.each(palettes)('%s', (_name, p) => {
+    it.each(textOn)('%s on %s has a contrast ratio of at least 4.5', (fg, bg) => {
+      expect(contrast(p[fg], p[bg])).toBeGreaterThanOrEqual(4.5);
+    });
+  });
 
-  it('onBrand on brand has a contrast ratio of at least 4.5', () => {
-    expect(contrast(colors.onBrand, colors.brand)).toBeGreaterThanOrEqual(4.5);
+  it('never uses green as text on white or canvas in light mode', () => {
+    const text = new Set(textOn.filter(([, bg]) => bg === 'canvas' || bg === 'surface').map(([fg]) => fg));
+    for (const fg of text) expect(lightPalette[fg]).not.toBe(lightPalette.green);
   });
 
   it('computes contrast correctly (black on white is 21)', () => {
@@ -114,16 +204,28 @@ describe('kit colour tokens (A12)', () => {
   }
 });
 
-describe('type scale', () => {
-  it('matches the design brief', () => {
+describe('type scale (spec 15 section 0.3)', () => {
+  it('uses Cairo for headings and numbers, Inter for everything else', () => {
     expect(type).toEqual({
-      display: { fontSize: 28, lineHeight: 34, fontFamily: 'Inter_700Bold' },
-      title: { fontSize: 22, lineHeight: 28, fontFamily: 'Inter_700Bold' },
+      display: { fontSize: 28, lineHeight: 38, fontFamily: 'Cairo_700Bold' },
+      title: { fontSize: 22, lineHeight: 30, fontFamily: 'Cairo_700Bold' },
+      number: { fontSize: 22, lineHeight: 30, fontFamily: 'Cairo_700Bold' },
       headline: { fontSize: 17, lineHeight: 22, fontFamily: 'Inter_600SemiBold' },
-      body: { fontSize: 15, lineHeight: 20, fontFamily: 'Inter_400Regular' },
-      callout: { fontSize: 13, lineHeight: 18, fontFamily: 'Inter_500Medium' },
-      caption: { fontSize: 12, lineHeight: 16, fontFamily: 'Inter_500Medium' },
+      body: { fontSize: 16, lineHeight: 22, fontFamily: 'Inter_400Regular' },
+      callout: { fontSize: 14, lineHeight: 20, fontFamily: 'Inter_500Medium' },
+      caption: { fontSize: 13, lineHeight: 18, fontFamily: 'Inter_500Medium' },
     });
+  });
+
+  it('has a dyslexia-friendly family (Lexend, SIL Open Font License 1.1) with every weight', () => {
+    expect(Object.keys(fontFamilies.lexend)).toEqual(Object.keys(fontFamilies.inter));
+    expect(Object.values(fontFamilies.lexend).every((f) => f.startsWith('Lexend_'))).toBe(true);
+  });
+
+  it('Archivo Black is gone', () => {
+    const pkg = fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8');
+    expect(pkg).not.toMatch(/archivo/i);
+    expect(JSON.stringify(fontFamilies)).not.toMatch(/archivo/i);
   });
 });
 

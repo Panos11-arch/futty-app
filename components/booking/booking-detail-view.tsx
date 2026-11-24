@@ -5,7 +5,7 @@
 // countdown, and a cancel that shows exactly what happens to the money
 // before a second tap confirms it.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   Banner,
@@ -23,7 +23,8 @@ import {
 import { GipedoPanel } from '@/components/booking/gipedo-panel';
 import { NoOpponentPanel } from '@/components/booking/no-opponent-panel';
 import { SwitchFormat } from '@/components/booking/switch-format';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { CancellationQuote } from '@/lib/booking-actions';
 import {
   acceptedVenuePlayers,
@@ -108,6 +109,7 @@ const PILL_FOR_BOOKING: Record<string, 'confirmed' | 'pending'> = {
 };
 
 export function BookingDetailView(props: BookingDetailViewProps) {
+  const styles = useStyles();
   const { state } = props;
   if (state.status === 'loading') {
     return (
@@ -162,6 +164,7 @@ function BookingDetailReady({
   onLosersPay,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
+  const styles = useStyles();
   const clock = useNow(15_000);
   const now = nowOverride ?? clock;
   const { booking, venue, me, roster, is_booker: isBooker } = detail;
@@ -632,7 +635,7 @@ function BookingDetailReady({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
@@ -642,4 +645,4 @@ const styles = StyleSheet.create({
   // The quote's lines share one View (for its testID), spaced as the sheet
   // spaces its content (components/ui/sheet.tsx, content).
   quoteLines: { gap: space.md },
-});
+}));

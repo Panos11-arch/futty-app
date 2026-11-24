@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { ScrollView, Share, StyleSheet, View } from 'react-native';
+import { ScrollView, Share, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
 import { useProfile } from '@/lib/use-profile';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 /** The account menu (opened from the person icon in Home's header, separate
  *  from the bell). Deliberately flat: every leaf here is one tap from this
@@ -13,6 +14,7 @@ import { colors, space } from '@/constants/futty-theme';
  *  AGENTS.md's "avoid nested menus deeper than what's specified" rule this
  *  hierarchy was written against. */
 export default function AccountMenuScreen() {
+  const styles = useStyles();
   const { signOut } = useAuth();
   const profile = useProfile();
 
@@ -72,7 +74,7 @@ export default function AccountMenuScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: {
     flex: 1,
     backgroundColor: colors.canvas,
@@ -85,4 +87,4 @@ const styles = StyleSheet.create({
   logoutSection: {
     marginTop: space.lg,
   },
-});
+}));

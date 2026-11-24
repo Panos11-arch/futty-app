@@ -28,13 +28,16 @@ exports[`Squads empty 1`] = `
         accessibilityLabel="Posts"
         accessibilityRole="tablist"
         style={
-          {
-            "backgroundColor": "#F4F5F7",
-            "borderRadius": 10,
-            "flexDirection": "row",
-            "gap": 4,
-            "padding": 4,
-          }
+          [
+            {
+              "backgroundColor": "#F1F3F5",
+              "borderRadius": 12,
+              "flexDirection": "row",
+              "gap": 4,
+              "padding": 4,
+            },
+            false,
+          ]
         }
       >
         <View
@@ -80,21 +83,22 @@ exports[`Squads empty 1`] = `
                 "paddingHorizontal": 8,
               },
               {
-                "backgroundColor": "#E7F1EC",
+                "backgroundColor": "#FFFFFF",
               },
             ]
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#0B1215",
                 },
                 false,
                 {
@@ -153,15 +157,16 @@ exports[`Squads empty 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0B1215",
+                  "color": "#5B6470",
                 },
                 false,
                 {
@@ -192,12 +197,13 @@ exports[`Squads empty 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -245,13 +251,16 @@ exports[`Squads loading 1`] = `
         accessibilityLabel="Posts"
         accessibilityRole="tablist"
         style={
-          {
-            "backgroundColor": "#F4F5F7",
-            "borderRadius": 10,
-            "flexDirection": "row",
-            "gap": 4,
-            "padding": 4,
-          }
+          [
+            {
+              "backgroundColor": "#F1F3F5",
+              "borderRadius": 12,
+              "flexDirection": "row",
+              "gap": 4,
+              "padding": 4,
+            },
+            false,
+          ]
         }
       >
         <View
@@ -297,21 +306,22 @@ exports[`Squads loading 1`] = `
                 "paddingHorizontal": 8,
               },
               {
-                "backgroundColor": "#E7F1EC",
+                "backgroundColor": "#FFFFFF",
               },
             ]
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#0B1215",
                 },
                 false,
                 {
@@ -370,15 +380,16 @@ exports[`Squads loading 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0B1215",
+                  "color": "#5B6470",
                 },
                 false,
                 {
@@ -396,9 +407,12 @@ exports[`Squads loading 1`] = `
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -420,13 +434,13 @@ exports[`Squads loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "100%",
                 },
               ]
@@ -437,13 +451,13 @@ exports[`Squads loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "100%",
                 },
               ]
@@ -454,13 +468,13 @@ exports[`Squads loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "100%",
                 },
               ]
@@ -471,13 +485,13 @@ exports[`Squads loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "60%",
                 },
               ]
@@ -519,13 +533,16 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
         accessibilityLabel="Posts"
         accessibilityRole="tablist"
         style={
-          {
-            "backgroundColor": "#F4F5F7",
-            "borderRadius": 10,
-            "flexDirection": "row",
-            "gap": 4,
-            "padding": 4,
-          }
+          [
+            {
+              "backgroundColor": "#F1F3F5",
+              "borderRadius": 12,
+              "flexDirection": "row",
+              "gap": 4,
+              "padding": 4,
+            },
+            false,
+          ]
         }
       >
         <View
@@ -575,15 +592,16 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0B1215",
+                  "color": "#5B6470",
                 },
                 false,
                 {
@@ -638,21 +656,22 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
                 "paddingHorizontal": 8,
               },
               {
-                "backgroundColor": "#E7F1EC",
+                "backgroundColor": "#FFFFFF",
               },
             ]
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#0B1215",
                 },
                 false,
                 {
@@ -670,9 +689,12 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -701,6 +723,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -730,12 +753,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 12,
-                      "lineHeight": 16,
+                      "fontSize": 13,
+                      "lineHeight": 18,
                     },
                     {
                       "color": "#0B1215",
@@ -750,12 +774,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
             </View>
           </View>
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
                   "color": "#5B6470",
@@ -789,7 +814,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -798,12 +823,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -820,12 +846,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               Arena
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -845,7 +872,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -854,12 +881,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -876,12 +904,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               Fri 20 Nov · 20:00
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -901,7 +930,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -910,12 +939,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -932,12 +962,13 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               Open
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -988,14 +1019,14 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
                 "paddingVertical": 8,
               },
               {
-                "backgroundColor": "#0E5A3A",
+                "backgroundColor": "#00FF9C",
               },
               false,
               false,
@@ -1005,6 +1036,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1013,7 +1045,7 @@ exports[`Squads need opposition: offer with a chosen team calls the same functio
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#03140C",
                 },
                 false,
                 {
@@ -1059,13 +1091,16 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
         accessibilityLabel="Posts"
         accessibilityRole="tablist"
         style={
-          {
-            "backgroundColor": "#F4F5F7",
-            "borderRadius": 10,
-            "flexDirection": "row",
-            "gap": 4,
-            "padding": 4,
-          }
+          [
+            {
+              "backgroundColor": "#F1F3F5",
+              "borderRadius": 12,
+              "flexDirection": "row",
+              "gap": 4,
+              "padding": 4,
+            },
+            false,
+          ]
         }
       >
         <View
@@ -1111,21 +1146,22 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
                 "paddingHorizontal": 8,
               },
               {
-                "backgroundColor": "#E7F1EC",
+                "backgroundColor": "#FFFFFF",
               },
             ]
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#0B1215",
                 },
                 false,
                 {
@@ -1184,15 +1220,16 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
-                  "color": "#0B1215",
+                  "color": "#5B6470",
                 },
                 false,
                 {
@@ -1210,9 +1247,12 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -1231,6 +1271,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1249,12 +1290,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
             Arena
           </Text>
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
                   "color": "#5B6470",
@@ -1286,7 +1328,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -1295,12 +1337,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1317,12 +1360,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               Fri 20 Nov · 20:00
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -1342,7 +1386,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -1351,12 +1395,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1373,12 +1418,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               3
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -1398,7 +1444,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               {
                 "alignItems": "center",
                 "backgroundColor": "#F4F5F7",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "flexGrow": 1,
                 "minWidth": 80,
                 "paddingHorizontal": 12,
@@ -1407,12 +1453,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1429,12 +1476,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               2
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -1468,12 +1516,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1488,12 +1537,13 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               Ann
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -1544,14 +1594,14 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
                 "paddingVertical": 8,
               },
               {
-                "backgroundColor": "#0E5A3A",
+                "backgroundColor": "#00FF9C",
               },
               false,
               false,
@@ -1561,6 +1611,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1569,7 +1620,7 @@ exports[`Squads need players: a Card with venue, time, format, level, spots left
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#03140C",
                 },
                 false,
                 {

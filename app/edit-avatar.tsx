@@ -17,7 +17,8 @@ import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, KIT_COLOUR_NAMES, kitColours, radius, space, type KitColourName } from '@/constants/futty-theme';
+import { KIT_COLOUR_NAMES, kitColours, radius, space, type KitColourName } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import {
   avatarKit,
   clampShirtNumber,
@@ -47,6 +48,7 @@ const COLOUR_LABELS: Record<KitColourName, string> = {
 };
 
 function Editor({ profile }: { profile: Profile }) {
+  const styles = useStyles();
   const saved = avatarKit(profile);
   const name = profile.full_name || profile.username || 'Player';
   const [style, setStyle] = useState<AvatarStyle>(saved ? 'kit' : 'initials');
@@ -146,6 +148,7 @@ function Editor({ profile }: { profile: Profile }) {
 }
 
 export default function EditAvatarScreen() {
+  const styles = useStyles();
   const profile = useProfile();
 
   let body;
@@ -191,7 +194,7 @@ export default function EditAvatarScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   preview: { alignItems: 'center', gap: space.md },
@@ -206,7 +209,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swatchRingSelected: { borderColor: colors.brand },
+  swatchRingSelected: { borderColor: colors.positive },
   swatch: {
     width: SWATCH_SIZE,
     height: SWATCH_SIZE,
@@ -216,4 +219,4 @@ const styles = StyleSheet.create({
   },
   numberRow: { flexDirection: 'row', alignItems: 'flex-end', gap: space.sm },
   numberField: { flex: 1 },
-});
+}));

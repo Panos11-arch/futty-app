@@ -1,10 +1,11 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { SavedSearchForm } from '@/components/booking/saved-search-form';
 import { EmptyState, SkeletonBlock } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { fetchSearchOptions, useLoad } from '@/lib/booking-search';
 import { createSavedSearch, draftFromSearch, fetchSearchPlaces, type SavedSearchDraft } from '@/lib/saved-searches';
 import { useRules } from '@/lib/use-rules';
@@ -12,6 +13,7 @@ import { useRules } from '@/lib/use-rules';
 /** Save a search (decided 18 November), prefilled from Book a pitch. */
 export default function SaveSearchScreen() {
   // The limit in the refusal's words comes from the rules.
+  const styles = useStyles();
   useRules();
   const params = useLocalSearchParams<{ day?: string; start?: string; minutes?: string; format?: string }>();
   const options = useLoad('options', fetchSearchOptions);
@@ -76,6 +78,6 @@ export default function SaveSearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas, padding: space.lg },
-});
+}));

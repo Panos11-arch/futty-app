@@ -5,7 +5,7 @@
 // venue_free_pitches; credit from booking_quote), shown as it is. The player
 // only chooses; the app never sends a price.
 import { type ReactNode, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
 
 import { ChoiceCard, PitchRow } from '@/components/booking/checkout-choice';
 import {
@@ -28,7 +28,8 @@ import {
   StickyActionBar,
   Text,
 } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { timeToMin } from '@/lib/booking';
 import type { PaymentMode } from '@/lib/booking-actions';
 import type { PayOptions } from '@/lib/booking-checkout';
@@ -111,6 +112,7 @@ const WAYS: { way: WayToPay; title: string; testID: string }[] = [
 ];
 
 export function CheckoutView(props: CheckoutViewProps) {
+  const styles = useStyles();
   const { quote } = props;
   if (quote.status === 'loading') {
     return (
@@ -146,6 +148,8 @@ function CheckoutReady({
   now: nowOverride,
   weather,
 }: Omit<CheckoutViewProps, 'quote'> & { data: CheckoutData }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { quote } = data;
   const clock = useNow();
   const now = nowOverride ?? clock;
@@ -409,7 +413,7 @@ function CheckoutReady({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   header: { gap: space.xs },
@@ -420,4 +424,4 @@ const styles = StyleSheet.create({
   switchLabel: { flex: 1 },
   cancelRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   cancelLine: { flex: 1 },
-});
+}));

@@ -1,11 +1,13 @@
 import { Link } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 export default function ModalScreen() {
+  const styles = useStyles();
   return (
     <View style={styles.container}>
       <Text variant="title" accessibilityRole="header">
@@ -20,7 +22,7 @@ export default function ModalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   container: {
     flex: 1,
     alignItems: 'center',
@@ -33,4 +35,4 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
     paddingVertical: space.md,
   },
-});
+}));

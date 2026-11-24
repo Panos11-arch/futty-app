@@ -1,25 +1,31 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { Banner, type BannerTone } from '@/components/ui/banner';
-import { flatStyle } from '@/components/ui/test-utils';
-import { colors } from '@/constants/futty-theme';
+import { flatStyle, withTheme } from '@/components/ui/test-utils';
+import { colors, darkPalette } from '@/constants/futty-theme';
 
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-const tones: [BannerTone, string][] = [
-  ['info', colors.ink],
-  ['warning', colors.warning],
-  ['danger', colors.danger],
+const tones: [BannerTone, string, string][] = [
+  ['info', colors.info, colors.infoLight],
+  ['warning', colors.warning, colors.warningLight],
+  ['danger', colors.danger, colors.dangerLight],
 ];
 
 describe('Banner', () => {
-  it.each(tones)('renders %s with its tone in the title, not as a fill', async (tone, color) => {
+  it.each(tones)('renders %s as a tinted panel with its tone in the title and border', async (tone, color, fill) => {
     await render(<Banner tone={tone} title="Heads up" message="Rain expected at 20:00" />);
     expect(flatStyle(screen.getByText('Heads up')).color).toBe(color);
-    expect(screen.getByText('Rain expected at 20:00')).toBeTruthy();
-    expect(flatStyle(screen.getByTestId('banner')).backgroundColor).toBe(colors.surface);
+    expect(flatStyle(screen.getByText('Rain expected at 20:00')).color).toBe(colors.ink);
+    expect(flatStyle(screen.getByTestId('banner'))).toMatchObject({ backgroundColor: fill, borderColor: color });
+  });
+
+  it('uses the dark tints in dark mode', async () => {
+    await render(withTheme(<Banner tone="warning" title="Heads up" message="Rain" />, { appearance: 'dark' }));
+    expect(flatStyle(screen.getByTestId('banner')).backgroundColor).toBe(darkPalette.warningLight);
+    expect(flatStyle(screen.getByText('Heads up')).color).toBe(darkPalette.warning);
   });
 
   it('runs its optional action', async () => {

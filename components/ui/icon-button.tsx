@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 
 import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { colors, radius } from '@/constants/futty-theme';
+import { radius } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 
 export type IconButtonProps = {
   icon: IconSymbolName;
@@ -24,6 +25,8 @@ export function IconButton({
   disabled = false,
   testID,
 }: IconButtonProps) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   if (!accessibilityLabel?.trim()) {
     throw new Error('IconButton needs an accessibilityLabel');
   }
@@ -43,7 +46,7 @@ export function IconButton({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   base: {
     minWidth: MIN_TOUCH,
     minHeight: MIN_TOUCH,
@@ -53,4 +56,4 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: DISABLED_OPACITY },
   pressed: { backgroundColor: colors.canvas },
-});
+}));

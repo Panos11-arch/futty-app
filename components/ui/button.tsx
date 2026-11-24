@@ -1,17 +1,24 @@
-import * as Haptics from 'expo-haptics';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { DISABLED_OPACITY, MIN_TOUCH } from '@/components/ui/foundation';
-import { Text, type TextTone } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { Text, useToneColour, type TextTone } from '@/components/ui/text';
+import { radius, space, type ColorName } from '@/constants/futty-theme';
+import { haptic } from '@/lib/haptics';
+import { makeStyles } from '@/lib/theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'plain';
+/**
+ * primary: green with dark text, the one main action. dark: night fill.
+ * secondary: an outline. destructive: an outline with red text. plain: text only.
+ */
+export type ButtonVariant = 'primary' | 'dark' | 'secondary' | 'destructive' | 'plain';
 
 export type ButtonProps = {
   /** Says what happens: "Pay €6.80", "Cancel my spot". Not "Submit" or "OK". */
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
+  /** compact: a smaller button inside a row or card ("Play", "Log"). */
+  size?: 'regular' | 'compact';
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -19,40 +26,34 @@ export type ButtonProps = {
   testID?: string;
 };
 
-const looks: Record<ButtonVariant, { tone: TextTone; container: object }> = {
-  primary: { tone: 'onBrand', container: { backgroundColor: colors.brand } },
-  secondary: {
-    tone: 'ink',
-    container: { backgroundColor: colors.surface, borderWidth: hairline, borderColor: colors.border },
-  },
-  destructive: {
-    tone: 'danger',
-    container: { backgroundColor: colors.surface, borderWidth: hairline, borderColor: colors.border },
-  },
-  plain: { tone: 'brand', container: { backgroundColor: 'transparent' } },
+const looks: Record<ButtonVariant, { tone: TextTone; fill?: ColorName; border?: ColorName }> = {
+  primary: { tone: 'greenInk', fill: 'green' },
+  dark: { tone: 'onNight', fill: 'night' },
+  secondary: { tone: 'ink', fill: 'surface', border: 'border' },
+  destructive: { tone: 'danger', fill: 'surface', border: 'border' },
+  plain: { tone: 'positive' },
 };
 
-/** Light haptic tap; never lets a haptics failure block the action. */
+/** Light haptic tap; respects the Haptics setting and never blocks the action. */
 export function tapHaptic() {
-  try {
-    void Promise.resolve(Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)).catch(() => {});
-  } catch {
-    // Haptics unavailable: the action still runs.
-  }
+  haptic.tap();
 }
 
 export function Button({
   label,
   onPress,
   variant = 'primary',
+  size = 'regular',
   loading = false,
   disabled = false,
   fullWidth = false,
   accessibilityHint,
   testID,
 }: ButtonProps) {
+  const styles = useStyles();
   const inactive = loading || disabled;
   const look = looks[variant];
+  const spinner = useToneColour(look.tone);
 
   const handlePress = () => {
     if (inactive) return;
@@ -71,18 +72,18 @@ export function Button({
       onPress={handlePress}
       style={({ pressed }) => [
         styles.base,
-        look.container,
-        variant === 'plain' && styles.plain,
+        styles[variant],
+        size === 'compact' && styles.compact,
         fullWidth && styles.fullWidth,
         disabled && !loading && styles.disabled,
         pressed && styles.pressed,
       ]}>
       {loading ? (
         <View style={styles.spinnerRow}>
-          <ActivityIndicator testID="button-spinner" color={colors[look.tone]} />
+          <ActivityIndicator testID="button-spinner" color={spinner} />
         </View>
       ) : (
-        <Text variant="headline" tone={look.tone} style={styles.label}>
+        <Text variant={size === 'compact' ? 'callout' : 'headline'} tone={look.tone} style={styles.label}>
           {label}
         </Text>
       )}
@@ -90,20 +91,34 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: space.lg,
-    paddingVertical: space.sm,
-    borderRadius: radius.control,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
-  plain: { paddingHorizontal: space.sm },
-  fullWidth: { alignSelf: 'stretch' },
-  disabled: { opacity: DISABLED_OPACITY },
-  pressed: { opacity: 0.8 },
-  spinnerRow: { flexDirection: 'row', alignItems: 'center' },
-  label: { textAlign: 'center' },
+const useStyles = makeStyles(({ colors, hairline }) => {
+  const fill = (v: ButtonVariant) => {
+    const look = looks[v];
+    return {
+      backgroundColor: look.fill ? colors[look.fill] : 'transparent',
+      ...(look.border ? { borderWidth: hairline * 2, borderColor: colors[look.border] } : {}),
+    };
+  };
+  return {
+    base: {
+      minHeight: MIN_TOUCH,
+      paddingHorizontal: space.lg,
+      paddingVertical: space.sm,
+      borderRadius: radius.control,
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'flex-start',
+    },
+    primary: fill('primary'),
+    dark: fill('dark'),
+    secondary: fill('secondary'),
+    destructive: fill('destructive'),
+    plain: { ...fill('plain'), paddingHorizontal: space.sm },
+    compact: { paddingHorizontal: space.md, borderRadius: radius.chip },
+    fullWidth: { alignSelf: 'stretch' },
+    disabled: { opacity: DISABLED_OPACITY },
+    pressed: { opacity: 0.8 },
+    spinnerRow: { flexDirection: 'row', alignItems: 'center' },
+    label: { textAlign: 'center' },
+  };
 });

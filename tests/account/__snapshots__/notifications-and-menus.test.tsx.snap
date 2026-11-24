@@ -36,7 +36,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -100,12 +100,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -189,12 +190,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -232,6 +234,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -257,7 +260,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -321,12 +324,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -410,12 +414,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -499,12 +504,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -588,12 +594,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -677,12 +684,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -766,12 +774,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -809,6 +818,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -834,7 +844,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -898,12 +908,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -941,6 +952,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -966,7 +978,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -1030,12 +1042,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1119,12 +1132,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1162,6 +1176,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1187,7 +1202,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderRadius": 12,
+              "borderRadius": 16,
               "borderWidth": 0.5,
               "overflow": "hidden",
             }
@@ -1251,12 +1266,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1340,12 +1356,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -1383,7 +1400,7 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
               {
                 "backgroundColor": "#FFFFFF",
                 "borderColor": "#E4E7EB",
-                "borderRadius": 12,
+                "borderRadius": 16,
                 "borderWidth": 0.5,
                 "overflow": "hidden",
               }
@@ -1447,12 +1464,13 @@ exports[`Account menu grouped rows in sentence case, same targets 1`] = `
                 }
               >
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_400Regular",
-                        "fontSize": 15,
-                        "lineHeight": 20,
+                        "fontSize": 16,
+                        "lineHeight": 22,
                       },
                       {
                         "color": "#B42318",
@@ -1517,6 +1535,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1542,9 +1561,12 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderRadius": 12,
-                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 16,
+                "borderWidth": 1,
               },
+              false,
+              false,
               false,
               undefined,
             ]
@@ -1616,6 +1638,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                 }
               >
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
@@ -1634,12 +1657,13 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                   Title n1
                 </Text>
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_500Medium",
-                        "fontSize": 13,
-                        "lineHeight": 18,
+                        "fontSize": 14,
+                        "lineHeight": 20,
                       },
                       {
                         "color": "#5B6470",
@@ -1652,12 +1676,13 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                   Body n1
                 </Text>
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_500Medium",
-                        "fontSize": 12,
-                        "lineHeight": 16,
+                        "fontSize": 13,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5B6470",
@@ -1718,6 +1743,7 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
         >
           <Text
             accessibilityRole="header"
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -1743,9 +1769,12 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderRadius": 12,
-                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 16,
+                "borderWidth": 1,
               },
+              false,
+              false,
               false,
               undefined,
             ]
@@ -1817,12 +1846,13 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                 }
               >
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_400Regular",
-                        "fontSize": 15,
-                        "lineHeight": 20,
+                        "fontSize": 16,
+                        "lineHeight": 22,
                       },
                       {
                         "color": "#0B1215",
@@ -1835,12 +1865,13 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                   Title n2
                 </Text>
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_500Medium",
-                        "fontSize": 13,
-                        "lineHeight": 18,
+                        "fontSize": 14,
+                        "lineHeight": 20,
                       },
                       {
                         "color": "#5B6470",
@@ -1853,12 +1884,13 @@ exports[`Notifications rows with an unread dot, grouped Today / Earlier; a tap m
                   Body n2
                 </Text>
                 <Text
+                  maxFontSizeMultiplier={2}
                   style={
                     [
                       {
                         "fontFamily": "Inter_500Medium",
-                        "fontSize": 12,
-                        "lineHeight": 16,
+                        "fontSize": 13,
+                        "lineHeight": 18,
                       },
                       {
                         "color": "#5B6470",

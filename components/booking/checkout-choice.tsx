@@ -1,11 +1,12 @@
 // The Booking v2 payment sheet's big choices (04-payment-sheet: whole or
 // half pitch, the ways to pay) and its pitch rows (03-venue-book-tab). Every
 // price is the server's, passed in as words already.
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { DISABLED_OPACITY, MIN_TOUCH } from '@/components/ui/foundation';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 /** The selected border is thicker so the choice reads without colour. */
 const SELECTED_BORDER = 2;
@@ -24,6 +25,7 @@ export type ChoiceCardProps = {
 
 /** One of two big choices side by side: a title, its price, one line. */
 export function ChoiceCard({ title, line, price, selected, locked = false, onPress, testID }: ChoiceCardProps) {
+  const styles = useStyles();
   return (
     <Pressable
       testID={testID}
@@ -59,6 +61,7 @@ export type PitchRowProps = {
 
 /** A free pitch: its venue name, indoor or outdoor and surface, the server's price. */
 export function PitchRow({ label, details, price, selected, locked = false, onPress, testID }: PitchRowProps) {
+  const styles = useStyles();
   return (
     <Pressable
       testID={testID}
@@ -84,7 +87,7 @@ export function PitchRow({ label, details, price, selected, locked = false, onPr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   card: {
     flex: 1,
     minHeight: MIN_TOUCH,
@@ -110,4 +113,4 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: space.xs },
   selected: { borderWidth: SELECTED_BORDER, borderColor: colors.brand, backgroundColor: colors.brandSoft },
   locked: { opacity: DISABLED_OPACITY },
-});
+}));

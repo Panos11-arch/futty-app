@@ -2,10 +2,11 @@
 // debt and venue credit"): each debt with who it's owed to, each payment to
 // finish, and credit per venue with its expiry. Every amount is
 // my_owed's or my_credit's, shown as it is: paying a debt adds no fee.
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { Banner, Button, Card, EmptyState, SectionHeader, SkeletonBlock, SkeletonText, Text } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { LoadState } from '@/lib/booking-search';
 import { formatEuros } from '@/lib/money/format';
 import {
@@ -37,6 +38,7 @@ export type OwedViewProps = {
 };
 
 export function OwedView(props: OwedViewProps) {
+  const styles = useStyles();
   const { message } = props;
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -48,6 +50,7 @@ export function OwedView(props: OwedViewProps) {
 }
 
 function OwedSections({ owed, onRetryOwed, onPay, payingKey }: OwedViewProps) {
+  const styles = useStyles();
   if (owed.status === 'loading') {
     return (
       <View testID="owed-skeleton" style={styles.section}>
@@ -154,6 +157,7 @@ function OwedSections({ owed, onRetryOwed, onPay, payingKey }: OwedViewProps) {
 }
 
 function CreditSection({ credit, onRetry }: { credit: LoadState<VenueCredit[]>; onRetry: () => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.section}>
       <SectionHeader title="Your credit" />
@@ -199,11 +203,11 @@ function CreditSection({ credit, onRetry }: { credit: LoadState<VenueCredit[]>; 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
   card: { gap: space.md },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   titleText: { flex: 1, gap: space.xs },
-});
+}));

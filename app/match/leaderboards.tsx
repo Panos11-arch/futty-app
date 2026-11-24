@@ -4,7 +4,7 @@
 // (from the server) are listed; ranks come from the server.
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LeaderboardList } from '@/components/match/leaderboard-list';
@@ -14,7 +14,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { cyprusYear, defaultScope, type LeaderboardBoard, type LeaderboardScope } from '@/lib/match/stats-api';
 import { useLeaderboard, useLeaderboardScopes } from '@/lib/match/use-stats';
 import { useProfile } from '@/lib/use-profile';
@@ -28,6 +29,7 @@ const BOARDS: { value: LeaderboardBoard; label: string }[] = [
 const scopeId = (s: LeaderboardScope) => `${s.scope}|${s.scope_key}`;
 
 export default function LeaderboardsScreen() {
+  const styles = useStyles();
   const year = cyprusYear();
   const profile = useProfile();
   const scopes = useLeaderboardScopes(year);
@@ -89,8 +91,8 @@ export default function LeaderboardsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.lg, paddingBottom: space.xxl },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

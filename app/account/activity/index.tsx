@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Fragment } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
@@ -10,7 +10,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatMatchDate } from '@/lib/match/format';
 import { useRecentResults } from '@/lib/use-recent-results';
 
@@ -21,6 +22,7 @@ function formatResultDate(iso: string) {
 }
 
 export default function ActivityScreen() {
+  const styles = useStyles();
   const recentResults = useRecentResults();
 
   return (
@@ -74,10 +76,10 @@ export default function ActivityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   section: { gap: space.sm },
   resultRow: { gap: 2, paddingHorizontal: space.lg, paddingVertical: space.md },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

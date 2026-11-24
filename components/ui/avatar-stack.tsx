@@ -1,8 +1,9 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { AvatarKit } from '@/lib/avatar';
 
 export type AvatarStackPerson = { id: string; name: string; photoUrl?: string | null; kit?: AvatarKit | null };
@@ -15,6 +16,7 @@ export type AvatarStackProps = {
 };
 
 export function AvatarStack({ people, max = 4, size = 32 }: AvatarStackProps) {
+  const styles = useStyles();
   const shown = people.slice(0, max);
   const overflow = people.length - shown.length;
   const label = `${people.length} ${people.length === 1 ? 'player' : 'players'}`;
@@ -36,7 +38,7 @@ export function AvatarStack({ people, max = 4, size = 32 }: AvatarStackProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   row: { flexDirection: 'row', alignItems: 'center' },
   overlap: { marginLeft: -space.sm },
   overflow: {
@@ -48,4 +50,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

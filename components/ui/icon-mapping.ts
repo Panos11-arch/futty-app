@@ -58,6 +58,8 @@ export const MAPPING = {
   'questionmark.circle.fill': 'help',
   'info.circle.fill': 'info',
   'gearshape.fill': 'settings',
+  'circle.lefthalf.filled': 'contrast',
+  accessibility: 'accessibility',
   'square.and.arrow.up': 'ios-share',
   'crown.fill': 'workspace-premium',
   'checkmark': 'check',

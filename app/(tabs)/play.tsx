@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { parsePlaySegment, PLAY_SEGMENTS, type PlaySegment } from '@/lib/play-segments';
 
 import { PreviousGamesList } from '../previous-games';
@@ -23,6 +24,7 @@ function withSegment(opened: ReadonlySet<PlaySegment>, segment: PlaySegment) {
 
 /** Fixtures still to play and past games to log, in one scroller. */
 function MatchesContent() {
+  const styles = useStyles();
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.matches}>
       <SectionHeader title="Upcoming fixtures" />
@@ -40,6 +42,7 @@ function MatchesContent() {
  * Links to /team, /leagues and /community redirect here with ?segment=.
  */
 export default function PlayScreen() {
+  const styles = useStyles();
   const params = useLocalSearchParams<{ segment?: string; teamId?: string }>();
   const fromUrl = parsePlaySegment(params.segment);
   const [segment, setSegment] = useState<PlaySegment>(fromUrl);
@@ -93,7 +96,7 @@ export default function PlayScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   header: {
     paddingHorizontal: space.lg,
@@ -104,4 +107,4 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   hidden: { display: 'none' },
   matches: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
-});
+}));

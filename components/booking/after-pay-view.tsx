@@ -4,7 +4,7 @@
 // side A's captain's "Invite opposition" (players and teams, plus a
 // "Publish" switch); and "Publish game". Nothing here has an amount.
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, Switch, View } from 'react-native';
 
 import {
   Banner,
@@ -20,7 +20,8 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import type { BookingDetailData } from '@/lib/booking-detail';
 import type { TeamResult } from '@/lib/booking-opposition';
 import { slotLabel, type LoadState } from '@/lib/booking-search';
@@ -39,6 +40,7 @@ export type AfterPayViewProps = {
 };
 
 export function AfterPayView(props: AfterPayViewProps) {
+  const styles = useStyles();
   const { state } = props;
   if (state.status === 'loading') {
     return (
@@ -74,6 +76,8 @@ function PublishSwitch({
   initial: boolean;
   onChange: (on: boolean) => Promise<string | null>;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [on, setOn] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +129,7 @@ function AfterPayReady({
   onPublishGame,
   onDone,
 }: Omit<AfterPayViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
+  const styles = useStyles();
   const { booking, venue } = detail;
   const v2 = detail.v2 ?? null;
   const half = v2?.kind === 'half';
@@ -340,7 +345,7 @@ function AfterPayReady({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
@@ -350,4 +355,4 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-});
+}));

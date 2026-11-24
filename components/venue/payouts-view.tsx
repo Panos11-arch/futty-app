@@ -3,7 +3,7 @@
 // of payouts, and, for each, what each booking paid. Every amount is the
 // server's (lib/payouts.ts puts it into words).
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import {
   Banner,
@@ -17,7 +17,8 @@ import {
   StatusPill,
   Text,
 } from '@/components/ui';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { LoadState } from '@/lib/booking-search';
 import {
   accountWords,
@@ -46,6 +47,7 @@ export type PayoutsViewProps = {
 type Opened = { id: string; step: 'loading' } | { id: string; step: 'ready'; detail: PayoutDetail } | { id: string; step: 'error'; message: string };
 
 export function PayoutsView({ state, venueName, onRetry, onStripe, onOpenPayout }: PayoutsViewProps) {
+  const styles = useStyles();
   const [busy, setBusy] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -232,7 +234,7 @@ export function PayoutsView({ state, venueName, onRetry, onStripe, onOpenPayout 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.xl, paddingBottom: space.xxl },
   section: { gap: space.md },
@@ -240,4 +242,4 @@ const styles = StyleSheet.create({
   trailing: { alignItems: 'flex-end', gap: space.xs },
   booking: { gap: space.xs, paddingTop: space.md },
   line: { flexDirection: 'row', justifyContent: 'space-between', gap: space.md },
-});
+}));

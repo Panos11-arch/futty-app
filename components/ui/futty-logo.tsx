@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 import { useProfile } from '@/lib/use-profile';
 
 /** The same corner as the rounded square in logo-premium.png (scripts/logo/logo.ts). */
@@ -19,6 +20,7 @@ const PREMIUM = require('@/assets/images/logo-premium.png');
  * and keeps the last logo it showed while that refetch loads.
  */
 export function FuttyLogo({ size = space.xxl }: { size?: number }) {
+  const { colors } = useTheme();
   const profile = useProfile();
   const { reload } = profile;
   const [lastPremium, setLastPremium] = useState(false);

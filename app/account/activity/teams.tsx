@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { Fragment } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -9,10 +9,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useMyTeams } from '@/lib/use-my-teams';
 
 export default function TeamsScreen() {
+  const styles = useStyles();
   const myTeams = useMyTeams();
 
   return (
@@ -60,8 +62,8 @@ export default function TeamsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

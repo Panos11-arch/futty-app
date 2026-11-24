@@ -25,12 +25,13 @@ exports[`Matchmaking loading 1`] = `
   >
     <View>
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_500Medium",
-              "fontSize": 13,
-              "lineHeight": 18,
+              "fontSize": 14,
+              "lineHeight": 20,
             },
             {
               "color": "#5B6470",
@@ -47,9 +48,12 @@ exports[`Matchmaking loading 1`] = `
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -71,13 +75,13 @@ exports[`Matchmaking loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "100%",
                 },
               ]
@@ -88,13 +92,13 @@ exports[`Matchmaking loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "100%",
                 },
               ]
@@ -105,13 +109,13 @@ exports[`Matchmaking loading 1`] = `
             style={
               [
                 {
-                  "backgroundColor": "#E4E7EB",
+                  "backgroundColor": "#F1F3F5",
                 },
                 {
                   "borderRadius": 999,
                 },
                 {
-                  "height": 12,
+                  "height": 13.2,
                   "width": "60%",
                 },
               ]
@@ -150,12 +154,13 @@ exports[`Matchmaking not a captain 1`] = `
   >
     <View>
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_500Medium",
-              "fontSize": 13,
-              "lineHeight": 18,
+              "fontSize": 14,
+              "lineHeight": 20,
             },
             {
               "color": "#5B6470",
@@ -185,12 +190,13 @@ exports[`Matchmaking not a captain 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -235,12 +241,13 @@ exports[`Matchmaking nothing to schedule 1`] = `
   >
     <View>
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_500Medium",
-              "fontSize": 13,
-              "lineHeight": 18,
+              "fontSize": 14,
+              "lineHeight": 20,
             },
             {
               "color": "#5B6470",
@@ -270,12 +277,13 @@ exports[`Matchmaking nothing to schedule 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -321,12 +329,13 @@ exports[`Previous games empty 1`] = `
       />
     </View>
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
             "fontFamily": "Inter_400Regular",
-            "fontSize": 15,
-            "lineHeight": 20,
+            "fontSize": 16,
+            "lineHeight": 22,
           },
           {
             "color": "#5B6470",
@@ -357,9 +366,12 @@ exports[`Previous games loading 1`] = `
       [
         {
           "backgroundColor": "#FFFFFF",
-          "borderRadius": 12,
-          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          "borderColor": "#E4E7EB",
+          "borderRadius": 16,
+          "borderWidth": 1,
         },
+        false,
+        false,
         {
           "padding": 16,
         },
@@ -381,13 +393,13 @@ exports[`Previous games loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "100%",
             },
           ]
@@ -398,13 +410,13 @@ exports[`Previous games loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "100%",
             },
           ]
@@ -415,13 +427,13 @@ exports[`Previous games loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "60%",
             },
           ]
@@ -446,9 +458,12 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
       [
         {
           "backgroundColor": "#FFFFFF",
-          "borderRadius": 12,
-          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          "borderColor": "#E4E7EB",
+          "borderRadius": 16,
+          "borderWidth": 1,
         },
+        false,
+        false,
         false,
         undefined,
       ]
@@ -517,12 +532,13 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#0B1215",
@@ -535,12 +551,13 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
           Arena
         </Text>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -567,9 +584,12 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
       [
         {
           "backgroundColor": "#FFFFFF",
-          "borderRadius": 12,
-          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          "borderColor": "#E4E7EB",
+          "borderRadius": 16,
+          "borderWidth": 1,
         },
+        false,
+        false,
         {
           "padding": 16,
         },
@@ -585,12 +605,13 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
       }
     >
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
               "fontFamily": "Inter_500Medium",
-              "fontSize": 13,
-              "lineHeight": 18,
+              "fontSize": 14,
+              "lineHeight": 20,
             },
             {
               "color": "#0B1215",
@@ -633,12 +654,12 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
               {
                 "backgroundColor": "#FFFFFF",
                 "borderColor": "#E4E7EB",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "borderWidth": 1,
                 "color": "#0B1215",
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
                 "minHeight": 44,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -656,12 +677,13 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
           value=""
         />
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -684,12 +706,12 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
               {
                 "backgroundColor": "#FFFFFF",
                 "borderColor": "#E4E7EB",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "borderWidth": 1,
                 "color": "#0B1215",
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
                 "minHeight": 44,
                 "paddingHorizontal": 12,
                 "paddingVertical": 8,
@@ -743,14 +765,14 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
                 "paddingVertical": 8,
               },
               {
-                "backgroundColor": "#0E5A3A",
+                "backgroundColor": "#00FF9C",
               },
               false,
               false,
@@ -762,6 +784,7 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -770,7 +793,7 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#03140C",
                 },
                 false,
                 {
@@ -820,7 +843,7 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
             {
               "alignItems": "center",
               "alignSelf": "flex-start",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "justifyContent": "center",
               "minHeight": 44,
               "paddingHorizontal": 16,
@@ -829,7 +852,7 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderWidth": 0.5,
+              "borderWidth": 1,
             },
             false,
             false,
@@ -839,6 +862,7 @@ exports[`Previous games populated: a match opens the match screen, the rest keep
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -890,12 +914,13 @@ exports[`Upcoming fixtures empty 1`] = `
       />
     </View>
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
             "fontFamily": "Inter_400Regular",
-            "fontSize": 15,
-            "lineHeight": 20,
+            "fontSize": 16,
+            "lineHeight": 22,
           },
           {
             "color": "#5B6470",
@@ -926,9 +951,12 @@ exports[`Upcoming fixtures loading 1`] = `
       [
         {
           "backgroundColor": "#FFFFFF",
-          "borderRadius": 12,
-          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          "borderColor": "#E4E7EB",
+          "borderRadius": 16,
+          "borderWidth": 1,
         },
+        false,
+        false,
         {
           "padding": 16,
         },
@@ -950,13 +978,13 @@ exports[`Upcoming fixtures loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "100%",
             },
           ]
@@ -967,13 +995,13 @@ exports[`Upcoming fixtures loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "100%",
             },
           ]
@@ -984,13 +1012,13 @@ exports[`Upcoming fixtures loading 1`] = `
         style={
           [
             {
-              "backgroundColor": "#E4E7EB",
+              "backgroundColor": "#F1F3F5",
             },
             {
               "borderRadius": 999,
             },
             {
-              "height": 12,
+              "height": 13.2,
               "width": "60%",
             },
           ]
@@ -1015,9 +1043,12 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
       [
         {
           "backgroundColor": "#FFFFFF",
-          "borderRadius": 12,
-          "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+          "borderColor": "#E4E7EB",
+          "borderRadius": 16,
+          "borderWidth": 1,
         },
+        false,
+        false,
         {
           "padding": 16,
         },
@@ -1029,6 +1060,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
     testID="fixture-card"
   >
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
@@ -1049,12 +1081,13 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
       Lions
     </Text>
     <Text
+      maxFontSizeMultiplier={2}
       style={
         [
           {
             "fontFamily": "Inter_500Medium",
-            "fontSize": 13,
-            "lineHeight": 18,
+            "fontSize": 14,
+            "lineHeight": 20,
           },
           {
             "color": "#5B6470",
@@ -1107,7 +1140,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
           {
             "alignItems": "center",
             "alignSelf": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 12,
             "justifyContent": "center",
             "minHeight": 44,
             "paddingHorizontal": 16,
@@ -1116,7 +1149,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
           {
             "backgroundColor": "#FFFFFF",
             "borderColor": "#E4E7EB",
-            "borderWidth": 0.5,
+            "borderWidth": 1,
           },
           false,
           false,
@@ -1126,6 +1159,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
       }
     >
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
@@ -1190,7 +1224,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
             {
               "alignItems": "center",
               "alignSelf": "flex-start",
-              "borderRadius": 10,
+              "borderRadius": 12,
               "justifyContent": "center",
               "minHeight": 44,
               "paddingHorizontal": 16,
@@ -1199,7 +1233,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
             {
               "backgroundColor": "#FFFFFF",
               "borderColor": "#E4E7EB",
-              "borderWidth": 0.5,
+              "borderWidth": 1,
             },
             false,
             false,
@@ -1209,6 +1243,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -1267,7 +1302,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
           {
             "alignItems": "center",
             "alignSelf": "flex-start",
-            "borderRadius": 10,
+            "borderRadius": 12,
             "justifyContent": "center",
             "minHeight": 44,
             "paddingHorizontal": 16,
@@ -1275,10 +1310,9 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
           },
           {
             "backgroundColor": "transparent",
-          },
-          {
             "paddingHorizontal": 8,
           },
+          false,
           false,
           false,
           false,
@@ -1286,6 +1320,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
       }
     >
       <Text
+        maxFontSizeMultiplier={2}
         style={
           [
             {
@@ -1294,7 +1329,7 @@ exports[`Upcoming fixtures populated for a captain: same actions and targets 1`]
               "lineHeight": 22,
             },
             {
-              "color": "#0E5A3A",
+              "color": "#12804A",
             },
             false,
             {

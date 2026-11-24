@@ -5,7 +5,8 @@ import { PopupModal } from '@/components/popup-modal';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space, type } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { COUNTRIES, type Country } from '@/lib/countries';
 
 /** Dial-code picker + national number field, replacing a plain free-text
@@ -23,6 +24,8 @@ export function PhoneField({
   onChangeCountry: (country: Country) => void;
   onChangeNational: (national: string) => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
@@ -76,7 +79,7 @@ export function PhoneField({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, type }) => ({
   row: { flexDirection: 'row', gap: space.sm },
   codePill: {
     flexDirection: 'row',
@@ -113,4 +116,4 @@ const styles = StyleSheet.create({
   },
   countryRowSelected: { backgroundColor: colors.brandSoft },
   countryName: { flex: 1 },
-});
+}));

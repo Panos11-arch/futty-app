@@ -1,6 +1,6 @@
 import { CustomerSheet } from '@stripe/stripe-react-native';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { createSetupIntent } from '@/lib/payments';
 
 /** Stripe's own CustomerSheet renders the actual list/add/remove-card UI —
@@ -18,6 +19,8 @@ import { createSetupIntent } from '@/lib/payments';
  *  sees raw card data. Uses the imperative CustomerSheet.initialize/present
  *  API (there's no useCustomerSheet hook in the installed SDK version). */
 export default function PaymentMethodsScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const [ready, setReady] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,10 +101,10 @@ export default function PaymentMethodsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { gap: space.lg, padding: space.lg },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   card: { gap: space.md },
-});
+}));

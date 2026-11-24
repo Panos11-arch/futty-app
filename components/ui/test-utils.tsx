@@ -50,3 +50,19 @@ export function iconSymbolMock() {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { IconSymbol: ({ name }: { name: string }) => <View testID={`icon-${name}`} /> };
 }
+
+/**
+ * Wraps a component in a theme built from these display settings, so a test
+ * can render it in dark mode, high contrast, colour-blind mode and so on:
+ *
+ *   await render(withTheme(<Button label="Pay" onPress={f} />, { appearance: 'dark' }));
+ */
+export function withTheme(
+  ui: import('react').ReactElement,
+  settings: Partial<import('@/lib/theme/build-theme').DisplaySettings> = {},
+) {
+  const { TestThemeProvider } = jest.requireActual<typeof import('@/lib/theme/theme-provider')>(
+    '@/lib/theme/theme-provider',
+  );
+  return <TestThemeProvider settings={settings}>{ui}</TestThemeProvider>;
+}

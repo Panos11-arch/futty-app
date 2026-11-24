@@ -1,8 +1,8 @@
 import { useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { colors } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 type NavigationLike = {
   getParent: () => { navigate: (name: string) => void } | undefined;
@@ -31,6 +31,7 @@ type TabsNavigation = NavigationLike & {
  * returns there just as before.
  */
 export default function BookTab() {
+  const styles = useStyles();
   const navigation = useNavigation() as unknown as TabsNavigation;
 
   useFocusEffect(
@@ -50,6 +51,6 @@ export default function BookTab() {
   return <View style={styles.screen} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
-});
+}));

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField } from '@/components/auth-form';
@@ -10,7 +10,8 @@ import { IconButton } from '@/components/ui/icon-button';
 import { SkeletonBlock } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import {
@@ -29,6 +30,7 @@ import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 /** Standard bubble: surface for the other captain, brandSoft for mine. */
 function MessageBubble({ message, mine }: { message: FixtureMessage; mine: boolean }) {
   // Cyprus time, whatever zone the phone is in.
+  const styles = useStyles();
   const time = new Date(message.created_at).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
@@ -54,6 +56,7 @@ function MessageBubble({ message, mine }: { message: FixtureMessage; mine: boole
 }
 
 export default function FixtureChatScreen() {
+  const styles = useStyles();
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
   const myCaptainTeamIds = useMyCaptainTeamIds();
   const { user } = useAuth();
@@ -256,7 +259,7 @@ export default function FixtureChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   header: {
@@ -295,4 +298,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   input: { flex: 1, maxHeight: 100 },
-});
+}));

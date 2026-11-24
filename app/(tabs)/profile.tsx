@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
@@ -14,7 +14,8 @@ import { FuttyLogo } from '@/components/ui/futty-logo';
 import { IconButton } from '@/components/ui/icon-button';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { avatarKit } from '@/lib/avatar';
 import { type Profile, useProfile } from '@/lib/use-profile';
@@ -28,6 +29,7 @@ import { type Profile, useProfile } from '@/lib/use-profile';
 const AVATAR_SIZE = space.xxl * 2 - space.sm;
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
+  const styles = useStyles();
   return (
     <View style={styles.statTile} accessible accessibilityLabel={`${label} ${value}`}>
       <Text variant="headline" tabular>
@@ -41,6 +43,7 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
 }
 
 export function ProfileCard({ profile, editable = true }: { profile: Profile; editable?: boolean }) {
+  const styles = useStyles();
   const name = profile.full_name || profile.username || 'Player';
   const winRate = profile.played > 0 ? Math.round((profile.won / profile.played) * 100) : 0;
 
@@ -88,6 +91,7 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
 }
 
 function ProfileStatus() {
+  const styles = useStyles();
   const profile = useProfile();
 
   // The Profile tab stays mounted in the background when navigating to Edit
@@ -176,6 +180,7 @@ function ProfileStatus() {
 }
 
 export default function ProfileScreen() {
+  const styles = useStyles();
   const { user, signOut } = useAuth();
 
   return (
@@ -203,7 +208,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   header: { gap: space.xs },
@@ -220,4 +225,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
     backgroundColor: colors.canvas,
   },
-});
+}));

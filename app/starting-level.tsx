@@ -2,15 +2,17 @@
 // 1f.2): opened once from Home after sign-up, and from Profile while the
 // player has no questionnaire level. Skip and Done both go back.
 import { router, Stack } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StartingLevelForm } from '@/components/match/starting-level-form';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
 export default function StartingLevelScreen() {
+  const styles = useStyles();
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <Stack.Screen options={{ title: 'Your level' }} />
@@ -21,7 +23,7 @@ export default function StartingLevelScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg },
-});
+}));

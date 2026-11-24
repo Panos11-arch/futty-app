@@ -1,7 +1,8 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Text, type TextTone } from '@/components/ui/text';
-import { colors, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 export type Status =
   | 'paid'
@@ -15,24 +16,32 @@ export type Status =
   | 'released'
   | 'refunded';
 
-/** Sentence-case label and tone. Status colours only ever appear as small pills or text. */
-const statuses: Record<Status, { label: string; tone: TextTone }> = {
-  paid: { label: 'Paid', tone: 'success' },
-  cash: { label: 'Cash', tone: 'inkMuted' },
-  unpaid: { label: 'Unpaid', tone: 'warning' },
-  debt: { label: 'Debt', tone: 'danger' },
-  confirmed: { label: 'Confirmed', tone: 'success' },
-  pending: { label: 'Pending', tone: 'warning' },
-  held: { label: 'Held', tone: 'inkMuted' },
-  charged: { label: 'Charged', tone: 'success' },
-  released: { label: 'Released', tone: 'inkMuted' },
-  refunded: { label: 'Refunded', tone: 'inkMuted' },
+type Fill = 'greenSoft' | 'warningLight' | 'dangerLight' | 'infoLight' | 'fill';
+type Look = { label: string; tone: TextTone; fill: Fill };
+
+const good = { tone: 'success', fill: 'greenSoft' } as const;
+const waiting = { tone: 'warning', fill: 'warningLight' } as const;
+const neutral = { tone: 'inkMuted', fill: 'fill' } as const;
+
+/** Sentence-case label, a tinted pill and darker text of the same tone. */
+const statuses: Record<Status, Look> = {
+  paid: { label: 'Paid', ...good },
+  cash: { label: 'Cash', ...neutral },
+  unpaid: { label: 'Unpaid', ...waiting },
+  debt: { label: 'Debt', tone: 'danger', fill: 'dangerLight' },
+  confirmed: { label: 'Confirmed', ...good },
+  pending: { label: 'Pending', ...waiting },
+  held: { label: 'Held', tone: 'info', fill: 'infoLight' },
+  charged: { label: 'Charged', ...good },
+  released: { label: 'Released', ...neutral },
+  refunded: { label: 'Refunded', ...neutral },
 };
 
 export function StatusPill({ status }: { status: Status }) {
-  const { label, tone } = statuses[status];
+  const styles = useStyles();
+  const { label, tone, fill } = statuses[status];
   return (
-    <View testID="status-pill" accessible accessibilityLabel={label} style={styles.pill}>
+    <View testID="status-pill" accessible accessibilityLabel={label} style={[styles.pill, styles[fill]]}>
       <Text variant="caption" tone={tone}>
         {label}
       </Text>
@@ -40,12 +49,16 @@ export function StatusPill({ status }: { status: Status }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   pill: {
     alignSelf: 'flex-start',
     paddingHorizontal: space.sm,
     paddingVertical: 2,
     borderRadius: radius.pill,
-    backgroundColor: colors.canvas,
   },
-});
+  greenSoft: { backgroundColor: colors.greenSoft },
+  warningLight: { backgroundColor: colors.warningLight },
+  dangerLight: { backgroundColor: colors.dangerLight },
+  infoLight: { backgroundColor: colors.infoLight },
+  fill: { backgroundColor: colors.fill },
+}));

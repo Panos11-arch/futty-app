@@ -6,13 +6,14 @@
 // answered, a button opens them.
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatLevel, startingLevelOffered, type PlayerLevel } from '@/lib/match/levels';
 import type { Loadable } from '@/lib/match/use-match-result';
 import { STARTING_LEVEL_ROUTE, usePlayerLevel } from '@/lib/match/use-levels';
@@ -27,6 +28,7 @@ export type PlayerLevelViewProps = {
 const openQuestions = () => router.push(STARTING_LEVEL_ROUTE);
 
 export function PlayerLevelView({ state, onRetry, own = false }: PlayerLevelViewProps) {
+  const styles = useStyles();
   if (state.status === 'loading') {
     return (
       <View testID="player-level-skeleton">
@@ -99,7 +101,7 @@ export function PlayerLevelSummary({ profileId, own = false }: { profileId: stri
   return <PlayerLevelView state={level} onRetry={reload} own={own} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   stack: { gap: space.xs },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
   tag: {
@@ -109,4 +111,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     paddingVertical: space.xs / 2,
   },
-});
+}));

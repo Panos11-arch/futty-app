@@ -70,9 +70,10 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the three journeys and their subflows', () => {
+  it('has the four journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
+      'flows/appearance.yaml',
       'flows/book-and-pay.yaml',
       'flows/cancel.yaml',
       'flows/sign-in.yaml',
@@ -93,7 +94,7 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }

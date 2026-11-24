@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { Text, type TextVariant } from '@/components/ui/text';
-import { colors, kitColours, radius } from '@/constants/futty-theme';
+import { kitColours, radius } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import type { AvatarKit } from '@/lib/avatar';
 
 /** "Andreas Georgiou" -> "AG"; first letters of the first two words. */
@@ -39,6 +40,8 @@ function numberVariant(size: number): TextVariant {
 }
 
 function KitShirt({ kit, size }: { kit: AvatarKit; size: number }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { shirt, label } = kitColours[kit.colour];
   // A white shirt needs an outline to show on the canvas background.
   const outlined = kit.colour === 'kitWhite';
@@ -64,6 +67,7 @@ function KitShirt({ kit, size }: { kit: AvatarKit; size: number }) {
 }
 
 export function Avatar({ name, photoUrl, kit, size = 40, ringed = false }: AvatarProps) {
+  const styles = useStyles();
   const box = [styles.circle, { width: size, height: size }, ringed && styles.ring];
   const label = kit ? `${name}, shirt ${kit.number}` : name;
   return (
@@ -81,7 +85,7 @@ export function Avatar({ name, photoUrl, kit, size = 40, ringed = false }: Avata
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   circle: {
     borderRadius: radius.pill,
     backgroundColor: colors.canvas,
@@ -92,4 +96,4 @@ const styles = StyleSheet.create({
   ring: { borderWidth: 2, borderColor: colors.surface },
   // The number sits on the shirt's chest, a little below the centre.
   number: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingTop: '18%' },
-});
+}));

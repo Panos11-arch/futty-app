@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
@@ -14,7 +14,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { MatchedContact, UnmatchedContact } from '@/lib/contacts';
 import { shareContactInvite } from '@/lib/invite';
 import { listTeams, type TeamListing } from '@/lib/community';
@@ -42,6 +43,7 @@ function PersonRow({
   actions: ReactNode;
   children?: ReactNode;
 }) {
+  const styles = useStyles();
   const main = (
     <>
       <Avatar name={name} />
@@ -110,6 +112,7 @@ function FollowButton({
  *  (supabase/moderation.sql): there's nothing to show back afterward beyond
  *  a plain confirmation. */
 function ContactModerationPanel({ playerId, blocks }: { playerId: string; blocks: ReturnType<typeof useBlocks> }) {
+  const styles = useStyles();
   const { user } = useAuth();
   const [reporting, setReporting] = useState(false);
   const [reported, setReported] = useState(false);
@@ -244,6 +247,7 @@ function UnmatchedContactRow({ contact }: { contact: UnmatchedContact }) {
 }
 
 function RowsSkeleton({ testID }: { testID: string }) {
+  const styles = useStyles();
   return (
     <View testID={testID} style={styles.list}>
       {[0, 1, 2].map((i) => (
@@ -262,6 +266,7 @@ function RowsSkeleton({ testID }: { testID: string }) {
  *  works the same way: read the phone's contacts, show who's already on the
  *  app so you can follow them, and let you invite whoever isn't. */
 function ContactsTab() {
+  const styles = useStyles();
   const contacts = useContacts();
   const follows = useFollows();
   const blocks = useBlocks();
@@ -333,6 +338,7 @@ function ContactsTab() {
 }
 
 function TeamsTab() {
+  const styles = useStyles();
   const [teams, setTeams] = useState<TeamListing[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const follows = useFollows();
@@ -384,6 +390,7 @@ function TeamsTab() {
 /** Contacts and teams, shown in Play's Community segment
  *  (app/(tabs)/play.tsx). Scrolls itself. */
 export function CommunityContent() {
+  const styles = useStyles();
   const [view, setView] = useState<CommunityView>('contacts');
   // Once a tab has been opened, its component stays mounted for the rest of
   // the screen's lifetime (toggled with display:none below) instead of
@@ -423,7 +430,7 @@ export default function CommunityRoute() {
   return <Redirect href={playHref('community')} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   hidden: { display: 'none' },
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
@@ -442,4 +449,4 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   buttonRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-});
+}));

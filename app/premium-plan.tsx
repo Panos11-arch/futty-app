@@ -1,7 +1,7 @@
 import { deepLinkToSubscriptions, ErrorCode, useIAP } from 'expo-iap';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Banner } from '@/components/ui/banner';
@@ -11,7 +11,8 @@ import { ICON } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { describeFunctionError } from '@/lib/edge-functions';
 import { syncPremiumIconAfterPurchase } from '@/lib/premium-icon';
 import {
@@ -60,6 +61,8 @@ const PLAN_COPY: Record<Plan, { title: string; perks: string[] }> = {
  *  one-time non-consumable purchases — see PLAN_COPY/useIAP config below for
  *  where that split actually matters. */
 export default function PremiumPlanScreen() {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const { plan: rawPlan, teamId } = useLocalSearchParams<{ plan: Plan; teamId?: string }>();
   const plan: Plan = openablePlan(rawPlan === 'team-9-a-side' || rawPlan === 'team-11-a-side' ? rawPlan : 'personal');
   const format = plan === 'team-9-a-side' ? '9-a-side' : plan === 'team-11-a-side' ? '11-a-side' : null;
@@ -246,7 +249,7 @@ export default function PremiumPlanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: space.sm },
@@ -255,4 +258,4 @@ const styles = StyleSheet.create({
   perks: { gap: space.md },
   perkRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   center: { alignItems: 'center' },
-});
+}));

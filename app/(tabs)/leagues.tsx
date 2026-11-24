@@ -1,7 +1,7 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { Chip } from '@/components/chip';
@@ -17,7 +17,8 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
-import { colors, hairline, space, type } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { CAPACITY_OPTIONS } from '@/lib/booking';
 import { canLogFixtureScore, formatFixtureWhen } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
@@ -65,6 +66,7 @@ function Note({ children }: { children: string }) {
 /** A league table. Rows whose team is in `highlightTeamIds` (the user's own
  *  teams) sit on brandSoft. */
 export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[]; highlightTeamIds: Set<string> }) {
+  const styles = useStyles();
   if (rows.length === 0) {
     return <Note>No teams registered yet.</Note>;
   }
@@ -118,6 +120,7 @@ export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[
 }
 
 function DivisionCard({ division, highlightTeamIds }: { division: League; highlightTeamIds: Set<string> }) {
+  const styles = useStyles();
   const standings = useLeagueStandings(division.id);
 
   return (
@@ -159,6 +162,8 @@ function JoinLeagueControl({
   defaultCity?: string;
   onJoined: () => void;
 }) {
+  const styles = useStyles();
+  const { colors } = useTheme();
   const myTeams = useMyTeams();
   const myProfile = useProfile();
 
@@ -438,6 +443,7 @@ function JoinLeagueControl({
  *  — the format/city pickers above only scope the standings view, so this
  *  stays a simple teaser rather than repeating the whole fixtures UI here. */
 function FixturesSection() {
+  const styles = useStyles();
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
 
@@ -508,6 +514,7 @@ function StandardLeagueSection({
   leagues: League[];
   myTeamIds: Set<string>;
 }) {
+  const styles = useStyles();
   const league = leagues.find((l) => l.format === format && l.scope === 'Island-wide');
   const standings = useLeagueStandings(league?.id ?? '');
 
@@ -560,6 +567,7 @@ function OpenLeagueSection({
   reloadLeagues: () => void;
   myTeamIds: Set<string>;
 }) {
+  const styles = useStyles();
   const hub = leagues.find((l) => l.format === format && l.scope === city && !l.parent_league_id);
   const standings = useLeagueStandings(hub?.id ?? '');
   const [busy, setBusy] = useState(false);
@@ -679,6 +687,7 @@ function OpenLeagueSection({
 /** Leagues, shown in Play's Leagues segment (app/(tabs)/play.tsx). Scrolls
  *  itself. */
 export function LeaguesContent() {
+  const styles = useStyles();
   const leaguesState = useLeagues();
   const [format, setFormat] = useState(FORMATS[0]);
   const [city, setCity] = useState(CITIES[0]);
@@ -760,7 +769,7 @@ export default function LeaguesRoute() {
   return <Redirect href={playHref('leagues')} />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, type }) => ({
   flex: { flex: 1 },
   content: { gap: space.xl, padding: space.lg, paddingBottom: space.xxl },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -779,4 +788,4 @@ const styles = StyleSheet.create({
   tableTeam: { flex: 1 },
   tableStat: { minWidth: space.xxl, textAlign: 'right' },
   tablePts: { fontFamily: type.title.fontFamily },
-});
+}));

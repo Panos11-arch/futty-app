@@ -1,11 +1,13 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 
 export default function PaymentsScreen() {
+  const styles = useStyles();
   return (
     <SafeAreaView style={styles.flex} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -31,7 +33,7 @@ export default function PaymentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   flex: {
     flex: 1,
     backgroundColor: colors.canvas,
@@ -40,4 +42,4 @@ const styles = StyleSheet.create({
     gap: space.xl,
     padding: space.lg,
   },
-});
+}));

@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileCard } from '@/app/(tabs)/profile';
@@ -8,7 +8,8 @@ import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { StreakBadges } from '@/components/stats/streak-badges';
 import { Banner } from '@/components/ui/banner';
 import { SkeletonText } from '@/components/ui/skeleton';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { getPublicProfile, publicProfileAsProfile, type PublicProfile } from '@/lib/use-profile';
 
@@ -22,6 +23,7 @@ type State = { status: 'loading' } | { status: 'error'; message: string } | { st
  *  it, the player's form and recent matches from the A3b views; "Players
  *  you play with most" shows only on the viewer's own profile. */
 export default function PlayerProfileScreen() {
+  const styles = useStyles();
   const { profileId } = useLocalSearchParams<{ profileId: string }>();
   const { user } = useAuth();
   const [state, setState] = useState<State>({ status: 'loading' });
@@ -72,7 +74,7 @@ export default function PlayerProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: {
     flex: 1,
@@ -81,4 +83,4 @@ const styles = StyleSheet.create({
     padding: space.lg,
     gap: space.xl,
   },
-});
+}));

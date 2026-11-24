@@ -1,9 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { formatEuros } from '@/lib/money/format';
 
 export type StickyActionBarProps = {
@@ -28,6 +29,7 @@ export function StickyActionBar({
   disabled,
   actionTestID,
 }: StickyActionBarProps) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   return (
     <View testID="sticky-action-bar" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, space.lg) }]}>
@@ -55,7 +57,7 @@ export function StickyActionBar({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -68,4 +70,4 @@ const styles = StyleSheet.create({
   },
   total: { gap: 2 },
   action: { flex: 1 },
-});
+}));

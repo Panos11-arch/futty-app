@@ -1,0 +1,52 @@
+# Journey d (S1): Settings → Appearance → Dark switches the whole app at once,
+# and Settings → Accessibility opens with its text size slider. Ends back on
+# System so the next run starts from the phone's own look. clearState on
+# sign-in wipes the stored settings anyway.
+appId: com.panosalepis.futtyapp
+name: appearance
+tags:
+  - e2e
+  - settings
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: profile
+- scrollUntilVisible:
+    element:
+      text: 'Account & settings'
+- tapOn: 'Account & settings'
+- tapOn: 'Settings'
+- tapOn:
+    id: settings-appearance
+- assertVisible:
+    id: appearance-system
+    checked: true
+- tapOn:
+    id: appearance-dark
+- assertVisible:
+    id: appearance-dark
+    checked: true
+- takeScreenshot: appearance-dark-${PLATFORM}
+- tapOn:
+    id: appearance-system
+- assertVisible:
+    id: appearance-system
+    checked: true
+- back
+- tapOn:
+    id: settings-accessibility
+- assertVisible:
+    id: accessibility-text-size
+- assertVisible:
+    id: accessibility-haptics
+- takeScreenshot: appearance-${PLATFORM}

@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,8 @@ import type { IconSymbol } from '@/components/ui/icon-symbol';
 import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, hairline, space } from '@/constants/futty-theme';
+import { hairline, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { personalPremiumPriceLabel, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { usePremiumStorePrice } from '@/lib/use-premium-store-price';
 import { hasTeamPremium, PREMIUM_FORMAT_PRICES } from '@/lib/teams';
@@ -30,6 +31,7 @@ type PlanRow = {
  *  tapping any row opens the full activation page (app/premium-plan.tsx,
  *  item 11) rather than doing anything inline here. */
 export default function GoPremiumScreen() {
+  const styles = useStyles();
   const profile = useProfile();
   const myTeams = useMyTeams();
   // The Premium price label is a rule (P10); blank until the rules are loaded.
@@ -126,10 +128,10 @@ export default function GoPremiumScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg },
   logo: { alignItems: 'center', paddingVertical: space.sm },
   disabled: { opacity: DISABLED_OPACITY },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
-});
+}));

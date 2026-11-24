@@ -13,11 +13,12 @@ import {
 } from '@/components/auth-form';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
-import { colors } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 import { signInHref, useAuth } from '@/lib/auth';
 import { describeAuthError } from '@/lib/auth-errors';
 
 export default function ConfirmEmailScreen() {
+  const { colors } = useTheme();
   const { email } = useLocalSearchParams<{ email?: string }>();
   const { session, resendConfirmation } = useAuth();
 
@@ -33,7 +34,7 @@ export default function ConfirmEmailScreen() {
     return (
       <AuthScreen>
         <AuthWordmark />
-        <ActivityIndicator color={colors.brand} accessibilityLabel="Signing you in" />
+        <ActivityIndicator color={colors.positive} accessibilityLabel="Signing you in" />
       </AuthScreen>
     );
   }

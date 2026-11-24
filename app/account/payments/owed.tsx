@@ -1,11 +1,11 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
-import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 
 import { OwedView } from '@/components/booking/owed-view';
 import type { PaymentSheet } from '@/lib/booking-checkout';
 import { useCredit, useOwed, usePayOwed, type OwedItem } from '@/lib/use-owed';
+import { haptic } from '@/lib/haptics';
 
 /** "Pay what I owe" (P5c): debts, payments to finish and credit, from
  *  my_owed and my_credit. Paying sends only an id; the server charges
@@ -27,9 +27,9 @@ export default function OwedScreen() {
   async function onPay(item: OwedItem) {
     const result = await pay(item);
     if (result.status === 'paid') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
     } else if (result.status === 'error') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
     }
   }
 

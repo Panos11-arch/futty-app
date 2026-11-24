@@ -5,7 +5,8 @@ import { Platform } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
-import { colors, hairline, type } from '@/constants/futty-theme';
+import { hairline } from '@/constants/futty-theme';
+import { useTheme } from '@/lib/theme';
 import { tabAccessibilityLabel, VISIBLE_TABS } from '@/lib/navigation-a11y';
 
 import { openBookWizard } from './book';
@@ -32,17 +33,18 @@ function tabIcon(name: IconSymbolName) {
 // to the matching Play segment so old links and notifications still work.
 // Each tab's button has a testID for the Maestro tests (.maestro).
 export default function TabLayout() {
+  const { colors, type } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarActiveTintColor: colors.brand,
+        tabBarActiveTintColor: colors.positive,
         tabBarInactiveTintColor: colors.inkMuted,
         tabBarLabelStyle: type.caption,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: colors.tabBar,
+          borderTopColor: colors.tabBarBorder,
           borderTopWidth: hairline,
         },
       }}>

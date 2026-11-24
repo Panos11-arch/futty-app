@@ -1,7 +1,7 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PostActions } from '@/components/booking/post-actions';
@@ -15,7 +15,8 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text, type TextTone } from '@/components/ui/text';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { walletPayOptions } from '@/lib/wallet-pay';
 import { useAuth } from '@/lib/auth';
 import { publishBooking, unpublishPost } from '@/lib/booking-opposition';
@@ -61,6 +62,7 @@ const VIEW_OPTIONS: { value: View_; label: string }[] = [
 /** One labelled fact on a post card — where, when, how many needed, how
  *  many spots are left. Plain canvas tiles: no colour per box. */
 function Fact({ label, value, tone = 'ink' }: { label: string; value: string; tone?: TextTone }) {
+  const styles = useStyles();
   return (
     <View style={styles.fact} accessible accessibilityLabel={`${label}: ${value}`}>
       <Text variant="callout" tone={tone} tabular>
@@ -75,6 +77,7 @@ function Fact({ label, value, tone = 'ink' }: { label: string; value: string; to
 
 /** A neutral pill for a team's level or the payment mode. */
 function Tag({ label }: { label: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.tag}>
       <Text variant="caption">{label}</Text>
@@ -83,6 +86,7 @@ function Tag({ label }: { label: string }) {
 }
 
 function Quote({ text }: { text: string }) {
+  const styles = useStyles();
   return (
     <View style={styles.quote}>
       <Text variant="callout" tone="inkMuted">
@@ -114,6 +118,7 @@ function PlayersPostCard({
   quote?: BookingPostQuote;
   onChanged: () => void;
 }) {
+  const styles = useStyles();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -232,6 +237,7 @@ function V2OppositionPostCard({
   quote?: BookingPostQuote;
   onChanged: () => void;
 }) {
+  const styles = useStyles();
   return (
     <Card testID="opposition-post" style={styles.card}>
       <View style={styles.cardHead}>
@@ -250,6 +256,7 @@ function V2OppositionPostCard({
 }
 
 function OppositionPostCard({ post, onChanged }: { post: SquadPostWithDetails; onChanged: () => void }) {
+  const styles = useStyles();
   const { user } = useAuth();
   const myTeams = useMyTeams();
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
@@ -558,6 +565,7 @@ function YourGames({ kind, onChanged }: { kind: View_; onChanged: () => void }) 
 export default function SquadsScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10): loads them
   // and re-renders when they arrive.
+  const styles = useStyles();
   useRules();
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<View_>(params.view === 'opposition' ? 'opposition' : 'players');
@@ -610,7 +618,7 @@ export default function SquadsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   flex: { flex: 1 },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
@@ -648,4 +656,4 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
   },
   rosterRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-});
+}));

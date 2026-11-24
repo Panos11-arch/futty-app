@@ -3,7 +3,6 @@
 // invites, the calendar, maps and share to BookingDetailView. Every amount
 // is the server's; the app sends only ids, the scope and the quote it showed.
 import { useStripe } from '@stripe/stripe-react-native';
-import * as Haptics from 'expo-haptics';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, Share } from 'react-native';
@@ -42,6 +41,7 @@ import { describeFunctionError } from '@/lib/edge-functions';
 import { appleMapsUrl, googleMapsUrl } from '@/lib/venue-page';
 import { useRules } from '@/lib/use-rules';
 import { useGameWeather } from '@/lib/use-weather';
+import { haptic } from '@/lib/haptics';
 
 export default function BookingDetailScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10): loads them
@@ -108,9 +108,9 @@ export default function BookingDetailScreen() {
       removeFromCalendar: removeBookingFromCalendar,
     });
     if (result.status === 'error') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
     } else if (result.status === 'cancelled') {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       setNotice(result.notice ?? null);
       reload();
     }
@@ -121,9 +121,9 @@ export default function BookingDetailScreen() {
   async function gipedoAction(action: () => Promise<string | null>): Promise<string | null> {
     const error = await action();
     if (error) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
     } else {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       reload();
     }
     return error;
@@ -133,10 +133,10 @@ export default function BookingDetailScreen() {
   async function switchFormat(to: 5 | 6): Promise<string | null> {
     const error = await switchPlayersPerSide(id, to);
     if (error) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
       return error;
     }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    haptic.success();
     setNotice(`Switched to ${to} v ${to}. Every player has been told.`);
     reload();
     return null;
@@ -147,10 +147,10 @@ export default function BookingDetailScreen() {
   async function venuePlayerAction(action: () => Promise<string | null>): Promise<string | null> {
     const error = await action();
     if (error) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      haptic.error();
       return error;
     }
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    haptic.success();
     reload();
     return null;
   }

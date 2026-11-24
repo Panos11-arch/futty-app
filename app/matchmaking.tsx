@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
@@ -11,7 +11,8 @@ import { ListRow } from '@/components/ui/list-row';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { WizardModal } from '@/components/wizard-modal';
-import { colors, hairline, radius, space } from '@/constants/futty-theme';
+import { hairline, radius, space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import { dayLabel, toDateKey, useDays } from '@/lib/days';
 import {
   FIXTURE_SCHEDULING_WINDOW_DAYS,
@@ -59,6 +60,7 @@ function ScheduleWizard({
   onScheduled: () => void;
 }) {
   // A venue that isn't live never appears in the booking flow (spec 13).
+  const styles = useStyles();
   const venuesState = useVenues({ liveOnly: true });
   const schedulingDays = useDays(FIXTURE_SCHEDULING_WINDOW_DAYS + 1);
 
@@ -259,6 +261,7 @@ function FixtureRow({
 }
 
 export default function MatchmakingScreen() {
+  const styles = useStyles();
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
 
@@ -312,7 +315,7 @@ export default function MatchmakingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl },
   wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
@@ -326,4 +329,4 @@ const styles = StyleSheet.create({
     marginBottom: space.lg,
   },
   error: { marginTop: space.md },
-});
+}));

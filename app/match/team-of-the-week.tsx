@@ -2,7 +2,7 @@
 // team for the latest week, as the server picked it, and how it's picked.
 // Opened from Home and the team_of_the_week notification.
 import { Stack } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TeamOfTheWeekCard } from '@/components/match/team-of-the-week-card';
@@ -10,7 +10,8 @@ import { Banner } from '@/components/ui/banner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { colors, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
+import { makeStyles } from '@/lib/theme';
 import type { TeamOfTheWeek } from '@/lib/match/stats-api';
 import { useLatestTeamOfTheWeek, useTeamOfTheWeekPlayers } from '@/lib/match/use-stats';
 
@@ -26,6 +27,7 @@ function Team({ team }: { team: TeamOfTheWeek }) {
 }
 
 export default function TeamOfTheWeekScreen() {
+  const styles = useStyles();
   const latest = useLatestTeamOfTheWeek();
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
@@ -56,7 +58,7 @@ export default function TeamOfTheWeekScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },
   content: { padding: space.lg, gap: space.lg, paddingBottom: space.xxl },
-});
+}));

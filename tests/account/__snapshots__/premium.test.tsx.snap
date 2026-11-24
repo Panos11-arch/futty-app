@@ -79,9 +79,12 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             false,
             undefined,
           ]
@@ -153,12 +156,13 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
               }
             >
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_400Regular",
-                      "fontSize": 15,
-                      "lineHeight": 20,
+                      "fontSize": 16,
+                      "lineHeight": 22,
                     },
                     {
                       "color": "#0B1215",
@@ -171,12 +175,13 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
                 Personal Premium
               </Text>
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 13,
-                      "lineHeight": 18,
+                      "fontSize": 14,
+                      "lineHeight": 20,
                     },
                     {
                       "color": "#5B6470",
@@ -190,12 +195,13 @@ exports[`Go Premium list lists Personal Premium with its rules price and opens t
               </Text>
             </View>
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#5B6470",
@@ -313,9 +319,12 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
           [
             {
               "backgroundColor": "#FFFFFF",
-              "borderRadius": 12,
-              "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+              "borderColor": "#E4E7EB",
+              "borderRadius": 16,
+              "borderWidth": 1,
             },
+            false,
+            false,
             {
               "padding": 16,
             },
@@ -327,12 +336,13 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
-                "fontFamily": "Inter_700Bold",
+                "fontFamily": "Cairo_700Bold",
                 "fontSize": 22,
-                "lineHeight": 28,
+                "lineHeight": 30,
               },
               {
                 "color": "#0B1215",
@@ -345,6 +355,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
           Personal Premium
         </Text>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -387,12 +398,13 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
               testID="icon-checkmark.circle.fill"
             />
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -420,12 +432,13 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
               testID="icon-checkmark.circle.fill"
             />
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_400Regular",
-                    "fontSize": 15,
-                    "lineHeight": 20,
+                    "fontSize": 16,
+                    "lineHeight": 22,
                   },
                   {
                     "color": "#0B1215",
@@ -478,14 +491,14 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
                 "paddingVertical": 8,
               },
               {
-                "backgroundColor": "#0E5A3A",
+                "backgroundColor": "#00FF9C",
               },
               false,
               {
@@ -497,6 +510,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -505,7 +519,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#FFFFFF",
+                  "color": "#03140C",
                 },
                 false,
                 {
@@ -561,7 +575,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
                 {
                   "alignItems": "center",
                   "alignSelf": "flex-start",
-                  "borderRadius": 10,
+                  "borderRadius": 12,
                   "justifyContent": "center",
                   "minHeight": 44,
                   "paddingHorizontal": 16,
@@ -569,10 +583,9 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
                 },
                 {
                   "backgroundColor": "transparent",
-                },
-                {
                   "paddingHorizontal": 8,
                 },
+                false,
                 false,
                 false,
                 false,
@@ -580,6 +593,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -588,7 +602,7 @@ exports[`Premium plan shows the price the App Store returns, not a hard-coded on
                     "lineHeight": 22,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   {

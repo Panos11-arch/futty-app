@@ -21,9 +21,12 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           false,
           undefined,
         ]
@@ -92,12 +95,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_400Regular",
-                  "fontSize": 15,
-                  "lineHeight": 20,
+                  "fontSize": 16,
+                  "lineHeight": 22,
                 },
                 {
                   "color": "#0B1215",
@@ -138,6 +142,7 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -212,8 +217,8 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F1EC",
-                "borderColor": "#E7F1EC",
+                "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                "borderColor": "rgba(0, 255, 156, 0.12)",
               },
               undefined,
             ]
@@ -229,15 +234,16 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   undefined,
@@ -307,12 +313,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -385,12 +392,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -463,12 +471,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -503,6 +512,7 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -541,12 +551,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -581,6 +592,7 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -655,8 +667,8 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F1EC",
-                "borderColor": "#E7F1EC",
+                "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                "borderColor": "rgba(0, 255, 156, 0.12)",
               },
               undefined,
             ]
@@ -672,15 +684,16 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   undefined,
@@ -750,12 +763,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -828,12 +842,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -906,12 +921,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -944,12 +960,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -984,6 +1001,7 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -1022,12 +1040,13 @@ exports[`Leagues segment empty: no league for the format or city 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -1068,9 +1087,12 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           false,
           undefined,
         ]
@@ -1139,12 +1161,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_400Regular",
-                  "fontSize": 15,
-                  "lineHeight": 20,
+                  "fontSize": 16,
+                  "lineHeight": 22,
                 },
                 {
                   "color": "#0B1215",
@@ -1185,6 +1208,7 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -1259,8 +1283,8 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F1EC",
-                "borderColor": "#E7F1EC",
+                "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                "borderColor": "rgba(0, 255, 156, 0.12)",
               },
               undefined,
             ]
@@ -1276,15 +1300,16 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   undefined,
@@ -1354,12 +1379,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1432,12 +1458,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1510,12 +1537,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -1536,9 +1564,12 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           {
             "padding": 16,
           },
@@ -1560,13 +1591,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -1577,13 +1608,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -1594,13 +1625,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "100%",
               },
             ]
@@ -1611,13 +1642,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           style={
             [
               {
-                "backgroundColor": "#E4E7EB",
+                "backgroundColor": "#F1F3F5",
               },
               {
                 "borderRadius": 999,
               },
               {
-                "height": 12,
+                "height": 13.2,
                 "width": "60%",
               },
             ]
@@ -1645,6 +1676,7 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -1683,12 +1715,13 @@ exports[`Leagues segment loading shows a skeleton 1`] = `
           />
         </View>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_400Regular",
-                "fontSize": 15,
-                "lineHeight": 20,
+                "fontSize": 16,
+                "lineHeight": 22,
               },
               {
                 "color": "#5B6470",
@@ -1729,9 +1762,12 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
         [
           {
             "backgroundColor": "#FFFFFF",
-            "borderRadius": 12,
-            "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+            "borderColor": "#E4E7EB",
+            "borderRadius": 16,
+            "borderWidth": 1,
           },
+          false,
+          false,
           false,
           undefined,
         ]
@@ -1800,12 +1836,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_400Regular",
-                  "fontSize": 15,
-                  "lineHeight": 20,
+                  "fontSize": 16,
+                  "lineHeight": 22,
                 },
                 {
                   "color": "#0B1215",
@@ -1846,6 +1883,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -1920,8 +1958,8 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F1EC",
-                "borderColor": "#E7F1EC",
+                "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                "borderColor": "rgba(0, 255, 156, 0.12)",
               },
               undefined,
             ]
@@ -1937,15 +1975,16 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   undefined,
@@ -2015,12 +2054,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2093,12 +2133,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2171,12 +2212,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2211,6 +2253,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -2239,6 +2282,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -2261,9 +2305,12 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderRadius": 12,
-                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 16,
+                "borderWidth": 1,
               },
+              false,
+              false,
               false,
               undefined,
             ]
@@ -2282,12 +2329,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2302,13 +2350,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               Team
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2324,13 +2373,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               P
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2346,13 +2396,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               W
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2368,13 +2419,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               D
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2390,13 +2442,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               L
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2412,13 +2465,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               F
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2434,13 +2488,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               A
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2456,13 +2511,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               GD
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 12,
-                    "lineHeight": 16,
+                    "fontSize": 13,
+                    "lineHeight": 18,
                   },
                   {
                     "color": "#5B6470",
@@ -2498,13 +2554,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             testID="standings-row"
           >
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2519,13 +2576,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               Tigers
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2545,13 +2603,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               4
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2571,13 +2630,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               3
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2597,13 +2657,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               1
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2623,13 +2684,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               0
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2649,13 +2711,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               9
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2675,13 +2738,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               11
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2701,13 +2765,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               -2
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2723,7 +2788,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                       "textAlign": "right",
                     },
                     {
-                      "fontFamily": "Inter_700Bold",
+                      "fontFamily": "Cairo_700Bold",
                     },
                   ],
                 ]
@@ -2752,13 +2817,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             testID="standings-row"
           >
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2773,13 +2839,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               Lions
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2799,13 +2866,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               4
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2825,13 +2893,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               1
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2851,13 +2920,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               1
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2877,13 +2947,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               2
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2903,13 +2974,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               9
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2929,13 +3001,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               11
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2955,13 +3028,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               -2
             </Text>
             <Text
+              maxFontSizeMultiplier={2}
               numberOfLines={1}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -2977,7 +3051,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                       "textAlign": "right",
                     },
                     {
-                      "fontFamily": "Inter_700Bold",
+                      "fontFamily": "Cairo_700Bold",
                     },
                   ],
                 ]
@@ -3031,14 +3105,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                 {
                   "alignItems": "center",
                   "alignSelf": "flex-start",
-                  "borderRadius": 10,
+                  "borderRadius": 12,
                   "justifyContent": "center",
                   "minHeight": 44,
                   "paddingHorizontal": 16,
                   "paddingVertical": 8,
                 },
                 {
-                  "backgroundColor": "#0E5A3A",
+                  "backgroundColor": "#00FF9C",
                 },
                 false,
                 false,
@@ -3048,6 +3122,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -3056,7 +3131,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                     "lineHeight": 22,
                   },
                   {
-                    "color": "#FFFFFF",
+                    "color": "#03140C",
                   },
                   false,
                   {
@@ -3142,12 +3217,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                 testID="icon-lock.fill"
               />
               <Text
+                maxFontSizeMultiplier={2}
                 style={
                   [
                     {
                       "fontFamily": "Inter_500Medium",
-                      "fontSize": 13,
-                      "lineHeight": 18,
+                      "fontSize": 14,
+                      "lineHeight": 20,
                     },
                     {
                       "color": "#0B1215",
@@ -3183,6 +3259,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -3257,8 +3334,8 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                 "paddingVertical": 4,
               },
               {
-                "backgroundColor": "#E7F1EC",
-                "borderColor": "#E7F1EC",
+                "backgroundColor": "rgba(0, 255, 156, 0.12)",
+                "borderColor": "rgba(0, 255, 156, 0.12)",
               },
               undefined,
             ]
@@ -3274,15 +3351,16 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
-                    "color": "#0E5A3A",
+                    "color": "#12804A",
                   },
                   false,
                   undefined,
@@ -3352,12 +3430,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -3430,12 +3509,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -3508,12 +3588,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
                     "fontFamily": "Inter_500Medium",
-                    "fontSize": 13,
-                    "lineHeight": 18,
+                    "fontSize": 14,
+                    "lineHeight": 20,
                   },
                   {
                     "color": "#0B1215",
@@ -3536,6 +3617,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
         }
       >
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -3554,12 +3636,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
           Nicosia Open
         </Text>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -3577,12 +3660,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
            · 8 spots
         </Text>
         <Text
+          maxFontSizeMultiplier={2}
           style={
             [
               {
                 "fontFamily": "Inter_500Medium",
-                "fontSize": 13,
-                "lineHeight": 18,
+                "fontSize": 14,
+                "lineHeight": 20,
               },
               {
                 "color": "#5B6470",
@@ -3638,14 +3722,14 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                 {
                   "alignItems": "center",
                   "alignSelf": "flex-start",
-                  "borderRadius": 10,
+                  "borderRadius": 12,
                   "justifyContent": "center",
                   "minHeight": 44,
                   "paddingHorizontal": 16,
                   "paddingVertical": 8,
                 },
                 {
-                  "backgroundColor": "#0E5A3A",
+                  "backgroundColor": "#00FF9C",
                 },
                 false,
                 false,
@@ -3655,6 +3739,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             }
           >
             <Text
+              maxFontSizeMultiplier={2}
               style={
                 [
                   {
@@ -3663,7 +3748,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                     "lineHeight": 22,
                   },
                   {
-                    "color": "#FFFFFF",
+                    "color": "#03140C",
                   },
                   false,
                   {
@@ -3713,7 +3798,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
@@ -3722,7 +3807,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               {
                 "backgroundColor": "#FFFFFF",
                 "borderColor": "#E4E7EB",
-                "borderWidth": 0.5,
+                "borderWidth": 1,
               },
               false,
               false,
@@ -3732,6 +3817,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -3773,6 +3859,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
       >
         <Text
           accessibilityRole="header"
+          maxFontSizeMultiplier={2}
           style={
             [
               {
@@ -3805,9 +3892,12 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             [
               {
                 "backgroundColor": "#FFFFFF",
-                "borderRadius": 12,
-                "boxShadow": "0px 2px 8px rgba(0, 0, 0, 0.06)",
+                "borderColor": "#E4E7EB",
+                "borderRadius": 16,
+                "borderWidth": 1,
               },
+              false,
+              false,
               {
                 "padding": 16,
               },
@@ -3818,6 +3908,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -3838,12 +3929,13 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
             Lions
           </Text>
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
                   "fontFamily": "Inter_500Medium",
-                  "fontSize": 13,
-                  "lineHeight": 18,
+                  "fontSize": 14,
+                  "lineHeight": 20,
                 },
                 {
                   "color": "#5B6470",
@@ -3897,7 +3989,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               {
                 "alignItems": "center",
                 "alignSelf": "flex-start",
-                "borderRadius": 10,
+                "borderRadius": 12,
                 "justifyContent": "center",
                 "minHeight": 44,
                 "paddingHorizontal": 16,
@@ -3905,10 +3997,9 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
               },
               {
                 "backgroundColor": "transparent",
-              },
-              {
                 "paddingHorizontal": 8,
               },
+              false,
               false,
               false,
               false,
@@ -3916,6 +4007,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
           }
         >
           <Text
+            maxFontSizeMultiplier={2}
             style={
               [
                 {
@@ -3924,7 +4016,7 @@ exports[`Leagues segment populated: tables and the same navigation 1`] = `
                   "lineHeight": 22,
                 },
                 {
-                  "color": "#0E5A3A",
+                  "color": "#12804A",
                 },
                 false,
                 {

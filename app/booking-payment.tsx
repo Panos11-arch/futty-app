@@ -1,5 +1,4 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
-import * as Haptics from 'expo-haptics';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -13,6 +12,7 @@ import { fetchCheckoutData, fetchFreePitches } from '@/lib/booking-v2';
 import { useReloadOnReturn } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
 import { useGameWeather } from '@/lib/use-weather';
+import { haptic } from '@/lib/haptics';
 
 const openPayOwed = () => router.push('/account/payments/owed');
 
@@ -59,12 +59,12 @@ export default function BookingPaymentScreen() {
 
 /** Paid: on to this booking's detail (roster, invite, cancel). */
 function paid(bookingId: string | null) {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  haptic.success();
   afterPayment(bookingId, router);
 }
 
 function failed() {
-  void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+  haptic.error();
 }
 
 function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; sheet: PaymentSheet }) {
@@ -91,7 +91,7 @@ function Checkout({ slot, venueName, sheet }: { slot: Slot; venueName: string; s
     setBookingId(outcome.bookingId);
     if (outcome.status === 'paid') {
       // B3: on to the screen after paying (invite friends, the opposition, publish).
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      haptic.success();
       afterBooking(outcome.bookingId, router);
     } else if (outcome.status === 'error') {
       failed();
