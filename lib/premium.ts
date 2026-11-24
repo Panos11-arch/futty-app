@@ -20,7 +20,21 @@ export function openablePlan<P extends string>(plan: P, teamPremiumEnabled: bool
   return !teamPremiumEnabled && plan.startsWith('team-') ? 'personal' : plan;
 }
 
-type ProfileState = { status: string; profile?: { is_premium?: boolean | null } };
+type ProfileState = { status: string; profile?: { is_premium?: boolean | null; premium_tier?: string | null } };
+
+/** P1 (decided by Panos, 22 November): Basic (free), Premium and Premium Plus. */
+export type PremiumTier = 'basic' | 'premium' | 'premium_plus';
+
+const TIER_RANK: Record<PremiumTier, number> = { basic: 0, premium: 1, premium_plus: 2 };
+
+/** The signed-in player's plan, from the server's profiles.premium_tier
+ *  (set only by verified purchases); null until it has loaded. */
+export function premiumTier(state: ProfileState): PremiumTier | null {
+  if (state.status !== 'ready') return null;
+  const tier = state.profile?.premium_tier;
+  if (tier === 'basic' || tier === 'premium' || tier === 'premium_plus') return tier;
+  return state.profile?.is_premium === true ? 'premium' : 'basic';
+}
 
 /**
  * Whether the signed-in player is on Premium, from the server's
@@ -45,6 +59,82 @@ export function isPremiumPlayer(state: ProfileState): boolean | null {
 // (no suffix) was accidentally created as a Non-Consumable and is
 // permanently stuck that way — premium_monthly_v2 is the real subscription.
 export const PERSONAL_PREMIUM_SKU = 'premium_monthly_v2';
+
+/** P1: Premium Plus, in the same subscription group ("Futty Premium
+ *  Monthly"), ranked above Premium so upgrades and downgrades work. */
+export const PREMIUM_PLUS_SKU = 'premium_plus_monthly';
+
+/** Both personal plans, as the store is asked for them. */
+export const PERSONAL_PREMIUM_SKUS = [PERSONAL_PREMIUM_SKU, PREMIUM_PLUS_SKU];
+
+export type PremiumPlanCard = {
+  id: PremiumTier;
+  /** The store product; none for Basic. */
+  sku: string | null;
+  title: string;
+  price: string;
+  perks: string[];
+  current: boolean;
+};
+
+/**
+ * The Premium screen's plans (image 22): Basic, Premium and Premium Plus,
+ * labels only. Prices are the store's live prices (F6); Premium falls back
+ * to the rules' label while the store loads. Premium Plus shows only once
+ * the store returns its product: it goes on sale with ads (G4), and until
+ * then there is no Plus card at all, never an empty one.
+ */
+export function premiumPlans({
+  rules,
+  prices,
+  tier,
+}: {
+  rules: AppRules | null;
+  /** The store's display price per product it returned. */
+  prices: Partial<Record<string, string | null>>;
+  tier: PremiumTier | null;
+}): PremiumPlanCard[] {
+  const plans: PremiumPlanCard[] = [
+    { id: 'basic', sku: null, title: 'Basic', price: 'Free', perks: ['Book pitches, join squads, leagues'], current: tier === 'basic' },
+    {
+      id: 'premium',
+      sku: PERSONAL_PREMIUM_SKU,
+      title: 'Premium',
+      price: personalPremiumPriceLabel(rules, prices[PERSONAL_PREMIUM_SKU] ?? null),
+      perks: personalPremiumPerks(rules),
+      current: tier === 'premium',
+    },
+  ];
+  const plusPrice = prices[PREMIUM_PLUS_SKU];
+  if (plusPrice) {
+    plans.push({
+      id: 'premium_plus',
+      sku: PREMIUM_PLUS_SKU,
+      title: 'Premium Plus',
+      price: `${plusPrice}/mo`,
+      // "No ads" is the plan's label only: there are no ads yet (G4), so nothing more is promised.
+      perks: ['Everything in Premium', 'No ads'],
+      current: tier === 'premium_plus',
+    });
+  }
+  return plans;
+}
+
+/** What the button does for the plan picked: buy a higher plan (Upgrade),
+ *  or open the store's subscription settings for the current or a lower
+ *  plan (Manage: a downgrade starts at the next renewal). Nothing on Basic
+ *  for a Basic player. */
+export function planAction(selected: PremiumTier, tier: PremiumTier): 'upgrade' | 'manage' | null {
+  if (selected === 'basic' && tier === 'basic') return null;
+  return TIER_RANK[selected] > TIER_RANK[tier] ? 'upgrade' : 'manage';
+}
+
+/** The plan picked when the screen opens: the best plan above the
+ *  player's, or their own when there is none. */
+export function defaultPlan(plans: PremiumPlanCard[], tier: PremiumTier): PremiumTier {
+  const higher = plans.filter((p) => TIER_RANK[p.id] > TIER_RANK[tier]);
+  return higher.length > 0 ? higher[higher.length - 1].id : tier;
+}
 
 /** "€4.99/mo": the store's live price once it has loaded, otherwise the
  *  label in the rules; empty (a placeholder) when neither is there yet. */

@@ -88,6 +88,10 @@ describe('parseRules', () => {
     expect(parseRules({ ...SPEC_RULES, fee_each_pays_cents: '80' })).toBeNull();
     expect(parseRules({ ...SPEC_RULES, weather_thunderstorms: 'yes' })).toBeNull();
     expect(parseRules({ ...SPEC_RULES, premium_price_label: '' })).toBeNull();
+    // P1: Premium Plus's label is a rule too.
+    expect(parseRules({ ...SPEC_RULES, premium_plus_price_label: '' })).toBeNull();
+    expect(parseRules({ ...SPEC_RULES, premium_plus_price_label: undefined })).toBeNull();
+    expect(parseRules(SPEC_RULES)?.premium_plus_price_label).toBe('€7.99');
   });
 
   it('reads only the rule columns', () => {

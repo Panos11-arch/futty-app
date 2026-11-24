@@ -33,6 +33,14 @@ Futty's figures are before Stripe Connect payout costs. UK and non-European card
 
 **Premium (agreed):** €4.99 a month (decided by Panos on 22 November; €3.99 from 7 November until then). Premium players book **14 days ahead**; standard accounts book **7**. The app shows the store's own price once it has loaded, and `app_rules.premium_price_label` only while it loads; the App Store and Google Play products must be €4.99 too.
 
+**Plans (decided by Panos, 22 November; P1):**
+- **Basic:** free, not a subscription.
+- **Premium:** €4.99 a month (`premium_monthly_v2`). Everything Premium has today: the 14-day booking window, no service fee on the player's own spot, Team of the Week eligibility, Premium stats and the rest. **Premium does not remove ads.**
+- **Premium Plus:** €7.99 a month (`premium_plus_monthly`, `app_rules.premium_plus_price_label`). Everything in Premium, **no ads anywhere** and **unlimited lives in Futty Games**. It goes on sale only once ads exist (G4); until the store returns the product, the Premium screen shows Basic and Premium only. Futty Games isn't built yet, so its unlimited lives are only written here for now.
+- **Stores:** both are in one App Store subscription group ("Futty Premium Monthly"), Premium Plus ranked above Premium, so an upgrade starts at once and a downgrade at the next renewal. The app shows the store's live prices, never hard-coded ones. Premium is Apple-only today (no Google Play billing).
+- **Server:** `profiles.premium_tier` is `basic`, `premium` or `premium_plus`, set only by verified purchases (`verify-purchase`) and Apple's server notifications (renewal, upgrade, downgrade, expiry, refund, revocation), through `apply_premium_subscription` (service role). The tier is the best active personal subscription on file. `is_premium` stays true for both paid tiers, so every Premium rule keeps working. `ads_allowed(profile)` is false only on Premium Plus; G4 uses it. Never trusted from the app.
+- **The Card button (S2)** uses the Premium colours for both paid tiers.
+
 **Confirmed:** when a Premium booker pays for everyone, only the booker's own spot is fee-free; the other players' spots still carry €0.55. For example, 5 v 5 = €60 + 9 × €0.55 = €64.95.
 
 ## Booking modes (Booking v2, decided by Panos on 20 November)
@@ -687,7 +695,7 @@ A player saves a search from the booking search and hears when it comes up. **Fr
 
 ## Rules in one place (decided 15 November)
 
-Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price label (€4.99), the weather thresholds, the number of saved searches a player can keep (5) and the no-opponent reminder (2 hours before the 6-hour cut-off). The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
+Every number in this document lives once, in `public.app_rules`: the service fees (€0.80, €0.55, Premium €0, Gipedo Pano €0.55), the booking windows (7 and 14 days), the free hour (60 minutes, which is also when a share is taken), the €1 kept, the 6-hour refund cutoff, the 48 hours to choose venue credit after the booker or the venue cancels, the 15-minute payment window, the guarantee hold (72 hours before kickoff, retried every 6 hours), collection (2 hours after the match), credit expiry (12 months), Gipedo Pano's limits (at most 5 days ahead, at least 24 hours before kickoff), the Premium price labels (Premium €4.99, Premium Plus €7.99), the weather thresholds, the number of saved searches a player can keep (5) and the no-opponent reminder (2 hours before the 6-hour cut-off). The database, the Edge Functions, the app and the Futty AI all read it; none keeps its own copy.
 
 - **Only Futty changes a rule** (service role), and every change is kept with what it was before.
 - **A change applies at once.** Rules are read when they're used, so a new cutoff also applies to bookings already made. What a booking already stored (its pitch price and its service fee per player) doesn't change, and neither does a deadline already set: when a held share is taken, when the guarantee hold is placed, the deadline to choose venue credit, and when credit expires keep the value in force when they were set. A quote the player saw is checked again when they confirm, so nobody is charged on an old rule.
@@ -699,7 +707,7 @@ Every number in this document lives once, in `public.app_rules`: the service fee
 The app can be tampered with, so every rule that involves money or availability is checked on Futty's server. The app only displays the result.
 - **Prices come from the venue's data on the server,** never from the app.
 - **Player numbers are checked:** 10 / 14 / 18 / 22 per format, and 12 only where the venue allows 6 v 6. *Today the server accepts any number, so a booking for "100 players" would cost €0.60 each.*
-- **Booking windows:** 7 days for standard accounts and 14 for Premium. Premium status comes only from Apple's verified purchase.
+- **Booking windows:** 7 days for standard accounts and 14 for Premium (both paid plans). Premium status and the plan come only from Apple's verified purchase.
 - **Gipedo Pano** is refused more than 5 days (120 hours) ahead.
 - **Cyprus time:** "in the past" and every cutoff are measured in Cyprus time. *Found 7 Nov: the code compared against UTC, so in winter a slot that started up to 2 hours ago could still be booked (3 hours in summer). Fixed in pull request \#20.*
 - **A sensible slot:** the end is after the start, within opening hours; pitches between 1 and what the venue has; a format the venue offers.
