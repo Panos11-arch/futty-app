@@ -34,7 +34,9 @@ export async function updateGuaranteeCard(deps: Deps, callerId: string, body: { 
   const setupIntent = await deps.stripe.setupIntents.create({
     customer: guarantee.stripe_customer_id,
     usage: 'off_session',
-    automatic_payment_methods: { enabled: true },
+    // The guarantee is held on this card later, off-session: card only
+    // (card, Apple Pay, Google Pay; QA 24 November, S3).
+    payment_method_types: ['card'],
     metadata: {
       kind: 'guarantee_card',
       guarantee_id: guarantee.guarantee_id,
