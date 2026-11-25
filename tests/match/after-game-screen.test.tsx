@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import AfterGameScreen from '@/app/match/after-game';
-import { mockMatchLog } from '@/lib/match/log-score-mock';
+import { mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
 import { mockMatchPage, mockRoster, PAGE_OPEN } from '@/lib/match/mock';
 
 let mockLog: Record<string, unknown> = { status: 'loading' };
@@ -57,13 +57,23 @@ describe('After the game', () => {
     expect(screen.getByTestId('post-match-step-score')).toBeTruthy();
   });
 
-  it('a correction opens only with ?correct=1, on Goals', async () => {
-    mockLog = { status: 'ready', log: mockMatchLog({ status: 'confirmed', score: { a: 2, b: 1 }, canLog: false, canCorrect: true }) };
+  it('a correction opens only with ?correct=1: on Goals for two captains', async () => {
+    mockLog = { status: 'ready', log: mockNamedLog({ status: 'confirmed', score: { a: 2, b: 1 }, canLog: false, canCorrect: true }) };
     const view = await render(<AfterGameScreen />);
     expect(screen.queryByTestId('post-match-step-goals')).toBeNull();
     mockParams = { id: 'm1', correct: '1' };
     await view.rerender(<AfterGameScreen />);
     expect(screen.getByTestId('post-match-step-goals')).toBeTruthy();
+  });
+
+  // Decided 25 November: a lone captain can correct the score too.
+  it("a lone captain's correction opens on Score", async () => {
+    mockLog = { status: 'ready', log: mockMatchLog({ status: 'confirmed', score: { a: 2, b: 1 }, canLog: false, canCorrect: true }) };
+    const view = await render(<AfterGameScreen />);
+    expect(screen.queryByTestId('post-match-step-score')).toBeNull();
+    mockParams = { id: 'm1', correct: '1' };
+    await view.rerender(<AfterGameScreen />);
+    expect(screen.getByTestId('post-match-step-score')).toBeTruthy();
   });
 
   it('a player who checked in: the Man of the Match vote while it is open', async () => {

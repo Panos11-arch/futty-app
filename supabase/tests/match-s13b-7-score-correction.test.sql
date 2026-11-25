@@ -48,8 +48,10 @@ begin
             where profile_id = v_p and type = 'match_result_confirmed' and title = 'Score corrected'
               and data ->> 'matchId' = g.match::text) = 1, 'told once';
   end loop;
-  v_n := tests.last_notification(g.b[1], 'match_result_confirmed');
-  assert v_n.title = 'Score corrected' and v_n.body = 'Bibs 5–1 Non-bibs', format('the new score: %s / %s', v_n.title, v_n.body);
+  -- Both messages share now() (one transaction), so pick it by its title.
+  select * into v_n from public.notifications
+  where profile_id = g.b[1] and type = 'match_result_confirmed' and title = 'Score corrected';
+  assert v_n.body = 'Bibs 5–1 Non-bibs', format('the new score: %s', v_n.body);
   assert tests.notified(g.cap_a, 'match_result_confirmed', g.match) = 0, 'not the captain who corrected it';
 
   -- The same score again changes nothing and tells nobody.
