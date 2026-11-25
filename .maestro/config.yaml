@@ -16,4 +16,5 @@ executionOrder:
     - navigation
     - messages
     - book-missing-venue
+    - find-match
     - venue-book-and-pay

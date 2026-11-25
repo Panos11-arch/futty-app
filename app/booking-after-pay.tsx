@@ -2,7 +2,7 @@
 // invite the opposition, publish the game. Wires AfterPayView to the server;
 // "Go to booking" opens the booking's detail.
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
 
 import { AfterPayView } from '@/components/booking/after-pay-view';
@@ -20,8 +20,14 @@ import {
 } from '@/lib/booking-opposition';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
+import { startMatchPublishKind, takeStartMatch, waitUntilConfirmed, type PublishKind } from '@/lib/start-match';
 import { useRules } from '@/lib/use-rules';
 import { fetchVenueExtras } from '@/lib/venue-extras';
+
+// S6: how long "Publish game" waits for the payment webhook to confirm a
+// booking started from Find a match (the server refuses it before then).
+const CONFIRM_TRIES = 10;
+const CONFIRM_DELAY_MS = 2000;
 
 export default function BookingAfterPayScreen() {
   useRules();
@@ -34,6 +40,15 @@ export default function BookingAfterPayScreen() {
   const venueId = detail?.venue.id ?? null;
   const loadExtras = useCallback(() => fetchVenueExtras(venueId!), [venueId]);
   const extras = useLoad(venueId ? `extras:${venueId}` : null, loadExtras);
+
+  // S6: paid for a game started from Find a match ("Start a match"): the
+  // right Publish switch starts on. Taken once, right after paying; worked
+  // out once, from the booking as it first loads.
+  const [startedMatch] = useState(() => from === 'pay' && takeStartMatch());
+  const preselect = useRef<PublishKind | null | undefined>(undefined);
+  if (detail && preselect.current === undefined) {
+    preselect.current = startedMatch ? startMatchPublishKind(detail) : null;
+  }
 
   // The open posts, kept up to date without reloading the screen, so a
   // switch turned off unpublishes the post it made.
@@ -67,7 +82,15 @@ export default function BookingAfterPayScreen() {
 
   async function publish(kind: 'players' | 'opposition', on: boolean): Promise<string | null> {
     let error: string | null;
-    if (on) error = await publishBooking(bookingId, kind);
+    if (on) {
+      if (kind === 'players' && preselect.current === 'players') {
+        await waitUntilConfirmed(
+          async () => (await fetchBookingDetail(bookingId)).booking.status === 'confirmed',
+          { tries: CONFIRM_TRIES, delayMs: CONFIRM_DELAY_MS },
+        );
+      }
+      error = await publishBooking(bookingId, kind);
+    }
     else {
       const postId = posts.current?.[kind] ?? null;
       error = postId ? await unpublishPost(postId) : null;
@@ -99,6 +122,7 @@ export default function BookingAfterPayScreen() {
         }}
         onPublishOpposition={(on) => publish('opposition', on)}
         onPublishGame={(on) => publish('players', on)}
+        preselect={preselect.current ?? null}
         onDone={() => router.replace(bookingDetailHref(bookingId))}
         atVenue={extras.state.status === 'ready' ? extras.state.data : null}
       />

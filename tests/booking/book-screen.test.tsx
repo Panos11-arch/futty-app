@@ -118,6 +118,26 @@ describe('Book a pitch screen', () => {
     await waitFor(async () => expect(await AsyncStorage.getItem('futty.book.last_format')).toBe('9-a-side'));
   });
 
+  // S6: opened from Find a match's "Start a match": Publish starts on after
+  // paying, while this screen is open; never once it has closed.
+  it('from Start a match, holds the Start a match flag while open', async () => {
+    const { takeStartMatch } = jest.requireActual<typeof import('@/lib/start-match')>('@/lib/start-match');
+    mockParams = { startMatch: '1' };
+    const view = await render(<BookScreen />);
+    await ready();
+    expect(takeStartMatch()).toBe(true);
+
+    mockParams = { startMatch: '1' };
+    const again = await render(<BookScreen />);
+    await again.unmount();
+    expect(takeStartMatch()).toBe(false);
+    await view.unmount();
+
+    mockParams = {};
+    await render(<BookScreen />);
+    expect(takeStartMatch()).toBe(false);
+  });
+
   it('from a venue page, searches that venue', async () => {
     mockParams = { venueId: 'v1' };
     await render(<BookScreen />);

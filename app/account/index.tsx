@@ -97,6 +97,13 @@ export default function AccountMenuScreen() {
         <MenuSection title="More">
           {/* tab-play: this row now does the old Play tab's job (.maestro). */}
           <MenuRow testID="tab-play" icon="sportscourt.fill" label="Play" onPress={() => router.push('/play')} />
+          {/* S6: the posts list (publish your games, older opposition posts). */}
+          <MenuRow
+            testID="account-posts"
+            icon="person.2.fill"
+            label="Posts"
+            onPress={() => router.push('/squad-posts')}
+          />
           <MenuRow
             testID="account-leaderboards"
             icon="trophy.fill"
