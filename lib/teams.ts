@@ -3,6 +3,9 @@ import type { AvatarFields } from '@/lib/avatar';
 
 export const ROSTER_SIZE_PRESETS = [5, 7, 9, 11];
 
+/** The towns a team can be in (the same list as the Leagues create-team form). */
+export const TEAM_CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'] as const;
+
 /** Formats Team Premium gates, and what a season costs — supabase/team-premium.sql. */
 export const PREMIUM_FORMAT_PRICES: Record<string, number> = {
   '9-a-side': 45,
