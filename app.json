@@ -21,7 +21,10 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:futty.app"
+      ]
     },
     "android": {
       "package": "com.panosalepis.futtyapp",
@@ -38,6 +41,23 @@
         "android.permission.USE_FINGERPRINT",
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "futty.app",
+              "pathPrefix": "/p/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -88,14 +108,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Futty uses your photos so venue staff can add pitch and menu pictures.",
-          "microphonePermission": false
+          "photosPermission": "Futty uses your photos so you can attach them in chats, and so venue staff can add pitch and menu pictures.",
+          "microphonePermission": false,
+          "cameraPermission": "Futty uses the camera to scan check-in and player codes, and to take photos you attach in chats."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Futty uses the camera to scan the venue's check-in code.",
+          "cameraPermission": "Futty uses the camera to scan check-in and player codes, and to take photos you attach in chats.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -114,6 +135,37 @@
             }
           }
         ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Futty uses your location only to show the weather and venues near you.",
+          "locationAlwaysAndWhenInUsePermission": "Futty uses your location only to show the weather and venues near you.",
+          "locationAlwaysPermission": "Futty uses your location only to show the weather and venues near you."
+        }
+      ],
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
+        }
+      ],
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.panosalepis.futtyapp.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.panosalepis.futtyapp",
+          "enablePushNotifications": true,
+          "widgets": []
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "delayAppMeasurementInit": true
+        }
       ]
     ],
     "experiments": {

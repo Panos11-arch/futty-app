@@ -1,0 +1,7 @@
+# Netlify response headers. Apple and Google read these two files to let
+# futty.app/p/<username> open the app (S16); Apple needs JSON for the file
+# with no extension.
+/.well-known/apple-app-site-association
+  Content-Type: application/json
+/.well-known/assetlinks.json
+  Content-Type: application/json
