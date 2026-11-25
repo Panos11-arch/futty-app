@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 
 import { LogScoreFlow } from '@/components/match/log-score/log-score-flow';
-import { mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
+import { mockLogPlayer, mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
 import { logMatchResult, setMatchStats } from '@/lib/match/log-score-api';
 import type { MatchLog } from '@/lib/match/log-score';
 
@@ -234,5 +234,32 @@ describe('LogScoreFlow: a correction (24 hours after the result)', () => {
     });
     expect(logResult).not.toHaveBeenCalled();
     expect(onLogged).toHaveBeenCalledWith('corrected');
+  });
+});
+
+// S12 (spec 05 section 16, A5): get_match_log sends a minor's first name
+// only. The logging screens show exactly the name the server sent: no
+// username, no surname, nothing rebuilt from the profile.
+describe('LogScoreFlow: a teammate under 18', () => {
+  const players = [
+    mockLogPlayer('a1', 'a', 'Kostas Ioannou'),
+    mockLogPlayer('a2', 'a', 'Eleni'),
+    mockLogPlayer('b1', 'b', 'Marios Charalambous'),
+  ];
+
+  it('shows the first name the server sent on the pitch and in the review', async () => {
+    await show(mockMatchLog({ players }));
+    await press('add-goal');
+    await press('post-match-next');
+
+    expect(within(screen.getByTestId('log-score-player-a2')).getByText('Eleni')).toBeTruthy();
+    await press('log-score-goal-plus-a2');
+    await press('post-match-next');
+    expect(within(screen.getByTestId('log-score-player-a2')).getByText('Eleni')).toBeTruthy();
+    await press('post-match-next');
+
+    expect(screen.getByTestId('log-score-review-goals-a')).toHaveTextContent(/Eleni1/);
+    expect(screen.queryByText(/prof-a2/)).toBeNull();
+    expect(screen.getByTestId('log-score-review-goals-a')).not.toHaveTextContent(/Eleni \w/);
   });
 });
