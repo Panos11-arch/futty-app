@@ -29,6 +29,9 @@ Deno.test('no guessing: missing or broken rules fail', async () => {
   throws(() => parseRules({ ...SPEC_RULES, refund_cutoff_hours: 6.5 }), /refund_cutoff_hours/);
   throws(() => parseRules({ ...SPEC_RULES, weather_thunderstorms: 'yes' }), /weather_thunderstorms/);
   throws(() => parseRules({ ...SPEC_RULES, premium_price_label: '' }), /premium_price_label/);
+  // P1: Premium Plus's label is a rule too.
+  throws(() => parseRules({ ...SPEC_RULES, premium_plus_price_label: '' }), /premium_plus_price_label/);
+  strictEqual(parseRules(SPEC_RULES).premium_plus_price_label, '€7.99');
 });
 
 Deno.test('words for the rules', () => {

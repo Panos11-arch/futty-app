@@ -29,6 +29,8 @@ loadWithFile(Image);
 
 const basic = { status: 'ready', profile: { is_premium: false } };
 const premium = { status: 'ready', profile: { is_premium: true } };
+// P1: Premium Plus is a paid tier too (is_premium stays true on both).
+const plus = { status: 'ready', profile: { is_premium: true, premium_tier: 'premium_plus' } };
 
 async function draw(profile: Record<string, unknown>, appearance: 'light' | 'dark', onPress = jest.fn()) {
   mockProfile = profile;
@@ -56,6 +58,8 @@ describe('the four versions', () => {
   });
 
   it('Premium, light: black circle, the neon F as it is, no ring', async () => {
+    const { circle: plusCircle } = await draw(plus, 'light');
+    expect(plusCircle.backgroundColor).toBe(lightPalette.cardPremiumBg);
     const { circle, logo } = await draw(premium, 'light');
     expect(circle.backgroundColor).toBe(lightPalette.cardPremiumBg);
     expect(logo.props.tintColor).toBeUndefined();

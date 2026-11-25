@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
-import { E2E_VENUE } from './config';
+import { E2E_DATE_OF_BIRTH, E2E_VENUE } from './config';
 import { startingLevelOffered } from '../../lib/match/levels';
 import {
   connectAccountKey,
@@ -180,5 +180,16 @@ describe('a starting level for each test login', () => {
     const moved = { ...untouched, competitiveMatches: 2 };
     expect(moved.competitiveMatches).not.toBe(E2E_UNTOUCHED_LEVEL.competitive_matches);
     expect(startingLevelOffered(moved)).toBe(false);
+  });
+});
+
+// S12: without a date of birth the app holds every login on the date of
+// birth screen; under 18 the minor limits would change what flows see.
+describe('the e2e logins’ date of birth', () => {
+  it('is a real date, 18 or more years ago', () => {
+    expect(E2E_DATE_OF_BIRTH).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const eighteenYearsAgo = new Date();
+    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
+    expect(new Date(`${E2E_DATE_OF_BIRTH}T00:00:00Z`).getTime()).toBeLessThan(eighteenYearsAgo.getTime());
   });
 });

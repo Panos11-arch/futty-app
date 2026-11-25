@@ -28,8 +28,12 @@ function PrivacyPolicyEn() {
         publicly&quot;, off by default.
       </DocBullet>
       <DocBullet>
-        City, gender, date of birth, position, preferred foot, bio (optional): shown on your player
-        profile so teammates and opponents know who they&apos;re playing with.
+        Date of birth: used only to check your age. It is never shown to anyone: only you and our
+        server can read it. Once saved, it can only be changed by writing to us.
+      </DocBullet>
+      <DocBullet>
+        City, gender, position, preferred foot, bio (optional): shown on your player profile so
+        teammates and opponents know who they&apos;re playing with.
       </DocBullet>
 
       <DocHeading>Information created by using the app</DocHeading>
@@ -185,6 +189,23 @@ function PrivacyPolicyEn() {
         developer.
       </DocParagraph>
 
+      <DocHeading>Age and young players</DocHeading>
+      <DocBullet>You must be 14 or older to use Futty.</DocBullet>
+      <DocBullet>
+        Players under 18 (by today&apos;s date in Cyprus) show only their first name to other
+        players and don&apos;t appear in adults&apos; player search.
+      </DocBullet>
+      <DocBullet>
+        Adults and players under 18 can&apos;t send each other friend requests or private messages.
+      </DocBullet>
+      <DocBullet>
+        In fixture chat, messages are turned off when either captain is under 18. Date proposals and
+        scores still work.
+      </DocBullet>
+      <DocBullet>
+        A report involving a player under 18 is marked urgent and sent to the founders straight away.
+      </DocBullet>
+
       <DocHeading>Your choices</DocHeading>
       <DocBullet>You can edit or remove most profile fields at any time from Edit Profile.</DocBullet>
       <DocBullet>You can turn off notifications and phone number visibility at any time.</DocBullet>
@@ -227,8 +248,13 @@ function PrivacyPolicyEl() {
         «Show my number publicly», που είναι απενεργοποιημένο από προεπιλογή.
       </DocBullet>
       <DocBullet>
-        Πόλη, φύλο, ημερομηνία γέννησης, θέση, πόδι, βιογραφικό (προαιρετικά): εμφανίζονται στο
-        προφίλ σας, ώστε συμπαίκτες και αντίπαλοι να ξέρουν με ποιον παίζουν.
+        Ημερομηνία γέννησης: χρησιμοποιείται μόνο για τον έλεγχο της ηλικίας σας. Δεν εμφανίζεται
+        ποτέ σε κανέναν: μόνο εσείς και ο διακομιστής μας μπορούμε να τη δούμε. Αφού αποθηκευτεί,
+        αλλάζει μόνο αν μας γράψετε.
+      </DocBullet>
+      <DocBullet>
+        Πόλη, φύλο, θέση, πόδι, βιογραφικό (προαιρετικά): εμφανίζονται στο προφίλ σας, ώστε
+        συμπαίκτες και αντίπαλοι να ξέρουν με ποιον παίζουν.
       </DocBullet>
 
       <DocHeading>Πληροφορίες που δημιουργούνται όταν χρησιμοποιείτε την εφαρμογή</DocHeading>
@@ -405,6 +431,26 @@ function PrivacyPolicyEl() {
         μηνύματα και τις αναρτήσεις του. Μπορείτε επίσης να αναφέρετε έναν χρήστη ή κάποιο
         περιεχόμενο· τις αναφορές τις εξετάζει ο προγραμματιστής της εφαρμογής.
       </DocParagraph>
+
+      <DocHeading>Ηλικία και νεαροί παίκτες</DocHeading>
+      <DocBullet>Πρέπει να είστε 14 ετών και άνω για να χρησιμοποιείτε το Futty.</DocBullet>
+      <DocBullet>
+        Οι παίκτες κάτω των 18 (με τη σημερινή ημερομηνία στην Κύπρο) εμφανίζονται στους άλλους
+        παίκτες μόνο με το μικρό τους όνομα και δεν εμφανίζονται στην αναζήτηση παικτών των
+        ενηλίκων.
+      </DocBullet>
+      <DocBullet>
+        Ενήλικες και παίκτες κάτω των 18 δεν μπορούν να στείλουν ο ένας στον άλλον αιτήματα φιλίας
+        ή ιδιωτικά μηνύματα.
+      </DocBullet>
+      <DocBullet>
+        Στη συνομιλία αγώνα, τα μηνύματα απενεργοποιούνται όταν κάποιος από τους δύο αρχηγούς είναι
+        κάτω των 18. Οι προτάσεις ημερομηνίας και τα σκορ συνεχίζουν να λειτουργούν.
+      </DocBullet>
+      <DocBullet>
+        Μια αναφορά που αφορά παίκτη κάτω των 18 σημειώνεται ως επείγουσα και στέλνεται αμέσως στους
+        ιδρυτές.
+      </DocBullet>
 
       <DocHeading>Οι επιλογές σας</DocHeading>
       <DocBullet>

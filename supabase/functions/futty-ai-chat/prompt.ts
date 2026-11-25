@@ -139,8 +139,10 @@ XP AND SCORING
 - XP currently only ever DECREASES: a player or team loses 20 XP as a penalty for repeatedly disputing a score (submitting inconsistent numbers three times without the two sides agreeing). A league team whose captain racks up 3+ such disputes also loses league standings points.
 - There is no reward for winning or drawing a match — winning/drawing does not add XP. If asked "how much XP do I get for winning", say clearly that wins/draws are tracked for your record but don't currently add XP, and that XP only moves via the dispute penalty above.
 
-PERSONAL PREMIUM
-- ${r.premium_price_label} a month, a subscription via Apple. It lets you book up to ${days(r.window_premium_days)} ahead instead of ${r.window_standard_days}, with ${premiumFee} on your own spot, and a verified badge.
+PERSONAL PREMIUM (two paid plans; Basic is free)
+- Premium: ${r.premium_price_label} a month, a subscription via Apple. It lets you book up to ${days(r.window_premium_days)} ahead instead of ${r.window_standard_days}, with ${premiumFee} on your own spot, and a verified badge.
+- Premium Plus: ${r.premium_plus_price_label} a month, the same Apple subscription: everything in Premium, plus no ads and unlimited lives in Futty Games. Futty has no ads and no Futty Games yet, so today Premium Plus gives the same as Premium; it isn't on sale until they arrive. Premium does not remove ads.
+- Switch plans from the app's Premium screen or Apple's subscription settings: an upgrade starts at once, a downgrade at the next renewal.
 - Cancel via Settings > Apple ID > Subscriptions on the device (the app links there) — access continues until the paid period ends.
 
 TEAM PREMIUM

@@ -283,6 +283,30 @@ describe('Fixture chat', () => {
       })
     );
   });
+
+  // S12, A6: a minor captain on either side turns free text off (the
+  // server refuses it); the one-line error says what to do instead.
+  it('a minor captain: the refusal in one line, the message kept', async () => {
+    mockListMessages.mockResolvedValue({ data: [], error: null });
+    mockSendMessage.mockResolvedValue({ error: { message: 'minor_chat_blocked' } });
+    await render(<FixtureChatScreen />);
+    await screen.findByText('Tigers vs Lions');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
+    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
+    const line = await screen.findByText('Chat is off for this fixture. Propose a date instead.');
+    expect(String(line.props.children).split(/\s+/).length).toBeLessThanOrEqual(10);
+    expect(screen.getByLabelText('Message').props.value).toBe('hi');
+  });
+
+  it('a locked account (under 14): the age line', async () => {
+    mockListMessages.mockResolvedValue({ data: [], error: null });
+    mockSendMessage.mockResolvedValue({ error: { message: 'too_young' } });
+    await render(<FixtureChatScreen />);
+    await screen.findByText('Tigers vs Lions');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
+    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('You must be 14 or older to use Futty.')).toBeTruthy();
+  });
 });
 
 // Every date and time is Cyprus time (Asia/Nicosia), whatever zone the phone is in.

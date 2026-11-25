@@ -23,6 +23,7 @@ end $$;
 --    anon (see supabase/legacy/security-hardening.sql).
 create temporary table anon_function_allow_list (signature text primary key, reason text not null);
 insert into anon_function_allow_list values
+  ('date_of_birth_allowed(date)', 'sign-up checks the date of birth before the account exists (S12, A2); yes or no only'),
   ('format_player_count(text)', 'immutable format-to-player-count lookup, reads no data'),
   ('is_username_available(text)', 'sign-up checks a username before the account exists (lib/auth.tsx)'),
   ('service_fee_rate()', 'immutable constant, reads no data');

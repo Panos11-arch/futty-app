@@ -99,6 +99,21 @@ describe('signUp', () => {
     );
   });
 
+  it('sends the date of birth in the metadata for the server to check (S12, A1)', async () => {
+    mockSignUp.mockResolvedValue({ data: { user: { id: 'u1', identities: [{}] }, session: null }, error: null });
+    await renderWithUrl(null);
+    await act(async () => {
+      await auth.signUp({ ...params, fullName: 'New Player', dateOfBirth: '2000-05-05' });
+    });
+    expect(mockSignUp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          data: { username: 'new_player', full_name: 'New Player', date_of_birth: '2000-05-05' },
+        }),
+      })
+    );
+  });
+
   it('a new email needs confirmation', async () => {
     mockSignUp.mockResolvedValue({ data: { user: { id: 'u1', identities: [{}] }, session: null }, error: null });
     await renderWithUrl(null);

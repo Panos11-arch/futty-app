@@ -1,7 +1,6 @@
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, Switch, View } from 'react-native';
+import { Alert, ScrollView, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthField } from '@/components/auth-form';
@@ -9,15 +8,13 @@ import { PhoneField } from '@/components/phone-field';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
-import { MIN_TOUCH } from '@/components/ui/foundation';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { hairline, radius, space } from '@/constants/futty-theme';
+import { space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { SERVER_ERROR_FALLBACK } from '@/lib/booking-errors';
 import { getPhoneNumberError, joinPhone, splitPhone, type Country } from '@/lib/countries';
-import { toDateKey } from '@/lib/days';
 import {
   PREFERRED_DAYS,
   PREFERRED_TIMES,
@@ -49,7 +46,6 @@ type FormState = {
   phoneCountry: Country;
   phoneNational: string;
   gender: string;
-  dateOfBirth: string;
   bio: string;
   city: string;
   position: string;
@@ -120,58 +116,6 @@ function MultiPickerRow<T extends string>({
   );
 }
 
-const DEFAULT_DOB = new Date(2000, 0, 1);
-
-/** Android shows its date picker as an imperative native dialog
- *  (DateTimePickerAndroid.open) rather than a rendered component — rendering
- *  <DateTimePicker> continuously there would pop the dialog immediately and
- *  repeatedly. iOS renders it inline as a spinner sheet instead, toggled by
- *  the same tap. */
-function DateOfBirthField({ value, onChange }: { value: string; onChange: (next: string) => void }) {
-  const styles = useStyles();
-  const [showIOSPicker, setShowIOSPicker] = useState(false);
-  const dateValue = value ? new Date(value) : DEFAULT_DOB;
-  const maximumDate = new Date(); // can't be born in the future
-
-  function open() {
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: dateValue,
-        mode: 'date',
-        maximumDate,
-        onChange: (event, selected) => {
-          if (event.type === 'set' && selected) onChange(toDateKey(selected));
-        },
-      });
-    } else {
-      setShowIOSPicker((v) => !v);
-    }
-  }
-
-  return (
-    <View>
-      <Pressable accessibilityRole="button" accessibilityLabel={value ? `Date of birth ${value}` : 'Select date of birth'} onPress={open}>
-        <View style={styles.dateInput} pointerEvents="none">
-          <Text variant="body" tone={value ? 'ink' : 'inkMuted'} tabular>
-            {value || 'Select date of birth'}
-          </Text>
-        </View>
-      </Pressable>
-      {Platform.OS === 'ios' && showIOSPicker ? (
-        <DateTimePicker
-          value={dateValue}
-          mode="date"
-          display="spinner"
-          maximumDate={maximumDate}
-          onChange={(event, selected) => {
-            if (event.type === 'set' && selected) onChange(toDateKey(selected));
-          }}
-        />
-      ) : null}
-    </View>
-  );
-}
-
 export default function EditProfileScreen() {
   const styles = useStyles();
   const { isUsernameAvailable } = useAuth();
@@ -212,7 +156,6 @@ export default function EditProfileScreen() {
       phoneCountry: country,
       phoneNational: national,
       gender: p.gender ?? '',
-      dateOfBirth: p.date_of_birth ?? '',
       bio: p.bio ?? '',
       city: p.city ?? '',
       position: p.position ?? '',
@@ -278,7 +221,6 @@ export default function EditProfileScreen() {
       full_name: form.fullName.trim() || null,
       phone: joinPhone(form.phoneCountry, form.phoneNational) || null,
       gender: form.gender || null,
-      date_of_birth: form.dateOfBirth.trim() || null,
       bio: form.bio.trim() || null,
       city: form.city || null,
       position: form.position || null,
@@ -363,10 +305,6 @@ export default function EditProfileScreen() {
           <PickerRow options={GENDERS} value={form.gender} onChange={(v) => set('gender', v)} />
         </Field>
 
-        <Field label="Date of birth">
-          <DateOfBirthField value={form.dateOfBirth} onChange={(v) => set('dateOfBirth', v)} />
-        </Field>
-
         <Field label="Description">
           <AuthField
             value={form.bio}
@@ -427,15 +365,6 @@ const useStyles = makeStyles(({ colors }) => ({
   row: { flexDirection: 'row', gap: space.md },
   field: { flex: 1, gap: space.sm },
   pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  dateInput: {
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: space.md,
-    borderWidth: hairline,
-    borderColor: colors.border,
-    borderRadius: radius.control,
-    backgroundColor: colors.surface,
-  },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   textarea: { minHeight: space.xxl * 2 + space.sm, textAlignVertical: 'top' },
 }));

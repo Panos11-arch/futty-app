@@ -38,6 +38,7 @@ import { AuthLink, AuthScreen, AuthWordmark } from '@/components/auth-form';
 import { LockScreen } from '@/components/lock-screen';
 import { PremiumIconSync } from '@/components/premium-icon-sync';
 import { AppLockProvider, useAppLock } from '@/lib/app-lock';
+import { useAgeStatus } from '@/lib/age';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useNeedsProfileSetup } from '@/lib/auth-providers';
 import { tabsBackTitle } from '@/lib/navigation-a11y';
@@ -96,6 +97,9 @@ export function RootNavigator() {
   const brandedHeaderOptions = useBrandedHeaderOptions();
   // A new Apple or Google user has no username yet (P13).
   const profileSetup = useNeedsProfileSetup(session && !isRecovering ? session.user.id : null);
+  // S12: then the date of birth (A1) and the under-14 lock (A2), checked on
+  // the server once the username is set.
+  const ageStatus = useAgeStatus(session && !isRecovering && profileSetup === false ? session.user.id : null);
 
   // Rendering the guards before the stored session is read would flash the
   // sign-in screen for users who are already signed in.
@@ -114,7 +118,13 @@ export function RootNavigator() {
   if (signedIn && profileSetup === 'loading') return <ProfileCheckScreen />;
 
   const needsProfileSetup = profileSetup === true;
-  const inApp = signedIn && !needsProfileSetup;
+  // Until we know the age status, neither the app nor the date of birth.
+  if (signedIn && !needsProfileSetup && ageStatus === 'loading') return <ProfileCheckScreen />;
+
+  const ageChecked = signedIn && !needsProfileSetup;
+  const needsDateOfBirth = ageChecked && ageStatus === 'needs_dob';
+  const ageLocked = ageChecked && ageStatus === 'too_young';
+  const inApp = ageChecked && ageStatus === 'ok';
 
   return (
     // Explicit flex:1, not a bare Fragment, so the overlays below (push
@@ -265,6 +275,12 @@ export function RootNavigator() {
 
         <Stack.Protected guard={signedIn && needsProfileSetup}>
           <Stack.Screen name="choose-username" options={{ headerShown: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={needsDateOfBirth}>
+          <Stack.Screen name="date-of-birth" options={{ headerShown: false, gestureEnabled: false }} />
+        </Stack.Protected>
+        <Stack.Protected guard={ageLocked}>
+          <Stack.Screen name="age-locked" options={{ headerShown: false, gestureEnabled: false }} />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />

@@ -9,10 +9,39 @@ import { flatStyle } from '@/components/ui/test-utils';
 import { clearHandedOffEmail, signInHref } from '@/lib/auth';
 import { EmailTakenError } from '@/lib/auth-errors';
 
+// The picker: a tap picks 5 May 2000, as the native spinner would.
+jest.mock('@react-native-community/datetimepicker', () => {
+  const { Pressable } = jest.requireActual<typeof import('react-native')>('react-native');
+  const { createElement } = jest.requireActual<typeof import('react')>('react');
+  return {
+    __esModule: true,
+    default: ({ testID, onChange }: { testID: string; onChange: (e: { type: string }, d: Date) => void }) =>
+      createElement(Pressable, {
+        testID,
+        accessibilityRole: 'button',
+        accessibilityLabel: 'Pick',
+        onPress: () => onChange({ type: 'set' }, new Date(2000, 4, 5)),
+      }),
+    DateTimePickerAndroid: { open: jest.fn() },
+  };
+});
+
+const mockDobAllowed = jest.fn();
+jest.mock('@/lib/age', () => ({
+  ...jest.requireActual<typeof import('@/lib/age')>('@/lib/age'),
+  isDateOfBirthAllowed: (...a: unknown[]) => mockDobAllowed(...a),
+}));
+
 const button = (name: string) => screen.getByRole('button', { name });
+
+async function pickDateOfBirth() {
+  await fireEvent.press(screen.getByTestId('sign-in-dob'));
+  await fireEvent.press(screen.getByTestId('sign-in-dob-picker'));
+}
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockDobAllowed.mockResolvedValue(true);
   mockAuth.signIn.mockResolvedValue(undefined);
   mockAuth.isUsernameAvailable.mockResolvedValue(true);
   mockAuth.signUp.mockResolvedValue({ needsEmailConfirmation: true });
@@ -123,6 +152,7 @@ describe('Sign up', () => {
     await fireEvent.changeText(screen.getByLabelText('Email'), 'new@futty.cy');
     await fireEvent.changeText(screen.getByLabelText('Username'), 'new_player');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'long enough');
+    await pickDateOfBirth();
     await fireEvent.press(button('Sign up'));
     await fireEvent.press(button('Sign up'));
     await act(async () => request.resolve({ needsEmailConfirmation: true }));
@@ -132,8 +162,40 @@ describe('Sign up', () => {
       password: 'long enough',
       username: 'new_player',
       fullName: '',
+      dateOfBirth: '2000-05-05',
     });
     expect(router.push).toHaveBeenCalledWith({ pathname: '/confirm-email', params: { email: 'new@futty.cy' } });
+  });
+
+  // S12, A1 and A2.
+  it('asks for the date of birth: Sign up stays off without it', async () => {
+    await openSignUp();
+    expect(screen.getByText('Date of birth')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'new@futty.cy');
+    await fireEvent.changeText(screen.getByLabelText('Username'), 'new_player');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'long enough');
+    expect(button('Sign up').props.accessibilityState).toMatchObject({ disabled: true });
+    await pickDateOfBirth();
+    expect(button('Sign up').props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
+  it('under 14: the one-line refusal and no account', async () => {
+    mockDobAllowed.mockResolvedValue(false);
+    await openSignUp();
+    await fireEvent.changeText(screen.getByLabelText('Email'), 'young@futty.cy');
+    await fireEvent.changeText(screen.getByLabelText('Username'), 'young_player');
+    await fireEvent.changeText(screen.getByLabelText('Password'), 'long enough');
+    await pickDateOfBirth();
+    await fireEvent.press(button('Sign up'));
+    expect(mockDobAllowed).toHaveBeenCalledWith('2000-05-05');
+    expect(await screen.findByText('You must be 14 or older to use Futty.')).toBeTruthy();
+    expect(screen.getByTestId('sign-in-error')).toBeTruthy();
+    expect(mockAuth.signUp).not.toHaveBeenCalled();
+  });
+
+  it('sign in asks for no date of birth', async () => {
+    await render(<SignInScreen />);
+    expect(screen.queryByTestId('sign-in-dob')).toBeNull();
   });
 });
 
@@ -145,6 +207,7 @@ describe('Sign up with an email that already has an account', () => {
     await fireEvent.changeText(screen.getByLabelText('Email'), 'taken@futty.cy');
     await fireEvent.changeText(screen.getByLabelText('Username'), 'new_player');
     await fireEvent.changeText(screen.getByLabelText('Password'), 'long enough');
+    await pickDateOfBirth();
     await fireEvent.press(button('Sign up'));
 
     expect(await screen.findByText('An account with this email already exists. Sign in instead.')).toBeTruthy();

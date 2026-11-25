@@ -1,5 +1,5 @@
 // P10: the Futty AI's system prompt comes from public.app_rules and spec 13.
-// 22 real player questions, each with the facts its answer needs; every
+// 24 real player questions, each with the facts its answer needs; every
 // question goes through the handler to a mocked model, and the system prompt
 // it was sent must carry those facts, built from the rules (so they follow a
 // rule change with no code change). Plus: prompt caching, the tool loop on
@@ -50,7 +50,7 @@ function fake(rules: AppRules, replies: ModelResponse[] = [{ stop_reason: 'end_t
 
 const systemTexts = (request: Record<string, unknown>) => (request.system as { text: string }[]).map((b) => b.text);
 
-/** 22 real player questions and the facts the prompt must give the model for each. */
+/** 24 real player questions and the facts the prompt must give the model for each. */
 const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   {
     question: 'Can I get my money back if I cancel 3 hours before?',
@@ -75,6 +75,20 @@ const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   {
     question: 'How much is Premium?',
     facts: (r) => [`${r.premium_price_label} a month, a subscription via Apple`],
+  },
+  // P1: both paid plans, and nothing promised that a player can't notice today.
+  {
+    question: 'What is Premium Plus?',
+    facts: (r) => [
+      `Premium Plus: ${r.premium_plus_price_label} a month`,
+      'everything in Premium, plus no ads and unlimited lives in Futty Games',
+      "Futty has no ads and no Futty Games yet, so today Premium Plus gives the same as Premium; it isn't on sale until they arrive",
+      'Premium does not remove ads',
+    ],
+  },
+  {
+    question: 'How do I switch between Premium and Premium Plus?',
+    facts: () => ['an upgrade starts at once, a downgrade at the next renewal'],
   },
   {
     question: "What's the difference between paying for everyone and each paying?",
@@ -208,8 +222,8 @@ const QUESTIONS: { question: string; facts: (r: AppRules) => string[] }[] = [
   },
 ];
 
-Deno.test('22 player questions: each reaches the model with the facts it needs, from the rules', async () => {
-  strictEqual(QUESTIONS.length, 22);
+Deno.test('24 player questions: each reaches the model with the facts it needs, from the rules', async () => {
+  strictEqual(QUESTIONS.length, 24);
   for (const rules of [SPEC_RULES, CHANGED_RULES]) {
     for (const { question, facts } of QUESTIONS) {
       const f = fake(rules);
