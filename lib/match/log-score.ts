@@ -36,9 +36,16 @@ export type MatchLogPlayer = {
   avatarStyle: string | null;
   avatarKitColour: string | null;
   avatarNumber: number | null;
+  /** How the player is checked in: the venue's QR, venue staff, a captain, or not yet. */
+  checkIn: 'qr' | 'venue' | 'captain' | null;
+  /** Voted for Man of the Match: their check-in is used and can't be removed. */
+  votedMotm: boolean;
 };
 
-export type SideStats = { players: { playerId: string; goals: number; assists: number }[]; ownGoals: number };
+export type SideStats = {
+  players: { playerId: string; goals: number; assists: number; played?: boolean }[];
+  ownGoals: number;
+};
 
 /** get_match_log. */
 export type MatchLog = {
@@ -55,6 +62,8 @@ export type MatchLog = {
   canLog: boolean;
   canCorrect: boolean;
   correctionsUntil: string | null;
+  /** Captains may still tick players in or out (until the result deadline). */
+  ticksOpen: boolean;
   /** The confirmed score. */
   score: Score | null;
   myEntry: Score | null;
@@ -74,6 +83,8 @@ export type Draft = {
   goals: Record<Side, Tally>;
   assists: Record<Side, Tally>;
   ownGoals: Record<Side, number>;
+  /** Players the captain marked "Didn't play" (match_players ids). */
+  out: Record<string, true>;
 };
 
 export const SIDES: readonly Side[] = ['a', 'b'];
@@ -102,7 +113,20 @@ export const singleCaptain = (log: Pick<MatchLog, 'writableSides'>) => log.writa
 /** The draft the screens start from: the confirmed score, or the caller's last score, with the stats logged so far. */
 export function draftFrom(log: MatchLog): Draft {
   const score = log.score ?? log.myEntry ?? { a: 0, b: 0 };
-  const draft: Draft = { score: { ...score }, goals: { a: {}, b: {} }, assists: { a: {}, b: {} }, ownGoals: { a: 0, b: 0 } };
+  const draft: Draft = {
+    score: { ...score },
+    goals: { a: {}, b: {} },
+    assists: { a: {}, b: {} },
+    ownGoals: { a: 0, b: 0 },
+    out: {},
+  };
+  // Once he has saved, a player of his sides without a check-in is one he
+  // marked "Didn't play"; the first time, everyone played.
+  if (log.myEntry || log.score) {
+    for (const p of log.players) {
+      if (log.writableSides.includes(p.side) && p.profileId !== null && p.checkIn === null) draft.out[p.playerId] = true;
+    }
+  }
   for (const side of SIDES) {
     const stats = log.stats[side];
     if (!stats) continue;
@@ -144,9 +168,47 @@ function bump(tally: Tally, playerId: string, delta: number): Tally {
   return next;
 }
 
-/** + adds a goal only while the side has goals left to log; − never below 0. */
+export const isOut = (draft: Draft, playerId: string) => draft.out[playerId] === true;
+
+/**
+ * Whether the captain sees "Didn't play" on this player (decision 1l): a
+ * player of a side he logs, not a guest, not checked in by the venue's QR or
+ * staff, who hasn't voted for Man of the Match, while ticks are open. The
+ * server checks every one of these again.
+ */
+export function canTogglePlayed(log: Pick<MatchLog, 'writableSides' | 'ticksOpen'>, player: MatchLogPlayer): boolean {
+  return (
+    log.ticksOpen &&
+    log.writableSides.includes(player.side) &&
+    player.profileId !== null &&
+    player.checkIn !== 'qr' &&
+    player.checkIn !== 'venue' &&
+    !player.votedMotm
+  );
+}
+
+/** "Didn't play" on or off; marking a player out clears their goals and assists. */
+export function togglePlayed(draft: Draft, side: Side, playerId: string): Draft {
+  if (isOut(draft, playerId)) {
+    const out = { ...draft.out };
+    delete out[playerId];
+    return { ...draft, out };
+  }
+  const goals = { ...draft.goals[side] };
+  const assists = { ...draft.assists[side] };
+  delete goals[playerId];
+  delete assists[playerId];
+  return {
+    ...draft,
+    out: { ...draft.out, [playerId]: true },
+    goals: { ...draft.goals, [side]: goals },
+    assists: { ...draft.assists, [side]: assists },
+  };
+}
+
+/** + adds a goal only while the side has goals left to log, never for a player who didn't play; − never below 0. */
 export function changeGoals(draft: Draft, side: Side, playerId: string, delta: 1 | -1): Draft {
-  if (delta > 0 && goalsLogged(draft, side) >= draft.score[side]) return draft;
+  if (delta > 0 && (isOut(draft, playerId) || goalsLogged(draft, side) >= draft.score[side])) return draft;
   return { ...draft, goals: { ...draft.goals, [side]: bump(draft.goals[side], playerId, delta) } };
 }
 
@@ -156,7 +218,7 @@ export function changeOwnGoals(draft: Draft, side: Side, delta: 1 | -1): Draft {
 }
 
 export function changeAssists(draft: Draft, side: Side, playerId: string, delta: 1 | -1): Draft {
-  if (delta > 0 && assistsLogged(draft, side) >= draft.score[side]) return draft;
+  if (delta > 0 && (isOut(draft, playerId) || assistsLogged(draft, side) >= draft.score[side])) return draft;
   return { ...draft, assists: { ...draft.assists, [side]: bump(draft.assists[side], playerId, delta) } };
 }
 
@@ -177,16 +239,25 @@ export function stepsFor(log: MatchLog, draft: Draft): LogStep[] {
   return needsStats(log, draft) ? ['score', 'goals', 'assists', 'review'] : ['score', 'review'];
 }
 
-/** What log_match_result and set_match_stats take for the caller's sides. */
-export function toStatsPayload(draft: Draft, sides: readonly Side[]): Partial<Record<Side, SideStats>> {
+/**
+ * What log_match_result and set_match_stats take for the caller's sides:
+ * every player of the side with their goals, assists and whether they
+ * played (decision 1l), and the own goals.
+ */
+export function toStatsPayload(
+  log: Pick<MatchLog, 'players'>,
+  draft: Draft,
+  sides: readonly Side[]
+): Partial<Record<Side, SideStats>> {
   const payload: Partial<Record<Side, SideStats>> = {};
   for (const side of sides) {
-    const ids = new Set([...Object.keys(draft.goals[side]), ...Object.keys(draft.assists[side])]);
+    const ids = log.players.filter((p) => p.side === side).map((p) => p.playerId);
     payload[side] = {
       players: [...ids].sort().map((playerId) => ({
         playerId,
         goals: draft.goals[side][playerId] ?? 0,
         assists: draft.assists[side][playerId] ?? 0,
+        played: !isOut(draft, playerId),
       })),
       ownGoals: draft.ownGoals[side],
     };

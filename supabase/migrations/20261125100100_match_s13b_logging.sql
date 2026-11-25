@@ -272,10 +272,27 @@ left join public.league_fixtures lf on lf.id = m.league_fixture_id;
 -- Writing a side's stats
 -- ---------------------------------------------------------------------------
 
+-- Whether captains may still tick players in or out (as
+-- captain_mark_attendance): not void, from 60 minutes before kickoff until
+-- the result deadline.
+create or replace function public.match_ticks_open(p_match public.matches)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p_match.status <> 'void'
+     and now() >= p_match.kickoff_at - interval '60 minutes'
+     and now() < p_match.result_deadline_at;
+$$;
+
 -- Replaces p_side's goals and assists from p_stats
--- ({"players": [{"playerId", "goals", "assists"}], "ownGoals": n}). Each
--- player must be on that side and still in the match; goals plus own goals
--- equal p_score; assists are at most p_score.
+-- ({"players": [{"playerId", "goals", "assists", "played"}], "ownGoals": n}).
+-- Each player must be on that side and still in the match; goals plus own
+-- goals equal p_score; assists are at most p_score. A player marked
+-- "Didn't play" (played false), or one with no check-in once the ticks have
+-- closed, can't score or assist (player_did_not_play).
 create or replace function public.match_write_side_stats(p_match_id uuid, p_side text, p_stats jsonb, p_score integer,
                                                          p_uid uuid)
 returns void
@@ -293,6 +310,7 @@ declare
   v_goal_counts integer[] := '{}';
   v_assist_counts integer[] := '{}';
   v_sort integer := 0;
+  v_ticks_open boolean;
   i integer;
   j integer;
 begin
@@ -300,6 +318,7 @@ begin
      or (p_stats ? 'players' and jsonb_typeof(p_stats -> 'players') <> 'array') then
     raise exception 'invalid_stats';
   end if;
+  v_ticks_open := public.match_ticks_open((select m from public.matches m where m.id = p_match_id));
   begin
     v_own := coalesce((p_stats ->> 'ownGoals')::integer, 0);
   exception when invalid_text_representation or numeric_value_out_of_range then
@@ -325,6 +344,18 @@ begin
     end if;
     if not public.match_player_on_side(p_match_id, v_id, p_side) then
       raise exception 'not_your_player';
+    end if;
+    if v_player ? 'played' and jsonb_typeof(v_player -> 'played') <> 'boolean' then
+      raise exception 'invalid_stats';
+    end if;
+    if v_goals + v_assists > 0
+       and (v_player -> 'played' = 'false'::jsonb
+            or (not v_ticks_open and exists (
+                  select 1 from public.match_players mp
+                  where mp.id = v_id and mp.profile_id is not null
+                    and not exists (select 1 from public.match_attendance a
+                                    where a.match_id = p_match_id and a.profile_id = mp.profile_id)))) then
+      raise exception 'player_did_not_play';
     end if;
     v_ids := v_ids || v_id;
     v_goal_counts := v_goal_counts || v_goals;
@@ -355,6 +386,62 @@ begin
     v_sort := v_sort + 1;
     insert into public.match_goals (match_id, side, sort, scorer_player_id, entered_by)
     values (p_match_id, p_side, v_sort, null, p_uid);
+  end loop;
+end;
+$$;
+
+-- The captain confirms who played (decision 1l, 25 November): every player
+-- of p_side counts as played unless p_stats marks them played false. A
+-- played player without a check-in is ticked in (method 'captain', as
+-- captain_mark_attendance); a player who didn't play loses only a captain
+-- tick. A QR or venue check-in is never removed (cannot_remove_check_in),
+-- nor the tick of a player who has voted for Man of the Match
+-- (check_in_used). Ticks change only while match_ticks_open
+-- (check_in_closed); a flag that changes nothing always passes. Guests have
+-- no check-in.
+create or replace function public.match_write_side_attendance(p_match_id uuid, p_side text, p_stats jsonb, p_uid uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_open boolean := public.match_ticks_open((select m from public.matches m where m.id = p_match_id));
+  v_out uuid[];
+  r record;
+begin
+  select coalesce(array_agg((e ->> 'playerId')::uuid), '{}') into v_out
+  from jsonb_array_elements(coalesce(p_stats -> 'players', '[]')) e
+  where e -> 'played' = 'false'::jsonb;
+
+  for r in
+    select mp.id, mp.profile_id, a.method
+    from public.match_players mp
+    left join public.match_attendance a on a.match_id = mp.match_id and a.profile_id = mp.profile_id
+    where mp.match_id = p_match_id and mp.side = p_side and mp.left_at is null and mp.profile_id is not null
+    order by mp.id
+  loop
+    if not (r.id = any (v_out)) then
+      if r.method is null then
+        if not v_open then
+          raise exception 'check_in_closed';
+        end if;
+        insert into public.match_attendance (match_id, profile_id, method, checked_in_by)
+        values (p_match_id, r.profile_id, 'captain', p_uid)
+        on conflict (match_id, profile_id) do nothing;
+      end if;
+    elsif r.method is not null then
+      if r.method <> 'captain' then
+        raise exception 'cannot_remove_check_in';
+      end if;
+      if exists (select 1 from public.motm_votes v where v.match_id = p_match_id and v.voter_profile_id = r.profile_id) then
+        raise exception 'check_in_used';
+      end if;
+      if not v_open then
+        raise exception 'check_in_closed';
+      end if;
+      delete from public.match_attendance where match_id = p_match_id and profile_id = r.profile_id;
+    end if;
   end loop;
 end;
 $$;
@@ -475,6 +562,8 @@ begin
     end if;
     perform public.match_write_side_stats(p_match_id, 'a', p_stats -> 'a', p_side_a_score, v_uid);
     perform public.match_write_side_stats(p_match_id, 'b', p_stats -> 'b', p_side_b_score, v_uid);
+    perform public.match_write_side_attendance(p_match_id, 'a', p_stats -> 'a', v_uid);
+    perform public.match_write_side_attendance(p_match_id, 'b', p_stats -> 'b', v_uid);
     insert into public.match_score_entries (match_id, side, entered_by, side_a_score, side_b_score)
     values (p_match_id, 'a', v_uid, p_side_a_score, p_side_b_score)
     on conflict (match_id, side) do update
@@ -500,6 +589,7 @@ begin
 
   if p_stats ? v_side then
     perform public.match_write_side_stats(p_match_id, v_side, p_stats -> v_side, v_own_score, v_uid);
+    perform public.match_write_side_attendance(p_match_id, v_side, p_stats -> v_side, v_uid);
   elsif v_own_changed or public.match_side_goal_count(p_match_id, v_side) <> v_own_score then
     raise exception 'stats_required';
   end if;
@@ -593,6 +683,7 @@ begin
     end if;
     perform public.match_write_side_stats(p_match_id, s, p_stats -> s,
       case s when 'a' then v_match.side_a_score else v_match.side_b_score end, v_uid);
+    perform public.match_write_side_attendance(p_match_id, s, p_stats -> s, v_uid);
   end loop;
   perform public.match_compute_ratings(p_match_id);
 end;
@@ -651,6 +742,7 @@ begin
     'canLog', v_open,
     'canCorrect', v_correct,
     'correctionsUntil', case when v_match.status = 'confirmed' then v_match.confirmed_at + interval '24 hours' end,
+    'ticksOpen', public.match_ticks_open(v_match),
     'score', case when v_match.status = 'confirmed' and v_match.forfeit_side is null
                   then jsonb_build_object('a', v_match.side_a_score, 'b', v_match.side_b_score) end,
     'myEntry', case when v_mine.match_id is not null
@@ -661,6 +753,13 @@ begin
     'maxTries', (public.app_rules_now()).match_score_tries,
     'players', (select coalesce(jsonb_agg(public.match_player_json(mp.id)
                                           || jsonb_build_object('side', mp.side,
+                                                                'checkIn', (select a.method from public.match_attendance a
+                                                                            where a.match_id = p_match_id
+                                                                              and a.profile_id = mp.profile_id),
+                                                                'votedMotm', exists (
+                                                                  select 1 from public.motm_votes v
+                                                                  where v.match_id = p_match_id
+                                                                    and v.voter_profile_id = mp.profile_id),
                                                                 'avatarStyle', p.avatar_style,
                                                                 'avatarKitColour', p.avatar_kit_colour,
                                                                 'avatarNumber', p.avatar_number)
@@ -955,6 +1054,10 @@ revoke all on function public.match_compute_ratings(uuid, timestamptz) from publ
 grant execute on function public.match_compute_ratings(uuid, timestamptz) to service_role;
 revoke all on function public.match_write_side_stats(uuid, text, jsonb, integer, uuid) from public, anon, authenticated;
 grant execute on function public.match_write_side_stats(uuid, text, jsonb, integer, uuid) to service_role;
+revoke all on function public.match_ticks_open(public.matches) from public, anon, authenticated;
+grant execute on function public.match_ticks_open(public.matches) to service_role;
+revoke all on function public.match_write_side_attendance(uuid, text, jsonb, uuid) from public, anon, authenticated;
+grant execute on function public.match_write_side_attendance(uuid, text, jsonb, uuid) to service_role;
 revoke all on function public.match_side_goal_count(uuid, text) from public, anon, authenticated;
 grant execute on function public.match_side_goal_count(uuid, text) to service_role;
 revoke all on function public.match_confirm_result(uuid, integer, integer, text, timestamptz, uuid) from public, anon, authenticated;

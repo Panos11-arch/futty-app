@@ -3,23 +3,28 @@
 // their name and − / + beside it. Both halves are open only when the caller
 // logs both sides (a pickup he booked, or he paid for both sides); otherwise
 // the other half is locked with its score only. No positions: where a
-// circle stands is only a picture.
+// circle stands is only a picture. On Goals each player of the caller's
+// sides has a small "Didn't play" control (decision 1l): everyone played
+// unless he marks them; a player who didn't play is greyed out and can't
+// score or assist.
 import { View } from 'react-native';
 
 import { StepButton } from '@/components/match/log-score/step-button';
 import { Avatar } from '@/components/ui/avatar';
-import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
+import { DISABLED_OPACITY, ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
 import { radius, space } from '@/constants/futty-theme';
 import {
   assistsCounter,
   assistsLogged,
+  canTogglePlayed,
   changeAssists,
   changeGoals,
   changeOwnGoals,
   goalsCounter,
   goalsLogged,
+  isOut,
   LOCKED_LINE,
   otherSide,
   pitchRows,
@@ -27,6 +32,7 @@ import {
   playerName,
   sideLabel,
   sidePlayers,
+  togglePlayed,
   type Draft,
   type MatchLog,
   type MatchLogPlayer,
@@ -161,7 +167,11 @@ function Half({
               count={tally[p.playerId] ?? 0}
               mode={mode}
               mine={at === 'bottom'}
-              canAdd={!full}
+              canAdd={!full && !isOut(draft, p.playerId)}
+              out={isOut(draft, p.playerId)}
+              onTogglePlayed={
+                mode === 'goals' && canTogglePlayed(log, p) ? () => onChange(togglePlayed(draft, side, p.playerId)) : undefined
+              }
               onChange={(delta) => change(p, delta)}
             />
           ))}
@@ -187,6 +197,8 @@ function PlayerSpot({
   mode,
   mine,
   canAdd,
+  out,
+  onTogglePlayed,
   onChange,
 }: {
   player: MatchLogPlayer;
@@ -194,13 +206,20 @@ function PlayerSpot({
   mode: PitchMode;
   mine: boolean;
   canAdd: boolean;
+  /** Marked "Didn't play": greyed out. */
+  out: boolean;
+  /** Set when the caller may mark this player (Goals, his side, ticks open). */
+  onTogglePlayed?: () => void;
   onChange: (delta: 1 | -1) => void;
 }) {
   const styles = useStyles();
   const name = playerName(player);
   const what = mode === 'goals' ? 'goal' : 'assist';
   return (
-    <View style={styles.spot} testID={`log-score-player-${player.playerId}`}>
+    <View
+      style={[styles.spot, out && styles.spotOut]}
+      accessibilityState={{ disabled: out }}
+      testID={`log-score-player-${player.playerId}`}>
       <View>
         <View style={[styles.ring, mine && styles.ringMine]}>
           <Avatar name={name} kit={playerKit(player)} size={48} />
@@ -236,6 +255,19 @@ function PlayerSpot({
           testID={`log-score-${what}-plus-${player.playerId}`}
         />
       </View>
+      {onTogglePlayed ? (
+        <Text
+          accessibilityRole="checkbox"
+          accessibilityLabel={`${name} didn't play`}
+          accessibilityState={{ checked: out }}
+          onPress={onTogglePlayed}
+          variant="caption"
+          tone="onNight"
+          style={[styles.didntPlay, out && styles.didntPlayOn]}
+          testID={`log-score-didnt-play-${player.playerId}`}>
+          {"Didn't play"}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -326,6 +358,16 @@ const useStyles = makeStyles(({ colors }) => ({
   centre: { textAlign: 'center' },
   row: { flexDirection: 'row', justifyContent: 'space-around' },
   spot: { alignItems: 'center', gap: space.xs, width: '45%' },
+  spotOut: { opacity: DISABLED_OPACITY },
+  didntPlay: {
+    borderWidth: 1,
+    borderColor: colors.onNight,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.xs,
+    overflow: 'hidden',
+  },
+  didntPlayOn: { backgroundColor: colors.night },
   ring: { borderRadius: radius.pill },
   ringMine: { borderWidth: 2, borderColor: colors.green },
   name: { maxWidth: '100%' },

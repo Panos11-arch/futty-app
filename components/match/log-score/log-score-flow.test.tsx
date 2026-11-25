@@ -28,6 +28,9 @@ async function show(log: MatchLog = mockMatchLog()) {
 }
 
 const press = (id: string) => fireEvent.press(screen.getByTestId(id));
+/** A player's line in the stats payload: every player is listed, with played (decision 1l). */
+const row = (playerId: string, goals = 0, assists = 0, played = true) => ({ playerId, goals, assists, played });
+const SIDE_A = ['a1', 'a2', 'a3'];
 const disabled = (id: string) => screen.getByTestId(id).props.accessibilityState?.disabled === true;
 /** The progress bar's value, as a screen reader hears it. */
 const width = () => `${screen.getByTestId('log-score-progress-bar').props.accessibilityValue.now}%`;
@@ -83,14 +86,8 @@ describe('LogScoreFlow: a pickup the captain booked (both sides his)', () => {
     await press('post-match-done');
 
     expect(logResult).toHaveBeenCalledWith('m1', { a: 2, b: 1 }, {
-      a: {
-        players: [
-          { playerId: 'a2', goals: 2, assists: 0 },
-          { playerId: 'a3', goals: 0, assists: 1 },
-        ],
-        ownGoals: 0,
-      },
-      b: { players: [], ownGoals: 1 },
+      a: { players: [row('a1'), row('a2', 2), row('a3', 0, 1)], ownGoals: 0 },
+      b: { players: [row('b1'), row('b2')], ownGoals: 1 },
     });
     expect(onLogged).toHaveBeenCalledWith('confirmed');
   });
@@ -145,7 +142,7 @@ describe('LogScoreFlow: two captains (he does not know the opposition)', () => {
     await press('post-match-next');
     expect(screen.getByTestId('log-score-review-goals-b')).toHaveTextContent(/2 goals.*Logged by their captain/);
     await press('post-match-done');
-    expect(logResult).toHaveBeenCalledWith('m1', { a: 1, b: 2 }, { a: { players: [{ playerId: 'a1', goals: 1, assists: 0 }], ownGoals: 0 } });
+    expect(logResult).toHaveBeenCalledWith('m1', { a: 1, b: 2 }, { a: { players: [row('a1', 1), row('a2'), row('a3')], ownGoals: 0 } });
   });
 
   it('waiting for the other captain: his score, Open match, Change score', async () => {
@@ -196,13 +193,7 @@ describe('LogScoreFlow: two captains (he does not know the opposition)', () => {
     await press('post-match-next');
     await press('post-match-done');
     expect(logResult).toHaveBeenCalledWith('m1', { a: 5, b: 1 }, {
-      a: {
-        players: [
-          { playerId: 'a2', goals: 4, assists: 0 },
-          { playerId: 'a3', goals: 1, assists: 0 },
-        ],
-        ownGoals: 0,
-      },
+      a: { players: [row('a1'), row('a2', 4), row('a3', 1)], ownGoals: 0 },
     });
   });
 
@@ -229,8 +220,8 @@ describe('LogScoreFlow: a correction (24 hours after the result)', () => {
     await press('post-match-next');
     await press('save-scorers');
     expect(correct).toHaveBeenCalledWith('m1', {
-      a: { players: [{ playerId: 'a3', goals: 1, assists: 0 }], ownGoals: 0 },
-      b: { players: [], ownGoals: 0 },
+      a: { players: SIDE_A.map((id) => row(id, id === 'a3' ? 1 : 0)), ownGoals: 0 },
+      b: { players: [row('b1'), row('b2')], ownGoals: 0 },
     });
     expect(logResult).not.toHaveBeenCalled();
     expect(onLogged).toHaveBeenCalledWith('corrected');
@@ -261,5 +252,55 @@ describe('LogScoreFlow: a teammate under 18', () => {
     expect(screen.getByTestId('log-score-review-goals-a')).toHaveTextContent(/Eleni1/);
     expect(screen.queryByText(/prof-a2/)).toBeNull();
     expect(screen.getByTestId('log-score-review-goals-a')).not.toHaveTextContent(/Eleni \w/);
+  });
+});
+
+// Decision 1l (25 November): the captain confirms who played on the Goals
+// step. Everyone on his sides counts as played; "Didn't play" greys a
+// player out so they can't score or assist.
+describe("LogScoreFlow: Didn't play", () => {
+  const spotDisabled = (id: string) => screen.getByTestId(`log-score-player-${id}`).props.accessibilityState?.disabled === true;
+
+  it('toggles a player out and back, blocking + for goals and assists, and sends played false', async () => {
+    await show();
+    await press('add-goal');
+    await press('post-match-next');
+
+    expect(spotDisabled('a2')).toBe(false);
+    await press('log-score-didnt-play-a2');
+    expect(spotDisabled('a2')).toBe(true);
+    expect(disabled('log-score-goal-plus-a2')).toBe(true);
+    await press('log-score-didnt-play-a2');
+    expect(spotDisabled('a2')).toBe(false);
+    expect(disabled('log-score-goal-plus-a2')).toBe(false);
+
+    await press('log-score-didnt-play-a3');
+    await press('log-score-goal-plus-a2');
+    await press('post-match-next');
+    expect(spotDisabled('a3')).toBe(true);
+    expect(disabled('log-score-assist-plus-a3')).toBe(true);
+    expect(screen.queryByTestId('log-score-didnt-play-a3')).toBeNull(); // Goals only
+    await press('post-match-next');
+    await press('post-match-done');
+
+    const stats = logResult.mock.calls[0][2];
+    expect(stats.a.players).toContainEqual({ playerId: 'a3', goals: 0, assists: 0, played: false });
+    expect(stats.a.players).toContainEqual({ playerId: 'a2', goals: 1, assists: 0, played: true });
+  });
+
+  it('no control for a QR check-in or on the other captain\'s locked side', async () => {
+    const log = mockNamedLog({
+      players: [
+        { ...mockLogPlayer('a1', 'a', 'Kostas'), checkIn: 'qr' },
+        mockLogPlayer('a2', 'a', 'Panos'),
+        mockLogPlayer('b1', 'b', 'Marios'),
+      ],
+    });
+    await show(log);
+    await press('add-goal');
+    await press('post-match-next');
+    expect(screen.queryByTestId('log-score-didnt-play-a1')).toBeNull();
+    expect(screen.getByTestId('log-score-didnt-play-a2')).toBeTruthy();
+    expect(screen.queryByTestId('log-score-didnt-play-b1')).toBeNull();
   });
 });

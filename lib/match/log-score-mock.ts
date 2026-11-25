@@ -13,16 +13,19 @@ export function mockLogPlayer(id: string, side: Side, name: string): MatchLogPla
     avatarStyle: null,
     avatarKitColour: null,
     avatarNumber: null,
+    checkIn: null,
+    votedMotm: false,
   };
 }
 
+/** Everyone ticked in by the captain, as after a save (decision 1l). */
 export const LOG_PLAYERS: MatchLogPlayer[] = [
   mockLogPlayer('a1', 'a', 'Kostas'),
   mockLogPlayer('a2', 'a', 'Panos'),
   mockLogPlayer('a3', 'a', 'Dimitris'),
   mockLogPlayer('b1', 'b', 'Marios'),
   mockLogPlayer('b2', 'b', 'Chris'),
-];
+].map((p) => ({ ...p, checkIn: 'captain' as const }));
 
 export function mockMatchLog(overrides: Partial<MatchLog> = {}): MatchLog {
   return {
@@ -41,6 +44,7 @@ export function mockMatchLog(overrides: Partial<MatchLog> = {}): MatchLog {
     canLog: true,
     canCorrect: false,
     correctionsUntil: null,
+    ticksOpen: true,
     score: null,
     myEntry: null,
     theirEntry: null,

@@ -17,11 +17,14 @@ import {
   STEP_PROGRESS,
   stepsFor,
   toStatsPayload,
+  togglePlayed,
+  canTogglePlayed,
+  isOut,
   triesLeft,
   waitingForOther,
   winner,
 } from '@/lib/match/log-score';
-import { mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
+import { mockLogPlayer, mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
 
 describe('log-score', () => {
   it('the progress bar: 0, 33, 66, 100', () => {
@@ -97,22 +100,80 @@ describe('log-score', () => {
     expect(stepsFor(correction, draftFrom(correction))).toEqual(['goals', 'assists', 'review']);
   });
 
-  it('the payload: only the sides he logs, players with goals or assists, own goals', () => {
+  it('the payload: only the sides he logs, every player with goals, assists and played, own goals', () => {
     let draft = setScore(setScore(draftFrom(mockMatchLog()), 'a', 2), 'b', 1);
     draft = changeGoals(draft, 'a', 'a2', 1);
     draft = changeOwnGoals(draft, 'a', 1);
     draft = changeAssists(draft, 'a', 'a3', 1);
     draft = changeGoals(draft, 'b', 'b2', 1);
-    expect(toStatsPayload(draft, ['a'])).toEqual({
+    const log = mockMatchLog();
+    expect(toStatsPayload(log, draft, ['a'])).toEqual({
       a: {
         players: [
-          { playerId: 'a2', goals: 1, assists: 0 },
-          { playerId: 'a3', goals: 0, assists: 1 },
+          { playerId: 'a1', goals: 0, assists: 0, played: true },
+          { playerId: 'a2', goals: 1, assists: 0, played: true },
+          { playerId: 'a3', goals: 0, assists: 1, played: true },
         ],
         ownGoals: 1,
       },
     });
-    expect(Object.keys(toStatsPayload(draft, ['a', 'b']))).toEqual(['a', 'b']);
+    expect(Object.keys(toStatsPayload(log, draft, ['a', 'b']))).toEqual(['a', 'b']);
+    expect(toStatsPayload(log, togglePlayed(draft, 'a', 'a1'), ['a']).a?.players[0]).toEqual({
+      playerId: 'a1', goals: 0, assists: 0, played: false,
+    });
+  });
+
+  // Decision 1l (25 November): the captain confirms who played.
+  describe("Didn't play", () => {
+    it('everyone on his sides played the first time; after a save, players without a check-in start out', () => {
+      const first = mockMatchLog();
+      expect(['a1', 'a2', 'b1'].some((id) => isOut(draftFrom(first), id))).toBe(false);
+      const saved = mockMatchLog({
+        status: 'confirmed',
+        score: { a: 1, b: 0 },
+        canLog: false,
+        canCorrect: true,
+        players: [
+          { ...mockLogPlayer('a1', 'a', 'Kostas'), checkIn: 'captain' },
+          mockLogPlayer('a2', 'a', 'Panos'),
+          { ...mockLogPlayer('b1', 'b', 'Marios'), checkIn: 'qr' },
+        ],
+      });
+      const draft = draftFrom(saved);
+      expect(isOut(draft, 'a1')).toBe(false);
+      expect(isOut(draft, 'a2')).toBe(true);
+      expect(isOut(draft, 'b1')).toBe(false);
+    });
+
+    it('marking a player out clears their goals and assists and blocks +; marking them back allows it again', () => {
+      let draft = setScore(draftFrom(mockMatchLog()), 'a', 2);
+      draft = changeGoals(draft, 'a', 'a2', 1);
+      draft = changeAssists(draft, 'a', 'a2', 1);
+      draft = togglePlayed(draft, 'a', 'a2');
+      expect(isOut(draft, 'a2')).toBe(true);
+      expect(draft.goals.a.a2).toBeUndefined();
+      expect(draft.assists.a.a2).toBeUndefined();
+      expect(changeGoals(draft, 'a', 'a2', 1)).toBe(draft);
+      expect(changeAssists(draft, 'a', 'a2', 1)).toBe(draft);
+      draft = togglePlayed(draft, 'a', 'a2');
+      expect(changeGoals(draft, 'a', 'a2', 1).goals.a.a2).toBe(1);
+    });
+
+    it('the control: his sides only, never a QR or venue check-in, a voter, a guest, or once the ticks have closed', () => {
+      const log = mockNamedLog();
+      const p = (over: Partial<ReturnType<typeof mockLogPlayer>>, side: 'a' | 'b' = 'a') => ({
+        ...mockLogPlayer('x', side, 'X'),
+        ...over,
+      });
+      expect(canTogglePlayed(log, p({}))).toBe(true);
+      expect(canTogglePlayed(log, p({ checkIn: 'captain' }))).toBe(true);
+      expect(canTogglePlayed(log, p({}, 'b'))).toBe(false);
+      expect(canTogglePlayed(log, p({ checkIn: 'qr' }))).toBe(false);
+      expect(canTogglePlayed(log, p({ checkIn: 'venue' }))).toBe(false);
+      expect(canTogglePlayed(log, p({ votedMotm: true }))).toBe(false);
+      expect(canTogglePlayed(log, p({ profileId: null, guestName: 'Guest' }))).toBe(false);
+      expect(canTogglePlayed({ ...log, ticksOpen: false }, p({}))).toBe(false);
+    });
   });
 
   it('the review: scorers and assisters by count, own goals, and the locked side with its score only', () => {

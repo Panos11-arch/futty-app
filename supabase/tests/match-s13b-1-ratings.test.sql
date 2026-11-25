@@ -142,7 +142,8 @@ begin
 end $$;
 
 -- Only players who checked in get a rating (1b.2); guests and players who
--- left never do; a forfeit has none.
+-- left never do; a forfeit has none. The captain marks v_late "Didn't play"
+-- (decision 1l), so he isn't ticked in.
 do $$
 declare
   s record := tests.s13b_match(3, 3);
@@ -155,7 +156,9 @@ begin
   perform tests.form_player(s.match, v_left, 'a', true, true, true);
   v_guest := tests.guest_player(s.match, 'a', 'Guest');
   perform tests.s13b_log(s.cap_a, s.match, 1, 0, jsonb_build_object(
-    'a', jsonb_build_object('players', jsonb_build_array(jsonb_build_object('playerId', v_guest, 'goals', 1)), 'ownGoals', 0),
+    'a', jsonb_build_object('players', jsonb_build_array(
+           jsonb_build_object('playerId', v_guest, 'goals', 1),
+           jsonb_build_object('playerId', tests.player_id(s.match, v_late), 'goals', 0, 'played', false)), 'ownGoals', 0),
     'b', tests.s13b_side(s.match, '{}', '{}')));
   assert tests.s13b_rating(s.match, v_late) is null, 'didn''t check in: no rating';
   assert (select count(*) from public.match_player_ratings where match_id = s.match) = 6, 'only the six who checked in';

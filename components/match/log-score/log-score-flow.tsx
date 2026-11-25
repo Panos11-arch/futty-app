@@ -87,7 +87,7 @@ export function LogScoreFlow({ log, onLogged, onExit, onOpenMatch, onStale }: Lo
   const confirm = async () => {
     setSaving(true);
     setError(null);
-    const stats = needsStats(log, draft) ? toStatsPayload(draft, sides) : {};
+    const stats = needsStats(log, draft) ? toStatsPayload(log, draft, sides) : {};
     if (log.canCorrect) {
       const { error: saveError } = await setMatchStats(log.matchId, stats);
       setSaving(false);

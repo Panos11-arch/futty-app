@@ -29,9 +29,17 @@ begin
     perform tests.form_player(v_m, absent, 'b', true, false);
   end loop;
 
-  -- S13B: the booker logs 4-2; one captain, so it is confirmed at once.
+  -- S13B: the booker logs 4-2; one captain, so it is confirmed at once. He
+  -- marks late and absent "Didn't play" (decision 1l), so they stay out.
   assert tests.notified(bib, 'motm_vote_open', m) = 0, 'not before confirmation';
-  assert tests.log_result(booker, m, 4, 2) ->> 'status' = 'confirmed', 'the booker logs';
+  perform tests.act_as(booker);
+  assert public.log_match_result(m, 4, 2, jsonb_build_object(
+    'a', jsonb_build_object('players', jsonb_build_array(
+           jsonb_build_object('playerId', tests.player_id(m, late), 'goals', 0, 'played', false)), 'ownGoals', 4),
+    'b', jsonb_build_object('players', jsonb_build_array(
+           jsonb_build_object('playerId', tests.player_id(m, absent), 'goals', 0, 'played', false)), 'ownGoals', 2)))
+         ->> 'status' = 'confirmed', 'the booker logs';
+  perform tests.act_as_postgres();
   assert tests.notified(booker, 'motm_vote_open', m) = 1, 'booker';
   assert tests.notified(bib, 'motm_vote_open', m) = 1, 'bib';
   assert tests.notified(nonbib, 'motm_vote_open', m) = 1, 'nonbib';
