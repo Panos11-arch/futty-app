@@ -7,7 +7,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SITE = join(__dirname, '..', '..', 'site');
-const read = (path: string) => readFileSync(join(SITE, path), 'utf8');
+// A Windows checkout (core.autocrlf=true) has CRLF line endings.
+const read = (path: string) => readFileSync(join(SITE, path), 'utf8').replace(/
+/g, '
+');
 
 const TEAM_PLACEHOLDER = 'REPLACE_WITH_APPLE_TEAM_ID';
 const FINGERPRINT_PLACEHOLDER = 'REPLACE_WITH_ANDROID_SHA256_FINGERPRINT';
