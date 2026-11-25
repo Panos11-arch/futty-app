@@ -22,12 +22,22 @@ const CAMERA = 'Futty uses the camera to scan check-in and player codes, and to 
 const LOCATION = 'Futty uses your location only to show the weather and venues near you.';
 
 describe('S16 native modules', () => {
-  it('are installed at Expo SDK 55 versions (AdMob pinned to 16.5.0: 17.0.0 does not compile on React Native 0.83, 17.1.0+ need 0.86)', () => {
+  it('are installed at Expo SDK 55 versions (AdMob pinned to 17.0.0 with a patch: 16.5.0 fails on the Ads SDK\'s Kotlin 2.3 metadata, 17.1.0+ need React Native 0.86)', () => {
     expect(pkg.dependencies['expo-location']).toMatch(/^~55\./);
     expect(pkg.dependencies['expo-widgets']).toMatch(/^~55\./);
     expect(pkg.dependencies['react-native-maps']).toBe('1.27.2');
     expect(pkg.dependencies['react-native-view-shot']).toBe('4.0.3');
-    expect(pkg.dependencies['react-native-google-mobile-ads']).toBe('16.5.0');
+    expect(pkg.dependencies['react-native-google-mobile-ads']).toBe('17.0.0');
+  });
+
+  it('AdMob 17.0.0 is patched so its Android code compiles on React Native 0.83 (Promise.reject needs a non-null code)', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const patch = fs.readFileSync(path.join(__dirname, '../../patches/react-native-google-mobile-ads+17.0.0.patch'), 'utf8');
+    const added = patch.split('\n').filter((l: string) => l.startsWith('+promise') || /^\+\s+promise\.reject/.test(l));
+    expect(added).toHaveLength(2);
+    for (const line of added) expect(line).toContain('error.getString("code") ?: "internal-error"');
+    expect(pkg.scripts.postinstall).toBe('patch-package');
   });
 
   it('photo library and camera texts cover every use', () => {
