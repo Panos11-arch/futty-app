@@ -21,6 +21,7 @@ import {
   Button,
   Chip,
   EmptyState,
+  IconButton,
   PriceBreakdown,
   SectionHeader,
   Sheet,
@@ -90,6 +91,8 @@ export type CheckoutViewProps = {
   variant?: 'screen' | 'sheet';
   /** The chosen pitch's ids, joined with commas (the sheet). */
   pitchKey?: string | null;
+  /** The "?" beside the booking line (S13A, the payment sheet): opens a new Futty AI chat. */
+  onHelp?: () => void;
 };
 
 /** "Thu 26 Nov · 20:00" (a Cyprus calendar day, read as such). */
@@ -160,6 +163,7 @@ function CheckoutReady({
   weather,
   variant = 'screen',
   pitchKey: chosenKey = null,
+  onHelp,
 }: Omit<CheckoutViewProps, 'quote'> & { data: CheckoutData }) {
   const inSheet = variant === 'sheet';
   const styles = useStyles();
@@ -239,9 +243,20 @@ function CheckoutReady({
               {dayTimeLabel(quote.day, quote.start_time)}
             </Text>
           )}
-          <Text variant="body" tone="inkMuted">
-            {subtitle}
-          </Text>
+          <View style={styles.subtitleRow}>
+            <Text variant="body" tone="inkMuted" style={styles.subtitle}>
+              {subtitle}
+            </Text>
+            {onHelp ? (
+              <IconButton
+                testID="checkout-ask-ai"
+                icon="questionmark.circle.fill"
+                accessibilityLabel="Ask Futty AI"
+                tone="inkMuted"
+                onPress={onHelp}
+              />
+            ) : null}
+          </View>
         </View>
 
         {quote.in_debt ? <Banner tone="danger" message={DEBT_LINE} action={payOwedAction(onPayOwed)} /> : null}
@@ -457,6 +472,8 @@ const useStyles = makeStyles(({ colors }) => ({
   sheet: { gap: space.lg },
   sheetContent: { gap: space.xl, paddingBottom: space.md },
   header: { gap: space.xs },
+  subtitleRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  subtitle: { flex: 1 },
   section: { gap: space.md },
   row: { flexDirection: 'row', gap: space.md },
   option: { gap: space.xs },

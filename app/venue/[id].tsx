@@ -17,6 +17,7 @@ import { WeatherStrip } from '@/components/venue/weather-strip';
 import { timeToMin } from '@/lib/booking';
 import type { PaymentSheet } from '@/lib/booking-checkout';
 import { fetchSearchOptions, useLoad } from '@/lib/booking-search';
+import { futtyAiHref, NEW_CHAT } from '@/lib/futty-ai';
 import { useDebtBlock } from '@/lib/use-owed';
 import { useRules } from '@/lib/use-rules';
 import { useSlotCheckout } from '@/lib/use-slot-checkout';
@@ -117,6 +118,7 @@ export default function VenueScreen() {
         onShare={() => {
           if (venue) void Share.share({ message: venueShareMessage(venue) }).catch(() => {});
         }}
+        onHelp={() => router.push(futtyAiHref(NEW_CHAT))}
         onDirections={openDirections}
         onOpenUrl={(url) => void Linking.openURL(url).catch(() => {})}
         home={{
@@ -167,6 +169,11 @@ export default function VenueScreen() {
             onPayOwed={() => {
               setSheetPitch(null);
               openPayOwed();
+            }}
+            onHelp={() => {
+              // The sheet closes first so the chat isn't behind it; the pitch stays chosen.
+              setSheetPitch(null);
+              router.push(futtyAiHref(NEW_CHAT));
             }}
           />
         </Sheet>

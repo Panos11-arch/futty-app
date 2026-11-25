@@ -2,7 +2,7 @@ import './mocks';
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
-import { Modal, Share, StyleSheet } from 'react-native';
+import { Modal, Share } from 'react-native';
 
 import AccountMenuScreen from '@/app/account/index';
 import PrivacySettingsScreen from '@/app/account/settings/privacy';
@@ -11,7 +11,6 @@ import NotificationsScreen, { groupByDay } from '@/app/notifications';
 import { DocFAQ } from '@/components/doc-screen';
 import HelpScreen from '@/app/account/help';
 import { loadWithFile } from '@/components/ui/test-utils';
-import { colors } from '@/constants/futty-theme';
 
 loadWithFile(Modal);
 
@@ -25,7 +24,6 @@ const mockDecline = jest.fn();
 const mockSetAppLock = jest.fn();
 const mockUpdateProfile = jest.fn();
 const mockSignOut = jest.fn();
-const mockSendAi = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/use-notifications', () => ({
@@ -51,7 +49,7 @@ jest.mock('@/lib/use-profile', () => ({
 jest.mock('@/lib/app-lock', () => ({
   useAppLock: () => ({ supported: true, enabled: false, label: 'Face ID', setEnabled: mockSetAppLock }),
 }));
-jest.mock('@/lib/futty-ai', () => ({ sendFuttyAiMessage: (...args: unknown[]) => mockSendAi(...args) }));
+jest.mock('@/lib/futty-ai', () => ({ FUTTY_AI_HREF: '/futty-ai' }));
 
 const note = (id: string, created_at: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -318,35 +316,11 @@ describe('Doc FAQ', () => {
   });
 });
 
-describe('Futty AI chat (opened from Help)', () => {
-  async function openFromHelp() {
+describe('Futty AI (S13A: opened from Help, on its own screens)', () => {
+  it('Ask Futty AI opens my chats', async () => {
     await render(<HelpScreen />);
-    await fireEvent.press(screen.getByTestId('help-futty-ai'));
-  }
-
-  it('Help has an Ask Futty AI row; the chat opens only from it', async () => {
-    await render(<HelpScreen />);
-    expect(screen.getByRole('button', { name: 'Ask Futty AI' })).toBeTruthy();
-    expect(screen.queryByLabelText('Message to Futty AI')).toBeNull();
-  });
-
-  it('same bubbles as the fixture chat, and sends the whole conversation', async () => {
-    mockSendAi.mockResolvedValue({ data: { reply: 'Tap Book a pitch.' }, error: null });
-    await openFromHelp();
-    await fireEvent.changeText(screen.getByLabelText('Message to Futty AI'), ' How do I book? ');
-    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByText('Tap Book a pitch.');
-    expect(mockSendAi).toHaveBeenCalledWith([{ role: 'user', content: 'How do I book?' }]);
-    expect(StyleSheet.flatten(screen.getByTestId('bubble-mine').props.style).backgroundColor).toBe(colors.brandSoft);
-    expect(StyleSheet.flatten(screen.getByTestId('bubble-theirs').props.style).backgroundColor).toBe(colors.surface);
-  });
-
-  it('shows the same error when Futty AI can not be reached', async () => {
-    mockSendAi.mockResolvedValue({ data: null, error: { message: 'x' } });
-    await openFromHelp();
-    await fireEvent.changeText(screen.getByLabelText('Message to Futty AI'), 'hi');
-    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
-    expect(await screen.findByText("Couldn't reach Futty AI — try again in a moment.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask Futty AI' }));
+    expect(router.push).toHaveBeenLastCalledWith('/futty-ai');
   });
 
   it('there is no floating Futty AI button any more', async () => {

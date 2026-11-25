@@ -30,7 +30,16 @@ const files = [
   'app/edit-profile.tsx',
   'components/menu-row.tsx',
   'components/doc-screen.tsx',
-  'components/futty-ai-chat.tsx',
+  'app/futty-ai/index.tsx',
+  'app/futty-ai/[id].tsx',
+  'components/futty-ai/ai-bubbles.tsx',
+  'components/futty-ai/ai-chat-header.tsx',
+  'components/futty-ai/ai-markdown.tsx',
+  'components/futty-ai/ask-ai-button.tsx',
+  'components/futty-ai/attachments.tsx',
+  'components/futty-ai/photo-viewer.tsx',
+  'components/futty-ai/quick-replies.tsx',
+  'components/futty-ai/typing-indicator.tsx',
 ];
 
 describe.each(files)('%s uses tokens only', (file) => {

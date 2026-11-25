@@ -61,3 +61,43 @@ describe('parseReply', () => {
     expect(parseReply('\n\n')).toEqual([]);
   });
 });
+
+// S13A: links in answers.
+describe('links', () => {
+  it('[text](https://...) is a link with its text', () => {
+    expect(parseReply('Read the [Terms](https://futty.app/terms/) first.')[0].inline).toEqual([
+      { text: 'Read the ', bold: false },
+      { text: 'Terms', bold: false, href: 'https://futty.app/terms/' },
+      { text: ' first.', bold: false },
+    ]);
+  });
+
+  it('a bare https link is a link, without the full stop after it', () => {
+    expect(parseReply('See https://futty.app.')[0].inline).toEqual([
+      { text: 'See ', bold: false },
+      { text: 'https://futty.app', bold: false, href: 'https://futty.app' },
+      { text: '.', bold: false },
+    ]);
+  });
+
+  it('mailto links work; any other scheme stays plain text', () => {
+    expect(parseReply('[Email us](mailto:support@futty.app)')[0].inline).toEqual([
+      { text: 'Email us', bold: false, href: 'mailto:support@futty.app' },
+    ]);
+    expect(parseReply('[tap](javascript:alert(1))')[0].inline.some((i) => 'href' in i)).toBe(false);
+  });
+
+  it('links inside list items, bold next to links, and no asterisks in link text', () => {
+    expect(parseReply('- **Pay** at [the page](https://futty.app/pay)')[0]).toEqual({
+      kind: 'bullet',
+      inline: [
+        { text: 'Pay', bold: true },
+        { text: ' at ', bold: false },
+        { text: 'the page', bold: false, href: 'https://futty.app/pay' },
+      ],
+    });
+    expect(parseReply('[*Terms*](https://futty.app/terms/)')[0].inline).toEqual([
+      { text: 'Terms', bold: false, href: 'https://futty.app/terms/' },
+    ]);
+  });
+});

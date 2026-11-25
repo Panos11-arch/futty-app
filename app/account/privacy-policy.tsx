@@ -49,8 +49,8 @@ function PrivacyPolicyEn() {
       </DocBullet>
       <DocBullet>Follows: which players or teams you choose to follow.</DocBullet>
       <DocBullet>
-        Futty AI chat: messages you type into the in-app assistant, used only to answer your
-        question.
+        Futty AI chats: your questions, any photos you attach and the answers (see &quot;Futty
+        AI&quot; below).
       </DocBullet>
 
       <DocHeading>Match records</DocHeading>
@@ -175,7 +175,7 @@ function PrivacyPolicyEn() {
         Service providers: the app is built on Supabase (database, authentication, hosting),
         Expo/EAS (app infrastructure, push delivery), Stripe (card payments), Apple (App Store
         purchases), Sentry (crash and error reports, which include technical device information),
-        Anthropic (processes Futty AI chat messages to generate answers) and Meta (delivers WhatsApp
+        Anthropic (processes Futty AI chat messages and photos to generate answers) and Meta (delivers WhatsApp
         reminders, if you choose them). These providers process data on our behalf.
       </DocBullet>
       <DocBullet>
@@ -228,6 +228,20 @@ function PrivacyPolicyEn() {
       </DocBullet>
       <DocBullet>
         A new message sends a notification, which you can turn off in Settings.
+      </DocBullet>
+
+      <DocHeading>Futty AI</DocHeading>
+      <DocBullet>
+        Your Futty AI chats and any photos you attach are stored on our servers so you can read them
+        again. Only you can see them.
+      </DocBullet>
+      <DocBullet>
+        Photos are made smaller on your phone, then sent only to Futty and to Anthropic, the AI
+        provider that writes the answers.
+      </DocBullet>
+      <DocBullet>
+        Chats and their photos are deleted automatically 7 days after the last message, and straight
+        away if you delete your account.
       </DocBullet>
 
       <DocHeading>Your choices</DocHeading>
@@ -299,8 +313,8 @@ function PrivacyPolicyEl() {
       </DocBullet>
       <DocBullet>Ακολουθήσεις: ποιους παίκτες ή ποιες ομάδες ακολουθείτε.</DocBullet>
       <DocBullet>
-        Futty AI: μηνύματα που γράφετε στον βοηθό της εφαρμογής, που χρησιμοποιούνται μόνο για να
-        απαντηθεί η ερώτησή σας.
+        Futty AI: οι ερωτήσεις σας, οι φωτογραφίες που επισυνάπτετε και οι απαντήσεις (δείτε
+        «Futty AI» παρακάτω).
       </DocBullet>
 
       <DocHeading>Στοιχεία αγώνων</DocHeading>
@@ -440,7 +454,8 @@ function PrivacyPolicyEl() {
         Πάροχοι υπηρεσιών: η εφαρμογή βασίζεται στα Supabase (βάση δεδομένων, σύνδεση, φιλοξενία),
         Expo/EAS (υποδομή εφαρμογής, αποστολή ειδοποιήσεων), Stripe (πληρωμές με κάρτα), Apple
         (αγορές στο App Store), Sentry (αναφορές σφαλμάτων, που περιλαμβάνουν τεχνικές πληροφορίες
-        της συσκευής), Anthropic (επεξεργάζεται τα μηνύματα του Futty AI για να δώσει απαντήσεις) και
+        της συσκευής), Anthropic (επεξεργάζεται τα μηνύματα και τις φωτογραφίες του Futty AI για να
+        δώσει απαντήσεις) και
         Meta (στέλνει τις υπενθυμίσεις WhatsApp, αν τις επιλέξετε). Αυτοί οι πάροχοι επεξεργάζονται
         δεδομένα για λογαριασμό μας.
       </DocBullet>
@@ -499,6 +514,20 @@ function PrivacyPolicyEl() {
       </DocBullet>
       <DocBullet>
         Ένα νέο μήνυμα στέλνει ειδοποίηση, την οποία μπορείτε να απενεργοποιήσετε από τις Ρυθμίσεις.
+      </DocBullet>
+
+      <DocHeading>Futty AI</DocHeading>
+      <DocBullet>
+        Οι συνομιλίες σας με το Futty AI και οι φωτογραφίες που επισυνάπτετε αποθηκεύονται στους
+        διακομιστές μας, ώστε να μπορείτε να τις ξαναδιαβάσετε. Μόνο εσείς τις βλέπετε.
+      </DocBullet>
+      <DocBullet>
+        Οι φωτογραφίες μικραίνουν στο κινητό σας και στέλνονται μόνο στο Futty και στην Anthropic, τον
+        πάροχο τεχνητής νοημοσύνης που γράφει τις απαντήσεις.
+      </DocBullet>
+      <DocBullet>
+        Οι συνομιλίες και οι φωτογραφίες τους διαγράφονται αυτόματα 7 ημέρες μετά το τελευταίο
+        μήνυμα, και αμέσως αν διαγράψετε τον λογαριασμό σας.
       </DocBullet>
 
       <DocHeading>Οι επιλογές σας</DocHeading>

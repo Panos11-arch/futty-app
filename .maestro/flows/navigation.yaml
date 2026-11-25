@@ -97,5 +97,6 @@ env:
     id: account-help
 - tapOn:
     id: help-futty-ai
-- assertVisible: 'Futty AI'
+- assertVisible:
+    id: futty-ai-screen
 - takeScreenshot: navigation-${PLATFORM}

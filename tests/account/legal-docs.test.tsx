@@ -29,9 +29,9 @@ beforeEach(() => {
 describe('Privacy policy screen', () => {
   it('covers the camera, photos, match records, venues and venue-offered players', async () => {
     await render(<PrivacyPolicyScreen />);
-    expect(headings()).toHaveLength(19);
+    expect(headings()).toHaveLength(20);
     expect(headings()).toEqual(
-      expect.arrayContaining(['Camera', 'Photos', 'Match records', 'What venues see', 'Players offered by a venue', 'Calendar', 'Age and young players', 'Messages and friends']),
+      expect.arrayContaining(['Camera', 'Photos', 'Match records', 'What venues see', 'Players offered by a venue', 'Calendar', 'Age and young players', 'Messages and friends', 'Futty AI']),
     );
     expect(screen.getByText(/The picture is read on your phone to find the code and is never saved or sent/)).toBeTruthy();
     expect(screen.getByText(/Futty never reads players' photo libraries\./)).toBeTruthy();
@@ -41,7 +41,10 @@ describe('Privacy policy screen', () => {
 
   it('keeps the AI chat, payment record and deleted-player disclosures', async () => {
     await render(<PrivacyPolicyScreen />);
-    expect(screen.getByText(/Futty AI chat: messages you type into the in-app assistant/)).toBeTruthy();
+    // S13A: chats and photos, who processes them, and the 7 days.
+    expect(screen.getByText(/Futty AI chats: your questions, any photos you attach and the answers/)).toBeTruthy();
+    expect(screen.getByText(/sent only to Futty and to Anthropic, the AI provider that writes the answers/)).toBeTruthy();
+    expect(screen.getByText(/deleted automatically 7 days after the last message, and straight away if you delete your account/)).toBeTruthy();
     expect(screen.getByText(/We keep a record of what you paid for, how much, and its status \(held, charged, refunded\)\./)).toBeTruthy();
     expect(screen.getByText(/stay in league tables under "Deleted player" so other teams' records stay accurate/)).toBeTruthy();
   });
@@ -50,8 +53,8 @@ describe('Privacy policy screen', () => {
     mockLanguage = 'el';
     await render(<PrivacyPolicyScreen />);
     expect(screen.getByText('Τελευταία ενημέρωση: Νοέμβριος 2026')).toBeTruthy();
-    expect(headings()).toHaveLength(19); // as many sections as the English
-    expect(headings()).toEqual(expect.arrayContaining(['Κάμερα', 'Στοιχεία αγώνων', 'Επικοινωνία', 'Ηλικία και νεαροί παίκτες', 'Μηνύματα και φίλοι']));
+    expect(headings()).toHaveLength(20); // as many sections as the English
+    expect(headings()).toEqual(expect.arrayContaining(['Κάμερα', 'Στοιχεία αγώνων', 'Επικοινωνία', 'Ηλικία και νεαροί παίκτες', 'Μηνύματα και φίλοι', 'Futty AI']));
     expect(screen.queryByText('Camera')).toBeNull();
     expect(screen.getByText(CONTACT_EMAIL)).toBeTruthy();
   });

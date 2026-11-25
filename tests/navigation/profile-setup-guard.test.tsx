@@ -40,7 +40,7 @@ jest.mock('expo-font', () => ({ useFonts: () => [true] }));
 jest.mock('expo-splash-screen', () => ({ preventAutoHideAsync: jest.fn(), hideAsync: jest.fn() }));
 jest.mock('@expo-google-fonts/inter', () => ({}));
 jest.mock('@expo-google-fonts/ibm-plex-mono', () => ({}));
-jest.mock('@/components/futty-ai-chat', () => ({ FuttyAiChat: () => null }));
+
 jest.mock('@/lib/push-tap', () => ({ PushTapHandler: () => null }));
 jest.mock('@/components/lock-screen', () => ({ LockScreen: () => null }));
 jest.mock('@/components/ui/icon-symbol', () =>

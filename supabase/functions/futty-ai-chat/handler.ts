@@ -7,8 +7,18 @@
 // (venues_free_at, venue_free_slots, booking_quote): live venues only, the
 // server's price per player, the player's own booking window. It never
 // guesses or computes a price.
+//
+// Saved chats (S13A): the app sends one message ({ chat_id?, text, photos? })
+// and the server reads the chat's history itself, so the model only ever
+// sees what this player and Futty AI really said. The question and the
+// answer are saved together once the model has answered: when it fails,
+// nothing is saved and "Try again" sends the same message. The old body
+// ({ messages }, the whole conversation from the app) still answers, with
+// nothing saved, for app builds from before S13A.
 import type { Db } from '../_shared/db.ts';
 import { type AppRules, euros } from '../_shared/rules.ts';
+import { type AiAction, splitAnswer, titleFrom } from './answer.ts';
+import { type Photo, readPhotos } from './photos.ts';
 import { systemBlocks } from './prompt.ts';
 
 export const MAX_TOOL_ITERATIONS = 4;
@@ -49,6 +59,33 @@ export type ChatDeps = {
   /** Today in Cyprus, YYYY-MM-DD. */
   today: () => string;
   now?: () => Date;
+  /** The caller's saved chats (S13A). */
+  store?: ChatStore;
+};
+
+/** One saved message, as public.ai_chat_messages has it. */
+export type StoredMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  body: string;
+  actions: string[];
+  photo_paths: string[];
+  created_at: string;
+};
+
+/** The caller's chats, in public.ai_chats and the ai-chat-photos bucket (service role, scoped to the caller). */
+export type ChatStore = {
+  /** True only for a chat the caller owns. */
+  ownsChat(chatId: string): Promise<boolean>;
+  /** The chat's last `limit` messages, oldest first. */
+  history(chatId: string, limit: number): Promise<StoredMessage[]>;
+  newChatId(): string;
+  /** Uploads the photos into the caller's folder for this chat; returns their paths. */
+  savePhotos(chatId: string, photos: Uint8Array[]): Promise<string[]>;
+  removePhotos(paths: string[]): Promise<void>;
+  createChat(chatId: string, title: string): Promise<void>;
+  /** Saves the messages and moves the chat's last-message time on. */
+  addMessages(chatId: string, messages: Omit<StoredMessage, 'id'>[]): Promise<StoredMessage[]>;
 };
 
 export type ChatResult = { status: number; body: Record<string, unknown> };
@@ -160,25 +197,29 @@ export function cleanMessages(messages: unknown): { role: 'user' | 'assistant'; 
   return cleaned.length > 0 ? cleaned : null;
 }
 
-export async function chat(deps: ChatDeps, body: { messages?: unknown }): Promise<ChatResult> {
-  const cleaned = cleanMessages(body.messages);
-  if (!cleaned) return { status: 400, body: { error: 'Missing messages' } };
 
-  const now = (deps.now ?? (() => new Date()))();
+const RATE_LIMITED = "You've sent a lot of messages — please try again a bit later.";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** What the model sees for a photo sent without words. */
+const PHOTO_ONLY = '(Photo only)';
+
+/** True (and nothing recorded) when the player is over the hourly or daily limit; otherwise records this request. */
+async function overLimit(deps: ChatDeps, now: Date): Promise<boolean> {
   const [lastHour, lastDay] = await Promise.all([
     deps.usage.countSince(new Date(now.getTime() - 60 * 60 * 1000).toISOString()),
     deps.usage.countSince(new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()),
   ]);
-  if (lastHour >= MAX_REQUESTS_PER_HOUR || lastDay >= MAX_REQUESTS_PER_DAY) {
-    return { status: 429, body: { error: "You've sent a lot of messages — please try again a bit later." } };
-  }
+  if (lastHour >= MAX_REQUESTS_PER_HOUR || lastDay >= MAX_REQUESTS_PER_DAY) return true;
   await deps.usage.record();
+  return false;
+}
 
+/** The model's answer to this conversation, through the availability tool loop; never empty. */
+// deno-lint-ignore no-explicit-any
+async function answer(deps: ChatDeps, messages: any[]): Promise<string> {
   // The rules first: with no rules, no answer (never stale or guessed numbers).
   const rules = await deps.rules();
   const system = systemBlocks(rules, deps.today());
-  // deno-lint-ignore no-explicit-any
-  const messages: any[] = cleaned;
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
     const response = await deps.model({
@@ -189,7 +230,7 @@ export async function chat(deps: ChatDeps, body: { messages?: unknown }): Promis
       tools: [CHECK_AVAILABILITY_TOOL],
     });
 
-    if (response.stop_reason === 'refusal') return { status: 200, body: { reply: FALLBACK_REPLY } };
+    if (response.stop_reason === 'refusal') return FALLBACK_REPLY;
 
     if (response.stop_reason !== 'tool_use') {
       const text = response.content
@@ -197,7 +238,7 @@ export async function chat(deps: ChatDeps, body: { messages?: unknown }): Promis
         .map((b) => b.text)
         .join('\n')
         .trim();
-      return { status: 200, body: { reply: text || FALLBACK_REPLY } };
+      return text || FALLBACK_REPLY;
     }
 
     // Append the whole content (thinking blocks included) before the results.
@@ -219,5 +260,88 @@ export async function chat(deps: ChatDeps, body: { messages?: unknown }): Promis
     messages.push({ role: 'user', content: toolResults });
   }
 
-  return { status: 200, body: { reply: LOOP_REPLY } };
+  return LOOP_REPLY;
+}
+
+/** The answer's text and buttons; an answer that was only tags becomes the plain reply. */
+function shownAnswer(raw: string): { text: string; actions: AiAction[] } {
+  const split = splitAnswer(raw);
+  return split.text ? split : { text: FALLBACK_REPLY, actions: [] };
+}
+
+/** A saved message as the model sees it again: text only, earlier photos noted. */
+function historyTurn(m: StoredMessage): { role: 'user' | 'assistant'; content: string } {
+  if (m.role === 'assistant') return { role: 'assistant', content: m.body || FALLBACK_REPLY };
+  const photos = m.photo_paths.length;
+  const note = photos === 0 ? '' : `[${photos} photo${photos === 1 ? '' : 's'} sent earlier]`;
+  const text = m.body.slice(0, MAX_MESSAGE_CHARS);
+  return { role: 'user', content: [text, note].filter(Boolean).join('\n') || PHOTO_ONLY };
+}
+
+/** This message for the model: its photos as JPEG images, then its text. */
+function currentTurn(text: string, photos: Photo[]) {
+  return {
+    role: 'user' as const,
+    content: [
+      ...photos.map((p) => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: p.base64 } })),
+      { type: 'text', text: text || PHOTO_ONLY },
+    ],
+  };
+}
+
+type SavedChatBody = { chat_id?: unknown; text?: unknown; photos?: unknown };
+
+/** S13A: one message in a saved chat (a new one when there's no chat id). */
+async function chatInSavedChat(deps: ChatDeps, store: ChatStore, body: SavedChatBody): Promise<ChatResult> {
+  const text = typeof body.text === 'string' ? body.text.trim() : '';
+  if (text.length > MAX_MESSAGE_CHARS) return { status: 400, body: { error: 'message_too_long' } };
+  const read = readPhotos(body.photos);
+  if ('error' in read) return { status: 400, body: { error: read.error } };
+  const { photos } = read;
+  if (!text && photos.length === 0) return { status: 400, body: { error: 'empty_message' } };
+
+  const existing = body.chat_id === undefined || body.chat_id === null ? null : body.chat_id;
+  if (existing !== null && (typeof existing !== 'string' || !UUID.test(existing))) {
+    return { status: 400, body: { error: 'bad_chat' } };
+  }
+  if (existing !== null && !(await store.ownsChat(existing))) return { status: 404, body: { error: 'chat_not_found' } };
+
+  const clock = deps.now ?? (() => new Date());
+  const askedAt = clock();
+  if (await overLimit(deps, askedAt)) return { status: 429, body: { error: RATE_LIMITED } };
+
+  const history = existing ? await store.history(existing, MAX_HISTORY_MESSAGES - 1) : [];
+  const turns = history.map(historyTurn);
+  while (turns.length > 0 && turns[0].role !== 'user') turns.shift();
+  const reply = shownAnswer(await answer(deps, [...turns, currentTurn(text, photos)]));
+  const answeredAt = clock();
+
+  // Saved only now the model has answered.
+  const chatId = existing ?? store.newChatId();
+  const paths = photos.length > 0 ? await store.savePhotos(chatId, photos.map((p) => p.bytes)) : [];
+  try {
+    if (!existing) await store.createChat(chatId, titleFrom(text));
+    const messages = await store.addMessages(chatId, [
+      { role: 'user', body: text, actions: [], photo_paths: paths, created_at: askedAt.toISOString() },
+      { role: 'assistant', body: reply.text, actions: reply.actions, photo_paths: [], created_at: answeredAt.toISOString() },
+    ]);
+    return { status: 200, body: { chat_id: chatId, messages } };
+  } catch (err) {
+    if (paths.length > 0) await store.removePhotos(paths).catch(() => {});
+    throw err;
+  }
+}
+
+export async function chat(deps: ChatDeps, body: SavedChatBody & { messages?: unknown }): Promise<ChatResult> {
+  const saved = body.text !== undefined || body.photos !== undefined || body.chat_id !== undefined;
+  if (saved) {
+    if (!deps.store) throw new Error('futty-ai-chat: no chat store');
+    return chatInSavedChat(deps, deps.store, body);
+  }
+
+  // The old body: the whole conversation from the app, nothing saved.
+  const cleaned = cleanMessages(body.messages);
+  if (!cleaned) return { status: 400, body: { error: 'Missing messages' } };
+  if (await overLimit(deps, (deps.now ?? (() => new Date()))())) return { status: 429, body: { error: RATE_LIMITED } };
+  return { status: 200, body: { reply: shownAnswer(await answer(deps, cleaned)).text } };
 }

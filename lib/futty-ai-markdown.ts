@@ -1,9 +1,10 @@
 // Futty AI replies come back as Markdown. The app renders a small subset of
-// it itself (F9, no new dependency): bold, bullet and numbered lists, and
-// line breaks. Everything else is shown as plain text, and an asterisk is
+// it itself (F9, no new dependency): bold, bullet and numbered lists, line
+// breaks and links (S13A). Everything else is shown as plain text, and an asterisk is
 // never shown raw, matched or not. Headings ("### ...") become a bold line.
 
-export type Inline = { text: string; bold: boolean };
+/** A run of text; `href` only on a link (https or mailto, S13A). */
+export type Inline = { text: string; bold: boolean; href?: string };
 export type Block =
   | { kind: 'paragraph'; inline: Inline[] }
   | { kind: 'bullet'; inline: Inline[] }
@@ -13,14 +14,20 @@ const BULLET = /^\s*[-*•]\s+(.*)$/;
 const NUMBERED = /^\s*(\d+)[.)]\s+(.*)$/;
 const HEADING = /^\s*#{1,6}\s+(.*)$/;
 
-/** Bold spans (**x** or __x__); any other asterisk is dropped. */
+// Bold (**x**, __x__); a link [text](https://... or mailto:...); a bare
+// https link, without the punctuation that ends its sentence.
+const INLINE =
+  /\*\*(.+?)\*\*|__(.+?)__|\[([^\]\n]+)\]\(((?:https?:\/\/|mailto:)[^\s)]+)\)|(https?:\/\/[^\s)]*[^\s).,!?;:'"])/g;
+
+/** Bold spans and links; any other asterisk is dropped. */
 export function parseInline(text: string): Inline[] {
   const parts: Inline[] = [];
-  const pattern = /\*\*(.+?)\*\*|__(.+?)__/g;
   let last = 0;
-  for (const match of text.matchAll(pattern)) {
+  for (const match of text.matchAll(INLINE)) {
     if (match.index > last) parts.push({ text: text.slice(last, match.index), bold: false });
-    parts.push({ text: match[1] ?? match[2], bold: true });
+    if (match[3] !== undefined) parts.push({ text: match[3], bold: false, href: match[4] });
+    else if (match[5] !== undefined) parts.push({ text: match[5], bold: false, href: match[5] });
+    else parts.push({ text: match[1] ?? match[2], bold: true });
     last = match.index + match[0].length;
   }
   if (last < text.length) parts.push({ text: text.slice(last), bold: false });

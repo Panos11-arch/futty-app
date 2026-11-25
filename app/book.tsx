@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 
 import { BookSearchView } from '@/components/booking/book-search-view';
+import { AskAiButton } from '@/components/futty-ai/ask-ai-button';
 import {
   defaultBookQuery,
   fetchBookSearch,
@@ -114,7 +115,7 @@ export default function BookScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Search' }} />
+      <Stack.Screen options={{ title: 'Search', headerRight: () => <AskAiButton testID="book-ask-ai" /> }} />
       <BookSearchView
         options={options.state}
         query={shownQuery}

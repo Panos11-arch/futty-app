@@ -69,6 +69,11 @@ const ALLOWED: { file: string; text: string; why: string }[] = [
     text: "match_reminder_2h: '2 hours before a game'",
     why: 'A match reminder setting (match record, docs/specs/match-record.md), not a spec 13 rule.',
   },
+  {
+    file: 'app/account/privacy-policy.tsx',
+    text: 'deleted automatically 7 days after the last message',
+    why: 'How long Futty AI chats are kept (S13A, decided 22 November; public.ai_chat_keep_days()), not a spec 13 rule.',
+  },
 ];
 
 function hits(pattern: RegExp): string[] {
