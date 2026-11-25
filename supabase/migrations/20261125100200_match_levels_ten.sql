@@ -8,11 +8,15 @@
 --   searches have none.
 -- * The starting level is the self-rating the player picks at sign-up
 --   (7 → 7.0), if it is within 1 of the rating the server expects from his
---   answers: expected = 3 + round(7 × points / 3.7), with the points of
---   decision 1f.2 (years 0/0.3/0.6/0.8, highest level 0/0.7/1.5/2.2, how
---   often 0/0.2/0.5/0.7; total 0–3.7), so 3–10. Outside it,
---   set_starting_level refuses with self_rating_out_of_range and the range
---   in the error's detail ({"low": n, "high": n}). match_level_expected
+--   answers: expected = min(8, 3 + round(7 × points / 3.7)), with the
+--   points of decision 1f.2 (years 0/0.3/0.6/0.8, highest level
+--   0/0.7/1.5/2.2, how often 0/0.2/0.5/0.7; total 0–3.7), so 3–8. The
+--   pick is expected ±1, never below 1 or above 8 (app_rules
+--   starting_level_max, decided by Panos 25 November, agreed by Anghelo):
+--   a starting level is at most 8.0, and only matches take a player
+--   higher. Outside it, set_starting_level refuses with
+--   self_rating_out_of_range and the range in the error's detail
+--   ({"low": n, "high": n}). match_level_expected
 --   replaces match_level_start. Provisional until 5 competitive matches, as
 --   before. A player with no answers starts at 4.0 (the old 3.0).
 -- * After a confirmed competitive match, the same update scaled by 1.5:
@@ -42,7 +46,9 @@ alter table public.app_rules
   add column level_nudge_centre numeric(4,2) not null default 6.5,
   add column level_nudge_span numeric(4,2) not null default 3.5,
   add column level_self_rating_margin integer not null default 1 check (level_self_rating_margin >= 0),
-  add constraint app_rules_level_range check (level_min < level_max and level_nudge_span > 0 and level_elo_divisor > 0);
+  add column starting_level_max integer not null default 8,
+  add constraint app_rules_level_range check (level_min < level_max and level_nudge_span > 0 and level_elo_divisor > 0),
+  add constraint app_rules_starting_level_max check (starting_level_max between level_min and level_max);
 
 -- A level on the old 1-7 scale on the new 1-10 scale.
 create or replace function public.match_level_to_ten(p_level numeric)
@@ -62,11 +68,12 @@ update public.player_level_history
 set level_before = public.match_level_to_ten(level_before),
     level_after = public.match_level_to_ten(level_after);
 
--- The rating the server expects from the three answers (3–10).
+-- The rating the server expects from the three answers (3–8): never above
+-- app_rules.starting_level_max.
 create or replace function public.match_level_expected(p_years text, p_highest text, p_frequency text)
 returns integer
 language plpgsql
-immutable
+stable
 security definer
 set search_path = ''
 as $$
@@ -79,7 +86,7 @@ begin
   if v is null then
     raise exception 'invalid_answer';
   end if;
-  return 3 + round(7 * v / 3.7)::integer;
+  return least((public.app_rules_now()).starting_level_max, 3 + round(7 * v / 3.7)::integer);
 end;
 $$;
 
@@ -88,7 +95,8 @@ drop function public.match_level_start(text, text, text, integer);
 -- The app calls this once, after sign-up. A default level (never answered,
 -- no competitive match yet) is replaced; anything else is level_already_set.
 -- The level is the self-rating, if it is within the margin of the expected
--- rating; otherwise self_rating_out_of_range, with the allowed range.
+-- rating and not above starting_level_max; otherwise
+-- self_rating_out_of_range, with the allowed range.
 create or replace function public.set_starting_level(
   p_years text,
   p_highest text,
@@ -125,7 +133,7 @@ begin
   end if;
   v_expected := public.match_level_expected(p_years, p_highest, p_frequency);
   v_low := greatest(1, v_expected - v_rules.level_self_rating_margin);
-  v_high := least(10, v_expected + v_rules.level_self_rating_margin);
+  v_high := least(v_rules.starting_level_max, v_expected + v_rules.level_self_rating_margin);
   if p_self_rating not between v_low and v_high then
     raise exception 'self_rating_out_of_range'
       using detail = jsonb_build_object('low', v_low, 'high', v_high)::text;

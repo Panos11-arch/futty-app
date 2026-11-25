@@ -2,7 +2,9 @@
 -- S13B (levels on 1.0-10.0): the starting level is the self-rating the
 -- player picks, if it is within 1 of the rating the server expects from
 -- "How long have you played", "Highest level" and "How often do you play
--- now": expected = 3 + round(7 x points / 3.7). Outside that range
+-- now": expected = min(8, 3 + round(7 x points / 3.7)), and the pick is
+-- never above 8 (app_rules.starting_level_max, decided by Panos 25
+-- November): only matches take a player higher. Outside that range
 -- set_starting_level refuses (self_rating_out_of_range, with the range in
 -- the detail) and writes nothing. Provisional, 0% reliability. Answered
 -- once; a default row (never answered, no competitive matches yet) can
@@ -43,12 +45,14 @@ begin
   assert public.match_level_expected('under_1', 'kickabout', 'rarely') = 3, 'less than a year, kickabouts, rarely: 3';
   assert public.match_level_expected('1_3', 'kickabout', 'monthly') = 4, '1-3 years, kickabouts, monthly: 4';
   assert public.match_level_expected('3_10', 'amateur', 'weekly') = 6, '3-10 years, amateur, weekly: 6';
-  assert public.match_level_expected('over_10', 'semi_pro', 'several_weekly') = 9, 'over 10, semi-pro, several a week: 9';
-  assert public.match_level_expected('over_10', 'professional', 'several_weekly') = 10, 'over 10, professional: 10';
+  assert public.match_level_expected('3_10', 'semi_pro', 'weekly') = 8, '3-10 years, semi-pro, weekly: 8';
+  assert public.match_level_expected('over_10', 'semi_pro', 'several_weekly') = 8, 'over 10, semi-pro, several a week: 8 (9 capped)';
+  assert public.match_level_expected('over_10', 'professional', 'several_weekly') = 8, 'over 10, professional: 8 (10 capped)';
+  assert public.match_level_expected('under_1', 'professional', 'rarely') = 7, 'professional, under a year, rarely: 7';
   perform tests.act_as_postgres();
 end $$;
 
--- The allowed ranges: expected ±1, never below 1 or above 10.
+-- The allowed ranges: expected ±1, never below 1 or above 8.
 do $$
 declare
   u uuid := tests.create_user('lv1-range@futty.test');
@@ -58,9 +62,13 @@ begin
   assert tests.start(u, 'under_1', 'kickabout', 'rarely', 'gk', 1) = 'self_rating_out_of_range', 'expected 3: 1 refused';
   assert tests.start_range(u, '1_3', 'kickabout', 'monthly', 9) = '{"low": 3, "high": 5}', 'expected 4: allows 3-5';
   assert tests.start_range(u, '3_10', 'amateur', 'weekly', 1) = '{"low": 5, "high": 7}', 'expected 6: allows 5-7';
-  assert tests.start_range(u, 'over_10', 'semi_pro', 'several_weekly', 1) = '{"low": 8, "high": 10}', 'expected 9: allows 8-10';
-  assert tests.start_range(u, 'over_10', 'professional', 'several_weekly', 1) = '{"low": 9, "high": 10}',
-    'expected 10: allows 9-10';
+  assert tests.start_range(u, 'over_10', 'semi_pro', 'several_weekly', 1) = '{"low": 7, "high": 8}', 'semi-pro, expected 8: allows 7-8';
+  assert tests.start_range(u, 'over_10', 'professional', 'several_weekly', 1) = '{"low": 7, "high": 8}',
+    'professional, expected 8: allows 7-8';
+  assert tests.start(u, 'over_10', 'semi_pro', 'several_weekly', 'mid', 9) = 'self_rating_out_of_range', 'semi-pro: 9 refused';
+  assert tests.start_range(u, 'over_10', 'professional', 'several_weekly', 9) = '{"low": 7, "high": 8}',
+    'professional: 9 refused, allows 7-8';
+  assert tests.start(u, 'over_10', 'professional', 'several_weekly', 'fwd', 10) = 'self_rating_out_of_range', 'professional: 10 refused';
   -- A refusal writes nothing: the player picks again.
   assert not exists (select 1 from public.player_levels where profile_id = u), 'no level';
   assert not exists (select 1 from public.player_level_answers where profile_id = u), 'no answers';
@@ -84,8 +92,8 @@ begin
   assert tests.level_of(v_seven) = 7.0, format('pick 7: 7.0, got %s', tests.level_of(v_seven));
   assert tests.start(v_low, 'under_1', 'kickabout', 'rarely', 'gk', 2) is null, 'low';
   assert tests.level_of(v_low) = 2.0, format('2.0, got %s', tests.level_of(v_low));
-  assert tests.start(v_top, 'over_10', 'professional', 'several_weekly', 'fwd', 10) is null, 'top';
-  assert tests.level_of(v_top) = 10.0, format('10.0, got %s', tests.level_of(v_top));
+  assert tests.start(v_top, 'over_10', 'professional', 'several_weekly', 'fwd', 8) is null, 'top';
+  assert tests.level_of(v_top) = 8.0, format('8.0, the highest start, got %s', tests.level_of(v_top));
 
   select * into v_row from public.player_levels where profile_id = v_seven;
   assert v_row.provisional and v_row.reliability_pct = 0 and v_row.competitive_matches = 0
@@ -135,6 +143,27 @@ begin
   assert (select count(*) from public.player_level_history where profile_id = v_top) = 1, 'others'' history readable';
   perform tests.act_as_postgres();
   assert tests.start(v_seven, null, null, null, null, null) = 'level_already_set', 'nothing changes';
+end $$;
+
+-- A player starting at 8.0 goes above 8 after a competitive win: the cap is
+-- on the start only. Even sides (8.0 v 8.0), a 1:0 win: E = 0.5, K = 0.60,
+-- reliability 0, so +0.30 to 8.30 before the rating nudge.
+do $$
+declare
+  v_eight uuid := tests.create_user('lv1-eight@futty.test');
+  v_opp uuid := tests.create_user('lv1-eight-opp@futty.test');
+  v_m uuid;
+begin
+  assert tests.start(v_eight, 'over_10', 'professional', 'several_weekly', 'fwd', 8) is null, 'starts at 8';
+  perform tests.set_level(v_opp, 8.0, 0);
+  v_m := tests.form_match(now() - interval '30 hours', 'confirmed', 1, 0,
+                          tests.create_team('LV1 Eight A'), tests.create_team('LV1 Eight B'));
+  perform tests.form_player(v_m, v_eight, 'a', true, true);
+  perform tests.form_player(v_m, v_opp, 'b', true, true);
+  perform tests.apply_levels(v_m);
+  assert (select level_after from public.player_level_history
+          where profile_id = v_eight and match_id = v_m and reason = 'result') = 8.30, 'the win: 8.30';
+  assert tests.level_of(v_eight) > 8.0, format('above 8 after a win, got %s', tests.level_of(v_eight));
 end $$;
 
 rollback;

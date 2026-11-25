@@ -69,12 +69,19 @@ export function shouldOfferStartingLevel(input: {
   );
 }
 
+/**
+ * The highest self-rating the rating question offers (decided by Panos 25
+ * November). The server's app_rules.starting_level_max holds the rule and
+ * set_starting_level checks it; this only keeps higher numbers off screen.
+ */
+export const STARTING_LEVEL_MAX = 8;
+
 export type StartingAnswers = {
   years: string;
   highest: string;
   frequency: string;
   position: string;
-  /** '1'–'10'. */
+  /** '1'–'8'. */
   selfRating: string;
 };
 
@@ -128,8 +135,8 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
   },
   {
     key: 'selfRating',
-    question: 'How would you rate yourself, from 1 to 10?',
-    options: Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+    question: `How would you rate yourself, from 1 to ${STARTING_LEVEL_MAX}?`,
+    options: Array.from({ length: STARTING_LEVEL_MAX }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
   },
 ];
 

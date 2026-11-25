@@ -2,8 +2,8 @@
 // 05-product section 4.1), one per step. Finishing sends the five answers to
 // set_starting_level; skipping sends nothing, and the server gives a
 // provisional default the first time it is needed. S13B: the self-rating is
-// the starting level (1.0-10.0) if it is within 1 of what the server expects
-// from the answers; otherwise the player stays on the rating question, with
+// the starting level (1.0-8.0: never above 8, only matches go higher) if it
+// is within 1 of what the server expects from the answers; otherwise the player stays on the rating question, with
 // every answer kept, and is told the range the server allows.
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
