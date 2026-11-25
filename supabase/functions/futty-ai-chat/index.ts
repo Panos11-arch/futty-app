@@ -12,6 +12,7 @@ import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { dbFromSupabase } from '../_shared/db.ts';
 import { loadRules } from '../_shared/rules.ts';
 import { chat, type ModelResponse } from './handler.ts';
+import { supabaseChatStore } from './store.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) return new Response('Unauthorized', { status: 401 });
   const userId = userData.user.id;
 
-  let body: { messages?: unknown };
+  let body: { messages?: unknown; chat_id?: unknown; text?: unknown; photos?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -60,6 +61,7 @@ Deno.serve(async (req) => {
       modelId: MODEL,
       rules: () => loadRules(dbFromSupabase(supabaseAdmin)),
       model: callAnthropic,
+      store: supabaseChatStore(supabaseAdmin, userId),
       userDb: dbFromSupabase(supabaseAsUser),
       liveVenues: async ({ city, name }) => {
         let query = supabaseAsUser.from('venues').select('id, name, city').eq('is_live', true);

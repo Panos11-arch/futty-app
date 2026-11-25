@@ -1,0 +1,66 @@
+# Journey (S13A): Futty AI. Account → Help → "Ask Futty AI" opens my chats;
+# New chat opens an empty chat with its night header, the quick replies and
+# the input with the attach button; typing shows the send button. The "?" on
+# Book a pitch opens a new chat too. Nothing is sent: an answer would call
+# the model.
+appId: com.panosalepis.futtyapp
+name: futty-ai
+tags:
+  - e2e
+  - futty-ai
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# ---- Help → Futty AI → New chat --------------------------------------------
+- tapOn:
+    id: header-menu
+- tapOn:
+    id: account-help
+- tapOn:
+    id: help-futty-ai
+- extendedWaitUntil:
+    visible:
+      id: futty-ai-screen
+    timeout: 15000
+- tapOn: 'New chat'
+- assertVisible:
+    id: ai-chat-header
+- assertVisible:
+    id: ai-quick-replies
+- assertVisible:
+    id: ai-quick-book-a-pitch
+- assertVisible:
+    id: ai-attach
+- tapOn:
+    id: chat-input
+- inputText: 'How do I cancel?'
+- assertVisible:
+    id: chat-send
+- hideKeyboard
+- takeScreenshot: futty-ai-new-chat-${PLATFORM}
+- tapOn:
+    id: ai-chat-back
+- assertVisible:
+    id: futty-ai-screen
+
+# ---- The "?" on Book a pitch -------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- tapOn:
+    id: tab-book
+- tapOn:
+    id: book-ask-ai
+- assertVisible:
+    id: ai-chat-header
+- tapOn:
+    id: ai-chat-back

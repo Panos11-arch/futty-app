@@ -19,9 +19,11 @@ export type VenueGalleryProps = {
   urls: string[];
   onBack: () => void;
   onShare: () => void;
+  /** The "?" (S13A): opens a new Futty AI chat. */
+  onHelp?: () => void;
 };
 
-export function VenueGallery({ name, urls, onBack, onShare }: VenueGalleryProps) {
+export function VenueGallery({ name, urls, onBack, onShare, onHelp }: VenueGalleryProps) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -54,8 +56,15 @@ export function VenueGallery({ name, urls, onBack, onShare }: VenueGalleryProps)
         <View style={styles.round}>
           <IconButton testID="venue-back" icon="chevron.left" accessibilityLabel="Back" onPress={onBack} />
         </View>
-        <View style={styles.round}>
-          <IconButton testID="venue-share" icon="square.and.arrow.up" accessibilityLabel="Share" onPress={onShare} />
+        <View style={styles.right} pointerEvents="box-none">
+          {onHelp ? (
+            <View style={styles.round}>
+              <IconButton testID="venue-ask-ai" icon="questionmark.circle.fill" accessibilityLabel="Ask Futty AI" onPress={onHelp} />
+            </View>
+          ) : null}
+          <View style={styles.round}>
+            <IconButton testID="venue-share" icon="square.and.arrow.up" accessibilityLabel="Share" onPress={onShare} />
+          </View>
         </View>
       </View>
       {open !== null ? <PhotoViewer urls={urls} name={name} first={open} onClose={() => setOpen(null)} /> : null}
@@ -100,6 +109,7 @@ const useStyles = makeStyles(({ colors }) => ({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  right: { flexDirection: 'row', gap: space.sm },
   round: { backgroundColor: colors.surface, borderRadius: radius.pill },
   viewer: { flex: 1, backgroundColor: colors.night },
   close: { position: 'absolute', right: space.lg },

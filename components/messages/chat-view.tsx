@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactElement, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -41,7 +41,21 @@ export type ChatViewProps = {
   /** One line instead of the input: why the player can't write. */
   refusal?: string | null;
   refusalAction?: { label: string; onPress: () => void } | null;
-  emptyLine: string;
+  emptyLine?: string;
+  /** Instead of the empty line (Futty AI: the quick replies). */
+  empty?: ReactNode;
+  /** Draws a message instead of the standard bubble (Futty AI). */
+  renderMessage?: (item: Extract<ChatItem, { type: 'message' }>) => ReactElement;
+  /** Below the newest message (Futty AI: the typing indicator). */
+  typing?: ReactNode;
+  /** A button after the send error ("Try again"). */
+  sendErrorAction?: { label: string; onPress: () => void } | null;
+  /** Passed to the input: left of the field, above the bar, send with no text. */
+  inputLeading?: ReactNode;
+  inputAbove?: ReactNode;
+  canSendEmpty?: boolean;
+  /** false: the header draws under the status bar itself (Futty AI's night header). */
+  safeTop?: boolean;
   hasOlder?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
@@ -70,6 +84,14 @@ export function ChatView({
   refusal,
   refusalAction,
   emptyLine,
+  empty,
+  renderMessage,
+  typing,
+  sendErrorAction,
+  inputLeading,
+  inputAbove,
+  canSendEmpty,
+  safeTop = true,
   hasOlder = false,
   loadingOlder = false,
   onLoadOlder,
@@ -113,9 +135,9 @@ export function ChatView({
   ].filter(Boolean) as { label: string; onPress: () => void; testID: string }[];
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.screen} edges={safeTop ? ['top', 'bottom'] : ['bottom']}>
       {header}
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+      <KeyboardAvoidingView testID="chat-keyboard" style={styles.flex} behavior="padding">
         <View style={styles.flex}>
           {loadError ? (
             <View style={styles.centre}>
@@ -131,9 +153,11 @@ export function ChatView({
             </View>
           ) : messages.length === 0 ? (
             <View style={styles.centre}>
-              <Text variant="callout" tone="inkMuted" testID="chat-empty">
-                {emptyLine}
-              </Text>
+              {empty ?? (
+                <Text variant="callout" tone="inkMuted" testID="chat-empty">
+                  {emptyLine}
+                </Text>
+              )}
             </View>
           ) : (
             <FlatList
@@ -145,6 +169,8 @@ export function ChatView({
               renderItem={({ item }) =>
                 item.type === 'date' ? (
                   <DatePill label={item.label} />
+                ) : renderMessage ? (
+                  renderMessage(item)
                 ) : (
                   <ChatBubble
                     body={item.message.body}
@@ -166,6 +192,8 @@ export function ChatView({
               scrollEventThrottle={64}
               onEndReached={hasOlder ? onLoadOlder : undefined}
               onEndReachedThreshold={0.3}
+              // Inverted: the header sits below the newest message.
+              ListHeaderComponent={typing ? <>{typing}</> : null}
               ListFooterComponent={
                 loadingOlder ? (
                   <ActivityIndicator testID="chat-loading-older" color={colors.muted} style={styles.older} />
@@ -181,9 +209,25 @@ export function ChatView({
         </View>
 
         {sendError ? (
-          <Text variant="callout" tone="danger" style={styles.line} accessibilityLiveRegion="polite" testID="chat-send-error">
-            {sendError}
-          </Text>
+          <View style={styles.errorRow}>
+            <Text
+              variant="callout"
+              tone="danger"
+              style={[styles.line, styles.flex]}
+              accessibilityLiveRegion="polite"
+              testID="chat-send-error">
+              {sendError}
+            </Text>
+            {sendErrorAction ? (
+              <Button
+                testID="chat-send-retry"
+                label={sendErrorAction.label}
+                variant="plain"
+                size="compact"
+                onPress={sendErrorAction.onPress}
+              />
+            ) : null}
+          </View>
         ) : null}
         {refusal ? (
           <View style={styles.refusal} testID="chat-refusal">
@@ -206,6 +250,9 @@ export function ChatView({
             disabled={!!loadError || !messages}
             placeholder={placeholder}
             keepOnFailure={keepOnFailure}
+            leading={inputLeading}
+            above={inputAbove}
+            canSendEmpty={canSendEmpty}
           />
         )}
       </KeyboardAvoidingView>
@@ -238,6 +285,7 @@ const useStyles = makeStyles(({ colors }) => ({
   listContent: { paddingVertical: space.sm },
   older: { paddingVertical: space.md },
   line: { paddingHorizontal: space.lg, paddingVertical: space.xs },
+  errorRow: { flexDirection: 'row', alignItems: 'center', paddingRight: space.md },
   refusal: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -28,6 +28,8 @@ export type VenuePageViewProps = {
   onRetry: () => void;
   onBack: () => void;
   onShare: () => void;
+  /** The "?" beside Share (S13A): opens a new Futty AI chat. */
+  onHelp?: () => void;
   onDirections: () => void;
   /** Website and Call: a web address or a tel: link. */
   onOpenUrl: (url: string) => void;
@@ -74,6 +76,7 @@ export function VenuePageView(props: VenuePageViewProps) {
           urls={data.photos.map((p) => photoUrls[p.storage_path]).filter(Boolean)}
           onBack={props.onBack}
           onShare={props.onShare}
+          onHelp={props.onHelp}
         />
 
         <View style={styles.cardWrap}>

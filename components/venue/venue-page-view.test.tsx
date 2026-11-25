@@ -193,6 +193,15 @@ describe('VenuePageView: the frame', () => {
     expect(p.onShare).toHaveBeenCalled();
   });
 
+  it('S13A: a "?" beside Share opens Futty AI, only when the page gives it', async () => {
+    const onHelp = jest.fn();
+    const { rerender } = await render(<VenuePageView {...props(ready(bare), { onHelp })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Ask Futty AI' }));
+    expect(onHelp).toHaveBeenCalled();
+    await rerender(<VenuePageView {...props(ready(bare))} />);
+    expect(screen.queryByTestId('venue-ask-ai')).toBeNull();
+  });
+
   it('photos swipe, and a tap opens them full screen', async () => {
     await render(<VenuePageView {...props(ready(full, urls))} />);
     expect(screen.getAllByTestId('venue-gallery-photo')).toHaveLength(2);
