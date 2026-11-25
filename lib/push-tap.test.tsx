@@ -66,7 +66,17 @@ describe('routeForPushData', () => {
     expect(routeForPushData({ type, matchId: 'm1' })).toEqual({ pathname: '/match/after-game', params: { id: 'm1' } });
   });
 
-  it.each(['match_reminder_24h', 'match_reminder_2h', 'match_result_submitted', 'match_result_disputed', 'followed_team_match'])(
+  // Levels like Playtomic (25 November): a rejected score opens the
+  // booker's correction; "Check the score" opens the match page, where the
+  // card is.
+  it('match_score_rejected opens the correction', () => {
+    expect(routeForPushData({ type: 'match_score_rejected', matchId: 'm1' })).toEqual({
+      pathname: '/match/after-game',
+      params: { id: 'm1', correct: '1' },
+    });
+  });
+
+  it.each(['match_reminder_24h', 'match_reminder_2h', 'match_result_submitted', 'match_result_disputed', 'followed_team_match', 'match_score_check'])(
     '%s still opens the match',
     (type) => {
       expect(routeForPushData({ type, matchId: 'm1' })).toEqual({ pathname: '/match/[id]', params: { id: 'm1' } });

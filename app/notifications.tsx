@@ -40,6 +40,8 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   match_result_confirmed: 'sportscourt.fill',
   match_result_disputed: 'sportscourt.fill',
   match_score_mismatch: 'sportscourt.fill',
+  match_score_check: 'sportscourt.fill',
+  match_score_rejected: 'sportscourt.fill',
   venue_new_booking: 'calendar',
   venue_booking_cancelled: 'exclamationmark.triangle.fill',
   venue_short_game: 'person.2.fill',

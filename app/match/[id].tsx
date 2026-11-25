@@ -8,7 +8,7 @@
 // confirmed (the server decides; "Match not found" otherwise). The result
 // panel and the post-match offers are for members only, as before.
 //
-// A5b (decision 1f): competitive or casual (members; a captain switches it
+// A5b (decision 1f): the game type, Competitive or Friendly (members; a captain switches it
 // before kickoff), balance teams (a pickup's booker, before sides lock) and
 // player ratings (after confirmation; ratings show only as the server
 // returns them).
@@ -27,6 +27,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CheckInSection } from '@/components/booking/check-in-panel';
 import { BalanceTeams } from '@/components/match/balance-teams';
+import { CheckScoreCard } from '@/components/match/check-score-card';
 import { MatchCompetitive } from '@/components/match/match-competitive';
 import { MatchLineup } from '@/components/match/match-lineup';
 import { MatchMotm } from '@/components/match/match-motm';
@@ -159,6 +160,23 @@ export default function MatchScreen() {
             </Text>
           </Card>
         ) : null}
+        {/* Levels like Playtomic: the other side's players accept or reject a pickup's score. */}
+        {pageData?.scoreCheck ? (
+          <CheckScoreCard
+            score={{
+              matchId: pageData.matchId,
+              kickoffAt: pageData.kickoffAt,
+              labelA: sideOf(pageData, 'a').label,
+              labelB: sideOf(pageData, 'b').label,
+              sideAScore: sideOf(pageData, 'a').score ?? 0,
+              sideBScore: sideOf(pageData, 'b').score ?? 0,
+              checkUntil: pageData.scoreCheck.checkUntil,
+            }}
+            canAnswer={pageData.scoreCheck.canAnswer && pageData.scoreCheck.state === 'pending'}
+            onAnswered={reloadPage}
+            now={now}
+          />
+        ) : null}
         {match && logData?.canLog ? (
           <Button label="Log the score" onPress={() => openAfterGame(false)} fullWidth testID="match-add-stats" />
         ) : null}
@@ -173,7 +191,7 @@ export default function MatchScreen() {
         ) : null}
         {pageData ? <MatchShare page={pageData} /> : null}
         {match ? (
-          <MatchPageSection title="Competitive or casual" status="ready" onRetry={reload} testID="section-competitive">
+          <MatchPageSection title="Game type" status="ready" onRetry={reload} testID="section-competitive">
             <MatchCompetitive
               match={match}
               captainSide={captainSideOf(match, result.viewerId, captainTeamIds)}

@@ -1,4 +1,4 @@
-// Skill levels, ratings, competitive or casual and balance teams in the app
+// Skill levels, ratings, Competitive or Friendly and balance teams in the app
 // (docs/specs/match-record.md decision 1f, sections 4.8 and 5.5; 05-product
 // section 4). The server keeps every number and decides every write
 // (set_starting_level, set_match_competitive, balance_match_teams; the
@@ -142,8 +142,9 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
 
 
 /**
- * Competitive or casual (decision 1f.1): is_competitive from the server; a
- * captain of either side may switch it while scheduled and before kickoff
+ * Competitive or Friendly (decision 1l item 11): is_competitive from the
+ * server, Competitive by default; a captain of either side (a pickup's
+ * booker) may switch it while scheduled and before kickoff
  * (set_match_competitive checks again).
  */
 export function competitiveView(
@@ -151,7 +152,7 @@ export function competitiveView(
   captainSide: Side | null,
   now: number
 ): { isCompetitive: boolean; editable: boolean } {
-  const isCompetitive = m.match.is_competitive ?? m.match.competitive ?? m.match.kind === 'named';
+  const isCompetitive = m.match.is_competitive ?? m.match.competitive ?? true;
   const editable = captainSide !== null && m.match.status === 'scheduled' && now < Date.parse(m.match.kickoff_at);
   return { isCompetitive, editable };
 }

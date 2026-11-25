@@ -32,6 +32,10 @@ let mockUnscoredStatus: 'ready' | 'loading' | 'error' = 'ready';
 let mockOpenStatus: 'ready' | 'error' = 'ready';
 let mockLinksStatus: 'ready' | 'error' = 'ready';
 const mockReloadOpen = jest.fn();
+// Levels like Playtomic: Home's "Check the score" cards (get_my_scores_to_check).
+let mockScoresToCheck: unknown[] = [];
+let mockCheckStatus: 'ready' | 'error' = 'ready';
+const mockReloadCheck = jest.fn();
 const mockReloadLinks = jest.fn();
 /** Every candidate list Home passed to useMatchLinks, in render order. */
 let mockLinkCandidates: { bookingIds?: string[] }[] = [];
@@ -81,7 +85,12 @@ jest.mock('@/lib/match/use-match-log', () => ({
     mockOpenStatus === 'ready'
       ? { status: 'ready', matches: mockOpenMatches, reload: mockReloadOpen }
       : { status: 'error', message: 'boom', reload: mockReloadOpen },
+  useMyScoresToCheck: () =>
+    mockCheckStatus === 'ready'
+      ? { status: 'ready', scores: mockScoresToCheck, reload: mockReloadCheck }
+      : { status: 'error', message: 'boom', reload: mockReloadCheck },
 }));
+jest.mock('@/lib/match/score-check-api', () => ({ respondToMatchScore: jest.fn() }));
 jest.mock('@/lib/match/use-match-result', () => ({
   useMatchLinks: (candidates: { bookingIds?: string[] }) => {
     mockLinkCandidates.push(candidates);
@@ -532,6 +541,47 @@ describe('Home score logging: new matches are logged by their captain (S13B), ol
     mockOpenMatches = [toLog({ state: 'mismatch' })];
     await render(<HomeScreen />);
     expect(screen.getByTestId('log-score-card-m1')).toHaveTextContent(/Scores differ/);
+  });
+});
+
+describe('Home "Check the score" (levels like Playtomic, Panos 25 November)', () => {
+  const card = {
+    matchId: 'm9',
+    kickoffAt: '2026-11-14T17:00:00.000Z',
+    labelA: 'Bibs',
+    labelB: 'Non-bibs',
+    sideAScore: 2,
+    sideBScore: 1,
+    // Far ahead, so the card is still open whenever the test runs.
+    checkUntil: '2999-01-01T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    mockBookings = { status: 'ready', bookings: [] };
+    mockVenues = { status: 'ready', venues: [venue] };
+    mockPosts = { status: 'ready', posts: [] };
+    mockOpenMatches = [];
+    mockScoresToCheck = [];
+    mockCheckStatus = 'ready';
+  });
+
+  it('a score to check shows with Accept and Reject', async () => {
+    mockScoresToCheck = [card];
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('check-score-card-m9')).toHaveTextContent(/Bibs 2–1 Non-bibs/);
+    expect(screen.getByTestId('check-score-accept-m9')).toBeTruthy();
+    expect(screen.getByTestId('check-score-reject-m9')).toBeTruthy();
+  });
+
+  it("nothing to check (the booker's side, or already answered): no section", async () => {
+    await render(<HomeScreen />);
+    expect(screen.queryByText('Check the score')).toBeNull();
+  });
+
+  it('a failed load says so, with Try again', async () => {
+    mockCheckStatus = 'error';
+    await render(<HomeScreen />);
+    expect(screen.getByText('Could not load the scores to check.')).toBeTruthy();
   });
 });
 

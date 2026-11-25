@@ -104,13 +104,13 @@ describe('STARTING_QUESTIONS', () => {
 });
 
 describe('competitiveView', () => {
-  it('a pickup is casual by default, a named game competitive', () => {
-    expect(competitiveView(mockResultMatch({ kind: 'pickup', status: 'scheduled' }), null, 0).isCompetitive).toBe(false);
+  it('every game is Competitive by default, pickups included', () => {
+    expect(competitiveView(mockResultMatch({ kind: 'pickup', status: 'scheduled' }), null, 0).isCompetitive).toBe(true);
     expect(competitiveView(mockResultMatch({ kind: 'named', status: 'scheduled' }), null, 0).isCompetitive).toBe(true);
   });
 
-  it('follows the server flag', () => {
-    expect(competitiveView(mockResultMatch({ status: 'scheduled', competitive: true }), null, 0).isCompetitive).toBe(true);
+  it('follows the server flag (Friendly)', () => {
+    expect(competitiveView(mockResultMatch({ status: 'scheduled', competitive: false }), null, 0).isCompetitive).toBe(false);
   });
 
   it('a captain can switch it while scheduled and before kickoff', () => {

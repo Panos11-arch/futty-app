@@ -16,6 +16,8 @@ describe('describeMatchResultError', () => {
     ['check_in_used', 'They voted for man of the match, so they played.'],
     ['check_in_closed', "Who played can't change after the result deadline."],
     ['score_locked', 'This score is final.'],
+    // Levels like Playtomic (25 November): "Check the score".
+    ['cannot_check_score', "Only the other side's players can check this score."],
   ])('%s', (code, words) => {
     expect(describeMatchResultError({ message: code })).toBe(words);
   });

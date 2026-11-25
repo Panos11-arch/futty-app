@@ -1,4 +1,4 @@
-// Reads and writes for levels, ratings, competitive or casual and balance
+// Reads and writes for levels, ratings, Competitive or Friendly and balance
 // teams (docs/specs/match-record.md section 5.5, A5a). Every write sends ids
 // and answers only; the server works out every level, rating and side.
 import type { BalancedTeams, PlayerLevel, StartingAnswers } from '@/lib/match/levels';

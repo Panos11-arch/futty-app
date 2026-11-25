@@ -13,6 +13,8 @@ export type NotificationType =
   | 'match_result_confirmed'
   | 'match_result_disputed'
   | 'match_score_mismatch'
+  | 'match_score_check'
+  | 'match_score_rejected'
   | 'venue_new_booking'
   | 'venue_booking_cancelled'
   | 'venue_short_game'
@@ -99,6 +101,8 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
       'match_result_confirmed',
       'match_result_disputed',
       'match_score_mismatch',
+      'match_score_check',
+      'match_score_rejected',
       'motm_vote_open',
       'team_of_the_week',
       'streak_badge',
@@ -128,6 +132,8 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   match_result_confirmed: 'A result is confirmed',
   match_result_disputed: 'A result is disputed',
   match_score_mismatch: 'Captains’ scores don’t match',
+  match_score_check: 'Check a captain’s score',
+  match_score_rejected: 'Your score was rejected',
   motm_vote_open: 'Man of the match voting',
   team_of_the_week: 'You’re in the team of the week',
   streak_badge: 'Streak badges',

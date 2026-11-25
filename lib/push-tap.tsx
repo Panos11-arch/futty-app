@@ -65,6 +65,10 @@ export function routeForPushData(raw: unknown): Href {
   if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
 
   const matchId = stringId(data, 'matchId');
+  // Levels like Playtomic: the booker's score was rejected, so he corrects it.
+  if (matchId && data.type === 'match_score_rejected') {
+    return { pathname: '/match/after-game', params: { id: matchId, correct: '1' } };
+  }
   if (matchId && typeof data.type === 'string' && POST_MATCH_FLOW_TYPES.has(data.type)) {
     return { pathname: '/match/after-game', params: { id: matchId } };
   }

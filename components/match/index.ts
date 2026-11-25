@@ -17,6 +17,7 @@ export { StartingLevelForm, type StartingLevelFormProps } from './starting-level
 export { MatchRatingsList } from './match-ratings';
 export { RatingBadge, type RatingBadgeProps } from './rating-badge';
 export { LogScoreCard } from './log-score-card';
+export { CheckScoreCard, type CheckScoreCardProps } from './check-score-card';
 export { MatchCompetitive, type MatchCompetitiveProps } from './match-competitive';
 export { BalanceTeams, type BalanceTeamsProps } from './balance-teams';
 export { MatchShare, type MatchShareProps } from './match-share';

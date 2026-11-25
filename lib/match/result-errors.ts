@@ -22,6 +22,8 @@ const WORDS: Record<string, string> = {
   check_in_used: 'They voted for man of the match, so they played.',
   check_in_closed: "Who played can't change after the result deadline.",
   score_locked: 'This score is final.',
+  // Levels like Playtomic (25 November): "Check the score".
+  cannot_check_score: "Only the other side's players can check this score.",
 };
 
 export const MATCH_RESULT_ERROR_CODES = Object.keys(WORDS);
@@ -37,6 +39,7 @@ export const STALE_RESULT_ERRORS = new Set([
   'check_in_used',
   'check_in_closed',
   'score_locked',
+  'cannot_check_score',
 ]);
 
 export function describeMatchResultError(error: { message: string }): string {

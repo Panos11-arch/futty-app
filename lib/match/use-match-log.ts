@@ -3,6 +3,8 @@
 import { useAuth } from '@/lib/auth';
 import type { MatchLog } from '@/lib/match/log-score';
 import { getMatchLog, getMyMatchesToLog, type MatchToLog } from '@/lib/match/log-score-api';
+import type { ScoreToCheck } from '@/lib/match/score-check';
+import { getMyScoresToCheck } from '@/lib/match/score-check-api';
 import { useLoad } from '@/lib/match/use-match-result';
 
 /** get_match_log; `log` is null when the match doesn't exist or can't be seen. */
@@ -28,6 +30,22 @@ export function useMyMatchesToLog() {
       ? async () => {
           const { matches, error } = await getMyMatchesToLog();
           return error ? { error: error.message } : { value: { matches } };
+        }
+      : null,
+    viewerId ?? ''
+  );
+  return { ...state, reload };
+}
+
+/** Home's "Check the score" (decision 1l item 11): pickups whose score the viewer can accept or reject. */
+export function useMyScoresToCheck() {
+  const { user } = useAuth();
+  const viewerId = user?.id ?? null;
+  const { state, reload } = useLoad<{ scores: ScoreToCheck[] }>(
+    viewerId
+      ? async () => {
+          const { scores, error } = await getMyScoresToCheck();
+          return error ? { error: error.message } : { value: { scores } };
         }
       : null,
     viewerId ?? ''

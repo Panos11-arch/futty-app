@@ -48,6 +48,7 @@ jest.mock('react-native-safe-area-context', () => {
   return { SafeAreaView: View, useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) };
 });
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
+jest.mock('@/lib/match/score-check-api', () => ({ respondToMatchScore: jest.fn() }));
 jest.mock('@/lib/match/page-api', () => ({ castMotmVote: jest.fn(), setMatchLineup: jest.fn() }));
 jest.mock('@/components/booking/check-in-panel', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
@@ -228,11 +229,11 @@ describe('Match page: ratings (S13B) and levels (A5b)', () => {
     expect(screen.queryByTestId('section-ratings')).toBeNull();
   });
 
-  it('members see competitive or casual; the pickup booker sees Balance teams before sides lock', async () => {
+  it('members see the game type (Competitive by default); the pickup booker sees Balance teams before sides lock', async () => {
     mockResult = { status: 'ready', match: mockResultMatch({ status: 'scheduled' }) };
     mockPage = { status: 'ready', page: mockMatchPage({ status: 'scheduled' }) };
     const view = await render(<MatchScreen />);
-    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Casual');
+    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Competitive');
     expect(screen.getByTestId('section-balance')).toBeTruthy();
 
     mockViewer = 'me';
@@ -288,5 +289,33 @@ describe('Match page: Log the score and Edit stats (S13B)', () => {
     mockPage = { status: 'ready', page: mockMatchPage() };
     await render(<MatchScreen />);
     expect(screen.queryByTestId('match-add-stats')).toBeNull();
+  });
+});
+
+describe('Match page: "Check the score" (levels like Playtomic, Panos 25 November)', () => {
+  const open = { state: 'pending' as const, canAnswer: true, checkUntil: '2999-01-01T00:00:00.000Z' };
+
+  it('a player on the other side who played sees the score with Accept and Reject', async () => {
+    mockViewer = 'me';
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: open }) };
+    await render(<MatchScreen />);
+    expect(screen.getByTestId('check-score-card-m1')).toHaveTextContent(/Bibs 2–1 Non-bibs/);
+    expect(screen.getByTestId('check-score-accept-m1')).toBeTruthy();
+    expect(screen.getByTestId('check-score-reject-m1')).toBeTruthy();
+  });
+
+  it("hidden for the booker's side (the server says they can't answer)", async () => {
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: { ...open, canAnswer: false } }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('check-score-card-m1')).toBeNull();
+  });
+
+  it('hidden once answered', async () => {
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: { ...open, state: 'accepted' } }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('check-score-card-m1')).toBeNull();
   });
 });

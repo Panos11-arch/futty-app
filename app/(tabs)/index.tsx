@@ -6,6 +6,7 @@ import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-car
 import { NoOpponentChoices } from '@/components/booking/no-opponent-choices';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
+import { CheckScoreCard } from '@/components/match/check-score-card';
 import { LogScoreCard } from '@/components/match/log-score-card';
 import { TeamOfTheWeekHome } from '@/components/match/team-of-the-week-home';
 import { Banner } from '@/components/ui/banner';
@@ -26,7 +27,7 @@ import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
 import { isPremiumPlayer, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
 import { useStartingLevelOffer } from '@/lib/match/use-levels';
-import { useMyMatchesToLog } from '@/lib/match/use-match-log';
+import { useMyMatchesToLog, useMyScoresToCheck } from '@/lib/match/use-match-log';
 import { useMatchLinks } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
@@ -200,6 +201,39 @@ function QuickActions() {
       <View style={styles.quickAction}>
         <Button label="Find a game" variant="secondary" onPress={openFindGame} fullWidth />
       </View>
+    </View>
+  );
+}
+
+/** "Check the score" (levels like Playtomic, Panos 25 November): a pickup's
+ *  score the viewer can accept or reject, because they played on the side
+ *  the booker isn't on. The server decides which cards show. */
+function CheckScoreSection() {
+  const styles = useStyles();
+  const toCheck = useMyScoresToCheck();
+
+  useFocusEffect(
+    useCallback(() => {
+      toCheck.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
+  if (toCheck.status === 'error') {
+    return (
+      <View style={styles.section}>
+        <SectionHeader title="Check the score" />
+        <InlineError message="Could not load the scores to check." onRetry={toCheck.reload} />
+      </View>
+    );
+  }
+  if (toCheck.status !== 'ready' || toCheck.scores.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Check the score" />
+      {toCheck.scores.map((score) => (
+        <CheckScoreCard key={score.matchId} score={score} onAnswered={toCheck.reload} />
+      ))}
     </View>
   );
 }
@@ -622,6 +656,7 @@ export default function HomeScreen() {
         {/* B3: a half pitch still without an opponent: the captain's choice. */}
         <NoOpponentChoices />
         <NextGameSection />
+        <CheckScoreSection />
         <LogScoreSection onScored={recentResults.reload} />
         <RecentResultsSection recentResults={recentResults} />
         <TeamOfTheWeekHome />

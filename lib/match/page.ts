@@ -2,6 +2,7 @@
 // 5.3; 05-product sections 3 and 5). get_match_page decides what anyone may
 // see; these rules only decide which controls the app shows. set_match_stats,
 // cast_motm_vote and set_match_lineup check every one of them again.
+import type { MatchScoreCheck } from '@/lib/match/score-check';
 import type { MatchKind, MatchSideRecord, MatchStatus, Side } from '@/lib/match/types';
 import type { AvatarKit } from '@/lib/avatar';
 
@@ -57,6 +58,8 @@ export type MatchPage = {
   /** The caller's own nominee (a match_players id). */
   myVote: string | null;
   lineups: MatchPageLineup[];
+  /** Levels like Playtomic: a pickup's "Check the score" card; null when the match has none. */
+  scoreCheck?: MatchScoreCheck | null;
 };
 
 /** One squad row as the editors need it (members only, read under RLS). */
