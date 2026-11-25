@@ -42,6 +42,8 @@ jest.mock('@/lib/invites', () => ({
   inviteStatuses: () => Promise.resolve(mockInviteStatuses),
 }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' }, signOut: mockSignOut }) }));
+let mockUnread = 0;
+jest.mock('@/lib/use-messages', () => ({ useUnreadMessages: () => mockUnread }));
 jest.mock('@/lib/use-profile', () => ({
   useProfile: () => ({ ...mockProfile, reload: jest.fn() }),
   updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
@@ -195,6 +197,7 @@ describe('Account menu (S2: the header menu opens it)', () => {
     for (const [testID, label, target] of [
       ['account-my-bookings', 'My bookings', '/my-bookings'],
       ['account-payments', 'Payments', '/account/payments'],
+      ['account-messages', 'Messages', '/messages'],
       ['account-saved-searches', 'Saved searches', '/account/saved-searches'],
       ['account-premium', 'Go Premium', '/account/premium'],
       ['account-settings', 'Settings', '/account/settings'],
@@ -217,9 +220,10 @@ describe('Account menu (S2: the header menu opens it)', () => {
     mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner', is_premium: false } };
     await render(<AccountMenuScreen />);
     const ids = screen.getAllByTestId(/^(account-(?!menu)|tab-play)/).map((n) => n.props.testID);
-    expect(ids.slice(0, 7)).toEqual([
+    expect(ids.slice(0, 8)).toEqual([
       'account-my-bookings',
       'account-payments',
+      'account-messages',
       'account-saved-searches',
       'account-premium',
       'account-settings',
@@ -241,10 +245,17 @@ describe('Account menu (S2: the header menu opens it)', () => {
     expect(screen.queryByTestId('account-venue-dashboard')).toBeNull();
   });
 
-  it('has no Messages row yet (S13 adds it with its screen)', async () => {
-    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'venue_owner', is_premium: true } };
+  // S13: Messages, third as in spec 15, with the unread count.
+  it('Messages shows the unread count, and none at 0', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player', is_premium: false } };
+    mockUnread = 3;
     await render(<AccountMenuScreen />);
-    expect(screen.queryByText('Messages')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Messages, 3 unread' })).toBeTruthy();
+    expect(screen.getByTestId('account-messages-badge', { includeHiddenElements: true })).toBeTruthy();
+    mockUnread = 0;
+    await render(<AccountMenuScreen />);
+    expect(screen.getByRole('button', { name: 'Messages' })).toBeTruthy();
+    expect(screen.queryByTestId('account-messages-badge', { includeHiddenElements: true })).toBeNull();
   });
 
   it('says Manage Premium to a Premium player (from the server)', async () => {

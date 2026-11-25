@@ -6,6 +6,7 @@ import { ScrollView, View } from 'react-native';
 import { AddPlayerRow } from '@/components/add-player-row';
 import { Chip } from '@/components/chip';
 import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
+import { MessageCaptainButton } from '@/components/messages/message-captain';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -550,6 +551,9 @@ function StandardLeagueSection({
       <View style={styles.wrapRow}>
         <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
       </View>
+
+      {/* S13: last in the league; moves to the bottom of the league's Matches tab with S10. */}
+      <MessageCaptainButton leagueId={league.id} />
     </View>
   );
 }
@@ -680,6 +684,9 @@ function OpenLeagueSection({
           />
         </View>
       ) : null}
+
+      {/* S13: last in the league; moves to the bottom of the league's Matches tab with S10. */}
+      <MessageCaptainButton leagueId={hub.id} />
     </View>
   );
 }

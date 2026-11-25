@@ -123,6 +123,16 @@ describe('routeForPushData', () => {
     expect(routeForPushData({ type, venueId: 'v1', ...extra })).toBe('/venue-dashboard');
   });
 
+  // S13: a new message opens its chat; without the id, the notifications list.
+  it('a new message opens its chat', () => {
+    expect(routeForPushData({ type: 'message_new', conversationId: 'c1' })).toEqual({
+      pathname: '/messages/[id]',
+      params: { id: 'c1' },
+    });
+    expect(routeForPushData({ type: 'message_new' })).toBe('/notifications');
+    expect(routeForPushData({ type: 'squad_post', conversationId: 'c1' })).toBe('/notifications');
+  });
+
   it('the venue type wins over a match id too', () => {
     expect(routeForPushData({ type: 'venue_new_booking', matchId: 'm1', bookingId: 'b1' })).toBe('/venue-dashboard');
     expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09' })).toBe(

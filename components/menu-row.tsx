@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Children, Fragment } from 'react';
 import { Pressable, View } from 'react-native';
 
+import { UnreadBadge, unreadLabel } from '@/components/messages/unread-badge';
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -23,6 +24,7 @@ export function MenuRow({
   onPress,
   destructive,
   iconColor,
+  badge = 0,
   testID,
 }: {
   icon: IconName;
@@ -32,6 +34,8 @@ export function MenuRow({
   /** Danger label/icon — used only for Log out. */
   destructive?: boolean;
   iconColor?: string;
+  /** S13: an unread count before the chevron (Messages). */
+  badge?: number;
   /** For the Maestro tests (.maestro). */
   testID?: string;
 }) {
@@ -43,7 +47,7 @@ export function MenuRow({
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={sublabel ? `${label}, ${sublabel}` : label}
+      accessibilityLabel={[label, sublabel, unreadLabel(badge)].filter(Boolean).join(', ')}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <IconSymbol name={icon} size={ICON.small} color={tint} />
@@ -57,6 +61,7 @@ export function MenuRow({
           </Text>
         ) : null}
       </View>
+      <UnreadBadge count={badge} testID={testID ? `${testID}-badge` : undefined} />
       {!destructive ? <IconSymbol name="chevron.right" size={ICON.small} color={colors.inkMuted} /> : null}
     </Pressable>
   );

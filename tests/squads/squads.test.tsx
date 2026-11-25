@@ -3,7 +3,7 @@ import './mocks';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
-import SquadsScreen from '@/app/squads';
+import SquadsScreen from '@/app/squad-posts';
 
 import { CYPRUS_LATE_KICKOFF, onPhoneIn, restorePhoneZone, ZONES_AND_SEASONS } from '../phone-time-zone';
 

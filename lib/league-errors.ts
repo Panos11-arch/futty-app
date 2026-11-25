@@ -62,6 +62,9 @@ export function describeLeagueError(error: PostgrestError) {
       return TOO_YOUNG_MESSAGE;
     case 'message_required':
       return 'Write a message first.';
+    // S13: the messages rate limit also covers fixture chat.
+    case 'rate_limited':
+      return 'Too many messages. Try again in a minute.';
     case 'match_not_found':
       return 'That match no longer exists.';
     case 'score_not_open':

@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { router } from 'expo-router';
 import { StyleSheet } from 'react-native';
 
-import FixtureChatScreen from '@/app/fixture-chat';
+import FixtureChatScreen, { fixtureChatMessages } from '@/app/fixture-chat';
 import FixtureConfirmedScreen from '@/app/fixture-confirmed';
 import { colors } from '@/constants/futty-theme';
 
@@ -228,7 +228,7 @@ describe.each(['Asia/Nicosia', 'America/New_York', 'Asia/Tokyo'])('Fixture confi
   });
 });
 
-describe('Fixture chat', () => {
+describe('Fixture chat (S13: the messages components)', () => {
   beforeEach(() => {
     params.mockSearchParams = { fixtureId: 'f1' };
     mockGetFixture.mockResolvedValue({ data: fixture, error: null });
@@ -240,14 +240,23 @@ describe('Fixture chat', () => {
     expect(screen.getByTestId('chat-skeleton')).toBeTruthy();
   });
 
-  it('empty', async () => {
+  it('empty: one line, the fixture in the header', async () => {
     mockListMessages.mockResolvedValue({ data: [], error: null });
-    const view = await render(<FixtureChatScreen />);
-    await screen.findByText('No messages yet — say hello.');
-    expect(view.toJSON()).toMatchSnapshot();
+    await render(<FixtureChatScreen />);
+    expect(await screen.findByText('No messages yet. Say hello.')).toBeTruthy();
+    expect(screen.getByText('Tigers vs Lions')).toBeTruthy();
   });
 
-  it('populated: brandSoft bubbles for mine, surface for theirs', async () => {
+  it('error: one line with Try again, which loads again', async () => {
+    mockListMessages.mockResolvedValueOnce({ data: null, error: { message: 'offline' } });
+    mockListMessages.mockResolvedValueOnce({ data: [], error: null });
+    await render(<FixtureChatScreen />);
+    await screen.findByText('offline');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('No messages yet. Say hello.')).toBeTruthy();
+  });
+
+  it('populated: my team on the right on green, theirs on the left on surface', async () => {
     mockListMessages.mockResolvedValue({
       data: [
         { id: 'm1', message: 'Hi', sender_team_id: 'away', sender_team: { name: 'Lions' }, created_at: '2026-11-17T10:00:00Z' },
@@ -257,9 +266,10 @@ describe('Fixture chat', () => {
     });
     await render(<FixtureChatScreen />);
     await screen.findByText('Hello');
-    expect(StyleSheet.flatten(screen.getByTestId('bubble-mine').props.style).backgroundColor).toBe(colors.brandSoft);
+    expect(StyleSheet.flatten(screen.getByTestId('bubble-mine').props.style).backgroundColor).toBe(colors.green);
     expect(StyleSheet.flatten(screen.getByTestId('bubble-theirs').props.style).backgroundColor).toBe(colors.surface);
-    expect(screen.getByText('Lions')).toBeTruthy();
+    // More than a week ago: the date pill shows the date.
+    expect(screen.getByText('17 Nov 2026')).toBeTruthy();
   });
 
   it('sends the trimmed message and reports with the same arguments', async () => {
@@ -270,9 +280,10 @@ describe('Fixture chat', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), '  see you there ');
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(mockSendMessage).toHaveBeenCalledWith('f1', 'see you there'));
+    expect(screen.getByLabelText('Message').props.value).toBe('');
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Report this chat' }));
-    await fireEvent.changeText(screen.getByLabelText('Reason for reporting'), 'rude');
+    await fireEvent.press(screen.getByRole('button', { name: 'More' }));
+    await fireEvent.changeText(screen.getByLabelText('Reason'), 'rude');
     await fireEvent.press(screen.getByRole('button', { name: 'Send report' }));
     await waitFor(() =>
       expect(mockSubmitReport).toHaveBeenCalledWith({
@@ -282,6 +293,13 @@ describe('Fixture chat', () => {
         reason: 'rude',
       })
     );
+  });
+
+  it('Back goes back', async () => {
+    mockListMessages.mockResolvedValue({ data: [], error: null });
+    await render(<FixtureChatScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Back' }));
+    expect(router.back).toHaveBeenCalled();
   });
 
   // S12, A6: a minor captain on either side turns free text off (the
@@ -295,7 +313,7 @@ describe('Fixture chat', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     const line = await screen.findByText('Chat is off for this fixture. Propose a date instead.');
     expect(String(line.props.children).split(/\s+/).length).toBeLessThanOrEqual(10);
-    expect(screen.getByLabelText('Message').props.value).toBe('hi');
+    await waitFor(() => expect(screen.getByLabelText('Message').props.value).toBe('hi'));
   });
 
   it('a locked account (under 14): the age line', async () => {
@@ -306,6 +324,34 @@ describe('Fixture chat', () => {
     await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
     await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
     expect(await screen.findByText('You must be 14 or older to use Futty.')).toBeTruthy();
+  });
+
+  // S13: the rate limit covers fixture chat too.
+  it('over the rate limit: one line', async () => {
+    mockListMessages.mockResolvedValue({ data: [], error: null });
+    mockSendMessage.mockResolvedValue({ error: { message: 'rate_limited' } });
+    await render(<FixtureChatScreen />);
+    await screen.findByText('Tigers vs Lions');
+    await fireEvent.changeText(screen.getByLabelText('Message'), 'hi');
+    await fireEvent.press(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('Too many messages. Try again in a minute.')).toBeTruthy();
+  });
+});
+
+describe('fixtureChatMessages', () => {
+  it('newest first, mine by my team, with the body', () => {
+    const rows = fixtureChatMessages(
+      [
+        { id: 'a', message: 'old', sender_team_id: 'home', created_at: '2026-11-17T10:00:00Z' },
+        { id: 'b', message: 'new', sender_team_id: 'away', created_at: '2026-11-17T11:00:00Z' },
+      ] as never,
+      'home'
+    );
+    expect(rows.map((r) => [r.id, r.mine, r.body])).toEqual([
+      ['b', false, 'new'],
+      ['a', true, 'old'],
+    ]);
+    expect(fixtureChatMessages([{ id: 'a', message: 'x', sender_team_id: 'home', created_at: '2026-11-17T10:00:00Z' }] as never, null)[0].mine).toBe(false);
   });
 });
 

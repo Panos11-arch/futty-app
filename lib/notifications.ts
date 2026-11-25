@@ -113,7 +113,7 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
     title: 'Teams you follow',
     types: ['followed_team_match', 'followed_team_result', 'followed_team_opponent_wanted'],
   },
-  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match'] },
+  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match', 'message_new'] },
   { key: 'venue', title: 'Venue', types: [...VENUE_NOTIFICATION_TYPES] },
 ];
 
@@ -141,6 +141,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   booking_slot: 'Open spots in games',
   saved_search_match: 'Your saved searches',
   team_invite: 'Invites to a team',
+  message_new: 'New messages',
   booking_cancelled: 'A booking is cancelled',
   match_payment_due: 'Payment due for a game',
   venue_closed_new_bookings: 'A venue stops taking bookings',
