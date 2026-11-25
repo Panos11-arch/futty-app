@@ -81,6 +81,7 @@ describe('.maestro', () => {
       'flows/log-score.yaml',
       'flows/navigation.yaml',
       'flows/sign-in.yaml',
+      'flows/venue-book-and-pay.yaml',
       'subflows/open-my-booking.yaml',
       'subflows/open-tab.yaml',
       'subflows/sign-in.yaml',
@@ -150,21 +151,28 @@ describe('taps wait for the weather strip', () => {
     expect(steps).toEqual([{ extendedWaitUntil: { notVisible: { id: 'weather-strip-loading' }, timeout: 30000 } }]);
   });
 
-  it('book-and-pay: before the first tap on checkout (the pitch, then whole pitch, then who pays)', () => {
-    const [seen, settled, pitch, whole, payAll] = order(
-      'flows/book-and-pay.yaml',
-      'id: checkout-pitch-1',
-      'weather-settled.yaml',
-      'tapOn:\n    id: checkout-pitch-1',
-      'tapOn:\n    id: checkout-kind-whole',
-      'tapOn:\n    id: checkout-who-pay-all',
-    );
-    expect(seen).toBeGreaterThan(-1);
-    expect(settled).toBeGreaterThan(seen);
-    expect(pitch).toBeGreaterThan(settled);
-    expect(whole).toBeGreaterThan(pitch);
-    expect(payAll).toBeGreaterThan(whole);
-  });
+  // S5: the strip sits under the venue page's pitches (Book tab); the
+  // payment sheet has none.
+  it.each(['flows/book-and-pay.yaml', 'flows/venue-book-and-pay.yaml'])(
+    '%s: before the first tap on the pitches (the pitch, Continue, whole pitch, who pays)',
+    (file) => {
+      const [seen, settled, pitch, next, whole, payAll] = order(
+        file,
+        'id: venue-book-pitch-1',
+        'weather-settled.yaml',
+        'tapOn:\n    id: venue-book-pitch-1',
+        'tapOn:\n    id: venue-book\n',
+        'tapOn:\n    id: checkout-kind-whole',
+        'tapOn:\n    id: checkout-who-pay-all',
+      );
+      expect(seen).toBeGreaterThan(-1);
+      expect(settled).toBeGreaterThan(seen);
+      expect(pitch).toBeGreaterThan(settled);
+      expect(next).toBeGreaterThan(pitch);
+      expect(whole).toBeGreaterThan(next);
+      expect(payAll).toBeGreaterThan(whole);
+    },
+  );
 
   it('cancel: before scrolling to Cancel', () => {
     const [settled, scroll] = order('flows/cancel.yaml', 'weather-settled.yaml', 'id: booking-detail-cancel-whole-team');

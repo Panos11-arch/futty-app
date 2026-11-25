@@ -15,4 +15,5 @@ executionOrder:
     - appearance
     - navigation
     - book-missing-venue
+    - venue-book-and-pay
     - log-score

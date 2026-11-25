@@ -1,5 +1,7 @@
 // Receives Apple's App Store Server Notifications V2 for every product this
-// app sells — renewals/cancellations for Personal Premium (a subscription)
+// app sells — renewals, upgrades, downgrades, expiries, refunds and
+// revocations for Personal Premium and Premium Plus (one subscription group;
+// see handler.ts)
 // and refunds for Team Premium (a non-consumable). App Store Connect only
 // lets you configure one Production and one Sandbox URL per app, so this
 // single endpoint always was going to receive both; it just routes by which
@@ -21,45 +23,13 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import {
   extractOriginalTransactionId,
-  fetchAppleSubscriptionStatus,
+  fetchAppleSubscriptionState,
   fetchAppleTransaction,
 } from '../_shared/apple-app-store.ts';
+import { handleNotification } from './handler.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-async function handleSubscription(
-  supabaseAdmin: SupabaseClient,
-  originalTransactionId: string
-) {
-  const { data: existing } = await supabaseAdmin
-    .from('premium_subscriptions')
-    .select('profile_id, product_id')
-    .eq('platform', 'ios')
-    .eq('original_transaction_id', originalTransactionId)
-    .maybeSingle();
-  if (!existing) return false;
-
-  const status = await fetchAppleSubscriptionStatus(originalTransactionId, existing.product_id as string);
-  if (!status) return true; // recognized, but couldn't re-verify — leave state as-is
-
-  await supabaseAdmin
-    .from('premium_subscriptions')
-    .update({
-      status: status.active ? 'active' : 'expired',
-      expires_at: status.expiresAt ? new Date(status.expiresAt).toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('platform', 'ios')
-    .eq('original_transaction_id', originalTransactionId);
-
-  await supabaseAdmin
-    .from('profiles')
-    .update({ is_premium: status.active })
-    .eq('id', existing.profile_id as string);
-
-  return true;
-}
 
 async function handleTeamPurchase(
   supabaseAdmin: SupabaseClient,
@@ -116,17 +86,39 @@ Deno.serve(async (req) => {
   }
 
   const originalTransactionId = body.signedPayload ? extractOriginalTransactionId(body.signedPayload) : null;
-  // Apple retries on non-2xx, so malformed/unrecognized payloads still get a
-  // 200 — there's nothing useful a retry would change here.
-  if (!originalTransactionId) return new Response('ignored', { status: 200 });
-
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-  const handled =
-    (await handleSubscription(supabaseAdmin, originalTransactionId)) ||
-    (await handleTeamPurchase(supabaseAdmin, originalTransactionId));
+  // Apple retries on non-2xx, so malformed/unrecognized payloads still get a
+  // 200 — there's nothing useful a retry would change here.
+  const outcome = await handleNotification(
+    {
+      findSubscription: async (otx) => {
+        const { data } = await supabaseAdmin
+          .from('premium_subscriptions')
+          .select('profile_id, product_id')
+          .eq('platform', 'ios')
+          .eq('original_transaction_id', otx)
+          .maybeSingle();
+        return data ? { profileId: data.profile_id as string, productId: data.product_id as string } : null;
+      },
+      fetchSubscription: fetchAppleSubscriptionState,
+      apply: async (a) => {
+        const { data, error } = await supabaseAdmin.rpc('apply_premium_subscription', {
+          p_profile_id: a.profileId,
+          p_platform: 'ios',
+          p_product_id: a.productId,
+          p_original_transaction_id: a.originalTransactionId,
+          p_active: a.active,
+          p_expires_at: a.expiresAt,
+        });
+        return { tier: (data as string | null) ?? null, error: error?.message ?? null };
+      },
+      handleTeamPurchase: (otx) => handleTeamPurchase(supabaseAdmin, otx),
+    },
+    originalTransactionId,
+  );
 
-  return new Response(handled ? 'ok' : 'unknown transaction', { status: 200 });
+  return new Response(outcome, { status: 200 });
 });
 
 /*
@@ -135,7 +127,8 @@ DEPLOYMENT:
 0. Run supabase/legacy/team-premium-forfeit.sql in the SQL Editor first (adds
    forfeit_team_premium_fixtures, called below) if you haven't already.
 
-1. Deploy (reuses the ASC_KEY_ID/ASC_ISSUER_ID/ASC_PRIVATE_KEY secrets set up
+1. Push the P1 migration (20261124220000_pay_p1_premium_plus.sql) first.
+   Deploy (reuses the ASC_KEY_ID/ASC_ISSUER_ID/ASC_PRIVATE_KEY secrets set up
    for verify-purchase — nothing new to configure here):
      supabase functions deploy apple-server-notifications
 

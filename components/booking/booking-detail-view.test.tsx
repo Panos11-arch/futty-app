@@ -108,6 +108,23 @@ describe('BookingDetailView: cancel', () => {
     expect(screen.getByRole('button', { name: 'Cancel whole team' })).toBeTruthy();
   });
 
+  it("side B's captain who paid for everyone gets \"Cancel whole team\" for his side, with the server's quote", async () => {
+    const v2 = v2Fixture({
+      captain_of: 'b',
+      my_side: 'b',
+      sides: [
+        { side: 'a', captain: { id: 'u1', name: 'Andreas' }, team: null, payment_mode: 'pay_all', players: 5, state: 'paid' },
+        { side: 'b', captain: { id: 'p2', name: 'Bambos' }, team: null, payment_mode: 'pay_all', players: 5, state: 'paid' },
+      ],
+    });
+    const p = props(playerDetail({ can_cancel: { my_spot: true, whole_team: false }, v2 }));
+    await render(<BookingDetailView {...p} />);
+    expect(screen.queryByRole('button', { name: 'Cancel my spot' })).toBeNull();
+    expect(screen.getByTestId('booking-detail-cancel-whole-team')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancel whole team' }));
+    expect(p.onQuote).toHaveBeenCalledWith('whole_team');
+  });
+
   it('a booking made before P4a: no money promise, says the old rules apply, and still needs a second tap', async () => {
     const detail = bookerDetail();
     const p = props({ ...detail, booking: { ...detail.booking, payment_mode: null } });

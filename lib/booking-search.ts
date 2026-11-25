@@ -484,9 +484,14 @@ export type BookSearchQuery = {
   playersPerSide: 5 | 6;
   place: BookPlace;
   types: PitchType[];
+  /** S5A: the amenities a venue must all have. */
+  amenities: AmenityKind[];
   favouritesOnly: boolean;
   includeUnavailable: boolean;
 };
+
+/** S5A: the Amenities filter's choices, in order. */
+export const AMENITY_FILTERS: AmenityKind[] = ['cafe_or_bar', 'restaurant', 'parking', 'showers', 'changing_rooms'];
 
 function isFormat(value: string | null): value is string {
   return value !== null && (PITCH_FORMATS as readonly string[]).includes(value);
@@ -509,6 +514,7 @@ export function defaultBookQuery(options: SearchOptions, lastFormat: string | nu
     playersPerSide: 5,
     place: { kind: 'all' },
     types: [],
+    amenities: [],
     favouritesOnly: false,
     includeUnavailable: false,
   };
@@ -688,6 +694,7 @@ export async function fetchBookSearch(q: BookSearchQuery, sixOnFiveAllowed: bool
     p_types: q.types.length > 0 ? q.types : null,
     p_favourites_only: q.favouritesOnly,
     p_include_unavailable: q.includeUnavailable,
+    p_amenities: q.amenities.length > 0 ? q.amenities : null,
   });
   if (error) fail(error.message);
   const rows = (data ?? []) as Omit<BookResult, 'photoUrl'>[];
@@ -735,15 +742,14 @@ export async function requestVenue(venueName: string, town: string): Promise<voi
 
 export type ChosenSlot = Slot & { venueName: string };
 
-/** A free time on a card. Until S5 (Panos) builds the venue page's Book tab,
- *  it opens checkout for that slot, as before S4. S5 changes only this
- *  function, to open the venue page's Book tab with the same slot picked. */
+/** A free time on a card: the venue page's Book tab with that slot picked
+ *  (S5). Its Continue opens the payment sheet there. */
 export function openTimeSlot(slot: ChosenSlot, nav: BookingNavigator): void {
   nav.push({
-    pathname: '/booking-payment',
+    pathname: '/venue/[id]',
     params: {
-      venueId: slot.venueId,
-      venueName: slot.venueName,
+      id: slot.venueId,
+      tab: 'book',
       day: slot.day,
       start: slot.start,
       end: slot.end,

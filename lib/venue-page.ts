@@ -16,6 +16,9 @@ export type AmenityKind =
   | 'ball_hire'
   | 'first_aid'
   | 'wifi'
+  | 'restaurant'
+  | 'vending_machines'
+  | 'shop'
   | 'other';
 
 export type VenuePageData = {
@@ -92,8 +95,25 @@ export const AMENITIES: Record<AmenityKind, { label: string; icon: IconSymbolNam
   ball_hire: { label: 'Ball hire', icon: 'soccerball' },
   first_aid: { label: 'First aid', icon: 'cross.case.fill' },
   wifi: { label: 'Wi-Fi', icon: 'wifi' },
+  // S5A.
+  restaurant: { label: 'Restaurant', icon: 'fork.knife' },
+  vending_machines: { label: 'Vending machines', icon: 'takeoutbag.and.cup.and.straw.fill' },
+  shop: { label: 'Shop', icon: 'bag.fill' },
   other: { label: 'More', icon: 'ellipsis' },
 };
+
+/** Food and drink first, then parking (S5A), then the rest in list order. */
+const AMENITY_PRIORITY: AmenityKind[] = ['cafe_or_bar', 'restaurant', 'vending_machines', 'parking'];
+
+/** A venue's amenities in the order the small icon rows show them, at most `max`. */
+export function amenitiesByPriority(kinds: AmenityKind[], max = Infinity): AmenityKind[] {
+  const all = Object.keys(AMENITIES) as AmenityKind[];
+  const rank = (k: AmenityKind) => {
+    const p = AMENITY_PRIORITY.indexOf(k);
+    return p >= 0 ? p : AMENITY_PRIORITY.length + all.indexOf(k);
+  };
+  return [...kinds].sort((a, b) => rank(a) - rank(b)).slice(0, max);
+}
 
 export type CancellationTerms = { fee_cents: number; free_minutes: number; refund_cutoff_hours: number };
 
@@ -187,4 +207,62 @@ export function groupMenu<T extends { category: string | null }>(items: T[]): Me
   }
   if (loose.length > 0) groups.push({ title: groups.length > 0 ? 'Other' : null, items: loose });
   return groups;
+}
+
+// ---- S5: the venue page (03-venue-book-tab) ---------------------------
+
+export type VenueTab = 'home' | 'book' | 'facilities';
+
+/** Coming from Book a pitch (tab=book, or the time chosen there) the page
+ *  opens on Book; from anywhere else, on Home. */
+export function venueStartTab(params: { tab?: string; day?: string; start?: string }): VenueTab {
+  return params.tab === 'book' || (params.day && params.start) ? 'book' : 'home';
+}
+
+/** A pitch on Facilities: its size, any other format it hosts (never the
+ *  size twice), surface, indoor or outdoor, and Closed. */
+export function pitchLine(pitch: VenuePageData['pitches'][number]): string {
+  return [
+    pitch.size,
+    ...pitch.formats.filter((f) => f !== pitch.size),
+    pitch.surface,
+    pitch.indoor ? 'Indoor' : 'Outdoor',
+    pitch.is_open ? null : 'Closed',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/** The card's one line: the area. The amenities are icons under the card (S5A). */
+export function venueCardLine(venue: Pick<VenuePageData['venue'], 'address' | 'city'>): string {
+  return [venue.address, venue.city].filter(Boolean).join(', ');
+}
+
+/** Call: the number as a tel: link, without spaces, brackets or dashes. */
+export function phoneUrl(phone: string | null): string | null {
+  const digits = phone?.replace(/[\s()-]/g, '') ?? '';
+  return digits ? `tel:${digits}` : null;
+}
+
+/** Website: always a web address. */
+export function websiteUrl(website: string | null): string | null {
+  const url = website?.trim();
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/** Share: the name, the area and the map link. */
+export function venueShareMessage(venue: Pick<VenuePageData['venue'], 'name' | 'address' | 'city' | 'google_maps_link'>): string {
+  const area = [venue.address, venue.city].filter(Boolean).join(', ');
+  return [venue.name, area, googleMapsUrl(venue)].filter(Boolean).join('\n');
+}
+
+/** Opening hours on Home: Monday to Sunday, "Closed" on a day without
+ *  hours; nothing when the venue has no hours at all. */
+export function openingHours(hours: VenuePageData['hours']): { day: string; hours: string }[] {
+  if (hours.length === 0) return [];
+  return DAY_NAMES.map((day, i) => {
+    const h = hours.find((x) => x.weekday === i + 1);
+    return { day, hours: h ? `${shortTime(h.opens)}–${shortTime(h.closes)}` : 'Closed' };
+  });
 }

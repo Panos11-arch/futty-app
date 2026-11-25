@@ -37,6 +37,7 @@ import {
   assertStagingTarget,
 } from '../../lib/e2e-guard';
 import {
+  E2E_DATE_OF_BIRTH,
   E2E_EMAIL_DOMAIN,
   E2E_FORMAT,
   E2E_LOG_MATCHES,
@@ -216,7 +217,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     const attributes = {
       password: env.password,
       email_confirm: true,
-      user_metadata: { username: user.username, full_name: user.fullName },
+      user_metadata: { username: user.username, full_name: user.fullName, date_of_birth: E2E_DATE_OF_BIRTH },
     };
     let id = found.get(user.email);
     if (id) {
@@ -229,7 +230,10 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     }
     ids.set(user.email, id);
     check(
-      await admin.from('profiles').update({ username: user.username, full_name: user.fullName }).eq('id', id),
+      await admin
+        .from('profiles')
+        .update({ username: user.username, full_name: user.fullName, date_of_birth: E2E_DATE_OF_BIRTH })
+        .eq('id', id),
       `setting ${user.email}'s username`,
     );
     // Kept if it's already there (a match may have moved it)...

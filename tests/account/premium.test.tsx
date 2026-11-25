@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 
 import GoPremiumScreen from '@/app/account/premium';
 import PremiumPlanScreen from '@/app/premium-plan';
-import { PERSONAL_PREMIUM_SKU } from '@/lib/premium';
+import { PERSONAL_PREMIUM_SKU, PERSONAL_PREMIUM_SKUS, PREMIUM_PLUS_SKU } from '@/lib/premium';
 
 const g = globalThis as { mockSearchParams?: Record<string, string> };
 let mockProfile: Record<string, unknown>;
@@ -50,34 +50,69 @@ afterAll(() => {
   Platform.OS = originalOS;
 });
 
+// P1 (decided by Panos, 22 November): Basic, Premium and Premium Plus on one
+// screen (image 22), the store's live prices, the current plan marked.
 describe('Premium plan', () => {
-  it('shows the price the App Store returns, not a hard-coded one', async () => {
-    mockSubscriptions = [{ id: PERSONAL_PREMIUM_SKU, displayPrice: '£2.79' }];
-    const view = await render(<PremiumPlanScreen />);
+  const both = () => [
+    { id: PERSONAL_PREMIUM_SKU, displayPrice: '£2.79' },
+    { id: PREMIUM_PLUS_SKU, displayPrice: '£4.49' },
+  ];
+
+  it('asks the store for both plans and shows the prices it returns, not hard-coded ones', async () => {
+    mockSubscriptions = both();
+    await render(<PremiumPlanScreen />);
+    expect(mockFetchProducts).toHaveBeenCalledWith({ skus: PERSONAL_PREMIUM_SKUS, type: 'subs' });
     expect(screen.getByTestId('premium-price').props.children).toBe('£2.79/mo');
-    expect(screen.queryByText(/€4\.99|€3\.99/)).toBeNull();
-    expect(view.toJSON()).toMatchSnapshot();
+    expect(screen.getByText('£4.49/mo')).toBeTruthy();
+    expect(screen.queryByText(/€4\.99|€7\.99|€3\.99/)).toBeNull();
   });
 
-  it('before the store answers, the rules’ label stands in (never a constant in the app)', async () => {
+  it('before the store answers, the rules’ label stands in for Premium, and Plus waits', async () => {
     await render(<PremiumPlanScreen />);
     expect(screen.getByTestId('premium-price').props.children).toBe('€3.99/mo');
+    expect(screen.queryByTestId('premium-plan-premium_plus')).toBeNull();
   });
 
-  it('one Card, plain perks, one primary Button that subscribes with the same request', async () => {
+  it('no Premium Plus product from the store (not on sale yet): only Basic and Premium, no broken Plus card', async () => {
+    mockSubscriptions = [{ id: PERSONAL_PREMIUM_SKU, displayPrice: '€4.99' }];
     await render(<PremiumPlanScreen />);
-    expect(screen.queryByText(/FUTTY PREMIUM/)).toBeNull();
-    expect(screen.getByText('No service fee on your own spot')).toBeTruthy();
-    expect(screen.queryByText(/badge/i)).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: 'Subscribe' }));
+    expect(screen.getByTestId('premium-plan-basic')).toBeTruthy();
+    expect(screen.getByTestId('premium-plan-premium')).toBeTruthy();
+    expect(screen.queryByTestId('premium-plan-premium_plus')).toBeNull();
+    expect(screen.queryByText(/Premium Plus|No ads/)).toBeNull();
+    await fireEvent.press(screen.getByTestId('premium-action'));
     expect(mockRequestPurchase).toHaveBeenCalledWith({ request: { apple: { sku: PERSONAL_PREMIUM_SKU } }, type: 'subs' });
-    expect(mockFetchProducts).toHaveBeenCalledWith({ skus: [PERSONAL_PREMIUM_SKU], type: 'subs' });
   });
 
-  it('Subscribe stays off until the store connects; Restore and Close work as before', async () => {
+  it('a Basic player: Basic marked current; Upgrade buys Premium Plus with the same request', async () => {
+    mockSubscriptions = both();
+    await render(<PremiumPlanScreen />);
+    expect(screen.getByTestId('premium-plan-basic').props.accessibilityLabel).toBe('Basic, Free, Current');
+    await fireEvent.press(screen.getByTestId('premium-action'));
+    expect(mockRequestPurchase).toHaveBeenCalledWith({ request: { apple: { sku: PREMIUM_PLUS_SKU } }, type: 'subs' });
+  });
+
+  it('a Premium player: Premium marked current, Upgrade to Plus', async () => {
+    mockSubscriptions = both();
+    mockProfile = { status: 'ready', profile: { is_premium: true, premium_tier: 'premium' } };
+    await render(<PremiumPlanScreen />);
+    expect(screen.getByTestId('premium-plan-premium').props.accessibilityLabel).toBe('Premium, £2.79/mo, Current');
+    expect(screen.getByRole('button', { name: 'Upgrade' })).toBeTruthy();
+  });
+
+  it('a Premium Plus player: Plus marked current, Manage', async () => {
+    mockSubscriptions = both();
+    mockProfile = { status: 'ready', profile: { is_premium: true, premium_tier: 'premium_plus' } };
+    await render(<PremiumPlanScreen />);
+    expect(screen.getByTestId('premium-plan-premium_plus').props.accessibilityLabel).toBe('Premium Plus, £4.49/mo, Current');
+    expect(screen.getByRole('button', { name: 'Manage' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Upgrade' })).toBeNull();
+  });
+
+  it('Upgrade stays off until the store connects; Close works as before', async () => {
     mockConnected = false;
     await render(<PremiumPlanScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Subscribe' }));
+    await fireEvent.press(screen.getByTestId('premium-action'));
     expect(mockRequestPurchase).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('button', { name: 'Close' }));
     expect(router.back).toHaveBeenCalled();
@@ -89,18 +124,11 @@ describe('Premium plan', () => {
     expect(mockRestore).toHaveBeenCalled();
   });
 
-  it('already Premium: manage instead of subscribe', async () => {
-    mockProfile = { status: 'ready', profile: { is_premium: true } };
-    await render(<PremiumPlanScreen />);
-    expect(screen.getByRole('button', { name: 'Manage or cancel subscription' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Subscribe' })).toBeNull();
-  });
-
   it('off iOS: says so, no purchase button', async () => {
     Platform.OS = 'android';
     await render(<PremiumPlanScreen />);
     expect(screen.getByText('Purchasing is available on iOS only for now.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Subscribe' })).toBeNull();
+    expect(screen.queryByTestId('premium-action')).toBeNull();
   });
 });
 
@@ -160,18 +188,18 @@ describe('Go Premium list', () => {
 describe('Premium plan: manage and double taps', () => {
   it('Manage opens the App Store subscriptions page, as before', async () => {
     const { deepLinkToSubscriptions } = jest.requireMock<{ deepLinkToSubscriptions: jest.Mock }>('expo-iap');
-    mockProfile = { status: 'ready', profile: { is_premium: true } };
+    mockProfile = { status: 'ready', profile: { is_premium: true, premium_tier: 'premium' } };
     await render(<PremiumPlanScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Manage or cancel subscription' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Manage' }));
     expect(deepLinkToSubscriptions).toHaveBeenCalledTimes(1);
   });
 
-  it('Subscribe asks the store once, however often it is tapped while the purchase is open', async () => {
+  it('Upgrade asks the store once, however often it is tapped while the purchase is open', async () => {
     mockRequestPurchase.mockReturnValue(new Promise(() => {}));
     await render(<PremiumPlanScreen />);
-    const subscribe = screen.getByRole('button', { name: 'Subscribe' });
-    await fireEvent.press(subscribe);
-    await fireEvent.press(subscribe);
+    const upgrade = screen.getByTestId('premium-action');
+    await fireEvent.press(upgrade);
+    await fireEvent.press(upgrade);
     expect(mockRequestPurchase).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole('button', { name: 'Restore purchases' }));
     expect(mockRestore).not.toHaveBeenCalled();

@@ -60,8 +60,15 @@ export type VenueSlotsState =
   | { status: 'closed' }
   | { status: 'ready'; slots: Slot[] };
 
-/** The day's slots for a format: the opening hours as a grid, free where the server says. */
-export function useVenueSlots(venueId: string | null, day: string | null, format: string | null, minutes: number) {
+/** The day's slots for a format: the opening hours as a grid, free where the server says.
+ *  playersPerSide 6 asks for 6 v 6 on a 5-a-side pitch, where the venue allows it. */
+export function useVenueSlots(
+  venueId: string | null,
+  day: string | null,
+  format: string | null,
+  minutes: number,
+  playersPerSide: 5 | 6 = 5,
+) {
   const [state, setState] = useState<VenueSlotsState>({ status: 'idle' });
   const requestRef = useRef(0);
 
@@ -75,7 +82,13 @@ export function useVenueSlots(venueId: string | null, day: string | null, format
     const [hours, closures, free] = await Promise.all([
       supabase.from('opening_hours').select('opens, closes').eq('venue_id', venueId).eq('weekday', isoWeekday(day)).maybeSingle(),
       supabase.from('venue_closures').select('id').eq('venue_id', venueId).lte('starts_on', day).gte('ends_on', day),
-      supabase.rpc('venue_free_slots', { p_venue_id: venueId, p_day: day, p_format: format, p_minutes: minutes }),
+      supabase.rpc('venue_free_slots', {
+        p_venue_id: venueId,
+        p_day: day,
+        p_format: format,
+        p_minutes: minutes,
+        p_players_per_side: playersPerSide,
+      }),
     ]);
     if (requestRef.current !== request) return;
     const error = hours.error ?? closures.error ?? free.error;
@@ -88,7 +101,7 @@ export function useVenueSlots(venueId: string | null, day: string | null, format
       return;
     }
     setState({ status: 'ready', slots: slotGrid(hours.data, (free.data ?? []) as FreeSlot[], minutes) });
-  }, [venueId, day, format, minutes]);
+  }, [venueId, day, format, minutes, playersPerSide]);
 
   useEffect(() => {
     reload();

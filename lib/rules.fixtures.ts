@@ -23,6 +23,7 @@ export const SPEC_RULES: AppRules = {
   gipedo_max_days: 5,
   gipedo_opponent_hours: 24,
   premium_price_label: '€4.99',
+  premium_plus_price_label: '€7.99',
   weather_rain_chance_pct: 60,
   weather_heavy_rain: true,
   weather_wind_kmh: 40,
@@ -51,6 +52,7 @@ export const CHANGED_RULES: AppRules = {
   gipedo_max_days: 3,
   gipedo_opponent_hours: 12,
   premium_price_label: '€4.49',
+  premium_plus_price_label: '€7.49',
   saved_searches_max: 3,
 };
 

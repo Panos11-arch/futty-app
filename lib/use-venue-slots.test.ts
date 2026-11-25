@@ -64,6 +64,7 @@ describe('useVenueSlots', () => {
       p_day: '2026-11-16',
       p_format: '5-a-side',
       p_minutes: 60,
+      p_players_per_side: 5,
     });
     expect(mockFilters).toContainEqual({ table: 'opening_hours', method: 'eq', args: ['weekday', 1] });
     expect(result.current.state).toEqual({
@@ -74,6 +75,15 @@ describe('useVenueSlots', () => {
         { start: '19:00', end: '20:00', available: true, priceCents: 6000 },
       ],
     });
+  });
+
+  it('asks for 6 v 6 on a 5-a-side pitch when chosen (S5)', async () => {
+    mockTables.opening_hours = { data: { opens: '18:00:00', closes: '20:00:00' }, error: null };
+    mockTables.venue_closures = { data: [], error: null };
+    mockRpc.mockResolvedValue({ data: [], error: null });
+    const { result } = await renderHook(() => useVenueSlots('v1', '2026-11-16', '5-a-side', 60, 6));
+    await waitFor(() => expect(result.current.state.status).toBe('ready'));
+    expect(mockRpc).toHaveBeenCalledWith('venue_free_slots', expect.objectContaining({ p_players_per_side: 6 }));
   });
 
   it('a day with no opening hours, or a closure, is closed', async () => {

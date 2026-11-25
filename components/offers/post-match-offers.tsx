@@ -1,12 +1,14 @@
 // The venue's post-match offers on the match screen (A8; spec 05 "Food and
 // drink after the game", spec 13 "Post-match offers"). The server decides
 // which show (a score is in, the item is on now in Cyprus time) and makes
-// the code; tapping an offer shows "Show this at the counter" with it.
+// the code. Each offer is a photo card; Get code (S5A) shows "Show this at
+// the counter" with it.
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Sheet } from '@/components/ui/sheet';
@@ -56,6 +58,7 @@ export function PostMatchOffers({ matchId }: { matchId: string }) {
           key={offer.id}
           offer={offer}
           photoUrl={offer.photo_path ? state.photoUrls[offer.photo_path] : undefined}
+          opening={opening === offer.id}
           onPress={() => open(offer)}
         />
       ))}
@@ -83,9 +86,20 @@ function Prices({ offer }: { offer: Pick<PostMatchOffer, 'price_cents' | 'offer_
   );
 }
 
-function OfferCard({ offer, photoUrl, onPress }: { offer: PostMatchOffer; photoUrl?: string; onPress: () => void }) {
+/** S5A: a photo card with the offer price (the normal one struck through) and Get code. */
+function OfferCard({
+  offer,
+  photoUrl,
+  opening,
+  onPress,
+}: {
+  offer: PostMatchOffer;
+  photoUrl?: string;
+  opening: boolean;
+  onPress: () => void;
+}) {
   return (
-    <Card padded={false} onPress={onPress} accessibilityLabel={`${offer.name}, show the code`} testID={`post-match-offer-${offer.id}`}>
+    <Card padded={false} testID={`post-match-offer-${offer.id}`}>
       {photoUrl ? (
         <Image source={{ uri: photoUrl }} contentFit="cover" accessibilityLabel={offer.name} style={styles.photo} />
       ) : null}
@@ -97,6 +111,15 @@ function OfferCard({ offer, photoUrl, onPress }: { offer: PostMatchOffer; photoU
           <Prices offer={offer} />
         </View>
         {offer.offer_text ? <Text variant="callout">{offer.offer_text}</Text> : null}
+        <View style={styles.action}>
+          <Button
+            testID={`post-match-offer-${offer.id}-get-code`}
+            label="Get code"
+            size="compact"
+            loading={opening}
+            onPress={onPress}
+          />
+        </View>
       </View>
     </Card>
   );
@@ -131,4 +154,5 @@ const styles = StyleSheet.create({
   prices: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   struck: { textDecorationLine: 'line-through' },
   code: { textAlign: 'center', letterSpacing: space.xs },
+  action: { alignSelf: 'flex-start', marginTop: space.sm },
 });

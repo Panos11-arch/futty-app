@@ -10,6 +10,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { FlatList, Platform, Pressable, ScrollView, View } from 'react-native';
 
+import { AmenitiesSheet } from '@/components/booking/book-search/amenities-sheet';
 import { ChooseDaysSheet } from '@/components/booking/book-search/choose-days-sheet';
 import { FilterSheet } from '@/components/booking/book-search/filter-sheet';
 import { FormatSheet } from '@/components/booking/book-search/format-sheet';
@@ -66,7 +67,7 @@ export type BookSearchViewProps = {
   onPayOwed?: () => void;
 };
 
-type Open = 'where' | 'format' | 'days' | 'time' | 'filter' | 'missing' | null;
+type Open = 'where' | 'format' | 'days' | 'time' | 'amenities' | 'filter' | 'missing' | null;
 
 export function BookSearchView(props: BookSearchViewProps) {
   const styles = useStyles();
@@ -220,6 +221,12 @@ function BookSearchReady({
             selected={query.window.preset !== 'all_day'}
             onPress={() => setOpen('time')}
           />
+          <Chip
+            testID="book-chip-amenities"
+            label="Amenities"
+            selected={query.amenities.length > 0}
+            onPress={() => setOpen('amenities')}
+          />
         </ScrollView>
       </View>
 
@@ -321,6 +328,15 @@ function BookSearchReady({
         onApply={(days) => {
           close();
           onQueryChange({ ...query, days });
+        }}
+      />
+      <AmenitiesSheet
+        visible={open === 'amenities'}
+        onClose={close}
+        value={query.amenities}
+        onApply={(amenities) => {
+          close();
+          onQueryChange({ ...query, amenities });
         }}
       />
       <TimeSheet

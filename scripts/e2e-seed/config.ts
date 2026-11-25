@@ -49,6 +49,10 @@ export const E2E_PRICE_CENTS = 6000;
  *  Test data only: no venue rule depends on it. */
 export const E2E_OPENING_HOURS = { opens: '07:00', closes: '24:00' } as const;
 
+/** Every e2e login's date of birth (S12): an adult, so the date of birth
+ *  screen and the under-18 limits never stand in a flow's way. */
+export const E2E_DATE_OF_BIRTH = '1995-01-01';
+
 /** S13B: a pickup each platform's first login booked, played 2 hours ago
  *  and waiting for its score, so log-score.yaml can log it. Bibs: the first
  *  login (its captain); Non-bibs: the second. Fixed ids, so the flow can tap

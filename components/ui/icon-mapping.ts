@@ -88,6 +88,10 @@ export const MAPPING = {
   // S4: favourite venues.
   heart: 'favorite-border',
   'heart.fill': 'favorite',
+  // S5A amenities.
+  'fork.knife': 'restaurant',
+  'takeoutbag.and.cup.and.straw.fill': 'fastfood',
+  'bag.fill': 'shopping-bag',
 } as IconMapping;
 
 /** Every icon name the app may use (for tests). */

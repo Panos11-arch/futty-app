@@ -347,6 +347,47 @@ describe('CheckoutView (Booking v2)', () => {
   });
 });
 
+// S5: the payment sheet on the venue page (04-payment-sheet). The pitch is
+// chosen on the venue's Book tab; the sheet's own title is the day and time.
+describe('CheckoutView: the payment sheet (S5)', () => {
+  const sheetProps = (overrides: Partial<CheckoutViewProps> = {}) =>
+    props(undefined, { variant: 'sheet', pitchKey: 'p3', ...overrides });
+  const sheetPay = () => screen.getByTestId('checkout-pay');
+
+  it('no pitch list and no sticky bar: the venue page chose the pitch, and the sheet titles itself', async () => {
+    await render(<CheckoutView {...sheetProps()} />);
+    expect(screen.queryByTestId('checkout-pitch-1')).toBeNull();
+    expect(screen.queryByTestId('sticky-action-bar')).toBeNull();
+    expect(screen.queryByText('Thu 26 Nov · 20:00')).toBeNull();
+    expect(screen.getByText('Kamares Sports Centre · Pitch 3 · 5-a-side · 60 min')).toBeTruthy();
+  });
+
+  it('"Pitch" heads whole or half, then "Who pays"; Pay books the chosen pitch', async () => {
+    const p = sheetProps();
+    await render(<CheckoutView {...p} />);
+    expect(screen.getByText('Pitch')).toBeTruthy();
+    expect(screen.getByText('Who pays')).toBeTruthy();
+    expect(sheetPay().props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(within(sheetPay()).getByText('Pay €45.50')).toBeTruthy();
+    await fireEvent.press(sheetPay());
+    expect(p.onPay).toHaveBeenCalledWith({ mode: 'pay_all', kind: 'whole', pitchIds: ['p3'], pay: card });
+  });
+
+  it('the cancellation line and Rules stay', async () => {
+    await render(<CheckoutView {...sheetProps()} />);
+    expect(screen.getByTestId('checkout-cancellation')).toBeTruthy();
+    expect(screen.getByTestId('checkout-rules')).toBeTruthy();
+  });
+
+  it('the chosen pitch taken since: says so, and Pay stays off', async () => {
+    await render(<CheckoutView {...sheetProps({ pitchKey: 'p9', error: null })} />);
+    expect(within(screen.getByTestId('checkout-pitch-gone')).getByText('This pitch was just taken. Pick another.')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('checkout-who-pay-all'));
+    expect(sheetPay().props.accessibilityState?.disabled).toBe(true);
+  });
+});
+
 // B1d (spec 13 "Losers pay"): a half pitch's Losers pay, with the server's holds.
 describe('CheckoutView: Losers pay', () => {
   it('offered on a half pitch only; the ways to pay show the holds (7a €45.50, 8a €9.60 each)', async () => {
