@@ -1,8 +1,8 @@
 // S16: futty.app/p/<username> opens the app. The website serves Apple's
 // apple-app-site-association and Android's assetlinks.json from
-// /.well-known/, as JSON. The Apple Team ID and the Android signing
-// certificate's SHA-256 fingerprint are placeholders until Panos fills them
-// in (the PR says how); the tests fail loudly if a placeholder is mistyped.
+// /.well-known/, as JSON. The Apple Team ID is filled in (5Y987W9KDK); the
+// Android signing certificate's SHA-256 fingerprint is a placeholder until
+// Panos fills it in; the tests fail loudly if a placeholder is mistyped.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,7 +10,7 @@ const SITE = join(__dirname, '..', '..', 'site');
 // A Windows checkout (core.autocrlf=true) has CRLF line endings.
 const read = (path: string) => readFileSync(join(SITE, path), 'utf8').replace(/\r\n/g, '\n');
 
-const TEAM_PLACEHOLDER = 'REPLACE_WITH_APPLE_TEAM_ID';
+const APPLE_TEAM_ID = '5Y987W9KDK';
 const FINGERPRINT_PLACEHOLDER = 'REPLACE_WITH_ANDROID_SHA256_FINGERPRINT';
 
 describe('apple-app-site-association', () => {
@@ -21,7 +21,7 @@ describe('apple-app-site-association', () => {
       applinks: {
         details: [
           {
-            appIDs: [`${TEAM_PLACEHOLDER}.com.panosalepis.futtyapp`],
+            appIDs: [`${APPLE_TEAM_ID}.com.panosalepis.futtyapp`],
             components: [{ '/': '/p/*', comment: 'A player card: futty.app/p/<username>' }],
           },
         ],
@@ -29,9 +29,10 @@ describe('apple-app-site-association', () => {
     });
   });
 
-  it('the app ID is the Team ID (10 characters once filled in) and the bundle ID', () => {
+  it('the app ID is the 10-character Team ID and the bundle ID, with no placeholder left', () => {
     const [appId] = aasa.applinks.details[0].appIDs as string[];
-    expect(appId).toMatch(new RegExp(`^(${TEAM_PLACEHOLDER}|[A-Z0-9]{10})\\.com\\.panosalepis\\.futtyapp$`));
+    expect(appId).toMatch(/^[A-Z0-9]{10}\.com\.panosalepis\.futtyapp$/);
+    expect(read('.well-known/apple-app-site-association')).not.toContain('REPLACE_WITH');
   });
 });
 
