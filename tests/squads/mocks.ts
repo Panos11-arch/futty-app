@@ -5,6 +5,7 @@ jest.mock('@/components/ui/icon-symbol', () =>
 );
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
+  Stack: { Screen: () => null },
   useLocalSearchParams: () => (globalThis as { mockSearchParams?: Record<string, string> }).mockSearchParams ?? {},
 }));
 jest.mock('react-native-safe-area-context', () => {

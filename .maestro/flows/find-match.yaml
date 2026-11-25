@@ -1,0 +1,58 @@
+# S6 journey: Find a match (image 05). Open Matches, set the filters
+# (Which format? → Places → days → time → See results), see the games list
+# (open games or "No open games"), then Start a match opens Book a pitch.
+# Home's "Find a match" button is Anghelo's (S3); the flow opens the same
+# route, /squads, by its link.
+appId: com.panosalepis.futtyapp
+name: find-match
+tags:
+  - e2e
+  - matches
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- openLink: futtyapp://squads
+- extendedWaitUntil:
+    visible:
+      id: find-match-screen
+    timeout: 30000
+
+# ---- Filters -----------------------------------------------------------------
+- tapOn:
+    id: find-match-filters
+- tapOn:
+    id: find-match-format-5-a-side
+- tapOn:
+    id: find-match-filter-next-format
+- tapOn:
+    id: find-match-place-all
+- tapOn:
+    id: find-match-filter-next-places
+- tapOn:
+    id: find-match-filter-next-days
+- tapOn:
+    id: find-match-time-preset-all_day
+- tapOn:
+    id: find-match-filter-see-results
+- extendedWaitUntil:
+    visible:
+      id: find-match-list
+    timeout: 30000
+- assertVisible: '5-a-side \| Places \| Dates and times'
+- takeScreenshot: find-match-results-${PLATFORM}
+
+# ---- Start a match -----------------------------------------------------------
+- tapOn:
+    id: find-match-start
+- extendedWaitUntil:
+    visible:
+      id: book-search-field
+    timeout: 30000
+- takeScreenshot: find-match-${PLATFORM}
