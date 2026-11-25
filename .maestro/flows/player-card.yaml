@@ -1,0 +1,79 @@
+# Journey (S19): the Card button opens the player card. Its QR opens full
+# screen and closes; Edit opens Edit profile, where Forward and a favourite
+# player are saved; the card shows both when it opens again. The seeded e2e
+# login is an adult with a username, so the card has its QR and Share.
+# Saving the same values every run keeps the flow repeatable.
+appId: com.panosalepis.futtyapp
+name: player-card
+tags:
+  - e2e
+  - profile
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+
+# ---- The card --------------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: card
+- assertVisible:
+    id: my-card-sheet
+- assertVisible:
+    id: my-card
+- assertVisible:
+    id: my-card-share
+- assertVisible:
+    id: my-card-edit
+- takeScreenshot: player-card-sheet-${PLATFORM}
+
+# ---- The QR, full screen ------------------------------------------------------
+- tapOn:
+    id: my-card-qr
+- assertVisible:
+    id: my-card-qr-full
+- takeScreenshot: player-card-qr-${PLATFORM}
+- tapOn:
+    id: my-card-qr-full-close
+- assertVisible:
+    id: my-card
+
+# ---- Edit: Forward and a favourite player --------------------------------------
+- tapOn:
+    id: my-card-edit
+- assertVisible:
+    id: edit-profile-favourite-player
+- scrollUntilVisible:
+    element:
+      text: 'Forward'
+- tapOn: 'Forward'
+- tapOn:
+    id: edit-profile-favourite-player
+- eraseText: 60
+- inputText: 'Iniesta'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: edit-profile-save
+- tapOn:
+    id: edit-profile-save
+
+# ---- The card shows them ---------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: card
+- assertVisible:
+    id: my-card-details
+- assertVisible: 'Forward'
+- assertVisible: 'Iniesta'
+- takeScreenshot: player-card-${PLATFORM}

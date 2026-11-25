@@ -6,6 +6,31 @@ import { Platform, StyleSheet } from 'react-native';
 
 import { navigationRoutes } from './routes';
 
+// S19: the Card button opens the player card, read from the server.
+jest.mock('@/lib/player-card', () => ({
+  ...jest.requireActual('@/lib/player-card'),
+  fetchMyPlayerCard: () =>
+    Promise.resolve({
+      status: 'ready',
+      card: {
+        username: 'andreas',
+        full_name: 'Andreas',
+        avatar_style: 'initials',
+        avatar_kit_colour: null,
+        avatar_number: null,
+        avatar_illustration: null,
+        level: null,
+        position: null,
+        preferred_foot: null,
+        favourite_player: null,
+        member_since: null,
+        teams: [],
+        team_count: 0,
+        show_qr: false,
+      },
+    }),
+}));
+
 // The first router render loads the whole route tree; under the full suite's
 // load it can take longer than Jest's default 5 seconds.
 jest.setTimeout(30_000);
@@ -88,10 +113,11 @@ describe('tab bar (S2)', () => {
     expect(r.getPathname()).toBe('/');
   });
 
-  it('the Card button opens the My card sheet, and Open profile goes to Profile', async () => {
+  it('the Card button opens the player card (S19); its avatar and name go to Profile', async () => {
     const r = await open('/');
     await press(screen.getByTestId('tab-card'));
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    expect(screen.getByTestId('my-card-sheet')).toBeTruthy();
+    expect(await screen.findByTestId('my-card')).toBeTruthy();
     await press(screen.getByTestId('my-card-open-profile'));
     expect(r.getPathname()).toBe('/profile');
   });

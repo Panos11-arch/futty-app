@@ -23,6 +23,32 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
+// The Card button's sheet (S19): the card and its QR.
+jest.mock('react-native-qrcode-svg', () => () => null);
+jest.mock('@/lib/player-card', () => ({
+  ...jest.requireActual('@/lib/player-card'),
+  fetchMyPlayerCard: () =>
+    Promise.resolve({
+      status: 'ready',
+      card: {
+        username: 'dimi',
+        full_name: 'Dimi Card',
+        avatar_style: 'initials',
+        avatar_kit_colour: null,
+        avatar_number: null,
+        avatar_illustration: null,
+        level: null,
+        position: null,
+        preferred_foot: null,
+        favourite_player: null,
+        member_since: null,
+        teams: [],
+        team_count: 0,
+        show_qr: true,
+      },
+    }),
+}));
+
 loadWithFile(Image, Modal);
 
 const ROUTES: [name: string, title: string, testID: string | undefined][] = [
@@ -157,12 +183,12 @@ describe('tapping', () => {
     expect(p.navigation.navigate).not.toHaveBeenCalled();
   });
 
-  it('the Card button opens the My card sheet; Open profile goes to Profile', async () => {
+  it('the Card button opens the player card (S19); its avatar and name go to Profile', async () => {
     const p = await draw(props(0));
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByTestId('my-card-sheet')).toBeNull();
     await fireEvent.press(screen.getByTestId('tab-card'));
-    expect(screen.getByText('Coming soon')).toBeTruthy();
-    await fireEvent.press(screen.getByTestId('my-card-open-profile'));
+    expect(screen.getByTestId('my-card-sheet')).toBeTruthy();
+    await fireEvent.press(await screen.findByTestId('my-card-open-profile'));
     expect(p.navigation.navigate).toHaveBeenCalledWith('profile', undefined);
   });
 });
