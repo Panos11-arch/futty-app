@@ -29,9 +29,9 @@ beforeEach(() => {
 describe('Privacy policy screen', () => {
   it('covers the camera, photos, match records, venues and venue-offered players', async () => {
     await render(<PrivacyPolicyScreen />);
-    expect(headings()).toHaveLength(18);
+    expect(headings()).toHaveLength(19);
     expect(headings()).toEqual(
-      expect.arrayContaining(['Camera', 'Photos', 'Match records', 'What venues see', 'Players offered by a venue', 'Calendar', 'Age and young players']),
+      expect.arrayContaining(['Camera', 'Photos', 'Match records', 'What venues see', 'Players offered by a venue', 'Calendar', 'Age and young players', 'Messages and friends']),
     );
     expect(screen.getByText(/The picture is read on your phone to find the code and is never saved or sent/)).toBeTruthy();
     expect(screen.getByText(/Futty never reads players' photo libraries\./)).toBeTruthy();
@@ -50,8 +50,8 @@ describe('Privacy policy screen', () => {
     mockLanguage = 'el';
     await render(<PrivacyPolicyScreen />);
     expect(screen.getByText('Τελευταία ενημέρωση: Νοέμβριος 2026')).toBeTruthy();
-    expect(headings()).toHaveLength(18); // as many sections as the English
-    expect(headings()).toEqual(expect.arrayContaining(['Κάμερα', 'Στοιχεία αγώνων', 'Επικοινωνία', 'Ηλικία και νεαροί παίκτες']));
+    expect(headings()).toHaveLength(19); // as many sections as the English
+    expect(headings()).toEqual(expect.arrayContaining(['Κάμερα', 'Στοιχεία αγώνων', 'Επικοινωνία', 'Ηλικία και νεαροί παίκτες', 'Μηνύματα και φίλοι']));
     expect(screen.queryByText('Camera')).toBeNull();
     expect(screen.getByText(CONTACT_EMAIL)).toBeTruthy();
   });

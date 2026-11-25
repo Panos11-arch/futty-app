@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
 import { isPremiumPlayer } from '@/lib/premium';
+import { useUnreadMessages } from '@/lib/use-messages';
 import { useProfile } from '@/lib/use-profile';
 import { isVenueStaff } from '@/lib/venue-staff';
 import { space } from '@/constants/futty-theme';
@@ -13,7 +14,8 @@ import { makeStyles } from '@/lib/theme';
 /**
  * Account, opened from the menu button in every tab's header (S2, spec 15
  * section 0.5): My bookings, Payments, Saved searches, Premium, Settings,
- * Help, and Venue dashboard for venue staff only. Messages joins in S13.
+ * Help, and Venue dashboard for venue staff only. Messages (S13) shows the
+ * unread count.
  * "More" holds what has no other place yet (spec 15 section 0.9): Play
  * (Teams, Matches, Leagues) until S6–S9, Leaderboards until S15, and Your
  * activity until S8. Terms, Privacy policy and How Futty works are in Help.
@@ -24,6 +26,7 @@ export default function AccountMenuScreen() {
   const { signOut } = useAuth();
   const profile = useProfile();
   const premium = isPremiumPlayer(profile) === true;
+  const unread = useUnreadMessages();
 
   async function shareProfile() {
     const name = profile.status === 'ready' ? profile.profile.username ?? profile.profile.full_name : null;
@@ -49,6 +52,13 @@ export default function AccountMenuScreen() {
             icon="creditcard.fill"
             label="Payments"
             onPress={() => router.push('/account/payments')}
+          />
+          <MenuRow
+            testID="account-messages"
+            icon="bubble.left.fill"
+            label="Messages"
+            badge={unread}
+            onPress={() => router.push('/messages')}
           />
           <MenuRow
             testID="account-saved-searches"
