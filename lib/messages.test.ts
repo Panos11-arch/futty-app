@@ -13,6 +13,7 @@ import {
   fetchUnreadCount,
   filterContacts,
   inboxTime,
+  kitOf,
   markConversationRead,
   markMessagesDelivered,
   mergeMessages,
@@ -308,5 +309,21 @@ describe('routes', () => {
   it('friend chats: Book together and Team vs team open Book a pitch with the friend', () => {
     expect(bookTogetherHref('p2')).toEqual({ pathname: '/book', params: { inviteProfileId: 'p2' } });
     expect(teamVsTeamHref('t2')).toEqual({ pathname: '/book', params: { oppositionTeamId: 't2' } });
+  });
+});
+
+describe('kitOf (S18)', () => {
+  it('reads a kit, an illustration, or initials from a row', () => {
+    expect(kitOf({ avatar_style: 'kit', avatar_kit_colour: 'kitBlue', avatar_number: 4, avatar_illustration: null })).toEqual({
+      colour: 'kitBlue',
+      number: 4,
+    });
+    expect(kitOf({ avatar_style: 'illustration', avatar_kit_colour: null, avatar_number: null, avatar_illustration: 'avatar-21' })).toEqual({
+      illustration: 'avatar-21',
+    });
+    expect(kitOf({ avatar_style: 'initials', avatar_kit_colour: null, avatar_number: null, avatar_illustration: null })).toBeNull();
+    // A deleted account's columns come back null.
+    expect(kitOf({ avatar_style: null, avatar_kit_colour: null, avatar_number: null, avatar_illustration: null })).toBeNull();
+    expect(kitOf(null)).toBeNull();
   });
 });

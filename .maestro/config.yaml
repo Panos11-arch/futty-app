@@ -15,7 +15,9 @@ executionOrder:
     - appearance
     - navigation
     - messages
+    - futty-ai
     - book-missing-venue
     - find-match
     - venue-book-and-pay
     - log-score
+    - edit-avatar

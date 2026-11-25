@@ -362,6 +362,16 @@ describe('CheckoutView: the payment sheet (S5)', () => {
     expect(screen.getByText('Kamares Sports Centre · Pitch 3 · 5-a-side · 60 min')).toBeTruthy();
   });
 
+  it('S13A: a "?" beside the booking line opens Futty AI, only when given', async () => {
+    const onHelp = jest.fn();
+    const { rerender } = await render(<CheckoutView {...sheetProps({ onHelp })} />);
+    await fireEvent.press(screen.getByTestId('checkout-ask-ai'));
+    expect(onHelp).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Ask Futty AI' })).toBeTruthy();
+    await rerender(<CheckoutView {...sheetProps()} />);
+    expect(screen.queryByTestId('checkout-ask-ai')).toBeNull();
+  });
+
   it('"Pitch" heads whole or half, then "Who pays"; Pay books the chosen pitch', async () => {
     const p = sheetProps();
     await render(<CheckoutView {...p} />);

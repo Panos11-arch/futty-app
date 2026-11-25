@@ -1,11 +1,12 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, SvgXml } from 'react-native-svg';
 
 import { Text, type TextVariant } from '@/components/ui/text';
 import { kitColours, radius } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
-import type { AvatarKit } from '@/lib/avatar';
+import { ILLUSTRATION_SVGS } from '@/assets/avatars/illustrations';
+import { isAvatarIllustration, type AvatarIllustration, type AvatarKit, type AvatarLook } from '@/lib/avatar';
 
 /** "Andreas Georgiou" -> "AG"; first letters of the first two words. */
 export function initials(name: string): string {
@@ -21,8 +22,8 @@ export function initials(name: string): string {
 export type AvatarProps = {
   name: string;
   photoUrl?: string | null;
-  /** A12: the player's Futty kit (lib/avatar.ts avatarKit). Null or missing shows initials. */
-  kit?: AvatarKit | null;
+  /** A12 and S18: the player's Futty kit or illustration (lib/avatar.ts avatarLook). Null or missing shows initials. */
+  kit?: AvatarLook | null;
   size?: number;
   /** Ring in surface colour, used where avatars overlap. */
   ringed?: boolean;
@@ -66,14 +67,21 @@ function KitShirt({ kit, size }: { kit: AvatarKit; size: number }) {
   );
 }
 
+/** S18: one of the bundled illustrations, drawn from its SVG; no network. */
+function IllustrationArt({ look, size }: { look: AvatarIllustration; size: number }) {
+  return <SvgXml testID="avatar-illustration" xml={ILLUSTRATION_SVGS[look.illustration]} width={size} height={size} />;
+}
+
 export function Avatar({ name, photoUrl, kit, size = 40, ringed = false }: AvatarProps) {
   const styles = useStyles();
   const box = [styles.circle, { width: size, height: size }, ringed && styles.ring];
-  const label = kit ? `${name}, shirt ${kit.number}` : name;
+  const label = kit && !isAvatarIllustration(kit) ? `${name}, shirt ${kit.number}` : name;
   return (
     <View accessible accessibilityRole="image" accessibilityLabel={label} style={box}>
       {photoUrl ? (
         <Image testID="avatar-photo" source={{ uri: photoUrl }} contentFit="cover" style={StyleSheet.absoluteFill} />
+      ) : isAvatarIllustration(kit) ? (
+        <IllustrationArt look={kit} size={size} />
       ) : kit ? (
         <KitShirt kit={kit} size={size} />
       ) : (

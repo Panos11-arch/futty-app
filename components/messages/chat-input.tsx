@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
@@ -16,6 +16,12 @@ export type ChatInputProps = {
   placeholder?: string;
   /** Put the text back when the send fails (chats without a retry bubble). */
   keepOnFailure?: boolean;
+  /** Left of the field (Futty AI: the attach button). */
+  leading?: ReactNode;
+  /** Above the bar (Futty AI: the photos about to be sent). */
+  above?: ReactNode;
+  /** Send with no text (Futty AI: photos alone). */
+  canSendEmpty?: boolean;
 };
 
 /**
@@ -23,15 +29,24 @@ export type ChatInputProps = {
  * button that appears once there is text. The draft clears as soon as the
  * message is on its way: a failed one stays in the list with a retry.
  */
-export function ChatInput({ onSend, disabled = false, placeholder = 'Message', keepOnFailure = false }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  disabled = false,
+  placeholder = 'Message',
+  keepOnFailure = false,
+  leading,
+  above,
+  canSendEmpty = false,
+}: ChatInputProps) {
   const styles = useStyles();
   const { colors, type } = useTheme();
   const [text, setText] = useState('');
   const draft = draftState(text);
+  const canSend = draft.canSend || (canSendEmpty && draft.body === '');
   const maxHeight = type.body.lineHeight * INPUT_MAX_LINES + space.sm * 2;
 
   function send() {
-    if (!draft.canSend || disabled) return;
+    if (!canSend || disabled) return;
     haptic.tap();
     setText('');
     const sent = draft.body;
@@ -42,50 +57,56 @@ export function ChatInput({ onSend, disabled = false, placeholder = 'Message', k
   }
 
   return (
-    <View style={styles.bar}>
-      <View style={styles.field}>
-        <TextInput
-          testID="chat-input"
-          accessibilityLabel="Message"
-          value={text}
-          onChangeText={setText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.muted}
-          multiline
-          editable={!disabled}
-          maxLength={MESSAGE_MAX_LENGTH + 50}
-          style={[styles.input, type.body, { color: colors.ink, maxHeight }]}
-        />
-        {draft.tooLong ? (
-          <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
-            {`Keep it to ${MESSAGE_MAX_LENGTH} characters or fewer.`}
-          </Text>
+    <View style={styles.wrap}>
+      {above}
+      <View style={styles.bar}>
+        {leading}
+        <View style={styles.field}>
+          <TextInput
+            testID="chat-input"
+            accessibilityLabel="Message"
+            value={text}
+            onChangeText={setText}
+            placeholder={placeholder}
+            placeholderTextColor={colors.muted}
+            multiline
+            editable={!disabled}
+            maxLength={MESSAGE_MAX_LENGTH + 50}
+            style={[styles.input, type.body, { color: colors.ink, maxHeight }]}
+          />
+          {draft.tooLong ? (
+            <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+              {`Keep it to ${MESSAGE_MAX_LENGTH} characters or fewer.`}
+            </Text>
+          ) : null}
+        </View>
+        {canSend && !disabled ? (
+          <Pressable
+            testID="chat-send"
+            accessibilityRole="button"
+            accessibilityLabel="Send"
+            onPress={send}
+            style={({ pressed }) => [styles.send, pressed && styles.pressed]}>
+            <IconSymbol name="paperplane.fill" size={ICON.small} color={colors.greenInk} />
+          </Pressable>
         ) : null}
       </View>
-      {draft.canSend && !disabled ? (
-        <Pressable
-          testID="chat-send"
-          accessibilityRole="button"
-          accessibilityLabel="Send"
-          onPress={send}
-          style={({ pressed }) => [styles.send, pressed && styles.pressed]}>
-          <IconSymbol name="paperplane.fill" size={ICON.small} color={colors.greenInk} />
-        </Pressable>
-      ) : null}
     </View>
   );
 }
 
 const useStyles = makeStyles(({ colors }) => ({
+  wrap: {
+    borderTopWidth: hairline,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
   bar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: space.sm,
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
-    borderTopWidth: hairline,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
   },
   field: { flex: 1, gap: space.xs },
   input: {

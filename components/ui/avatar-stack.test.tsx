@@ -28,3 +28,21 @@ describe('AvatarStack', () => {
     expect(screen.getByLabelText('1 player')).toBeTruthy();
   });
 });
+
+describe('AvatarStack avatar looks (S18)', () => {
+  it('draws each person with their kit or illustration', async () => {
+    await render(
+      <AvatarStack
+        people={[
+          { id: 'a', name: 'Andreas G', kit: { illustration: 'avatar-01' } },
+          { id: 'b', name: 'Bella K', kit: { colour: 'kitRed', number: 7 } },
+          { id: 'c', name: 'Chris P' },
+        ]}
+      />,
+    );
+    expect(screen.getAllByTestId('avatar-illustration')).toHaveLength(1);
+    expect(screen.getAllByTestId('avatar-kit')).toHaveLength(1);
+    expect(screen.getByText('CP')).toBeTruthy();
+    expect(screen.queryByText('AG')).toBeNull();
+  });
+});

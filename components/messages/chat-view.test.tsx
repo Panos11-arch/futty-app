@@ -134,3 +134,45 @@ describe('ChatView', () => {
     expect(screen.getByTestId('chat-loading-older')).toBeTruthy();
   });
 });
+
+// S13A: what Futty AI's chat adds to the same chat, all optional.
+describe('ChatView options (S13A)', () => {
+  it('empty: its own content instead of the line', async () => {
+    await view({ emptyLine: undefined, empty: <Text>Quick replies</Text> });
+    expect(screen.getByText('Quick replies')).toBeTruthy();
+    expect(screen.queryByTestId('chat-empty')).toBeNull();
+  });
+
+  it('renderMessage draws each message; typing shows below the newest', async () => {
+    await view({
+      messages: [msg('2'), msg('1')],
+      renderMessage: (item) => <Text>{`drawn ${item.message.id}`}</Text>,
+      typing: <Text>typing</Text>,
+    });
+    expect(screen.getByText('drawn 1')).toBeTruthy();
+    expect(screen.getByText('drawn 2')).toBeTruthy();
+    expect(screen.queryByTestId('bubble-theirs')).toBeNull();
+    expect(screen.getByText('typing')).toBeTruthy();
+  });
+
+  it('a send error with Try again', async () => {
+    const onPress = jest.fn();
+    await view({ sendError: "Couldn't reach Futty AI. Try again.", sendErrorAction: { label: 'Try again', onPress } });
+    await fireEvent.press(screen.getByTestId('chat-send-retry'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('the input: something left of it, above it, and sending with no text', async () => {
+    const onSend = jest.fn().mockResolvedValue(true);
+    await view({ onSend, inputLeading: <Text>attach</Text>, inputAbove: <Text>photos</Text>, canSendEmpty: true });
+    expect(screen.getByText('attach')).toBeTruthy();
+    expect(screen.getByText('photos')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('chat-send'));
+    expect(onSend).toHaveBeenCalledWith('');
+  });
+
+  it('without canSendEmpty there is no send button until there is text', async () => {
+    await view();
+    expect(screen.queryByTestId('chat-send')).toBeNull();
+  });
+});

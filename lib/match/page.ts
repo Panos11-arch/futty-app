@@ -4,7 +4,7 @@
 // cast_motm_vote and set_match_lineup check every one of them again.
 import type { MatchScoreCheck } from '@/lib/match/score-check';
 import type { MatchKind, MatchSideRecord, MatchStatus, Side } from '@/lib/match/types';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 /** A player as get_match_page returns one. */
 export type MatchPagePlayer = {
@@ -72,7 +72,7 @@ export type RosterPlayer = {
   leftAt: string | null;
   checkedIn: boolean;
   /** A12: the player's kit avatar from get_public_profiles; guests have none. */
-  kit?: AvatarKit | null;
+  kit?: AvatarLook | null;
 };
 
 export const OWN_GOAL_OR_UNKNOWN = 'Own goal';

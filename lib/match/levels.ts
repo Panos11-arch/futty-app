@@ -5,10 +5,8 @@
 // S13B match ratings come from stats, lib/match/rating.ts); these rules only decide what the app shows and which
 // controls appear.
 import type { Loadable } from '@/lib/match/use-match-result';
-import type { RosterPlayer } from '@/lib/match/page';
 import type { ResultMatch } from '@/lib/match/result';
 import type { Side } from '@/lib/match/types';
-import type { AvatarKit } from '@/lib/avatar';
 
 /** `public.player_levels` as the app shows it. */
 export type PlayerLevel = {

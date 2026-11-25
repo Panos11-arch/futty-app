@@ -17,6 +17,7 @@
 //      revoke, and that is logged (decided 13 November, for Panos to confirm).
 //   2. Deletes their saved cards (the Stripe customer), push tokens,
 //      follows/blocks and saved searches (links.ts).
+//      Also their Futty AI chats and the photos in them (S13A).
 //   3. Clears every personal field on their profile. Match stats stay, under
 //      "Deleted player", so league tables and opponents' records don't
 //      change retroactively.
@@ -32,6 +33,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import Stripe from 'npm:stripe@^22';
 
+import { deleteAiChats } from '../_shared/ai-chats.ts';
 import { APPLE_BUNDLE_ID } from '../_shared/apple-app-store.ts';
 import { revokeAppleToken } from '../_shared/apple-sign-in.ts';
 import { getCallerId } from '../_shared/caller.ts';
@@ -102,6 +104,32 @@ Deno.serve(async (req) => {
       },
 
       async deleteLinks(id) {
+        // Futty AI chats and their photos (S13A): photos first, from the
+        // chats' messages; the chats go even if a photo can't.
+        const { data: chats, error: chatsError } = await admin
+          .from('ai_chats')
+          .select('id, ai_chat_messages(photo_paths)')
+          .eq('profile_id', id);
+        if (chatsError) console.error(`delete-account: Futty AI chats not read for ${id}:`, chatsError.message);
+        const ai = await deleteAiChats(
+          {
+            async removePhotos(paths) {
+              const { error } = await admin.storage.from('ai-chat-photos').remove(paths);
+              if (error) throw new Error(error.message);
+            },
+            async deleteChats(ids) {
+              const { error } = await admin.from('ai_chats').delete().in('id', ids);
+              if (error) throw new Error(error.message);
+            },
+          },
+          (chats ?? []).map((c: { id: string; ai_chat_messages: { photo_paths: string[] }[] }) => ({
+            chat_id: c.id,
+            photo_paths: c.ai_chat_messages.flatMap((m) => m.photo_paths),
+          })),
+          { keepChatsIfPhotosFail: false },
+        ).catch((err) => ({ deleted: 0, photoError: err instanceof Error ? err.message : String(err) }));
+        if (ai.photoError) console.error(`delete-account: Futty AI chats or photos not deleted for ${id}:`, ai.photoError);
+
         const failed = await deleteAccountLinks(admin, id);
         if (failed.length > 0) console.error(`delete-account: links not deleted for ${id}: ${failed.join('; ')}`);
       },

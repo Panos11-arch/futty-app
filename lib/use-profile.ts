@@ -59,6 +59,7 @@ type EditableProfileFields = Pick<
   | 'avatar_style'
   | 'avatar_kit_colour'
   | 'avatar_number'
+  | 'avatar_illustration'
 >;
 
 type ProfileState =
@@ -82,7 +83,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, premium_tier, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number'
+        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, premium_tier, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number, avatar_illustration'
       )
       .eq('id', user.id)
       .maybeSingle();
@@ -124,6 +125,7 @@ export type PublicProfile = Pick<
   | 'avatar_style'
   | 'avatar_kit_colour'
   | 'avatar_number'
+  | 'avatar_illustration'
 >;
 
 /** Another user's public stats only (item 5) — via a security-definer RPC
@@ -166,5 +168,6 @@ export function publicProfileAsProfile(p: PublicProfile): Profile {
     avatar_style: p.avatar_style ?? 'initials',
     avatar_kit_colour: p.avatar_kit_colour ?? null,
     avatar_number: p.avatar_number ?? null,
+    avatar_illustration: p.avatar_illustration ?? null,
   };
 }

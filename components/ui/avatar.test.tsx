@@ -4,7 +4,8 @@ import { Image } from 'expo-image';
 import { Avatar, initials } from '@/components/ui/avatar';
 import { flatStyle, loadWithFile } from '@/components/ui/test-utils';
 import { colors, kitColours } from '@/constants/futty-theme';
-import { avatarKit } from '@/lib/avatar';
+import { ILLUSTRATION_SVGS } from '@/assets/avatars/illustrations';
+import { avatarKit, avatarLook } from '@/lib/avatar';
 
 // The shirt's <Svg> and <Path> as plain views that keep the props they were
 // drawn with, so the test reads the fill and outline as the avatar set them.
@@ -15,6 +16,7 @@ jest.mock('react-native-svg', () => {
     __esModule: true,
     default: (props: object) => React.createElement(View, props),
     Path: (props: object) => React.createElement(View, props),
+    SvgXml: (props: object) => React.createElement(View, props),
   };
 });
 
@@ -90,5 +92,53 @@ describe('avatarKit', () => {
     [null],
   ])('falls back to initials for %j', (row) => {
     expect(avatarKit(row)).toBeNull();
+  });
+});
+
+describe('Avatar with an illustration (S18)', () => {
+  it('draws the bundled drawing instead of initials', async () => {
+    await render(<Avatar name="Eleni Kyriakou" kit={{ illustration: 'avatar-07' }} size={56} />);
+    const art = screen.getByTestId('avatar-illustration');
+    expect(art.props.xml).toBe(ILLUSTRATION_SVGS['avatar-07']);
+    expect(art.props.width).toBe(56);
+    expect(art.props.height).toBe(56);
+    expect(screen.queryByText('EK')).toBeNull();
+    expect(screen.queryByTestId('avatar-kit')).toBeNull();
+    // Screen readers hear the name, as for initials.
+    expect(screen.getByLabelText('Eleni Kyriakou')).toBeTruthy();
+  });
+
+  it('prefers a photo when there is one', async () => {
+    await render(<Avatar name="Eleni Kyriakou" photoUrl="https://example.com/e.jpg" kit={{ illustration: 'avatar-07' }} />);
+    expect(screen.getByTestId('avatar-photo')).toBeTruthy();
+    expect(screen.queryByTestId('avatar-illustration')).toBeNull();
+  });
+});
+
+describe('avatarLook', () => {
+  it('reads a kit row as the kit', () => {
+    expect(avatarLook({ avatar_style: 'kit', avatar_kit_colour: 'kitBlue', avatar_number: 9 })).toEqual({
+      colour: 'kitBlue',
+      number: 9,
+    });
+  });
+
+  it('reads an illustration row as the illustration', () => {
+    expect(avatarLook({ avatar_style: 'illustration', avatar_illustration: 'avatar-48' })).toEqual({
+      illustration: 'avatar-48',
+    });
+  });
+
+  it.each([
+    [{ avatar_style: 'illustration', avatar_illustration: null }],
+    [{ avatar_style: 'illustration', avatar_illustration: 'avatar-49' }],
+    [{ avatar_style: 'illustration' }],
+    [{ avatar_style: 'initials', avatar_illustration: 'avatar-01' }],
+    [{ avatar_style: 'kit', avatar_kit_colour: null, avatar_number: 9, avatar_illustration: 'avatar-01' }],
+    [{}],
+    [null],
+    [undefined],
+  ])('falls back to initials for %j', (row) => {
+    expect(avatarLook(row)).toBeNull();
   });
 });

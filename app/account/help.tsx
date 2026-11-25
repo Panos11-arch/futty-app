@@ -1,22 +1,20 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { DocEmailLink, DocFAQ, DocHeading, DocParagraph, DocScreen } from '@/components/doc-screen';
-import { FuttyAiChat } from '@/components/futty-ai-chat';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { space } from '@/constants/futty-theme';
+import { FUTTY_AI_HREF } from '@/lib/futty-ai';
 
-/** Help (S2, spec 15 section 0.9): Futty AI, How Futty works, Terms and
- *  Privacy policy live here, then the support email and the FAQ. The FAQ is
- *  also on the website, site/support/index.html: keep the two in sync. */
+/** Help (S2, spec 15 section 0.9): Futty AI (its chats, S13A), How Futty
+ *  works, Terms and Privacy policy live here, then the support email and the
+ *  FAQ. The FAQ is also on the website, site/support/index.html: keep the
+ *  two in sync. */
 export default function HelpScreen() {
-  const [aiOpen, setAiOpen] = useState(false);
-
   return (
     <DocScreen>
       <MenuSection>
-        <MenuRow testID="help-futty-ai" icon="bubble.left.fill" label="Ask Futty AI" onPress={() => setAiOpen(true)} />
+        <MenuRow testID="help-futty-ai" icon="bubble.left.fill" label="Ask Futty AI" onPress={() => router.push(FUTTY_AI_HREF)} />
         <MenuRow
           testID="help-how-it-works"
           icon="info.circle.fill"
@@ -63,8 +61,6 @@ export default function HelpScreen() {
           Go to Account &gt; Settings &gt; Delete account. You&apos;ll need to cancel any upcoming bookings first. If you can&apos;t sign in, email us at the address above and we&apos;ll do it for you.
         </DocFAQ>
       </View>
-
-      <FuttyAiChat visible={aiOpen} onClose={() => setAiOpen(false)} />
     </DocScreen>
   );
 }
