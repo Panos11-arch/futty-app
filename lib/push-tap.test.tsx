@@ -150,6 +150,13 @@ describe('routeForPushData', () => {
     );
   });
 
+  it('S14: a Team of the Week nudge (premium_offers) opens Premium', () => {
+    expect(
+      routeForPushData({ type: 'premium_offers', kind: 'team_of_the_week_skipped', teamOfTheWeekId: 't1', weekStart: '2026-11-09' }),
+    ).toBe('/account/premium');
+    expect(routeForPushData({ type: 'premium_offers' })).toBe('/account/premium');
+  });
+
   it.each([
     ['an unknown type with no ids', { type: 'something_new' }],
     ['empty data', {}],

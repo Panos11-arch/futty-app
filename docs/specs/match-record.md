@@ -220,8 +220,9 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
 
 1. **Two kinds of team.**
    - **League team:** that league's fixtures only.
-   - **General team:** only non-league games (bookings, squad games, friendlies). League games never count towards it. Each week, per format, there is one for **All Cyprus** (all non-league games), one per city and one per busy venue (decided 24 November).
-   - **A busy venue** has 4 or more confirmed matches that week (decided 24 November).
+   - **General team:** only non-league competitive games (bookings, squad games and friendly fixtures against another team, as long as the game wasn't switched to Friendly). League games never count towards it. Each week, per format, there is one for **All Cyprus** (all non-league competitive games), one per city and one per busy venue (decided 24 November).
+   - **A busy venue** has 4 or more confirmed matches that week (decided 24 November). S14 counts only matches that feed the general team: confirmed, non-league, competitive, any format (flagged for Panos on the S14 PR).
+   - **Friendly games never count** (decided by Panos and Anghelo, 25 November): a game switched to Friendly (`matches.competitive` false) is left out of every Team of the Week, league and general, and Player of the week.
    - Everyone can view both.
 2. **Premium only.** Only players who are Futty Premium when the team is picked (`profiles.is_premium`, read on the server at that moment) can be selected. A non-Premium player is skipped, and the next best eligible player is picked instead.
 3. **One team per format** (5, 6, 7, 9 and 11-a-side), from games in that format only. Shapes:
@@ -242,11 +243,11 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
       - the rest → defence, except the one with the lowest goals + assists per game, who goes in goal.
       - Worked example: 10 goals in 1 game (10.0 per game) ranks above 20 goals in 5 games (4.0 per game).
    3. **Ties** at every step go to more games played in the period, then the higher rating, then the earlier sign-up (decided 24 November).
-   4. **Too few eligible players:** the team shows the filled slots and marks the rest "No eligible player". It is never hidden (decided 24 November).
+   4. **Too few eligible players:** the team shows the filled slots and marks the rest "No eligible player". It is never hidden (decided 24 November). S14 fills strikers, then midfield, then the keeper, then defence (flagged for Panos on the S14 PR).
    5. **Player of the week:** the highest-rated player in that team, with the same tie rules (decided 24 November).
 5. **The period and when it's picked:** kept from 1g.4. It is the week from Monday 00:00 to Monday 00:00, Cyprus time, picked by `match_jobs_tick` from Monday 09:00 Cyprus time.
 6. **Selected players** get `team_of_the_week`, as before.
-7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week and per scope: "You'd have made Team of the Week (<rating>). Get Futty Premium to be eligible." It opens Premium.
+7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week and per scope (team kind and area, whatever the format; `team_of_the_week_skip_scope`): "You'd have made Team of the Week (<rating>). Get Futty Premium to be eligible." It opens Premium (`premium_offers`).
    - It goes out as a push only if they switched on a new **"Premium and offers"** notification setting. That setting is off by default (Apple guideline 4.5.4).
 
 ## 1l. Logging after the game, ratings and levels (S13B; decided by Panos, 21 and 22 November)
@@ -272,7 +273,7 @@ Recorded and built in S13B. Spec 05 sections 3, 4 and 4.1 changed with Anghelo's
 9. **Levels:** spec 05 section 4, on 1.0–10.0, with the rules of item 11.
 10. **Assists** are tallies per player (`match_assists`); goals stay one row per goal in `match_goals` (null scorer = own goal). Older matches keep their paired assists on their goals; both count.
 11. **Levels like Playtomic** (decided by Panos 25 November; spec 05 section 4 items 2, 5 and 6).
-   - **Game type.** Every game is Competitive by default (`matches.competitive` defaults to true; `is_competitive` reads it). Before kickoff the booker, or either captain of a named game, can switch it to Friendly (`set_match_competitive`, `competitive_locked` from kickoff, `not_captain` for anyone else). Everyone in the booking sees which it is. Matches created before 25 November keep their setting (named competitive, pickups casual). A Friendly game counts for nothing: no levels and no power ranking (S14b renames its "friendly" category to "non-league"). Its score, stats and ratings still show, and today it still counts for season stats, leaderboards, Team of the Week and streaks (open question for Panos).
+   - **Game type.** Every game is Competitive by default (`matches.competitive` defaults to true; `is_competitive` reads it). Before kickoff the booker, or either captain of a named game, can switch it to Friendly (`set_match_competitive`, `competitive_locked` from kickoff, `not_captain` for anyone else). Everyone in the booking sees which it is. Matches created before 25 November keep their setting (named competitive, pickups casual). A Friendly game counts for nothing: no levels and no power ranking (S14b renames its "friendly" category to "non-league"). Its score, stats and ratings still show. **A Friendly game counts for the player, never against others** (decided by Panos and Anghelo, 25 November; S14): it is left out of everything that ranks players publicly (Team of the Week and Player of the week, the venue leaderboards, the venue page's top players, and any future Player of the season or tournament, XP tier or badge), and still counts for personal progress (the player's own season stats, streaks and the match page). Streak badges follow the streak and count it (decided by Anghelo, 25 November; Panos to confirm).
    - **Who moves.** Only Competitive, confirmed games that aren't forfeits; disputed and no-result games never count. Every player who played moves, and only when both sides have at least one Futty player who played (a profile, not a guest, not marked "Didn't play"). Otherwise the score, stats and ratings show but no level moves, and no card is sent.
    - **A pickup's score is checked** (one captain). The players marked as played on the side the booker isn't on get "Check the score" (`match_score_check`) on Home, on the match page and as a push: Accept or Reject (`respond_to_match_score`). If the booker didn't play, everyone who played except him gets it. Players on the booker's side, the booker and anyone marked "Didn't play" can't answer (`cannot_check_score`). No card in a Friendly game.
    - **The first answer settles it.** Accept counts the score for levels and closes the card for everyone; Reject holds it until the booker corrects it; later answers are ignored. No answer within 24 hours of the score being logged counts as accepted. An accepted score is final (`score_locked`); goals, assists and who played can still be corrected in their own windows.
@@ -638,6 +639,7 @@ The allowed types. **Always sent** = can't be turned off (decision 4).
 | `followed_team_result` | match (A3): "Result: X 5–3 Y" | |
 | `followed_team_opponent_wanted` | match (A3): "X want an opponent on Thursday" | |
 | `team_of_the_week` | match (A7): "You're in Futty's team of the week." | |
+| `premium_offers` | match (S14): "You'd have made Team of the Week (8.4). Get Futty Premium to be eligible." Off until the player switches on "Premium and offers" (`notification_types.default_enabled` false; Apple guideline 4.5.4); the in-app notification is always written | |
 | `saved_search_match` | payments (saved searches, spec 13): "A pitch you were looking for is free" / "A game you were looking for needs players" | |
 | `streak_badge` | match (A11): "You've earned the Bronze streak badge" (decision 1i) | |
 
@@ -675,8 +677,9 @@ The A7a views and tables (decision 1g; signed-in players read them, signed-out u
 | `team_season_stats` | `team_id`, `season_kind`, `season_year`, `league_id`, `played`, `won`, `drawn`, `lost`, `win_pct`, `goals_for`, `goals_against`, `clean_sheets`, `longest_win_run`, `motm`, `average_rating` |
 | `team_recent_matches` | as `player_recent_matches`, by `team_id` |
 | `stats_leaderboards` | `scope` (`venue`, `city`), `scope_key` (venue id or city), `scope_name`, `season_year`, `profile_id`, `appearances`, `goals`, `motm`, `won`, `win_pct`, `min_appearances`, `goals_rank`, `motm_rank`, `win_rate_rank` |
-| `team_of_the_week` | `id`, `week_start` (a Monday, unique: one team a week), `matches` |
-| `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `position_group` (`gk`, `def`, `mid`, `fwd`), `sort` (1–5), `average_points`, `games`, `goals`, `assists`, `clean_sheets`, `motm`, `average_rating` |
+| `team_of_the_week` (S14, decision 1k) | `id`, `week_start` (a Monday), `kind` (`general`, `league`), `area` (`all`, `city`, `venue`, `league`), `area_key` (`''`, city key, venue id or league id), `area_name`, `league_id`, `venue_id`, `format`, `matches`; unique per week, kind, area and format |
+| `team_of_the_week_players` | `team_of_the_week_id`, `profile_id`, `slot` (`gk`, `def`, `mid`, `fwd`), `sort` (1–11, keeper first), `games`, `goals`, `assists`, `clean_sheets`, `average_rating`, `player_of_the_week` |
+| `team_of_the_week_shapes` | `format`, `keepers`, `defenders`, `midfielders`, `strikers` (decision 1k item 3) |
 
 `match_rating_shown(match, player)` returns a player's match rating once the match page shows it (null otherwise); `stats_min_appearances()` is decision 1g.1.
 

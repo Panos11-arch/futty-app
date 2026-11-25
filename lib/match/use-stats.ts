@@ -7,6 +7,7 @@ import {
   getMinAppearances,
   getPlayerSeasonStats,
   getTeamOfTheWeekPlayers,
+  getTeamShape,
   getTeamRecentMatches,
   getTeamSeasonStats,
   type LeaderboardBoard,
@@ -16,6 +17,7 @@ import {
   type SeasonChoice,
   type TeamOfTheWeek,
   type TeamOfTheWeekPlayer,
+  type TeamShape,
   type TeamSeasonStats,
 } from '@/lib/match/stats-api';
 import type { PlayerRecentMatchRow } from '@/lib/match/types';
@@ -96,15 +98,17 @@ export function useLatestTeamOfTheWeek() {
   return { ...state, reload };
 }
 
-export function useTeamOfTheWeekPlayers(teamOfTheWeekId: string | null | undefined) {
-  const { state, reload } = useLoad<{ players: TeamOfTheWeekPlayer[] }>(
-    teamOfTheWeekId
+/** A team's players and its format's shape (to show the empty slots). */
+export function useTeamOfTheWeekPlayers(team: Pick<TeamOfTheWeek, 'id' | 'format'> | null | undefined) {
+  const { state, reload } = useLoad<{ players: TeamOfTheWeekPlayer[]; shape: TeamShape | null }>(
+    team
       ? async () => {
-          const { players, error } = await getTeamOfTheWeekPlayers(teamOfTheWeekId);
-          return error ? { error: error.message } : { value: { players } };
+          const [players, shape] = await Promise.all([getTeamOfTheWeekPlayers(team.id), getTeamShape(team.format)]);
+          const error = players.error ?? shape.error;
+          return error ? { error: error.message } : { value: { players: players.players, shape: shape.shape } };
         }
       : null,
-    teamOfTheWeekId ?? '',
+    team ? `${team.id}|${team.format}` : '',
   );
   return { ...state, reload };
 }

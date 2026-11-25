@@ -63,6 +63,8 @@ export function routeForPushData(raw: unknown): Href {
 
   // A7: team of the week opens the week's teams.
   if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
+  // S14: "You'd have made Team of the Week" (and any Premium and offers notice) opens Premium.
+  if (data.type === 'premium_offers') return '/account/premium';
 
   const matchId = stringId(data, 'matchId');
   // Levels like Playtomic: the booker's score was rejected, so he corrects it.

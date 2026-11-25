@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import NotificationSettingsScreen from '@/app/account/settings/notifications';
 
 // The server's state, as the mocked tables hold it.
-let mockTypes: { type: string; always_sent: boolean }[];
+let mockTypes: { type: string; always_sent: boolean; default_enabled?: boolean }[];
 let mockSettings: { type: string; enabled: boolean }[];
 let mockQuiet: { starts_local: string; ends_local: string } | null;
 let mockFailTypes = false;
@@ -166,6 +166,23 @@ describe('Notification settings', () => {
       { onConflict: 'profile_id,type' },
     ]);
     expect(screen.getByTestId('switch-match_reminder_2h').props.value).toBe(false);
+  });
+
+  it('S14: Premium and offers is off until the player switches it on (Apple 4.5.4)', async () => {
+    mockTypes = [...mockTypes, { type: 'premium_offers', always_sent: false, default_enabled: false }];
+    await renderReady();
+    expect(screen.getByText('Premium')).toBeTruthy();
+    expect(screen.getByText('Premium and offers')).toBeTruthy();
+    expect(screen.getByTestId('switch-premium_offers').props.value).toBe(false);
+    expect(screen.getByTestId('switch-match_reminder_2h').props.value).toBe(true);
+    await fireEvent(screen.getByTestId('switch-premium_offers'), 'valueChange', true);
+    expect(mockWrites).toContainEqual([
+      'notification_settings',
+      'upsert',
+      { profile_id: 'me', type: 'premium_offers', enabled: true },
+      { onConflict: 'profile_id,type' },
+    ]);
+    expect(screen.getByTestId('switch-premium_offers').props.value).toBe(true);
   });
 
   it('shows a type the player turned off as off', async () => {

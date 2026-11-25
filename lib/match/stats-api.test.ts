@@ -2,19 +2,23 @@ import {
   cityKey,
   cyprusYear,
   defaultScope,
-  formatPoints,
-  pickLine,
+  defaultTeam,
   formatRating,
   formatWeekOf,
   getLatestTeamOfTheWeek,
+  getTeamShape,
   getLeaderboard,
   getLeaderboardScopes,
   getPlayerSeasonStats,
   getTeamOfTheWeekPlayers,
   getTeamRecentMatches,
   getTeamSeasonStats,
+  lineup,
+  statLine,
+  teamCaption,
   type LeaderboardScope,
   type TeamOfTheWeek,
+  type TeamOfTheWeekPlayer,
 } from '@/lib/match/stats-api';
 
 type Call = [string, ...unknown[]];
@@ -152,39 +156,127 @@ describe('leaderboards', () => {
 const totw = (over: Partial<TeamOfTheWeek>): TeamOfTheWeek => ({
   id: 't',
   week_start: '2026-11-09',
+  kind: 'general',
+  area: 'all',
+  area_key: '',
+  area_name: 'All Cyprus',
+  league_id: null,
+  format: '5-a-side',
   matches: 3,
   ...over,
 });
 
+const pick = (over: Partial<TeamOfTheWeekPlayer>): TeamOfTheWeekPlayer => ({
+  profile_id: 'p',
+  name: 'Player',
+  slot: 'mid',
+  sort: 1,
+  games: 1,
+  goals: 0,
+  assists: 0,
+  clean_sheets: 0,
+  average_rating: 7,
+  player_of_the_week: false,
+  ...over,
+});
+
 describe('team of the week', () => {
-  it('the latest week’s one team', async () => {
-    mockResponses = [{ data: totw({ id: 'new' }), error: null }];
+  it('the latest week’s General · All Cyprus team, smallest format first (decision 1k)', async () => {
+    mockResponses = [
+      {
+        data: [
+          totw({ id: 'new7', format: '7-a-side' }),
+          totw({ id: 'new5' }),
+          totw({ id: 'old5', week_start: '2026-11-02' }),
+        ],
+        error: null,
+      },
+    ];
     const { team } = await getLatestTeamOfTheWeek();
-    expect(team?.id).toBe('new');
+    expect(team?.id).toBe('new5');
     expect(mockCalls).toContainEqual(['from', 'team_of_the_week']);
+    expect(mockCalls).toContainEqual(['eq', 'kind', 'general']);
+    expect(mockCalls).toContainEqual(['eq', 'area', 'all']);
     expect(mockCalls).toContainEqual(['order', 'week_start', { ascending: false }]);
-    expect(mockCalls).toContainEqual(['limit', 1]);
-    expect(mockCalls).toContainEqual(['maybeSingle']);
   });
 
-  it('none yet is null', async () => {
-    mockResponses = [{ data: null, error: null }];
+  it('none yet is null; an error is passed on', async () => {
+    mockResponses = [{ data: [], error: null }];
     expect((await getLatestTeamOfTheWeek()).team).toBeNull();
+    mockResponses = [{ data: null, error: { message: 'boom' } }];
+    const failed = await getLatestTeamOfTheWeek();
+    expect(failed.team).toBeNull();
+    expect(failed.error).toEqual({ message: 'boom' });
+  });
+
+  it('defaultTeam: latest week, General · All Cyprus, then 5, 6, 7, 9, 11', () => {
+    expect(defaultTeam([])).toBeNull();
+    expect(
+      defaultTeam([
+        totw({ id: 'league', kind: 'league', area: 'league', format: '5-a-side' }),
+        totw({ id: 'city', area: 'city', area_key: 'limassol' }),
+        totw({ id: 'eleven', format: '11-a-side' }),
+        totw({ id: 'nine', format: '9-a-side' }),
+      ])?.id,
+    ).toBe('nine');
+    expect(defaultTeam([totw({ id: 'league', kind: 'league', area: 'league' })])).toBeNull();
   });
 
   it('players in their slots, with names', async () => {
     mockResponses = [
       {
         data: [
-          { profile_id: 'k', position_group: 'gk', sort: 1, average_points: 8, games: 1, goals: 0, assists: 0, clean_sheets: 1, motm: 0, average_rating: 7 },
+          { profile_id: 'k', slot: 'gk', sort: 1, games: 1, goals: 0, assists: 0, clean_sheets: 1, average_rating: 7, player_of_the_week: false },
         ],
         error: null,
       },
       names([{ id: 'k', full_name: 'Kostas' }]),
     ];
     const { players } = await getTeamOfTheWeekPlayers('x');
-    expect(players[0]).toMatchObject({ profile_id: 'k', name: 'Kostas', sort: 1, average_points: 8 });
+    expect(players[0]).toMatchObject({ profile_id: 'k', name: 'Kostas', slot: 'gk', sort: 1 });
+    expect(mockCalls).toContainEqual(['eq', 'team_of_the_week_id', 'x']);
     expect(mockCalls).toContainEqual(['order', 'sort', { ascending: true }]);
+  });
+
+  it('players: an error gives none', async () => {
+    mockResponses = [{ data: null, error: { message: 'boom' } }];
+    const { players, error } = await getTeamOfTheWeekPlayers('x');
+    expect(players).toEqual([]);
+    expect(error).toEqual({ message: 'boom' });
+  });
+
+  it('a format’s shape from the server', async () => {
+    mockResponses = [{ data: { format: '7-a-side', keepers: 1, defenders: 2, midfielders: 3, strikers: 1 }, error: null }];
+    const { shape } = await getTeamShape('7-a-side');
+    expect(shape).toEqual({ format: '7-a-side', keepers: 1, defenders: 2, midfielders: 3, strikers: 1 });
+    expect(mockCalls).toContainEqual(['from', 'team_of_the_week_shapes']);
+    expect(mockCalls).toContainEqual(['eq', 'format', '7-a-side']);
+    mockResponses = [{ data: null, error: null }];
+    expect((await getTeamShape('8-a-side')).shape).toBeNull();
+  });
+
+  it('lineup: every slot of the shape, keeper first, an empty slot as null', () => {
+    const shape = { format: '5-a-side', keepers: 1, defenders: 1, midfielders: 2, strikers: 1 };
+    const slots = lineup(
+      [pick({ profile_id: 'f', slot: 'fwd', sort: 3 }), pick({ profile_id: 'm1', slot: 'mid', sort: 1 }), pick({ profile_id: 'm2', slot: 'mid', sort: 2 })],
+      shape,
+    );
+    expect(slots.map((s) => `${s.slot}:${s.player?.profile_id ?? '-'}`)).toEqual(['gk:-', 'def:-', 'mid:m1', 'mid:m2', 'fwd:f']);
+    expect(lineup([], shape)).toHaveLength(5);
+  });
+
+  it('statLine: goals and assists, else clean sheets, else nothing', () => {
+    expect(statLine(pick({ goals: 2, assists: 3 }))).toBe('2 G · 3 A');
+    expect(statLine(pick({ goals: 1 }))).toBe('1 G');
+    expect(statLine(pick({ assists: 1 }))).toBe('1 A');
+    expect(statLine(pick({ clean_sheets: 1 }))).toBe('1 clean sheet');
+    expect(statLine(pick({ clean_sheets: 2 }))).toBe('2 clean sheets');
+    expect(statLine(pick({}))).toBe('');
+  });
+
+  it('teamCaption: the week, format and area', () => {
+    expect(teamCaption(totw({}))).toBe('Week of 9 Nov · 5-a-side · All Cyprus');
+    expect(teamCaption(totw({ format: '7-a-side', area_name: 'Limassol' }))).toBe('Week of 9 Nov · 7-a-side · Limassol');
   });
 });
 
@@ -193,19 +285,6 @@ describe('formatting', () => {
     expect(formatRating(8.44)).toBe('8.4');
     expect(formatRating(7)).toBe('7.0');
     expect(formatRating(null)).toBe('–');
-  });
-
-  it('points per game, one decimal', () => {
-    expect(formatPoints(8.5)).toBe('8.5 pts');
-    expect(formatPoints(4)).toBe('4.0 pts');
-  });
-
-  it('the numbers behind a pick, by position', () => {
-    const base = { goals: 2, assists: 1, clean_sheets: 1, games: 2, motm: 0 };
-    expect(pickLine({ ...base, position_group: 'fwd' })).toBe('2 goals · 1 assist · 2 games');
-    expect(pickLine({ ...base, position_group: 'mid' })).toBe('1 assist · 2 goals · 2 games');
-    expect(pickLine({ ...base, position_group: 'def', motm: 1 })).toBe('1 clean sheet · 1 man of the match · 2 games');
-    expect(pickLine({ ...base, position_group: 'gk', clean_sheets: 0, games: 1 })).toBe('0 clean sheets · 1 game');
   });
 
   it('the week', () => {

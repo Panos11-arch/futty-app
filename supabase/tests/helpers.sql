@@ -1221,3 +1221,116 @@ revoke all on function tests.create_venue(uuid, numeric, integer, time, time) fr
 revoke all on function tests.create_pitch(uuid, text, text, text[], integer) from public;
 revoke all on function tests.set_price(uuid, text, integer) from public;
 grant execute on all functions in schema tests to anon, authenticated, service_role;
+
+-- S14 (Team of the Week, match-record.md decision 1k).
+
+-- A confirmed 1-0 match in p_format at p_venue (null: none), competitive or
+-- Friendly, in league p_league (null: not a league game).
+create or replace function tests.totw_match(
+  p_kickoff timestamptz,
+  p_format text default '5-a-side',
+  p_venue uuid default null,
+  p_competitive boolean default true,
+  p_league uuid default null,
+  p_status text default 'confirmed'
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid := tests.form_match(p_kickoff, p_status, 1, 0, null, null, null, null, p_venue);
+  v_fixture uuid;
+begin
+  if p_league is not null then
+    insert into public.league_fixtures (league_id, venue_id, scheduled_day) values (p_league, p_venue, p_kickoff::date)
+    returning id into v_fixture;
+  end if;
+  update public.matches
+  set format = p_format, players_per_side = split_part(p_format, '-', 1)::integer, competitive = p_competitive,
+      league_fixture_id = v_fixture
+  where id = v_id;
+  return v_id;
+end;
+$$;
+
+-- p_profile played p_match (checked in) with p_goals goals, p_assists
+-- assists and the match rating p_rating, written straight in.
+create or replace function tests.totw_play(p_match uuid, p_profile uuid, p_rating numeric, p_goals integer default 0,
+                                           p_assists integer default 0, p_side text default 'a')
+returns void
+language plpgsql
+as $$
+declare
+  v_player uuid;
+begin
+  perform tests.form_player(p_match, p_profile, p_side, true, true);
+  v_player := tests.player_id(p_match, p_profile);
+  for i in 1 .. p_goals loop
+    insert into public.match_goals (match_id, side, sort, scorer_player_id, entered_by)
+    values (p_match, p_side, (select count(*) + 1 from public.match_goals g where g.match_id = p_match), v_player, p_profile);
+  end loop;
+  if p_assists > 0 then
+    insert into public.match_assists (match_id, side, player_id, assists, entered_by)
+    values (p_match, p_side, v_player, p_assists, p_profile);
+  end if;
+  insert into public.match_player_ratings (match_id, player_id, profile_id, rating)
+  values (p_match, v_player, p_profile, p_rating);
+end;
+$$;
+
+-- A user who signed up at p_signed_up, Premium or not.
+create or replace function tests.totw_user(p_email text, p_premium boolean default true,
+                                           p_signed_up timestamptz default '2026-01-01 00:00+00')
+returns uuid
+language plpgsql
+as $$
+declare
+  v_id uuid := tests.create_user(p_email);
+begin
+  update public.profiles set is_premium = p_premium, created_at = p_signed_up where id = v_id;
+  return v_id;
+end;
+$$;
+
+-- Runs team_of_the_week_tick at p_now as the scheduled job does.
+create or replace function tests.totw_tick(p_now timestamptz)
+returns integer
+language plpgsql
+as $$
+declare
+  v integer;
+begin
+  perform tests.act_as_service_role();
+  v := public.team_of_the_week_tick(p_now);
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- The team of the week p_week, p_kind, p_area, p_area_key ('' for All
+-- Cyprus), p_format.
+create or replace function tests.totw_team(p_week date, p_kind text, p_area text, p_area_key text, p_format text)
+returns public.team_of_the_week
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.team_of_the_week t
+  where t.week_start = p_week and t.kind = p_kind and t.area = p_area and t.area_key = p_area_key
+    and t.format = p_format;
+$$;
+
+-- That team's players as 'slot:profile' in sort order.
+create or replace function tests.totw_lineup(p_team uuid)
+returns text[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(array_agg(p.slot || ':' || p.profile_id order by p.sort), '{}')
+  from public.team_of_the_week_players p where p.team_of_the_week_id = p_team;
+$$;

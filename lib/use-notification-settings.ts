@@ -9,6 +9,7 @@ import {
   groupSwitchableTypes,
   setNotificationEnabled,
   setQuietHours,
+  withDefaults,
   type NotificationSection,
   type QuietHours,
 } from '@/lib/notifications';
@@ -17,7 +18,7 @@ type Ready = {
   status: 'ready';
   sections: NotificationSection[];
   alwaysSent: string[];
-  /** type → enabled; a type with no row is on. */
+  /** type → enabled; a type with no row is on, unless it is off by default. */
   settings: Record<string, boolean>;
   quietHours: QuietHours | null;
 };
@@ -50,7 +51,7 @@ export function useNotificationSettings() {
       status: 'ready',
       sections: groupSwitchableTypes(types.rows),
       alwaysSent: types.rows.filter((r) => r.always_sent).map((r) => r.type),
-      settings: settings.settings,
+      settings: withDefaults(types.rows, settings.settings),
       quietHours: quiet.quietHours,
     });
   }, [profileId]);
