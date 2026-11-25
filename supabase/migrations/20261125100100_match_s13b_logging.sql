@@ -27,6 +27,17 @@
 --     captain (both sides his) can correct the score too in that window
 --     (decided by Anghelo 25 November), except for a Losers pay match,
 --     whose money settles from it.
+--   * Levels like Playtomic (decided by Panos 25 November, decision 1l
+--     item 11): in a Competitive game, a lone captain's score is checked by
+--     the players who played on the side he isn't on (everyone who played
+--     but him, if he didn't): "Check the score" (match_score_check), Accept
+--     or Reject (respond_to_match_score). The first answer settles it; no
+--     answer within 24 hours counts as accepted; an accepted score is
+--     locked (score_locked). A Reject tells him (match_score_rejected); a
+--     score correction sends the card again and restarts the 24 hours.
+--     Still rejected when his correction window ends: no level moves
+--     (apply_match_levels). No card when the game is Friendly or a side has
+--     no Futty player who played (no level could move).
 --   * match_result_submissions keeps one row per match for every function
 --     that already reads it (sides lock, reminders, post-match offers, the
 --     settlement view): the first score logged, answered "accepted" on
@@ -81,7 +92,16 @@ alter table public.app_rules
 
 alter table public.matches
   add column score_tries integer not null default 0,
-  add column ratings_final_at timestamptz;
+  add column ratings_final_at timestamptz,
+  -- A lone captain's "Check the score" card: pending from score_check_since
+  -- (the log or the latest score correction) for 24 hours; score_check_by
+  -- answered it (null with accepted: nobody answered in 24 hours).
+  add column score_check text check (score_check in ('pending', 'accepted', 'rejected')),
+  add column score_check_since timestamptz,
+  add column score_check_by uuid references public.profiles (id) on delete set null,
+  add column score_check_at timestamptz;
+
+create index matches_score_check_pending on public.matches (score_check_since) where score_check = 'pending';
 
 -- Each captain's current score for the match (one per side he captains).
 create table public.match_score_entries (
@@ -131,7 +151,10 @@ revoke all on public.match_assists, public.match_player_ratings from public, ano
 grant select on public.match_assists, public.match_player_ratings to authenticated;
 grant all on public.match_assists, public.match_player_ratings to service_role;
 
-insert into public.notification_types (type, always_sent) values ('match_score_mismatch', false)
+insert into public.notification_types (type, always_sent) values
+  ('match_score_mismatch', false),
+  ('match_score_check', false),
+  ('match_score_rejected', false)
 on conflict (type) do nothing;
 
 -- A score still waiting for its answer becomes that captain's entry.
@@ -501,6 +524,151 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
+-- Checking a lone captain's score (decision 1l item 11)
+-- ---------------------------------------------------------------------------
+
+-- The card's state at p_now: a pending card 24 hours old counts as accepted.
+create or replace function public.match_score_check_state(p_match public.matches, p_now timestamptz default now())
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select case when p_match.score_check = 'pending' and p_now >= p_match.score_check_since + interval '24 hours'
+              then 'accepted' else p_match.score_check end;
+$$;
+
+-- Who may check p_match_id's score: every player who played (a profile with
+-- a check-in, on a side, not left) except the booker (the captain who
+-- logged it) and, if he played, his side. Nobody unless both sides have a
+-- Futty player who played (otherwise no level can move).
+create or replace function public.match_score_checkers(p_match_id uuid)
+returns setof uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  with booker as (
+    select e.entered_by as id from public.match_score_entries e where e.match_id = p_match_id and e.side = 'a'
+  ),
+  played as (
+    select mp.profile_id, mp.side
+    from public.match_players mp
+    join public.match_attendance a on a.match_id = mp.match_id and a.profile_id = mp.profile_id
+    where mp.match_id = p_match_id and mp.left_at is null and mp.profile_id is not null and mp.side in ('a', 'b')
+  )
+  select p.profile_id
+  from played p
+  where exists (select 1 from played x where x.side = 'a')
+    and exists (select 1 from played x where x.side = 'b')
+    and p.profile_id is distinct from (select b.id from booker b)
+    and p.side is distinct from (select x.side from played x join booker b on b.id = x.profile_id)
+  order by p.profile_id;
+$$;
+
+-- Opens (or opens again) the card for the score p_match_id has now: answers
+-- cleared, 24 hours from now, a push to each checker. A Friendly game, or
+-- one with nobody to check, has no card.
+create or replace function public.match_open_score_check(p_match_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.matches;
+  v_to uuid[];
+begin
+  select * into v_match from public.matches where id = p_match_id;
+  select array_agg(c) into v_to from public.match_score_checkers(p_match_id) c;
+  if not v_match.is_competitive or v_to is null then
+    update public.matches
+    set score_check = null, score_check_since = null, score_check_by = null, score_check_at = null
+    where id = p_match_id;
+    return;
+  end if;
+  update public.matches
+  set score_check = 'pending', score_check_since = now(), score_check_by = null, score_check_at = null
+  where id = p_match_id;
+  perform public.send_notification(c, 'match_score_check', jsonb_build_object(
+    'title', 'Check the score',
+    'body', public.match_score_line(p_match_id, v_match.side_a_score, v_match.side_b_score) || '. Accept or reject it.',
+    'matchId', p_match_id))
+  from unnest(v_to) c;
+end;
+$$;
+
+-- A player answers the card: p_accept true (Accept) or false (Reject). The
+-- first answer settles it; later ones (or any after 24 hours) are ignored.
+-- A Reject tells the booker. Returns {status, ignored}.
+create or replace function public.respond_to_match_score(p_match_id uuid, p_accept boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_match public.matches;
+  v_state text;
+begin
+  select * into v_match from public.matches where id = p_match_id for update;
+  if not found then
+    raise exception 'match_not_found';
+  end if;
+  if not public.match_is_member(p_match_id, v_uid) then
+    raise exception 'not_in_match';
+  end if;
+  if p_accept is null then
+    raise exception 'invalid_answer';
+  end if;
+  if not exists (select 1 from public.match_score_checkers(p_match_id) c where c = v_uid) then
+    raise exception 'cannot_check_score';
+  end if;
+  v_state := public.match_score_check_state(v_match);
+  if v_state is distinct from 'pending' then
+    return jsonb_build_object('status', coalesce(v_state, 'none'), 'ignored', true);
+  end if;
+
+  update public.matches
+  set score_check = case when p_accept then 'accepted' else 'rejected' end, score_check_by = v_uid, score_check_at = now()
+  where id = p_match_id;
+  if not p_accept then
+    perform public.send_notification(e.entered_by, 'match_score_rejected', jsonb_build_object(
+      'title', 'Your score was rejected',
+      'body', 'Check it and fix it.',
+      'matchId', p_match_id))
+    from public.match_score_entries e where e.match_id = p_match_id and e.side = 'a';
+  end if;
+  return jsonb_build_object('status', case when p_accept then 'accepted' else 'rejected' end, 'ignored', false);
+end;
+$$;
+
+-- The caller's open "Check the score" cards, for Home.
+create or replace function public.get_my_scores_to_check()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'matchId', m.id,
+           'kickoffAt', m.kickoff_at,
+           'labelA', (select ms.label from public.match_sides ms where ms.match_id = m.id and ms.side = 'a'),
+           'labelB', (select ms.label from public.match_sides ms where ms.match_id = m.id and ms.side = 'b'),
+           'sideAScore', m.side_a_score,
+           'sideBScore', m.side_b_score,
+           'checkUntil', m.score_check_since + interval '24 hours')
+         order by m.score_check_since desc, m.id), '[]')
+  from public.matches m
+  where m.score_check = 'pending' and m.status = 'confirmed' and now() < m.score_check_since + interval '24 hours'
+    and exists (select 1 from public.match_score_checkers(m.id) c where c = auth.uid());
+$$;
+
+-- ---------------------------------------------------------------------------
 -- What the app calls
 -- ---------------------------------------------------------------------------
 
@@ -577,6 +745,8 @@ begin
     on conflict (match_id) do nothing;
     update public.matches set score_tries = score_tries + 1 where id = p_match_id;
     perform public.match_confirm_result(p_match_id, p_side_a_score, p_side_b_score, 'agreed', now(), v_uid);
+    -- The players who played check it for levels (decision 1l item 11).
+    perform public.match_open_score_check(p_match_id);
     return jsonb_build_object('status', 'confirmed', 'tries', v_match.score_tries + 1, 'maxTries', v_max);
   end if;
 
@@ -651,8 +821,11 @@ $$;
 -- stay. Two captains' agreed score is final (score_locked), and so is a
 -- Losers pay match's, whose money settles from it (score_locked). A changed
 -- score tells every player "Score corrected" (match_result_confirmed, so the
--- same preference); levels, applied after the window, read the corrected
--- score.
+-- same preference); levels, applied once the game is final, read the
+-- corrected score. Levels like Playtomic (decision 1l item 11): once the
+-- players accepted the score (or 24 hours passed without an answer) it is
+-- locked (score_locked); a corrected score sends "Check the score" again,
+-- answers cleared, 24 hours from now.
 create or replace function public.set_match_stats(p_match_id uuid, p_stats jsonb,
                                                   p_side_a_score integer default null,
                                                   p_side_b_score integer default null)
@@ -697,6 +870,7 @@ begin
   end if;
   if v_score_changed then
     if cardinality(v_sides) < 2
+       or public.match_score_check_state(v_match) = 'accepted'
        or exists (select 1 from public.venue_bookings b where b.id = v_match.booking_id and b.losers_pay) then
       raise exception 'score_locked';
     end if;
@@ -727,6 +901,7 @@ begin
   if v_score_changed then
     perform public.match_notify(p_match_id, 'match_result_confirmed', 'Score corrected',
       public.match_score_line(p_match_id, p_side_a_score, p_side_b_score), array['a', 'b'], true, v_uid);
+    perform public.match_open_score_check(p_match_id);
   end if;
 end;
 $$;
@@ -944,6 +1119,12 @@ begin
             else '[]' end,
     'myVote', (select v.nominee_player_id from public.motm_votes v
                where v.match_id = p_match_id and v.voter_profile_id = v_uid),
+    -- Levels like Playtomic: the "Check the score" card, if the match has one.
+    'scoreCheck', case when v_match.score_check is not null then jsonb_build_object(
+                    'state', public.match_score_check_state(v_match),
+                    'canAnswer', public.match_score_check_state(v_match) = 'pending'
+                                 and exists (select 1 from public.match_score_checkers(p_match_id) c where c = v_uid),
+                    'checkUntil', v_match.score_check_since + interval '24 hours') end,
     -- A position whose player has since left or changed side is left out.
     'lineups', (select coalesce(jsonb_agg(jsonb_build_object(
                   'side', l.side,
@@ -1106,6 +1287,12 @@ revoke all on function public.match_confirm_result(uuid, integer, integer, text,
 grant execute on function public.match_confirm_result(uuid, integer, integer, text, timestamptz, uuid) to service_role;
 revoke all on function public.match_dispute_result(uuid, timestamptz) from public, anon, authenticated;
 grant execute on function public.match_dispute_result(uuid, timestamptz) to service_role;
+revoke all on function public.match_score_check_state(public.matches, timestamptz) from public, anon, authenticated;
+grant execute on function public.match_score_check_state(public.matches, timestamptz) to service_role;
+revoke all on function public.match_score_checkers(uuid) from public, anon, authenticated;
+grant execute on function public.match_score_checkers(uuid) to service_role;
+revoke all on function public.match_open_score_check(uuid) from public, anon, authenticated;
+grant execute on function public.match_open_score_check(uuid) to service_role;
 revoke all on function public.match_ratings_tick(timestamptz) from public, anon, authenticated;
 grant execute on function public.match_ratings_tick(timestamptz) to service_role;
 revoke all on function public.match_backfill_ratings() from public, anon, authenticated;
@@ -1123,6 +1310,10 @@ revoke all on function public.set_match_stats(uuid, jsonb, integer, integer) fro
 grant execute on function public.set_match_stats(uuid, jsonb, integer, integer) to authenticated, service_role;
 revoke all on function public.get_my_matches_to_log() from public, anon;
 grant execute on function public.get_my_matches_to_log() to authenticated, service_role;
+revoke all on function public.respond_to_match_score(uuid, boolean) from public, anon;
+grant execute on function public.respond_to_match_score(uuid, boolean) to authenticated, service_role;
+revoke all on function public.get_my_scores_to_check() from public, anon;
+grant execute on function public.get_my_scores_to_check() to authenticated, service_role;
 revoke all on function public.get_match_log(uuid) from public, anon;
 grant execute on function public.get_match_log(uuid) to authenticated, service_role;
 

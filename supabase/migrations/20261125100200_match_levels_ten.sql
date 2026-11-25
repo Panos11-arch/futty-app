@@ -25,14 +25,39 @@
 --     move = K × (S − E) × (1 − reliability / 200)
 --   then the S13B match rating nudges it by 0.15 × (rating − 6.5) / 3.5,
 --   never more than 0.15 either way; clamped to 1.0–10.0. Reliability and
---   the provisional rule are unchanged. Casual, forfeit, disputed,
+--   the provisional rule are unchanged. Friendly, forfeit, disputed,
 --   no_result and void matches still never move a level. Every constant is
 --   in app_rules.
+-- * Levels like Playtomic (decided by Panos 25 November, match-record.md
+--   decision 1l item 11):
+--   - Every game is Competitive by default, pickups included
+--     (matches.competitive defaults to true and is never null; the
+--     generated is_competitive reads it). Matches created before keep their
+--     setting (named competitive, pickups casual). Before kickoff the booker,
+--     or either captain of a named game, can switch it to Friendly
+--     (set_match_competitive, as before; null is refused now).
+--   - Levels move only when both sides have a Futty player who played (a
+--     profile with a check-in, so not a guest or "Didn't play"), as before.
+--   - A lone captain's score must be settled by the players' check
+--     (match_s13b_logging): a pending card waits its 24 hours (then counts
+--     as accepted); a rejected one moves no level.
+--   - Levels still run once, when the game is final (decided by Anghelo 25
+--     November): at the latest of the score being settled, confirmed_at +
+--     24 hours (Man of the Match, for the nudge) and result_deadline_at
+--     (who played). An Accept settles the score but doesn't move levels
+--     sooner, so a level never needs reversing.
 --
 -- Re-created from their latest definitions
 -- (20261117192224_match_levels_functions.sql), with only these changes:
--- set_starting_level, apply_match_levels and balance_match_teams (its
--- default level). match_level_start is dropped.
+-- set_starting_level, set_match_competitive (null refused),
+-- apply_match_levels and balance_match_teams (its default level).
+-- match_level_start is dropped.
+
+-- Competitive by default (Playtomic). Existing matches keep their setting.
+update public.matches set competitive = (kind = 'named') where competitive is null;
+alter table public.matches
+  alter column competitive set default true,
+  alter column competitive set not null;
 
 alter table public.app_rules
   add column level_min numeric(4,2) not null default 1.0,
@@ -159,6 +184,34 @@ begin
 end;
 $$;
 
+-- Competitive or Friendly: any captain (a pickup's booker), while scheduled
+-- and before kickoff. Never null (Competitive is the default).
+create or replace function public.set_match_competitive(p_match_id uuid, p_competitive boolean)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_match public.matches;
+begin
+  select * into v_match from public.matches where id = p_match_id for update;
+  if not found then
+    raise exception 'match_not_found';
+  end if;
+  if public.match_captain_side(p_match_id, auth.uid()) is null then
+    raise exception 'not_captain';
+  end if;
+  if p_competitive is null then
+    raise exception 'invalid_answer';
+  end if;
+  if v_match.status <> 'scheduled' or now() >= v_match.kickoff_at then
+    raise exception 'competitive_locked';
+  end if;
+  update public.matches set competitive = p_competitive where id = p_match_id;
+end;
+$$;
+
 -- The level update for one match (see the top of this file). Returns
 -- 'applied', 'skipped' (settled, but it moves no levels), 'not_yet' (a
 -- window is still open) or 'already'.
@@ -197,10 +250,22 @@ begin
          and p_now < greatest(v_match.confirmed_at + interval '24 hours', v_match.result_deadline_at)) then
     return 'not_yet';
   end if;
+  -- A lone captain's score waits for the players' check: 24 hours without
+  -- an answer count as accepted.
+  if v_match.score_check = 'pending' then
+    if p_now < v_match.score_check_since + interval '24 hours' then
+      return 'not_yet';
+    end if;
+    update public.matches set score_check = 'accepted', score_check_at = v_match.score_check_since + interval '24 hours'
+    where id = p_match_id;
+  end if;
 
   update public.matches set levels_applied_at = p_now where id = p_match_id;
 
+  -- Still rejected when the booker's correction window has closed: no level
+  -- moves (the ratings and stats stay).
   if v_match.status <> 'confirmed' or v_match.forfeit_side is not null or not v_match.is_competitive
+     or v_match.score_check is not distinct from 'rejected'
      or v_match.side_a_score is null or v_match.side_b_score is null then
     return 'skipped';
   end if;
@@ -211,7 +276,8 @@ begin
     update public.matches set ratings_final_at = p_now where id = p_match_id;
   end if;
 
-  -- Who counts: checked in, a profile, a side, not left (1b.2).
+  -- Who counts: checked in, a profile, a side, not left (1b.2). Both sides
+  -- need one (a Futty player who played), or no level moves.
   select array_agg(mp.profile_id order by mp.profile_id), array_agg(mp.id order by mp.profile_id),
          array_agg(mp.side order by mp.profile_id)
   into v_profiles, v_players, v_sides
@@ -413,3 +479,5 @@ revoke all on function public.match_level_to_ten(numeric) from public, anon, aut
 grant execute on function public.match_level_to_ten(numeric) to service_role;
 revoke all on function public.match_level_expected(text, text, text) from public, anon, authenticated;
 grant execute on function public.match_level_expected(text, text, text) to service_role;
+revoke all on function public.set_match_competitive(uuid, boolean) from public, anon;
+grant execute on function public.set_match_competitive(uuid, boolean) to authenticated, service_role;
