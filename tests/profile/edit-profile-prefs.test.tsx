@@ -114,6 +114,16 @@ describe('Edit profile: preferences', () => {
     expect(mockBack).toHaveBeenCalled();
   }, 20000);
 
+  // S12, A1: the date of birth is set once and locked; Edit profile neither
+  // shows it nor sends it.
+  it('has no date of birth field and never sends one', async () => {
+    await render(<EditProfileScreen />);
+    expect(screen.queryByText('Date of birth')).toBeNull();
+    expect(screen.queryByLabelText(/date of birth/i)).toBeNull();
+    await fireEvent.press(screen.getByText('Save changes'));
+    expect(mockUpdate.mock.calls[0][1]).not.toHaveProperty('date_of_birth');
+  });
+
   it('keeps the saved preferences when nothing changes', async () => {
     await render(<EditProfileScreen />);
     await fireEvent.press(screen.getByText('Save changes'));
