@@ -35,6 +35,8 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
 
 4. **`log-score`** (S13B): Home shows "Log the score" for the seeded game (a pickup this login booked, played 2 hours ago). It taps **Log**, sets Bibs 1, Non-bibs 0, gives the goal to this login on the pitch, continues past Assists (optional) and confirms on Review. One captain, so the score is final: the match page shows "Bibs 1–0 Non-bibs".
 
+5. **`community`** (S7): opens the Community tab (image 18), checks For you and Your posts, opens Following, taps Search (Find players with the search field and "From your contacts"), flips Players | Teams, and opens the + sheet's New team form. It creates nothing.
+
 `tests/maestro/flows.test.ts` checks these words and amounts against the app's own code (`describeQuote`, `cancelledMessage`, `payLabel`). The quote it checks is one `cancellation_quote` returned on a local database. The same test fails if a flow uses a testID the app doesn't have.
 
 ### The seed data
