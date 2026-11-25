@@ -7,7 +7,7 @@ import {
 
 // Every code the level functions the app calls raise
 // (supabase/migrations/20261117192224_match_levels_functions.sql, and
-// 20261124191649_match_levels_ten.sql: self_rating_out_of_range). The 1-10
+// 20261125100200_match_levels_ten.sql: self_rating_out_of_range). The 1-10
 // rating calls are gone (S13B).
 const A5A_CODES = [
   'not_authenticated',
