@@ -21,6 +21,8 @@ export type Profile = {
   city: string | null;
   position: string | null;
   preferred_foot: string | null;
+  /** S19: on the player card, 1-40 characters (profiles_favourite_player_check). */
+  favourite_player?: string | null;
   /** Owner only (match_profile_prefs): never in PublicProfile or the public profile functions. */
   preferred_days: PreferredDay[];
   preferred_times: PreferredTime[];
@@ -53,6 +55,7 @@ type EditableProfileFields = Pick<
   | 'city'
   | 'position'
   | 'preferred_foot'
+  | 'favourite_player'
   | 'preferred_days'
   | 'preferred_times'
   | 'show_phone_publicly'
@@ -83,7 +86,7 @@ export function useProfile() {
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, preferred_days, preferred_times, show_phone_publicly, role, is_premium, premium_tier, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number, avatar_illustration'
+        'id, email, username, full_name, phone, gender, date_of_birth, bio, city, position, preferred_foot, favourite_player, preferred_days, preferred_times, show_phone_publicly, role, is_premium, premium_tier, xp, played, won, drawn, lost, goals, created_at, avatar_style, avatar_kit_colour, avatar_number, avatar_illustration'
       )
       .eq('id', user.id)
       .maybeSingle();

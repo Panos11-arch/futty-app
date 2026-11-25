@@ -19,8 +19,9 @@ export async function listMyBlocks(blockerId: string) {
 }
 
 /** S13: 'conversation' reports a whole chat, 'message' one message (context_id
- *  is its id); the reported player makes it urgent when they are a minor (A7). */
-export type ReportContext = 'player' | 'team' | 'fixture_chat' | 'conversation' | 'message';
+ *  is its id); S19: 'favourite_player' a player card's favourite player. The
+ *  reported player makes it urgent when they are a minor (A7). */
+export type ReportContext = 'player' | 'team' | 'fixture_chat' | 'conversation' | 'message' | 'favourite_player';
 
 /** Insert-only by design (see supabase/moderation.sql) — there's nothing to
  *  read back, just a confirmation that the write succeeded. */
@@ -38,4 +39,10 @@ export async function submitReport(params: {
     context_id: params.contextId ?? null,
     reason: params.reason,
   });
+}
+
+/** S19: reports the favourite player shown on a player's card (the button
+ *  comes with S20, which shows other players' cards). */
+export async function reportFavouritePlayer(reporterId: string, reportedUserId: string, reason: string) {
+  return submitReport({ reporterId, reportedUserId, context: 'favourite_player', reason });
 }
