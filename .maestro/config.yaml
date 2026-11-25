@@ -19,4 +19,5 @@ executionOrder:
     - book-missing-venue
     - find-match
     - venue-book-and-pay
+    - log-score
     - edit-avatar

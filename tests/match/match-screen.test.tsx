@@ -20,8 +20,8 @@ jest.mock('@/lib/match/use-match-result', () => ({
   useResultMatch: () => ({ ...mockState, viewerId: 'booker', reload: mockReload }),
 }));
 // The match page sections (A4b) are covered in match-page-screen.test.tsx; here the page has nothing to add.
-jest.mock('@/lib/match/use-levels', () => ({
-  useMatchRatings: () => ({ status: 'loading', reload: jest.fn() }),
+jest.mock('@/lib/match/use-match-log', () => ({
+  useMatchLog: () => ({ status: 'ready', log: null, reload: jest.fn() }),
 }));
 jest.mock('@/lib/match/use-match-page', () => ({
   useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),
@@ -30,7 +30,6 @@ jest.mock('@/lib/match/use-match-page', () => ({
 }));
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
 jest.mock('@/components/booking/check-in-panel', () => ({ CheckInSection: () => null }));
-jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
 
 beforeEach(() => mockReload.mockReset());
 
@@ -56,10 +55,10 @@ describe('Match screen', () => {
     expect(screen.getByText('Match not found')).toBeTruthy();
   });
 
-  it('ready: when, where and the result panel', async () => {
+  it('ready: when and where; no score card before a score (S13B: logged on the after-game screens)', async () => {
     mockState = { status: 'ready', match: mockResultMatch() };
     await render(<MatchScreen />);
     expect(screen.getByText('Sat 14 Nov · 19:00 · Nuevo Campo')).toBeTruthy();
-    expect(screen.getByTestId('match-result-panel')).toBeTruthy();
+    expect(screen.queryByTestId('match-result-panel')).toBeNull();
   });
 });

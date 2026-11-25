@@ -1,7 +1,5 @@
-// Reads and writes for match results. Every write goes through A2's
-// functions (submit_match_result, respond_to_match_result): the app sends
-// the match id and the scores or the answer, and the server decides
-// whether the caller may (docs/specs/match-record.md section 5.2).
+// Reads for match results (docs/specs/match-record.md section 5.2). Since
+// S13B the score is logged with log_match_result (lib/match/log-score-api.ts).
 import type { ResultMatch } from '@/lib/match/result';
 import type { MatchRecord, MatchResultSubmission, MatchSideRecord, Side } from '@/lib/match/types';
 import { supabase } from '@/lib/supabase';
@@ -132,16 +130,4 @@ export async function findMatchLinks(candidates: MatchLinkCandidates) {
     if (row.league_fixture_id) links.byLeagueFixtureId.set(row.league_fixture_id, row.id);
   }
   return { links, error: null };
-}
-
-export function submitMatchResult(matchId: string, sideAScore: number, sideBScore: number) {
-  return supabase.rpc('submit_match_result', {
-    p_match_id: matchId,
-    p_side_a_score: sideAScore,
-    p_side_b_score: sideBScore,
-  });
-}
-
-export function respondToMatchResult(matchId: string, accept: boolean) {
-  return supabase.rpc('respond_to_match_result', { p_match_id: matchId, p_accept: accept });
 }

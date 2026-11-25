@@ -80,19 +80,21 @@ begin
 end;
 $$;
 
--- p_by enters a score (side a, side b); p_reply answers it (null: silence).
+-- p_by logs a score (side a, side b); p_reply logs the same (p_accept) or
+-- keeps disagreeing until it is disputed (S13B); null: silence.
 create function tests.gp_result(p_match uuid, p_by uuid, p_a integer, p_b integer, p_reply uuid, p_accept boolean)
 returns void
 language plpgsql
 as $$
 begin
-  perform tests.act_as(p_by);
-  perform public.submit_match_result(p_match, p_a, p_b);
-  if p_reply is not null then
-    perform tests.act_as(p_reply);
-    perform public.respond_to_match_result(p_match, p_accept);
+  if p_reply is not null and not p_accept then
+    perform tests.dispute_result(p_by, p_reply, p_match);
+    return;
   end if;
-  perform tests.act_as_postgres();
+  perform tests.log_result(p_by, p_match, p_a, p_b);
+  if p_reply is not null then
+    perform tests.log_result(p_reply, p_match, p_a, p_b);
+  end if;
 end;
 $$;
 

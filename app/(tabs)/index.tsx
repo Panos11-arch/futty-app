@@ -6,7 +6,8 @@ import { bookingWhen, NextBookingCard } from '@/components/booking/next-game-car
 import { NoOpponentChoices } from '@/components/booking/no-opponent-choices';
 import { BookingResultForm } from '@/components/booking-result-form';
 import { FixtureScoreForm } from '@/components/fixture-score-form';
-import { MatchResultPanel } from '@/components/match/result-panel';
+import { CheckScoreCard } from '@/components/match/check-score-card';
+import { LogScoreCard } from '@/components/match/log-score-card';
 import { TeamOfTheWeekHome } from '@/components/match/team-of-the-week-home';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -24,11 +25,10 @@ import { canLogFixtureScore } from '@/lib/fixtures';
 import { type FriendlyMatch, submitFriendlyScore } from '@/lib/friendly-matches';
 import { describeLeagueError } from '@/lib/league-errors';
 import { formatMatchDate, formatMatchWhen } from '@/lib/match/format';
-import { openIfOffers } from '@/lib/post-match-offers';
 import { isPremiumPlayer, TEAM_PREMIUM_ENABLED } from '@/lib/premium';
-import { viewerRole, type ResultMatch } from '@/lib/match/result';
 import { useStartingLevelOffer } from '@/lib/match/use-levels';
-import { useMatchLinks, useOpenResultMatches } from '@/lib/match/use-match-result';
+import { useMyMatchesToLog, useMyScoresToCheck } from '@/lib/match/use-match-log';
+import { useMatchLinks } from '@/lib/match/use-match-result';
 import { useMyBookings, useMyUnscoredBookings } from '@/lib/use-my-bookings';
 import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
 import { useMyFriendlyMatches } from '@/lib/use-friendly-matches';
@@ -205,18 +205,42 @@ function QuickActions() {
   );
 }
 
-/** Whether Home shows this open match: the viewer can enter or answer its
- *  score, or their side entered it and is waiting for the answer. */
-function needsViewer(match: ResultMatch, viewerId: string | null, captainTeamIds: Set<string>) {
-  const role = viewerRole(match, viewerId, captainTeamIds);
-  return role.canSubmit || role.canRespond || (match.submission !== null && role.captainSide === match.submission.side);
+/** "Check the score" (levels like Playtomic, Panos 25 November): a pickup's
+ *  score the viewer can accept or reject, because they played on the side
+ *  the booker isn't on. The server decides which cards show. */
+function CheckScoreSection() {
+  const styles = useStyles();
+  const toCheck = useMyScoresToCheck();
+
+  useFocusEffect(
+    useCallback(() => {
+      toCheck.reload();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
+  if (toCheck.status === 'error') {
+    return (
+      <View style={styles.section}>
+        <SectionHeader title="Check the score" />
+        <InlineError message="Could not load the scores to check." onRetry={toCheck.reload} />
+      </View>
+    );
+  }
+  if (toCheck.status !== 'ready' || toCheck.scores.length === 0) return null;
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Check the score" />
+      {toCheck.scores.map((score) => (
+        <CheckScoreCard key={score.matchId} score={score} onAnswered={toCheck.reload} />
+      ))}
+    </View>
+  );
 }
 
-const openMatch = (id: string) => router.push({ pathname: '/match/[id]', params: { id } });
-
 /** Score forms for games that have ended. A game with a match (made since
- *  A2) is entered and answered with submit_match_result and
- *  respond_to_match_result only; games recorded before A2 keep the old
+ *  A2) is logged by its captain on the after-game screens (S13B: "Log the
+ *  score", get_my_matches_to_log); games recorded before A2 keep the old
  *  forms: a friendly match, a league fixture you captain, or a plain booking
  *  you made. */
 function LogScoreSection({ onScored }: { onScored: () => void }) {
@@ -226,14 +250,14 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
   const fixtures = useMyFixtures();
   const myCaptainTeamIds = useMyCaptainTeamIds();
   const unscoredBookings = useMyUnscoredBookings();
-  const openResults = useOpenResultMatches();
+  const toLog = useMyMatchesToLog();
 
   useFocusEffect(
     useCallback(() => {
       friendlyMatches.reload();
       fixtures.reload();
       unscoredBookings.reload();
-      openResults.reload();
+      toLog.reload();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
@@ -263,10 +287,7 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
   const readyToScoreFixtures = linksReady
     ? oldFixtures.filter((f) => !matchLinks.links.byLeagueFixtureId.has(f.id))
     : [];
-  const resultMatches =
-    openResults.status === 'ready'
-      ? openResults.matches.filter((m) => needsViewer(m, openResults.viewerId, myCaptainTeamIds))
-      : [];
+  const resultMatches = toLog.status === 'ready' ? toLog.matches : [];
 
   // A booking later turned into a "Need opposition" post that got matched
   // already has a friendly_matches row for the same game — show only that
@@ -310,16 +331,16 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
     unscoredBookings.status === 'error'
       ? { key: 'unscored', message: 'Could not load past bookings.', retry: unscoredBookings.reload }
       : null,
-    openResults.status === 'error'
-      ? { key: 'results', message: 'Could not load your games waiting for a score.', retry: openResults.reload }
+    toLog.status === 'error'
+      ? { key: 'results', message: 'Could not load your games waiting for a score.', retry: toLog.reload }
       : null,
     matchLinks.status === 'error'
       ? { key: 'links', message: 'Could not check which games have a match record.', retry: matchLinks.reload }
       : null,
   ].filter((e) => e !== null);
 
-  const hasForms =
-    resultMatches.length > 0 || readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0;
+  const hasOldForms = readyToScore.length > 0 || readyToScoreFixtures.length > 0 || unscored.length > 0;
+  const hasForms = resultMatches.length > 0 || hasOldForms;
   if (!hasForms && errors.length === 0) return null;
 
   return (
@@ -328,22 +349,11 @@ function LogScoreSection({ onScored }: { onScored: () => void }) {
       {errors.map((e) => (
         <InlineError key={e.key} message={e.message} onRetry={e.retry} />
       ))}
-      {hasForms ? (
+      {resultMatches.map((match) => (
+        <LogScoreCard key={match.matchId} match={match} />
+      ))}
+      {hasOldForms ? (
         <Card style={styles.cardStack}>
-          {resultMatches.map((match) => (
-            <MatchResultPanel
-              key={match.match.id}
-              match={match}
-              viewerId={openResults.viewerId}
-              captainTeamIds={myCaptainTeamIds}
-              onChanged={() => {
-                openResults.reload();
-                onScored();
-              }}
-              onOpen={() => openMatch(match.match.id)}
-              onScored={() => openIfOffers(match.match.id, openMatch)}
-            />
-          ))}
           {readyToScore.map((match) => (
             <FriendlyScoreForm
               key={match.id}
@@ -646,6 +656,7 @@ export default function HomeScreen() {
         {/* B3: a half pitch still without an opponent: the captain's choice. */}
         <NoOpponentChoices />
         <NextGameSection />
+        <CheckScoreSection />
         <LogScoreSection onScored={recentResults.reload} />
         <RecentResultsSection recentResults={recentResults} />
         <TeamOfTheWeekHome />

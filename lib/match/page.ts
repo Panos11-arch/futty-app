@@ -1,7 +1,8 @@
 // The match page (docs/specs/match-record.md sections 1e, 4.6, 4.7, 4.9 and
 // 5.3; 05-product sections 3 and 5). get_match_page decides what anyone may
-// see; these rules only decide which controls the app shows. set_match_goals,
+// see; these rules only decide which controls the app shows. set_match_stats,
 // cast_motm_vote and set_match_lineup check every one of them again.
+import type { MatchScoreCheck } from '@/lib/match/score-check';
 import type { MatchKind, MatchSideRecord, MatchStatus, Side } from '@/lib/match/types';
 import type { AvatarLook } from '@/lib/avatar';
 
@@ -14,6 +15,12 @@ export type MatchPagePlayer = {
 };
 
 export type MatchPageGoal = { side: Side; scorer: MatchPagePlayer | null; assist: MatchPagePlayer | null };
+
+/** S13B: a player's assists in the match (a tally, not paired with a goal). */
+export type MatchPageAssist = MatchPagePlayer & { side: Side; assists: number };
+
+/** S13B: a player's match rating (from stats; one decimal), best first. */
+export type MatchPageRating = MatchPagePlayer & { side: Side; rating: number };
 
 export type MatchPageLineup = {
   side: Side;
@@ -42,11 +49,17 @@ export type MatchPage = {
   motmVotingClosesAt: string | null;
   motmOpen: boolean;
   goals: MatchPageGoal[];
+  /** S13B: assists per player; older matches keep theirs on their goals. */
+  assists: MatchPageAssist[];
+  /** S13B: every rated player (checked in), once the result is confirmed. */
+  ratings: MatchPageRating[];
   /** Every tied leader, once voting has closed; empty before. */
   motm: (MatchPagePlayer & { votes: number })[];
   /** The caller's own nominee (a match_players id). */
   myVote: string | null;
   lineups: MatchPageLineup[];
+  /** Levels like Playtomic: a pickup's "Check the score" card; null when the match has none. */
+  scoreCheck?: MatchScoreCheck | null;
 };
 
 /** One squad row as the editors need it (members only, read under RLS). */
@@ -62,7 +75,7 @@ export type RosterPlayer = {
   kit?: AvatarLook | null;
 };
 
-export const OWN_GOAL_OR_UNKNOWN = 'Own goal or unknown';
+export const OWN_GOAL_OR_UNKNOWN = 'Own goal';
 
 const time = (iso: string | null) => (iso ? Date.parse(iso) : Number.NaN);
 
@@ -100,6 +113,28 @@ export function scorersOpen(page: MatchPage, now: number): boolean {
 /** Save is enabled only when the goals add up to the side's score and each has a scorer choice. */
 export function goalsReady(goals: { scorer: string | null | undefined }[], score: number | null): boolean {
   return score !== null && goals.length === score && goals.every((g) => g.scorer !== undefined);
+}
+
+export type Tallied = { key: string; player: MatchPagePlayer | null; count: number };
+
+/** A side's scorers by goals (own goals last), and its assisters by assists (tallies, plus older paired assists). */
+export function sideTallies(page: Pick<MatchPage, 'goals' | 'assists'>, side: Side): { goals: Tallied[]; assists: Tallied[] } {
+  const goals = new Map<string, Tallied>();
+  const assists = new Map<string, Tallied>();
+  const add = (into: Map<string, Tallied>, player: MatchPagePlayer | null, n: number) => {
+    const key = player?.playerId ?? 'own';
+    const row = into.get(key) ?? { key, player, count: 0 };
+    row.count += n;
+    into.set(key, row);
+  };
+  for (const g of page.goals.filter((x) => x.side === side)) {
+    add(goals, g.scorer, 1);
+    if (g.assist) add(assists, g.assist, 1);
+  }
+  for (const a of page.assists.filter((x) => x.side === side)) add(assists, a, a.assists);
+  const order = (x: Tallied, y: Tallied) =>
+    Number(x.player === null) - Number(y.player === null) || y.count - x.count || playerName(x.player).localeCompare(playerName(y.player));
+  return { goals: [...goals.values()].sort(order), assists: [...assists.values()].sort(order) };
 }
 
 export function playerName(p: Pick<MatchPagePlayer, 'name' | 'guestName'> | null): string {

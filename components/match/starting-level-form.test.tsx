@@ -63,6 +63,39 @@ describe('StartingLevelForm', () => {
     await waitFor(() => expect(screen.getByText('Your starting level is already set.')).toBeTruthy());
   });
 
+  it('a rating out of range: stays on the rating question with the range from the server, answers kept', async () => {
+    send.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'self_rating_out_of_range', details: '{"low": 5, "high": 7}' },
+    });
+    await render(<StartingLevelForm onClose={jest.fn()} />);
+    for (const answer of ['3_10', 'amateur', 'weekly', 'mid', '8']) {
+      await fireEvent.press(screen.getByTestId(`answer-${answer}`));
+      await fireEvent.press(screen.getByTestId('starting-level-next'));
+    }
+    await waitFor(() => expect(screen.getByText('Based on your answers, pick between 5 and 7.')).toBeTruthy());
+    expect(screen.getByTestId('starting-level-step')).toHaveTextContent('Step 5 of 5');
+    // Picking again clears the line; the other answers are still sent.
+    send.mockResolvedValueOnce({ data: { level: 7, provisional: true }, error: null });
+    await fireEvent.press(screen.getByTestId('answer-7'));
+    expect(screen.queryByText('Based on your answers, pick between 5 and 7.')).toBeNull();
+    await fireEvent.press(screen.getByTestId('starting-level-next'));
+    expect(send).toHaveBeenLastCalledWith({ years: '3_10', highest: 'amateur', frequency: 'weekly', position: 'mid', selfRating: '7' });
+    await waitFor(() => expect(screen.getByTestId('starting-level-value')).toHaveTextContent('7.0'));
+  });
+
+  it('the rating question offers 1 to 8 only', async () => {
+    await render(<StartingLevelForm onClose={jest.fn()} />);
+    for (const answer of ['over_10', 'professional', 'several_weekly', 'fwd']) {
+      await fireEvent.press(screen.getByTestId(`answer-${answer}`));
+      await fireEvent.press(screen.getByTestId('starting-level-next'));
+    }
+    expect(screen.getByText('How would you rate yourself, from 1 to 8?')).toBeTruthy();
+    expect(screen.getByTestId('answer-8')).toBeTruthy();
+    expect(screen.queryByTestId('answer-9')).toBeNull();
+    expect(screen.queryByTestId('answer-10')).toBeNull();
+  });
+
   it('Back keeps the earlier answer', async () => {
     await render(<StartingLevelForm onClose={jest.fn()} />);
     await fireEvent.press(screen.getByTestId('answer-1_3'));

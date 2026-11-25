@@ -3,7 +3,6 @@ import {
   getFormationPresets,
   getMatchPage,
   getMatchRoster,
-  setMatchGoals,
   setMatchLineup,
 } from '@/lib/match/page-api';
 import { mockMatchPage } from '@/lib/match/mock';
@@ -106,20 +105,6 @@ it('getFormationPresets reads the presets for that many players, in order', asyn
 });
 
 describe('writes send ids only', () => {
-  it('set_match_goals without a side for a one-side captain', () => {
-    setMatchGoals('m1', [{ scorerPlayerId: null, assistPlayerId: null }]);
-    expect(mockCalls).toContainEqual([
-      'rpc',
-      'set_match_goals',
-      { p_match_id: 'm1', p_goals: [{ scorerPlayerId: null, assistPlayerId: null }] },
-    ]);
-  });
-
-  it('set_match_goals with p_side for a pickup booker', () => {
-    setMatchGoals('m1', [], 'b');
-    expect(mockCalls).toContainEqual(['rpc', 'set_match_goals', { p_match_id: 'm1', p_goals: [], p_side: 'b' }]);
-  });
-
   it('cast_motm_vote', () => {
     castMotmVote('m1', 'p2');
     expect(mockCalls).toContainEqual(['rpc', 'cast_motm_vote', { p_match_id: 'm1', p_nominee_player_id: 'p2' }]);

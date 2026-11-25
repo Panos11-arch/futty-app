@@ -14,24 +14,37 @@ const set = setMatchCompetitive as jest.Mock;
 
 beforeEach(() => set.mockReset().mockResolvedValue({ error: null }));
 
-describe('MatchCompetitive', () => {
-  it('shows which it is: a pickup is casual by default', async () => {
+describe('MatchCompetitive (Game type, Panos 25 November)', () => {
+  it('everyone sees which it is: a new pickup is Competitive by default', async () => {
     await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled' })} captainSide={null} onChanged={jest.fn()} now={RESULT_BEFORE_KICKOFF} />);
-    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Casual');
+    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Competitive');
     expect(screen.queryByTestId('competitive-switch')).toBeNull();
   });
 
-  it('a captain switches it before kickoff', async () => {
+  it('shows Friendly once switched', async () => {
+    await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled', competitive: false })} captainSide={null} onChanged={jest.fn()} now={RESULT_BEFORE_KICKOFF} />);
+    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Friendly');
+    expect(screen.getByText("The result doesn't change player levels.")).toBeTruthy();
+  });
+
+  it('the booker switches a pickup to Friendly before kickoff', async () => {
     const onChanged = jest.fn();
     await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled' })} captainSide="a" onChanged={onChanged} now={RESULT_BEFORE_KICKOFF} />);
-    await fireEvent.press(screen.getByText('Competitive'));
-    expect(set).toHaveBeenCalledWith('m1', true);
+    expect(screen.getByTestId('competitive-switch')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Friendly'));
+    expect(set).toHaveBeenCalledWith('m1', false);
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
 
-  it('read-only after kickoff, even for a captain', async () => {
-    await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled', competitive: true })} captainSide="a" onChanged={jest.fn()} now={RESULT_AFTER_END} />);
-    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Competitive');
+  it("either captain of a named game can switch it (side b's captain too)", async () => {
+    await render(<MatchCompetitive match={mockResultMatch({ kind: 'named', status: 'scheduled' })} captainSide="b" onChanged={jest.fn()} now={RESULT_BEFORE_KICKOFF} />);
+    await fireEvent.press(screen.getByText('Friendly'));
+    expect(set).toHaveBeenCalledWith('m1', false);
+  });
+
+  it('locked after kickoff, even for the booker', async () => {
+    await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled', competitive: false })} captainSide="a" onChanged={jest.fn()} now={RESULT_AFTER_END} />);
+    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Friendly');
     expect(screen.queryByTestId('competitive-switch')).toBeNull();
   });
 
@@ -45,7 +58,7 @@ describe('MatchCompetitive', () => {
     set.mockResolvedValue({ error: { message: 'competitive_locked' } });
     const onChanged = jest.fn();
     await render(<MatchCompetitive match={mockResultMatch({ status: 'scheduled' })} captainSide="a" onChanged={onChanged} now={RESULT_BEFORE_KICKOFF} />);
-    await fireEvent.press(screen.getByText('Competitive'));
+    await fireEvent.press(screen.getByText('Friendly'));
     await waitFor(() => expect(screen.getByText('This can only be changed before kickoff.')).toBeTruthy());
     expect(onChanged).toHaveBeenCalled();
   });

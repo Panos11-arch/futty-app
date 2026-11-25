@@ -108,11 +108,9 @@ returns void
 language plpgsql
 as $$
 begin
-  perform tests.act_as(p_by);
-  perform public.submit_match_result(p_match, p_a, p_b);
-  perform tests.act_as(p_reply);
-  perform public.respond_to_match_result(p_match, true);
-  perform tests.act_as_postgres();
+  -- S13B: both captains log the same score.
+  perform tests.log_result(p_by, p_match, p_a, p_b);
+  perform tests.log_result(p_reply, p_match, p_a, p_b);
 end;
 $$;
 

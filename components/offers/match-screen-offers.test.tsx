@@ -27,16 +27,13 @@ jest.mock('@/lib/match/use-match-result', () => ({
 }));
 jest.mock('@/components/booking/check-in-panel', () => ({ CheckInSection: () => null }));
 // The A4b match page sections have their own tests (tests/match/match-page-screen.test.tsx).
-jest.mock('@/lib/match/use-levels', () => ({
-  useMatchRatings: () => ({ status: 'loading', reload: jest.fn() }),
-}));
 jest.mock('@/lib/match/use-match-page', () => ({
   useMatchPage: () => ({ status: 'ready', page: null, reload: jest.fn() }),
   useMatchRoster: () => ({ status: 'loading', reload: jest.fn() }),
   useFormationPresets: () => ({ status: 'loading', reload: jest.fn() }),
 }));
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => [] }));
-jest.mock('@/components/match/result-panel', () => ({ MatchResultPanel: () => null }));
+jest.mock('@/lib/match/use-match-log', () => ({ useMatchLog: () => ({ status: 'ready', log: null, reload: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: jest.requireActual<typeof import('react-native')>('react-native').View,
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 34, left: 0 }),

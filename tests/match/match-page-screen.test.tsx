@@ -1,19 +1,12 @@
-// The match page on app/match/[id].tsx (A4b): what members and strangers see.
+// The match page on app/match/[id].tsx (A4b, S13B): what members and strangers see.
 import '../navigation/mocks';
 
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import MatchScreen from '@/app/match/[id]';
-import {
-  mockMatchPage,
-  mockPagePlayer,
-  mockResultMatch,
-  mockRoster,
-  PAGE_CLOSED,
-  PAGE_CLOSES_AT,
-  RESULT_AFTER_END,
-} from '@/lib/match/mock';
+import { mockMatchLog } from '@/lib/match/log-score-mock';
+import { mockMatchPage, mockPagePlayer, mockResultMatch, mockRoster } from '@/lib/match/mock';
 
 let mockResult: Record<string, unknown>;
 let mockPage: Record<string, unknown>;
@@ -39,15 +32,14 @@ jest.mock('@/lib/match/use-match-page', () => ({
     enabled ? { status: 'ready', roster: mockRoster(), reload: jest.fn() } : { status: 'loading', reload: jest.fn() },
   useFormationPresets: () => ({ status: 'ready', formations: ['1-2-1', '2-2'], reload: jest.fn() }),
 }));
-let mockRatings: Record<string, unknown> = { status: 'loading' };
-const mockReloadRatings = jest.fn();
-jest.mock('@/lib/match/use-levels', () => ({
-  useMatchRatings: (_: string, enabled: boolean) =>
-    enabled ? { ...mockRatings, reload: mockReloadRatings } : { status: 'loading', reload: mockReloadRatings },
+let mockLog: Record<string, unknown> = { status: 'loading' };
+const mockReloadLog = jest.fn();
+jest.mock('@/lib/match/use-match-log', () => ({
+  useMatchLog: (matchId: string | undefined) =>
+    matchId ? { ...mockLog, reload: mockReloadLog } : { status: 'loading', reload: mockReloadLog },
 }));
 jest.mock('@/lib/match/levels-api', () => ({
   setMatchCompetitive: jest.fn(),
-  rateMatchPlayer: jest.fn(),
   balanceMatchTeams: jest.fn(),
 }));
 // Share's sheet reads the safe area; the screen's SafeAreaView is a plain view here.
@@ -56,8 +48,8 @@ jest.mock('react-native-safe-area-context', () => {
   return { SafeAreaView: View, useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) };
 });
 jest.mock('@/lib/use-fixtures', () => ({ useMyCaptainTeamIds: () => new Set<string>() }));
-jest.mock('@/lib/match/results-api', () => ({ submitMatchResult: jest.fn(), respondToMatchResult: jest.fn() }));
-jest.mock('@/lib/match/page-api', () => ({ setMatchGoals: jest.fn(), castMotmVote: jest.fn(), setMatchLineup: jest.fn() }));
+jest.mock('@/lib/match/score-check-api', () => ({ respondToMatchScore: jest.fn() }));
+jest.mock('@/lib/match/page-api', () => ({ castMotmVote: jest.fn(), setMatchLineup: jest.fn() }));
 jest.mock('@/components/booking/check-in-panel', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { CheckInSection: ({ matchId }: { matchId: string }) => <Text>{`check-in for ${matchId}`}</Text> };
@@ -74,8 +66,8 @@ beforeEach(() => {
   mockReload.mockReset();
   mockReloadPage.mockReset();
   mockViewer = 'booker';
-  mockReloadRatings.mockReset();
-  mockRatings = { status: 'loading' };
+  mockReloadLog.mockReset();
+  mockLog = { status: 'ready', log: mockMatchLog({ canLog: false }) };
 });
 
 describe('Match page: strangers', () => {
@@ -148,7 +140,6 @@ describe('Match page: members', () => {
     mockResult = { status: 'ready', match: confirmedResult() };
     mockPage = { status: 'loading' };
     await render(<MatchScreen />);
-    expect(screen.getByTestId('match-result-panel')).toBeTruthy();
     expect(screen.getByTestId('section-scorers-skeleton')).toBeTruthy();
     expect(screen.getByTestId('section-motm-skeleton')).toBeTruthy();
     expect(screen.getByTestId('section-lineups-skeleton')).toBeTruthy();
@@ -167,15 +158,20 @@ describe('Match page: members', () => {
     expect(mockReloadPage).toHaveBeenCalled();
   });
 
-  it('the pickup booker can add scorers; a Non-bibs player cannot', async () => {
+  it('scorers and assists are read-only here: no editor on the match page', async () => {
     mockResult = { status: 'ready', match: confirmedResult() };
-    // The screen uses the real clock: keep the scorers window open.
-    mockPage = { status: 'ready', page: mockMatchPage({ scorersOpenUntil: '2099-01-01T00:00:00.000Z' }) };
-    const view = await render(<MatchScreen />);
-    expect(screen.getByText('Add Bibs scorers')).toBeTruthy();
-    mockViewer = 'me';
-    await view.rerender(<MatchScreen />);
-    expect(screen.queryByText('Add Bibs scorers')).toBeNull();
+    mockPage = {
+      status: 'ready',
+      page: mockMatchPage({
+        goals: [{ side: 'a', scorer: mockPagePlayer('p-me'), assist: null }],
+        assists: [{ ...mockPagePlayer('p-booker'), side: 'a', assists: 1 }],
+      }),
+    };
+    await render(<MatchScreen />);
+    expect(screen.getByTestId('scorer-p-me')).toHaveTextContent('Me Player1');
+    expect(screen.getByTestId('assister-p-booker')).toHaveTextContent('Andreas Booker1');
+    expect(screen.queryByTestId('scorers-editor')).toBeNull();
+    expect(screen.queryByText(/Add .* scorers/)).toBeNull();
   });
 
   it('before kickoff: only lineups, which the captain can set', async () => {
@@ -189,44 +185,38 @@ describe('Match page: members', () => {
   });
 });
 
-describe('Match page: levels (A5b)', () => {
-  const ratings = (over: Record<string, unknown> = {}) => ({
-    status: 'ready',
-    ratings: { ratingsOpen: true, ratingsCloseAt: '2026-11-15T19:00:00.000Z', players: [], myRatings: [], ...over },
-    names: {},
-  });
-
-  it('a confirmed match: player ratings for a checked-in member, never themselves', async () => {
+describe('Match page: ratings (S13B) and levels (A5b)', () => {
+  it('a confirmed match: every rating as a badge, best first; no 1-10 voting', async () => {
     mockViewer = 'me';
     mockResult = { status: 'ready', match: confirmedResult() };
-    mockPage = { status: 'ready', page: mockMatchPage() };
-    mockRatings = ratings();
+    mockPage = {
+      status: 'ready',
+      page: mockMatchPage({
+        ratings: [
+          { ...mockPagePlayer('p-booker'), side: 'a', rating: 8.2 },
+          { ...mockPagePlayer('p-nikos'), side: 'b', rating: 6.8 },
+        ],
+      }),
+    };
     await render(<MatchScreen />);
     expect(screen.getByTestId('section-ratings')).toBeTruthy();
-    expect(screen.getByTestId('rate-p-nikos')).toBeTruthy();
-    expect(screen.queryByTestId('rate-p-me')).toBeNull();
+    expect(screen.getByTestId('rating-p-booker')).toHaveTextContent(/8\.2/);
+    expect(screen.getByTestId('rating-p-nikos')).toHaveTextContent(/6\.8/);
+    expect(screen.queryByTestId('rate-p-nikos')).toBeNull();
   });
 
-  it('ratings: skeleton while loading, an inline error with retry', async () => {
+  it('ratings wait for the page: the sections show skeletons while it loads', async () => {
     mockResult = { status: 'ready', match: confirmedResult() };
-    mockPage = { status: 'ready', page: mockMatchPage() };
-    const view = await render(<MatchScreen />);
-    expect(screen.getByTestId('section-ratings-skeleton')).toBeTruthy();
-    mockRatings = { status: 'error', message: 'boom' };
-    await view.rerender(<MatchScreen />);
-    expect(screen.getByText('Could not load the ratings.')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Try again'));
-    expect(mockReloadRatings).toHaveBeenCalled();
+    mockPage = { status: 'loading' };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('section-ratings')).toBeNull();
+    expect(screen.getByTestId('section-scorers-skeleton')).toBeTruthy();
   });
 
-  it('strangers see ratings only as the server returns them', async () => {
+  it('strangers see the ratings the server returns', async () => {
     mockViewer = 'stranger';
     mockResult = { status: 'ready', match: null };
-    mockPage = { status: 'ready', page: mockMatchPage() };
-    mockRatings = {
-      ...ratings({ ratingsOpen: false, players: [{ playerId: 'p-nikos', profileId: 'nikos', rating: 6.8, count: 3 }] }),
-      names: { nikos: 'Nikos Away' },
-    };
+    mockPage = { status: 'ready', page: mockMatchPage({ ratings: [{ ...mockPagePlayer('p-nikos'), side: 'b', rating: 6.8 }] }) };
     await render(<MatchScreen />);
     expect(screen.getByTestId('rating-p-nikos')).toHaveTextContent(/6\.8/);
     expect(screen.queryByTestId('section-competitive')).toBeNull();
@@ -239,11 +229,11 @@ describe('Match page: levels (A5b)', () => {
     expect(screen.queryByTestId('section-ratings')).toBeNull();
   });
 
-  it('members see competitive or casual; the pickup booker sees Balance teams before sides lock', async () => {
+  it('members see the game type (Competitive by default); the pickup booker sees Balance teams before sides lock', async () => {
     mockResult = { status: 'ready', match: mockResultMatch({ status: 'scheduled' }) };
     mockPage = { status: 'ready', page: mockMatchPage({ status: 'scheduled' }) };
     const view = await render(<MatchScreen />);
-    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Casual');
+    expect(screen.getByTestId('competitive-label')).toHaveTextContent('Competitive');
     expect(screen.getByTestId('section-balance')).toBeTruthy();
 
     mockViewer = 'me';
@@ -259,43 +249,73 @@ describe('Match page: levels (A5b)', () => {
   });
 });
 
-describe('Match page: Add your stats (A10, decision 1j)', () => {
-  let nowSpy: jest.SpyInstance;
-  afterEach(() => nowSpy?.mockRestore());
-  const at = (now: number) => {
-    nowSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
-  };
-
-  it('shown when the player has a step left; it opens the post-match flow', async () => {
-    at(RESULT_AFTER_END);
+describe('Match page: Log the score and Edit stats (S13B)', () => {
+  it('Log the score while the captain can log; it opens the after-game screens', async () => {
     mockResult = { status: 'ready', match: mockResultMatch() };
     mockPage = { status: 'ready', page: mockMatchPage({ status: 'played' }) };
+    mockLog = { status: 'ready', log: mockMatchLog() };
     jest.mocked(router.push).mockClear();
     await render(<MatchScreen />);
     await fireEvent.press(screen.getByTestId('match-add-stats'));
     expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
+    expect(screen.queryByTestId('match-edit-stats')).toBeNull();
   });
 
-  it('hidden when every window has closed', async () => {
-    at(PAGE_CLOSED);
+  it('Edit stats for 24 hours after the result: the correction', async () => {
     mockResult = { status: 'ready', match: confirmedResult() };
     mockPage = { status: 'ready', page: mockMatchPage() };
-    mockRatings = {
-      status: 'ready',
-      ratings: { ratingsOpen: false, ratingsCloseAt: PAGE_CLOSES_AT, players: [], myRatings: [] },
-      names: {},
-    };
+    mockLog = { status: 'ready', log: mockMatchLog({ status: 'confirmed', canLog: false, canCorrect: true }) };
+    jest.mocked(router.push).mockClear();
     await render(<MatchScreen />);
-    expect(screen.getByTestId('match-result-panel')).toBeTruthy();
+    expect(screen.getByTestId('match-result-panel')).toHaveTextContent('Bibs 2–1 Non-bibs');
     expect(screen.queryByTestId('match-add-stats')).toBeNull();
+    await fireEvent.press(screen.getByTestId('match-edit-stats'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1', correct: '1' } });
   });
 
-  it('hidden for someone outside the match', async () => {
-    at(RESULT_AFTER_END);
+  it('a player who is not a captain sees neither', async () => {
+    mockViewer = 'me';
+    mockResult = { status: 'ready', match: mockResultMatch() };
+    mockPage = { status: 'ready', page: mockMatchPage({ status: 'played' }) };
+    mockLog = { status: 'ready', log: mockMatchLog({ writableSides: [], canLog: false }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-add-stats')).toBeNull();
+    expect(screen.queryByTestId('match-edit-stats')).toBeNull();
+  });
+
+  it('hidden for someone outside the match (nothing is even loaded)', async () => {
     mockViewer = 'stranger';
     mockResult = { status: 'ready', match: null };
     mockPage = { status: 'ready', page: mockMatchPage() };
     await render(<MatchScreen />);
     expect(screen.queryByTestId('match-add-stats')).toBeNull();
+  });
+});
+
+describe('Match page: "Check the score" (levels like Playtomic, Panos 25 November)', () => {
+  const open = { state: 'pending' as const, canAnswer: true, checkUntil: '2999-01-01T00:00:00.000Z' };
+
+  it('a player on the other side who played sees the score with Accept and Reject', async () => {
+    mockViewer = 'me';
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: open }) };
+    await render(<MatchScreen />);
+    expect(screen.getByTestId('check-score-card-m1')).toHaveTextContent(/Bibs 2–1 Non-bibs/);
+    expect(screen.getByTestId('check-score-accept-m1')).toBeTruthy();
+    expect(screen.getByTestId('check-score-reject-m1')).toBeTruthy();
+  });
+
+  it("hidden for the booker's side (the server says they can't answer)", async () => {
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: { ...open, canAnswer: false } }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('check-score-card-m1')).toBeNull();
+  });
+
+  it('hidden once answered', async () => {
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: { ...open, state: 'accepted' } }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('check-score-card-m1')).toBeNull();
   });
 });

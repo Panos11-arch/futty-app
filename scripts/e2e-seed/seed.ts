@@ -17,7 +17,9 @@
 //   4. the venue "E2E Arena": two 5-a-side pitches, one €60 price, open
 //      07:00 to midnight every day, live;
 //   5. its Stripe TEST connected account, made the way connect-onboarding
-//      makes it (same parameters and idempotency key), kept once it exists.
+//      makes it (same parameters and idempotency key), kept once it exists;
+//   6. per platform, a pickup played 2 hours ago at the E2E venue, waiting
+//      for its score (S13B, log-score.yaml), made again from scratch.
 // Money rows (ledger, payments, cancellations) are never deleted.
 //
 // With E2E_SEED_OUTPUT set it writes { slot_day, ios_start, android_start,
@@ -38,6 +40,7 @@ import {
   E2E_DATE_OF_BIRTH,
   E2E_EMAIL_DOMAIN,
   E2E_FORMAT,
+  E2E_LOG_MATCHES,
   E2E_OPENING_HOURS,
   E2E_PITCHES,
   E2E_PRICE_CENTS,
@@ -134,7 +137,8 @@ export const connectAccountKey = (venueId: string) => `connect-account-${venueId
 export function e2eStartingLevel(profileId: string) {
   return {
     profile_id: profileId,
-    level: 4,
+    // 5.5: the old 4.0 on the 1.0-10.0 scale (S13B).
+    level: 5.5,
     provisional: true,
     reliability_pct: 0,
     competitive_matches: 0,
@@ -143,12 +147,39 @@ export function e2eStartingLevel(profileId: string) {
 }
 
 /**
- * The server's default level (match_rate_players makes it: 3.0, source
- * 'default') before any competitive match. Home still offers the questions
+ * The server's default level (apply_match_levels makes it: 4.0 since S13B,
+ * source 'default') before any competitive match. Home still offers the questions
  * for it (startingLevelOffered), so the seed replaces exactly this row and
  * keeps a level a match has moved.
  */
 export const E2E_UNTOUCHED_LEVEL = { source: 'default', competitive_matches: 0 } as const;
+
+/** S13B: the rows of a platform's game waiting for its score (log-score.yaml). */
+export function e2eLogScoreMatch(platform: Platform, captainId: string, otherId: string, now: Date) {
+  const ids = E2E_LOG_MATCHES[platform];
+  const at = (hours: number) => new Date(now.getTime() + hours * 3_600_000).toISOString();
+  return {
+    match: {
+      id: ids.matchId,
+      kind: 'pickup',
+      format: E2E_FORMAT,
+      players_per_side: 5,
+      venue_id: E2E_VENUE.id,
+      kickoff_at: at(-2),
+      ends_at: at(-1),
+      result_deadline_at: at(23),
+      status: 'played',
+    },
+    sides: [
+      { match_id: ids.matchId, side: 'a', label: 'Bibs', captain_profile_id: captainId },
+      { match_id: ids.matchId, side: 'b', label: 'Non-bibs', captain_profile_id: null },
+    ],
+    players: [
+      { id: ids.captainPlayerId, match_id: ids.matchId, profile_id: captainId, side: 'a' },
+      { id: ids.otherPlayerId, match_id: ids.matchId, profile_id: otherId, side: 'b' },
+    ],
+  };
+}
 
 export type SeedOutput = { slot_day: string; ios_start: string; android_start: string; venue_id: string };
 
@@ -315,6 +346,17 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     ) as string;
   }
   log(`stripe: test connected account ${accountId}`);
+
+  // ---- 6. A game waiting for its score, per platform -------------------------
+  for (const platform of ['ios', 'android'] as Platform[]) {
+    const [first, second] = E2E_USERS.filter((u) => u.platform === platform);
+    const rows = e2eLogScoreMatch(platform, ids.get(first.email)!, ids.get(second.email)!, now);
+    check(await admin.from('matches').delete().eq('id', rows.match.id), `clearing the ${platform} game to log`);
+    check(await admin.from('matches').insert(rows.match), `writing the ${platform} game to log`);
+    check(await admin.from('match_sides').insert(rows.sides), `writing the ${platform} game's sides`);
+    check(await admin.from('match_players').insert(rows.players), `writing the ${platform} game's players`);
+  }
+  log(`games to log: ${Object.values(E2E_LOG_MATCHES).map((m) => m.matchId).join(', ')}`);
 
   // ---- The slots, which must be free now -----------------------------------
   const slots = { ios: e2eSlot('ios', now), android: e2eSlot('android', now) };

@@ -16,7 +16,13 @@ import { playHref } from '@/lib/play-segments';
 
 /** A10 (match-record.md decision 1j): these open the post-match flow, after
  *  the game and again when the vote and ratings open. */
-const POST_MATCH_FLOW_TYPES = new Set(['match_after_game', 'match_result_confirmed', 'motm_vote_open']);
+const POST_MATCH_FLOW_TYPES = new Set([
+  'match_after_game',
+  'match_result_confirmed',
+  'motm_vote_open',
+  // S13B: the captains' scores differ: back to logging.
+  'match_score_mismatch',
+]);
 
 /** B3 (Booking v2): these open the booking, where the sides and the
  *  no-opponent choice are. */
@@ -59,6 +65,10 @@ export function routeForPushData(raw: unknown): Href {
   if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
 
   const matchId = stringId(data, 'matchId');
+  // Levels like Playtomic: the booker's score was rejected, so he corrects it.
+  if (matchId && data.type === 'match_score_rejected') {
+    return { pathname: '/match/after-game', params: { id: matchId, correct: '1' } };
+  }
   if (matchId && typeof data.type === 'string' && POST_MATCH_FLOW_TYPES.has(data.type)) {
     return { pathname: '/match/after-game', params: { id: matchId } };
   }

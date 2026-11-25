@@ -1,14 +1,12 @@
-// Skill levels, ratings, competitive or casual and balance teams in the app
+// Skill levels, ratings, Competitive or Friendly and balance teams in the app
 // (docs/specs/match-record.md decision 1f, sections 4.8 and 5.5; 05-product
 // section 4). The server keeps every number and decides every write
-// (set_starting_level, set_match_competitive, rate_match_player,
-// balance_match_teams); these rules only decide what the app shows and which
+// (set_starting_level, set_match_competitive, balance_match_teams; the
+// S13B match ratings come from stats, lib/match/rating.ts); these rules only decide what the app shows and which
 // controls appear.
 import type { Loadable } from '@/lib/match/use-match-result';
-import type { RosterPlayer } from '@/lib/match/page';
 import type { ResultMatch } from '@/lib/match/result';
 import type { Side } from '@/lib/match/types';
-import type { AvatarLook } from '@/lib/avatar';
 
 /** `public.player_levels` as the app shows it. */
 export type PlayerLevel = {
@@ -17,17 +15,6 @@ export type PlayerLevel = {
   reliabilityPct: number;
   competitiveMatches: number;
   source: 'questionnaire' | 'default';
-};
-
-/** get_match_ratings (section 5.5). */
-export type MatchRatings = {
-  ratingsOpen: boolean;
-  /** Null when the match can't be rated (not confirmed, or a forfeit). */
-  ratingsCloseAt: string | null;
-  /** Each player's match rating, one decimal: only 3 or more ratings, only once the window has closed. */
-  players: { playerId: string; profileId: string; rating: number; count: number }[];
-  /** The caller's own ratings. */
-  myRatings: { playerId: string; score: number }[];
 };
 
 /** balance_match_teams' answer: profile ids per side and each side's average level. */
@@ -80,12 +67,19 @@ export function shouldOfferStartingLevel(input: {
   );
 }
 
+/**
+ * The highest self-rating the rating question offers (decided by Panos 25
+ * November). The server's app_rules.starting_level_max holds the rule and
+ * set_starting_level checks it; this only keeps higher numbers off screen.
+ */
+export const STARTING_LEVEL_MAX = 8;
+
 export type StartingAnswers = {
   years: string;
   highest: string;
   frequency: string;
   position: string;
-  /** '1'–'10'. */
+  /** '1'–'8'. */
   selfRating: string;
 };
 
@@ -139,44 +133,16 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
   },
   {
     key: 'selfRating',
-    question: 'How would you rate yourself, from 1 to 10?',
-    options: Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+    question: `How would you rate yourself, from 1 to ${STARTING_LEVEL_MAX}?`,
+    options: Array.from({ length: STARTING_LEVEL_MAX }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
   },
 ];
 
-export type RateablePlayer = { id: string; name: string; rated: boolean; kit?: AvatarLook | null };
-
-export type RatingsView =
-  /** Not confirmed, or a forfeit: no ratings at all. */
-  | { kind: 'none' }
-  | { kind: 'rate'; players: RateablePlayer[]; closesAt: string }
-  /** Open, but the viewer can't rate (not checked in, or not in the match). */
-  | { kind: 'open'; closesAt: string }
-  /** Closed: exactly the ratings the server returned (3 or more each). */
-  | { kind: 'closed'; players: MatchRatings['players'] };
 
 /**
- * Mirrors rate_match_player: a checked-in player rates every other checked-in
- * player who hasn't left (never a guest), once each. Ratings are shown only
- * as the server returns them; nothing is worked out here.
- */
-export function ratingsView(ratings: MatchRatings, roster: RosterPlayer[] | null, viewerId: string | null): RatingsView {
-  const closesAt = ratings.ratingsCloseAt;
-  if (!closesAt) return { kind: 'none' };
-  if (!ratings.ratingsOpen) return { kind: 'closed', players: ratings.players };
-  const played = (p: RosterPlayer) => p.checkedIn && p.leftAt === null && p.profileId !== null && p.guestName === null;
-  const me = roster?.find((p) => p.profileId === viewerId && played(p));
-  if (!roster || !viewerId || !me) return { kind: 'open', closesAt };
-  const rated = new Set(ratings.myRatings.map((r) => r.playerId));
-  const players = roster
-    .filter((p) => played(p) && p.profileId !== viewerId)
-    .map((p) => ({ id: p.id, name: p.name, rated: rated.has(p.id), kit: p.kit ?? null }));
-  return { kind: 'rate', players, closesAt };
-}
-
-/**
- * Competitive or casual (decision 1f.1): is_competitive from the server; a
- * captain of either side may switch it while scheduled and before kickoff
+ * Competitive or Friendly (decision 1l item 11): is_competitive from the
+ * server, Competitive by default; a captain of either side (a pickup's
+ * booker) may switch it while scheduled and before kickoff
  * (set_match_competitive checks again).
  */
 export function competitiveView(
@@ -184,7 +150,7 @@ export function competitiveView(
   captainSide: Side | null,
   now: number
 ): { isCompetitive: boolean; editable: boolean } {
-  const isCompetitive = m.match.is_competitive ?? m.match.competitive ?? m.match.kind === 'named';
+  const isCompetitive = m.match.is_competitive ?? m.match.competitive ?? true;
   const editable = captainSide !== null && m.match.status === 'scheduled' && now < Date.parse(m.match.kickoff_at);
   return { isCompetitive, editable };
 }
