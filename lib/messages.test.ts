@@ -20,7 +20,9 @@ import {
   MESSAGE_MAX_LENGTH,
   MESSAGE_PAGE_SIZE,
   newClientId,
+  fetchMatchCaptainContact,
   openCaptainConversation,
+  openMatchCaptainConversation,
   openFriendConversation,
   profileHref,
   refusalLine,
@@ -121,6 +123,28 @@ describe('server calls', () => {
     mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'not_friends' } });
     await expect(openFriendConversation('p2')).resolves.toEqual({ conversationId: null, error: { message: 'not_friends' } });
     expect(mockRpc).toHaveBeenLastCalledWith('open_friend_conversation', { p_profile_id: 'p2' });
+  });
+
+  it('the other captain of a match: one contact, or null (no button)', async () => {
+    const contact = { my_team_id: 't1', team_id: 't2', team_name: 'Wolves', captain_id: 'p2', captain_name: 'Cara' };
+    mockRpc.mockResolvedValueOnce({ data: [contact], error: null });
+    await expect(fetchMatchCaptainContact('m1')).resolves.toEqual(contact);
+    expect(mockRpc).toHaveBeenCalledWith('match_captain_contact', { p_match_id: 'm1' });
+    mockRpc.mockResolvedValueOnce({ data: [], error: null });
+    await expect(fetchMatchCaptainContact('m1')).resolves.toBeNull();
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'x' } });
+    await expect(fetchMatchCaptainContact('m1')).resolves.toBeNull();
+  });
+
+  it('opens the captain chat of a match', async () => {
+    mockRpc.mockResolvedValueOnce({ data: 'c9', error: null });
+    await expect(openMatchCaptainConversation('m1')).resolves.toEqual({ conversationId: 'c9', error: null });
+    expect(mockRpc).toHaveBeenCalledWith('open_match_captain_conversation', { p_match_id: 'm1' });
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'age_pair_refused' } });
+    await expect(openMatchCaptainConversation('m1')).resolves.toEqual({
+      conversationId: null,
+      error: { message: 'age_pair_refused' },
+    });
   });
 
   it('league captain contacts', async () => {

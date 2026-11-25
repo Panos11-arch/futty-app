@@ -2,11 +2,12 @@
 // the other captain, or their scores differ and he can change his (up to 3
 // tries; the first matching pair confirms the match).
 //
-// For S13 (Dimitris): a "Message <captain>" button opening the chat between
-// the two captains of this match goes in the actions below, next to Change
-// score. Nothing is shown until that chat exists.
+// "Message <captain>" (follow-up to S13): below Change score, the chat
+// between the current captains of the two teams of this match, even outside
+// a league. Only for a game between two teams; the server decides the rest.
 import { View } from 'react-native';
 
+import { MessageCaptainButton } from '@/components/match/log-score/message-captain-button';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
@@ -51,9 +52,15 @@ export function ScoreMismatch({ log, onChange }: { log: MatchLog; onChange: () =
       </Text>
       <View style={styles.actions}>
         <Button label="Change score" onPress={onChange} fullWidth testID="log-score-change" />
+        {bothTeams(log) ? <MessageCaptainButton matchId={log.matchId} /> : null}
       </View>
     </View>
   );
+}
+
+/** A game between two teams: each side has one. */
+function bothTeams(log: MatchLog): boolean {
+  return log.sides.length === 2 && log.sides.every((s) => !!s.teamId);
 }
 
 export function ScoreWaiting({ log, onChange, onOpenMatch }: { log: MatchLog; onChange: () => void; onOpenMatch: () => void }) {

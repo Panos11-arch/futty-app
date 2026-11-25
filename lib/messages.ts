@@ -164,6 +164,23 @@ export async function openCaptainConversation(myTeamId: string, otherTeamId: str
   return { conversationId: typeof data === 'string' ? data : null, error: error as RpcError };
 }
 
+/**
+ * The other team's current captain in a match, for "Message <captain>" on
+ * the score mismatch screen. Null (no button) when the caller isn't a
+ * current captain of one of its two teams, or on any error.
+ */
+export async function fetchMatchCaptainContact(matchId: string): Promise<CaptainContact | null> {
+  const { data, error } = await supabase.rpc('match_captain_contact', { p_match_id: matchId });
+  if (error) return null;
+  return rows<CaptainContact>(data)[0] ?? null;
+}
+
+/** The captain chat between the two teams of a match, even outside a league. */
+export async function openMatchCaptainConversation(matchId: string) {
+  const { data, error } = await supabase.rpc('open_match_captain_conversation', { p_match_id: matchId });
+  return { conversationId: typeof data === 'string' ? data : null, error: error as RpcError };
+}
+
 /** Closed until S20 adds friends: the server answers not_friends. */
 export async function openFriendConversation(profileId: string) {
   const { data, error } = await supabase.rpc('open_friend_conversation', { p_profile_id: profileId });

@@ -12,11 +12,19 @@ jest.mock('@/components/ui/icon-symbol', () =>
 jest.mock('@/lib/match/log-score-api', () => ({ logMatchResult: jest.fn(), setMatchStats: jest.fn() }));
 jest.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }) }));
 jest.mock('@/lib/haptics', () => ({ haptic: { tap: jest.fn(), success: jest.fn(), error: jest.fn() } }));
+// Message <captain> on the mismatch screen (follow-up to S13).
+const mockContact = jest.fn();
+jest.mock('@/lib/messages', () => ({
+  ...jest.requireActual('@/lib/messages'),
+  fetchMatchCaptainContact: (id: string) => mockContact(id),
+  openMatchCaptainConversation: jest.fn(),
+}));
 
 const logResult = logMatchResult as jest.Mock;
 const correct = setMatchStats as jest.Mock;
 
 beforeEach(() => {
+  mockContact.mockReset().mockResolvedValue({ my_team_id: 't1', team_id: 't2', team_name: 'Paphos 5', captain_id: 'p2', captain_name: 'Marios' });
   logResult.mockReset().mockResolvedValue({ result: { status: 'confirmed', tries: 1, maxTries: 3 }, error: null });
   correct.mockReset().mockResolvedValue({ error: null });
 });
@@ -173,6 +181,29 @@ describe('LogScoreFlow: two captains (he does not know the opposition)', () => {
     expect(screen.getByTestId('post-match-step-review')).toBeTruthy();
     await press('post-match-done');
     expect(logResult).toHaveBeenCalledWith('m1', { a: 4, b: 2 }, {});
+  });
+
+  it('offers Message <captain> for the match, under Change score', async () => {
+    await show(mockNamedLog({ myEntry: { a: 4, b: 1 }, theirEntry: { a: 4, b: 2 }, tries: 1 }));
+    expect(await screen.findByTestId('score-mismatch-message-captain')).toHaveTextContent('Message Marios');
+    expect(mockContact).toHaveBeenCalledWith('m1');
+  });
+
+  it('no Message <captain> when a side has no team: the server is not asked', async () => {
+    await show(
+      mockNamedLog({
+        sides: [
+          { side: 'a', label: 'Bibs', teamId: null },
+          { side: 'b', label: 'Non-bibs', teamId: 't2' },
+        ],
+        myEntry: { a: 4, b: 1 },
+        theirEntry: { a: 4, b: 2 },
+        tries: 1,
+      }),
+    );
+    expect(screen.getByTestId('log-score-mismatch')).toBeTruthy();
+    expect(mockContact).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('score-mismatch-message-captain')).toBeNull();
   });
 
   it('changing his own side reopens Goals and Assists (4–1 becomes 5–1: one more scorer)', async () => {
