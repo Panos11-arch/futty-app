@@ -89,11 +89,13 @@ declare
   v_unsided uuid;
   v_tick integer;
 begin
-  -- 1. A casual match changes nothing.
+  -- 1. A Friendly match changes nothing (a pickup is Competitive by default
+  -- since 25 November, so it is switched).
   a := tests.lv_users('lv2-cas-a', 2, 4.0);
   b := tests.lv_users('lv2-cas-b', 2, 4.0);
   v_m := tests.lv_game(a, b, 5, 0, p_named => false);
-  assert not (select is_competitive from public.matches where id = v_m), 'a pickup is casual by default';
+  assert (select is_competitive from public.matches where id = v_m), 'a pickup is Competitive by default';
+  update public.matches set competitive = false where id = v_m;
   assert tests.apply_levels(v_m) = 'skipped', 'casual: skipped';
   assert tests.level_of(a[1]) = 4.0 and tests.level_of(b[1]) = 4.0, 'casual: unchanged';
   assert (select competitive_matches from public.player_levels where profile_id = a[1]) = 0, 'casual: not counted';

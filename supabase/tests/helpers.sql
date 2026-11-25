@@ -1053,7 +1053,7 @@ set search_path = ''
 as $$
   update public.matches
   set kickoff_at = kickoff_at - p_by, ends_at = ends_at - p_by, result_deadline_at = result_deadline_at - p_by,
-      confirmed_at = confirmed_at - p_by
+      confirmed_at = confirmed_at - p_by, score_check_since = score_check_since - p_by
   where id = p_match;
 $$;
 

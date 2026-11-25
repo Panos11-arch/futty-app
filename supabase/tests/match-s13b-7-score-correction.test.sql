@@ -5,7 +5,7 @@
 -- captains' agreed score is final (score_locked); so is a Losers pay
 -- match's, whose money settles from it (score_locked). The ratings are
 -- recomputed; every player is told "Score corrected" once; levels, applied
--- after the window, use the corrected score.
+-- once the game is final, use the corrected score.
 begin;
 
 -- set_match_stats with a score, as p_user: the error, or null.
@@ -109,7 +109,9 @@ begin
     'a', tests.s13b_side(g.match, g.a, array[1, 0]), 'b', tests.s13b_side(g.match, g.b, array[1, 0])));
   assert tests.sc_correct(g.cap_a, g.match, jsonb_build_object(
     'a', tests.s13b_side(g.match, g.a, array[1, 1])), 2, 1) is null, '2-1 now';
-  update public.matches set confirmed_at = now() - interval '25 hours', result_deadline_at = now() - interval '1 hour'
+  -- Nobody answered "Check the score" within 24 hours: accepted.
+  update public.matches set confirmed_at = now() - interval '25 hours', result_deadline_at = now() - interval '1 hour',
+                            score_check_since = now() - interval '24 hours'
   where id = g.match;
   assert tests.apply_levels(g.match) = 'applied', 'levels applied';
   assert (select level_after from public.player_level_history
