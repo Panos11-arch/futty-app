@@ -52,7 +52,7 @@ update public.profiles set role = 'venue_owner'
 where id = 'a0000000-0000-4000-8000-000000000001';
 
 update public.profiles p
-set city = 'Nicosia', position = v.position, preferred_foot = 'right'
+set city = 'Nicosia', position = v.position, preferred_foot = 'Right'
 from (values
   ('a0000000-0000-4000-8000-000000000002'::uuid, 'Goalkeeper'),
   ('a0000000-0000-4000-8000-000000000003'::uuid, 'Defender'),

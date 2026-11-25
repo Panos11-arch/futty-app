@@ -40,6 +40,7 @@ import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { type Body, deleteAccount } from './handler.ts';
 import { deleteAccountLinks } from './links.ts';
+import { SCRUBBED_PROFILE } from './scrub.ts';
 import { type Db as OwedDb, owedCents } from './owed.ts';
 import { type Db, hasUpcomingGames } from './upcoming.ts';
 
@@ -137,20 +138,7 @@ Deno.serve(async (req) => {
       async scrubProfile(id) {
         const { error } = await admin
           .from('profiles')
-          .update({
-            email: null,
-            username: null,
-            full_name: 'Deleted player',
-            phone: null,
-            gender: null,
-            date_of_birth: null,
-            bio: null,
-            city: null,
-            position: null,
-            preferred_foot: null,
-            show_phone_publicly: false,
-            stripe_customer_id: null,
-          })
+          .update(SCRUBBED_PROFILE)
           .eq('id', id);
         return error ? error.message : null;
       },
