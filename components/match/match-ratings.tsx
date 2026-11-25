@@ -21,7 +21,7 @@ import { formatMatchWhen } from '@/lib/match/format';
 import { describeLevelError, STALE_LEVEL_ERRORS } from '@/lib/match/level-errors';
 import { formatLevel, ratingsView, type MatchRatings } from '@/lib/match/levels';
 import { rateMatchPlayer } from '@/lib/match/levels-api';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 export type MatchRatingsProps = {
   matchId: string;
@@ -29,7 +29,7 @@ export type MatchRatingsProps = {
   /** profile id → name, for the ratings the server returned. */
   names: Record<string, string>;
   /** A12: kit avatars by profile id, from the same get_public_profiles call as the names. */
-  kits?: Record<string, AvatarKit | null>;
+  kits?: Record<string, AvatarLook | null>;
   roster: RosterState | null;
   onRetryRoster: () => void;
   viewerId: string | null;

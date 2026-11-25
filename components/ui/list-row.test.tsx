@@ -32,3 +32,11 @@ describe('ListRow', () => {
     expect(screen.getByText('Paid')).toBeTruthy();
   });
 });
+
+describe('ListRow avatar look (S18)', () => {
+  it('passes an illustration through to the avatar', async () => {
+    await render(<ListRow title="Andreas Georgiou" leading={{ avatar: { name: 'Andreas Georgiou', kit: { illustration: 'avatar-09' } } }} />);
+    expect(screen.getByTestId('avatar-illustration')).toBeTruthy();
+    expect(screen.queryByText('AG')).toBeNull();
+  });
+});

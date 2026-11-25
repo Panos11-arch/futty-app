@@ -109,6 +109,7 @@ exports[`Profile avatar, name, level, stat tiles in tabular figures, then groupe
             onResponderTerminationRequest={[Function]}
             onStartShouldSetResponder={[Function]}
             style={false}
+            testID="profile-edit-avatar"
           >
             <View
               accessibilityLabel="Ann Lee"

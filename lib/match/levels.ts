@@ -8,7 +8,7 @@ import type { Loadable } from '@/lib/match/use-match-result';
 import type { RosterPlayer } from '@/lib/match/page';
 import type { ResultMatch } from '@/lib/match/result';
 import type { Side } from '@/lib/match/types';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 /** `public.player_levels` as the app shows it. */
 export type PlayerLevel = {
@@ -144,7 +144,7 @@ export const STARTING_QUESTIONS: StartingQuestion[] = [
   },
 ];
 
-export type RateablePlayer = { id: string; name: string; rated: boolean; kit?: AvatarKit | null };
+export type RateablePlayer = { id: string; name: string; rated: boolean; kit?: AvatarLook | null };
 
 export type RatingsView =
   /** Not confirmed, or a forfeit: no ratings at all. */

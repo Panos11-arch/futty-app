@@ -11,7 +11,7 @@ import {
 } from '@/lib/match/profile-api';
 import type { FormResult, HeadToHeadRow, PlayerRecentMatchRow } from '@/lib/match/types';
 import { useLoad } from '@/lib/match/use-match-result';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 export function usePlayerForm(profileId: string | null | undefined) {
   const { state, reload } = useLoad<{ form: FormResult[] }>(
@@ -66,7 +66,7 @@ export function useHeadToHead(teamId: string | null | undefined, opponentTeamId:
   return { ...state, reload };
 }
 
-export type NamedTeammate = Teammate & { name: string; kit?: AvatarKit | null };
+export type NamedTeammate = Teammate & { name: string; kit?: AvatarLook | null };
 
 /** The signed-in player's "players you play with most", with names. */
 export function useMyTeammates(limit = 5) {

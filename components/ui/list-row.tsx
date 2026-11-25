@@ -7,11 +7,11 @@ import { IconSymbol, type IconSymbolName } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 export type ListRowLeading =
   | { icon: IconSymbolName }
-  | { avatar: { name: string; photoUrl?: string | null; kit?: AvatarKit | null } };
+  | { avatar: { name: string; photoUrl?: string | null; kit?: AvatarLook | null } };
 
 export type ListRowProps = {
   title: string;

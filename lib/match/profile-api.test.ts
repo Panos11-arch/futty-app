@@ -183,6 +183,18 @@ describe('getPublicNames', () => {
     expect(mockCalls).toHaveLength(1);
   });
 
+  it('S18: maps illustrated avatars too; an unknown id is null', async () => {
+    mockResponse = {
+      data: [
+        { id: 'a', username: 'andy', full_name: null, avatar_style: 'illustration', avatar_illustration: 'avatar-12' },
+        { id: 'b', username: 'bo', full_name: null, avatar_style: 'illustration', avatar_illustration: 'avatar-77' },
+      ],
+      error: null,
+    };
+    const { kits } = await getPublicNames(['a', 'b']);
+    expect(kits).toEqual({ a: { illustration: 'avatar-12' }, b: null });
+  });
+
   it('skips the call with no ids', async () => {
     expect((await getPublicNames([])).names).toEqual({});
     expect(mockCalls).toEqual([]);

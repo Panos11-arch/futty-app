@@ -20,7 +20,7 @@ import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember
 import { playHref } from '@/lib/play-segments';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
-import { avatarKit } from '@/lib/avatar';
+import { avatarLook } from '@/lib/avatar';
 
 type PremiumFormat = '9-a-side' | '11-a-side';
 
@@ -235,7 +235,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
                   {i > 0 ? <View style={styles.divider} /> : null}
                   <ListRow
                     title={name}
-                    leading={{ avatar: { name, kit: avatarKit(member) } }}
+                    leading={{ avatar: { name, kit: avatarLook(member) } }}
                     trailing={
                       <Text variant="caption" tone="inkMuted">
                         {roleLabel(member.role)}

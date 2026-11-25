@@ -124,7 +124,8 @@ begin
 end $$;
 
 -- Each function returns every column it returned before, in the same order
--- and with the same types, plus the three avatar columns; security and
+-- and with the same types, plus the three avatar columns (and S18's
+-- avatar_illustration, pay_avatar_illustration); security and
 -- grants are unchanged.
 do $$
 declare
@@ -137,13 +138,13 @@ begin
   for v_fn in
     select * from (values
       ('public.get_public_profile(uuid)',
-       'TABLE(id uuid, username text, full_name text, city text, "position" text, preferred_foot text, xp integer, played integer, won integer, drawn integer, lost integer, goals integer, avatar_style text, avatar_kit_colour text, avatar_number smallint)'),
+       'TABLE(id uuid, username text, full_name text, city text, "position" text, preferred_foot text, xp integer, played integer, won integer, drawn integer, lost integer, goals integer, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)'),
       ('public.get_public_profiles(uuid[])',
-       'TABLE(id uuid, username text, full_name text, xp integer, avatar_style text, avatar_kit_colour text, avatar_number smallint)'),
+       'TABLE(id uuid, username text, full_name text, xp integer, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)'),
       ('public.get_team_roster(uuid)',
-       'TABLE(profile_id uuid, username text, full_name text, role text, joined_at timestamp with time zone, avatar_style text, avatar_kit_colour text, avatar_number smallint)'),
+       'TABLE(profile_id uuid, username text, full_name text, role text, joined_at timestamp with time zone, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)'),
       ('public.list_players()',
-       'TABLE(id uuid, username text, full_name text, phone text, avatar_style text, avatar_kit_colour text, avatar_number smallint)')
+       'TABLE(id uuid, username text, full_name text, phone text, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)')
     ) as t(sig, expected)
   loop
     select pg_get_function_result(p.oid), p.proconfig, p.prosecdef, (select array_agg(a::text order by a::text) from unnest(p.proacl) a)::text

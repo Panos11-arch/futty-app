@@ -4,9 +4,9 @@ import { Avatar } from '@/components/ui/avatar';
 import { Text } from '@/components/ui/text';
 import { radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
-export type AvatarStackPerson = { id: string; name: string; photoUrl?: string | null; kit?: AvatarKit | null };
+export type AvatarStackPerson = { id: string; name: string; photoUrl?: string | null; kit?: AvatarLook | null };
 
 export type AvatarStackProps = {
   people: AvatarStackPerson[];

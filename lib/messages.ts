@@ -6,7 +6,7 @@ import type { Href } from 'expo-router';
 import * as Crypto from 'expo-crypto';
 
 import { TOO_YOUNG_MESSAGE } from '@/lib/age';
-import { avatarKit, type AvatarKit } from '@/lib/avatar';
+import { avatarLook, type AvatarLook } from '@/lib/avatar';
 import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { cyprusDateKey } from '@/lib/days';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +24,7 @@ type AvatarColumns = {
   avatar_style: string | null;
   avatar_kit_colour: string | null;
   avatar_number: number | null;
+  avatar_illustration?: string | null;
 };
 
 export type InboxRow = AvatarColumns & {
@@ -375,8 +376,8 @@ export function filterContacts(contacts: CaptainContact[], query: string): Capta
   );
 }
 
-export function kitOf(row: AvatarColumns | null | undefined): AvatarKit | null {
-  return avatarKit(row);
+export function kitOf(row: AvatarColumns | null | undefined): AvatarLook | null {
+  return avatarLook(row);
 }
 
 // ---- Routes ---------------------------------------------------------------------
