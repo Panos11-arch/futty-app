@@ -206,7 +206,10 @@ $$;
 
 -- A player's match rating, shown to everyone who can see the match (S13B):
 -- the match is confirmed and not a forfeit. Replaces the 1–10 vote rating
--- (decision 1f.4), so season averages and Team of the Week read it.
+-- (decision 1f.4), so season averages and Team of the Week read it. The
+-- venue page's top players (venue_highlights, 20261124200100) read it too:
+-- a rating counts once the match is confirmed, with no 24-hour wait and no
+-- 3-vote minimum (that file's header still describes the vote rule).
 create or replace function public.match_rating_shown(p_match_id uuid, p_player_id uuid)
 returns numeric
 language sql
