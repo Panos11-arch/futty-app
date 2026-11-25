@@ -63,17 +63,6 @@ export async function getFormationPresets(playersPerSide: number): Promise<{ for
   return { formations: ((data ?? []) as { formation: string }[]).map((f) => f.formation), error: null };
 }
 
-export type GoalInput = { scorerPlayerId: string | null; assistPlayerId: string | null };
-
-/** p_side only when the caller writes both sides (a pickup's booker, decision 1e.1). */
-export function setMatchGoals(matchId: string, goals: GoalInput[], side?: Side) {
-  return supabase.rpc('set_match_goals', {
-    p_match_id: matchId,
-    p_goals: goals,
-    ...(side ? { p_side: side } : {}),
-  });
-}
-
 export function castMotmVote(matchId: string, nomineePlayerId: string) {
   return supabase.rpc('cast_motm_vote', { p_match_id: matchId, p_nominee_player_id: nomineePlayerId });
 }

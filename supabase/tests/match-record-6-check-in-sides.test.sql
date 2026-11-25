@@ -206,9 +206,9 @@ begin
   assert tests.mr_as(v_booker, format('select public.set_match_player_side(%L, %L, %L)', v_match, v_foreign_row, 'b')) = 'not_in_match',
     'only rows of this match';
 
-  -- Locked once a result is submitted.
+  -- Locked once a result is logged (S13B: the booker's score is final).
   perform tests.mr_times(v_match, now() - interval '1 hour', now() - interval '30 minutes');
-  assert tests.mr_as(v_booker, format('select public.submit_match_result(%L, 3, 3)', v_match)) is null, 'submitted';
+  assert tests.log_result(v_booker, v_match, 3, 3) ->> 'status' = 'confirmed', 'logged';
   assert tests.mr_as(v_p1, format('select public.choose_match_side(%L, %L)', v_match, 'b')) = 'sides_locked',
     'no side changes after a submission';
   assert tests.mr_as(v_booker, format('select public.set_match_player_side(%L, %L, %L)', v_match, v_p2_row, 'b')) = 'sides_locked',

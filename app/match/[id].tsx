@@ -8,7 +8,7 @@
 // confirmed (the server decides; "Match not found" otherwise). The result
 // panel and the post-match offers are for members only, as before.
 //
-// A5b (decision 1f): competitive or casual (members; a captain switches it
+// A5b (decision 1f): the game type, Competitive or Friendly (members; a captain switches it
 // before kickoff), balance teams (a pickup's booker, before sides lock) and
 // player ratings (after confirmation; ratings show only as the server
 // returns them).
@@ -16,8 +16,10 @@
 // A6: Share, for a confirmed match with a score only (MatchShare hides
 // itself otherwise): the result and man-of-the-match cards as PNGs.
 //
-// A10 (decision 1j): "Add your stats" opens the post-match flow, shown only
-// while this player has a step left in it.
+// S13B (decision 1l): the score is logged by a captain on the after-game
+// screens ("Log the score", shown while he can), and corrected there for 24
+// hours ("Edit stats"). Scorers, assists and the S13B ratings are read-only
+// here; the 1–10 rating votes are gone.
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -25,14 +27,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CheckInSection } from '@/components/booking/check-in-panel';
 import { BalanceTeams } from '@/components/match/balance-teams';
+import { CheckScoreCard } from '@/components/match/check-score-card';
 import { MatchCompetitive } from '@/components/match/match-competitive';
 import { MatchLineup } from '@/components/match/match-lineup';
 import { MatchMotm } from '@/components/match/match-motm';
-import { MatchRatingsPanel } from '@/components/match/match-ratings';
+import { MatchRatingsList } from '@/components/match/match-ratings';
 import { MatchScorers } from '@/components/match/match-scorers';
 import { MatchShare } from '@/components/match/match-share';
 import { MatchPageSection } from '@/components/match/page-section';
-import { MatchResultPanel } from '@/components/match/result-panel';
 import { PostMatchOffers } from '@/components/offers/post-match-offers';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -45,15 +47,17 @@ import { makeStyles } from '@/lib/theme';
 import { formatMatchWhen } from '@/lib/match/format';
 import { canBalanceTeams } from '@/lib/match/levels';
 import { lineupEditable, playedMatch, sideOf, writerSides, type MatchPage } from '@/lib/match/page';
-import { postMatchSteps } from '@/lib/match/post-match';
 import { useFormationPresets, useMatchPage, useMatchRoster } from '@/lib/match/use-match-page';
 import { captainSideOf } from '@/lib/match/result';
-import { useMatchRatings } from '@/lib/match/use-levels';
+import { useMatchLog } from '@/lib/match/use-match-log';
 import { useResultMatch } from '@/lib/match/use-match-result';
 import { scoreEntered } from '@/lib/post-match-offers';
 import { useMyCaptainTeamIds } from '@/lib/use-fixtures';
 
-/** The score line for someone outside the match, who has no result panel. */
+/** The score card: a member's keeps the old result panel's id. */
+const SCORE_IDS = { member: { testID: 'match-result-panel' }, stranger: { testID: 'match-page-score' } } as const;
+
+/** The score line, e.g. "Bibs 2–1 Non-bibs", or a forfeit. */
 function pageScore(page: MatchPage): string | null {
   const a = sideOf(page, 'a');
   const b = sideOf(page, 'b');
@@ -76,19 +80,20 @@ export default function MatchScreen() {
   const roster = useMatchRoster(matchId, member);
   const pageData = page.status === 'ready' ? page.page : null;
   const now = Date.now();
-  const ratings = useMatchRatings(matchId, pageData !== null && playedMatch(pageData));
+  const log = useMatchLog(member ? matchId : undefined);
+  const logData = log.status === 'ready' ? log.log : null;
   const presets = useFormationPresets(member && pageData && lineupEditable(pageData, now) ? pageData.playersPerSide : null);
 
   const { reload } = result;
   const { reload: reloadPage } = page;
   const { reload: reloadRoster } = roster;
-  const { reload: reloadRatings } = ratings;
+  const { reload: reloadLog } = log;
   const reloadAll = useCallback(() => {
     reload();
     reloadPage();
     reloadRoster();
-    reloadRatings();
-  }, [reload, reloadPage, reloadRoster, reloadRatings]);
+    reloadLog();
+  }, [reload, reloadPage, reloadRoster, reloadLog]);
   /** After balancing: the sides changed in the match, the page and the squad. */
   const reloadSides = useCallback(() => {
     reload();
@@ -136,21 +141,10 @@ export default function MatchScreen() {
     const sectionStatus = page.status;
     // Sections wait for the page; once it is here, scorers and the vote exist only for a played match.
     const showPlayed = sectionStatus !== 'ready' || (pageData !== null && playedMatch(pageData));
-    const score = !match && pageData ? pageScore(pageData) : null;
+    const score = pageData ? pageScore(pageData) : null;
     const rated = pageData !== null && playedMatch(pageData);
-    const hasSteps =
-      match !== null &&
-      postMatchSteps(
-        {
-          match,
-          page: pageData,
-          roster: roster.status === 'ready' ? roster.roster : null,
-          ratings: ratings.status === 'ready' ? ratings.ratings : null,
-          viewerId: result.viewerId,
-          captainTeamIds,
-        },
-        now
-      ).length > 0;
+    const openAfterGame = (correct: boolean) =>
+      router.push({ pathname: '/match/after-game', params: correct ? { id: match!.match.id, correct: '1' } : { id: match!.match.id } });
 
     content = (
       <View style={styles.stack}>
@@ -159,34 +153,45 @@ export default function MatchScreen() {
         </Text>
         {/* P6 check-in QR: members only; it hides itself outside the window. */}
         {match ? <CheckInSection matchId={match.match.id} /> : null}
-        {match ? (
-          <Card>
-            <MatchResultPanel
-              match={match}
-              viewerId={result.viewerId}
-              captainTeamIds={captainTeamIds}
-              onChanged={reload}
-            />
-          </Card>
-        ) : score ? (
-          <Card testID="match-page-score">
+        {score ? (
+          <Card {...(match ? SCORE_IDS.member : SCORE_IDS.stranger)}>
             <Text variant="title" tabular>
               {score}
             </Text>
           </Card>
         ) : null}
-        {match && hasSteps ? (
+        {/* Levels like Playtomic: the other side's players accept or reject a pickup's score. */}
+        {pageData?.scoreCheck ? (
+          <CheckScoreCard
+            score={{
+              matchId: pageData.matchId,
+              kickoffAt: pageData.kickoffAt,
+              labelA: sideOf(pageData, 'a').label,
+              labelB: sideOf(pageData, 'b').label,
+              sideAScore: sideOf(pageData, 'a').score ?? 0,
+              sideBScore: sideOf(pageData, 'b').score ?? 0,
+              checkUntil: pageData.scoreCheck.checkUntil,
+            }}
+            canAnswer={pageData.scoreCheck.canAnswer && pageData.scoreCheck.state === 'pending'}
+            onAnswered={reloadPage}
+            now={now}
+          />
+        ) : null}
+        {match && logData?.canLog ? (
+          <Button label="Log the score" onPress={() => openAfterGame(false)} fullWidth testID="match-add-stats" />
+        ) : null}
+        {match && logData?.canCorrect ? (
           <Button
-            label="Add your stats"
+            label="Edit stats"
             variant="secondary"
-            onPress={() => router.push({ pathname: '/match/after-game', params: { id: match.match.id } })}
+            onPress={() => openAfterGame(true)}
             fullWidth
-            testID="match-add-stats"
+            testID="match-edit-stats"
           />
         ) : null}
         {pageData ? <MatchShare page={pageData} /> : null}
         {match ? (
-          <MatchPageSection title="Competitive or casual" status="ready" onRetry={reload} testID="section-competitive">
+          <MatchPageSection title="Game type" status="ready" onRetry={reload} testID="section-competitive">
             <MatchCompetitive
               match={match}
               captainSide={captainSideOf(match, result.viewerId, captainTeamIds)}
@@ -208,16 +213,7 @@ export default function MatchScreen() {
           <>
             {showPlayed ? (
               <MatchPageSection title="Scorers" status={sectionStatus} onRetry={reloadPage} testID="section-scorers">
-                {pageData ? (
-                  <MatchScorers
-                    page={pageData}
-                    roster={rosterState}
-                    onRetryRoster={reloadRoster}
-                    writable={writable}
-                    onSaved={reloadPage}
-                    now={now}
-                  />
-                ) : null}
+                {pageData ? <MatchScorers page={pageData} /> : null}
               </MatchPageSection>
             ) : null}
             {showPlayed ? (
@@ -235,24 +231,8 @@ export default function MatchScreen() {
               </MatchPageSection>
             ) : null}
             {rated ? (
-              <MatchPageSection
-                title="Player ratings"
-                status={ratings.status}
-                onRetry={reloadRatings}
-                errorMessage="Could not load the ratings."
-                testID="section-ratings">
-                {ratings.status === 'ready' ? (
-                  <MatchRatingsPanel
-                    matchId={pageData!.matchId}
-                    ratings={ratings.ratings}
-                    names={ratings.names}
-                    kits={ratings.kits}
-                    roster={rosterState}
-                    onRetryRoster={reloadRoster}
-                    viewerId={result.viewerId}
-                    onRated={reloadRatings}
-                  />
-                ) : null}
+              <MatchPageSection title="Player ratings" status={sectionStatus} onRetry={reloadPage} testID="section-ratings">
+                {pageData ? <MatchRatingsList page={pageData} /> : null}
               </MatchPageSection>
             ) : null}
             <MatchPageSection title="Lineups" status={sectionStatus} onRetry={reloadPage} testID="section-lineups">

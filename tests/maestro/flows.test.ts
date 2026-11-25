@@ -71,7 +71,7 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the twelve journeys and their subflows', () => {
+  it('has the thirteen journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
@@ -81,6 +81,7 @@ describe('.maestro', () => {
       'flows/edit-avatar.yaml',
       'flows/find-match.yaml',
       'flows/futty-ai.yaml',
+      'flows/log-score.yaml',
       'flows/messages.yaml',
       'flows/navigation.yaml',
       'flows/player-card.yaml',
@@ -103,7 +104,7 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'edit-avatar', 'player-card']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }

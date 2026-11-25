@@ -270,7 +270,7 @@ export function mockResultMatch({
   sideBCaptain = kind === 'named' ? AWAY_CAPTAIN : null,
   scores = [null, null],
   forfeit = null,
-  competitive = null,
+  competitive = true,
 }: {
   kind?: MatchKind;
   status?: MatchStatus;
@@ -305,7 +305,7 @@ export function mockResultMatch({
       confirmed_at: status === 'confirmed' ? RESULT_DEADLINE : null,
       confirmed_via: forfeit ? 'forfeit' : status === 'confirmed' ? 'agreed' : null,
       competitive,
-      is_competitive: competitive ?? named,
+      is_competitive: competitive ?? true,
       created_at: RESULT_KICKOFF,
       updated_at: RESULT_KICKOFF,
     },
@@ -418,9 +418,12 @@ export function mockMatchPage(overrides: Partial<MatchPage> = {}): MatchPage {
     motmVotingClosesAt: played ? PAGE_CLOSES_AT : null,
     motmOpen: played,
     goals: [],
+    assists: [],
+    ratings: [],
     motm: [],
     myVote: null,
     lineups: [],
+    scoreCheck: null,
     ...overrides,
   };
 }

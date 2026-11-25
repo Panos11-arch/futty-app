@@ -1,0 +1,84 @@
+# Journey: the captain logs the score after the game (S13B, images 07-11).
+# The seed made a pickup at E2E Arena that this login booked (Bibs, its
+# captain) against the second login (Non-bibs), played 2 hours ago and
+# waiting for its score. One captain, so his Confirm makes it final.
+# 1-0: his own goal on the pitch, no assist (assists are optional).
+appId: com.panosalepis.futtyapp
+name: log-score
+tags:
+  - e2e
+  - match
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  # scripts/e2e-seed/config.ts E2E_LOG_MATCHES
+  MATCH_ID: "${MAESTRO_E2E_PLATFORM == 'ios' ? 'e2e00000-0000-4000-8000-000000000021' : 'e2e00000-0000-4000-8000-000000000022'}"
+  CAPTAIN_PLAYER: "${MAESTRO_E2E_PLATFORM == 'ios' ? 'e2e00000-0000-4000-8000-000000000031' : 'e2e00000-0000-4000-8000-000000000033'}"
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+
+# Home → "Log the score" → Log.
+- scrollUntilVisible:
+    element:
+      id: home-log-score-${MATCH_ID}
+    timeout: 30000
+- tapOn:
+    id: home-log-score-${MATCH_ID}
+
+# 1. Score: Bibs 1, Non-bibs 0.
+- extendedWaitUntil:
+    visible:
+      id: post-match-step-score
+    timeout: 20000
+- tapOn:
+    id: add-goal
+- assertVisible:
+    id: log-score-a-value
+    text: '1'
+- tapOn:
+    id: post-match-next
+
+# 2. Goals: both halves open (he booked for everyone); his goal.
+- assertVisible:
+    id: post-match-step-goals
+- assertVisible:
+    id: log-score-half-b
+- scrollUntilVisible:
+    element:
+      id: log-score-goal-plus-${CAPTAIN_PLAYER}
+- tapOn:
+    id: log-score-goal-plus-${CAPTAIN_PLAYER}
+- tapOn:
+    id: post-match-next
+
+# 3. Assists: optional; Continue straight away.
+- assertVisible:
+    id: post-match-step-assists
+- tapOn:
+    id: post-match-next
+
+# 4. Review, then Confirm.
+- assertVisible:
+    id: post-match-step-review
+- assertVisible:
+    id: log-score-win-a
+- tapOn:
+    id: post-match-done
+
+# The match page shows the confirmed score.
+- extendedWaitUntil:
+    visible:
+      id: match-result-panel
+    timeout: 20000
+- assertVisible:
+    text: 'Bibs 1–0 Non-bibs'
+- takeScreenshot: log-score-${PLATFORM}

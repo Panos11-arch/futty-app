@@ -55,7 +55,7 @@ describe('ResultCard', () => {
     expect(text('card-side-a')).toBe('Limassol Lions');
     expect(text('card-score')).toBe('3–1');
     expect(text('card-side-b')).toBe('Nicosia Nomads');
-    expect(texts('card-scorer-a')).toEqual([booker, 'Own goal or unknown', booker]);
+    expect(texts('card-scorer-a')).toEqual([booker, 'Own goal', booker]);
     expect(texts('card-scorer-b')).toEqual([nikos]);
     expect(text('card-motm')).toBe(booker);
   });

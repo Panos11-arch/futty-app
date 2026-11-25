@@ -152,11 +152,9 @@ begin
 
   perform tests.end_match(v_booking.id, '1 hour');
   v_match := (tests.match_of(v_booking.id)).id;
-  perform tests.act_as(v_home);
-  perform public.submit_match_result(v_match, 3, 1);
-  perform tests.act_as(v_away);
-  perform public.respond_to_match_result(v_match, true);
-  perform tests.act_as_postgres();
+  -- S13B: both captains log the same score.
+  perform tests.log_result(v_home, v_match, 3, 1);
+  perform tests.log_result(v_away, v_match, 3, 1);
   assert tests.run_payouts() = 0, 'the holds not settled yet: not final';
   assert public.gipedo_settle_from_results() = 2, 'both holds settle';
   assert tests.run_payouts() = 0, 'settlements written but not carried out: not final';

@@ -1,9 +1,8 @@
--- A5a (docs/specs/match-record.md decision 1f, section 4.1): competitive or
--- casual. matches.competitive is null by default and is_competitive =
--- coalesce(competitive, kind = 'named'): named games count, pickups don't,
--- and a pickup that becomes a named game (1b.1) counts unless a captain
--- chose. Any captain (the booker on side a, a team captain) changes it while
--- the match is scheduled and before kickoff.
+-- A5a (docs/specs/match-record.md decision 1f, section 4.1), changed by
+-- S13B (Panos 25 November, decision 1l item 11): Competitive or Friendly.
+-- Every game is Competitive by default, pickups included (matches.competitive
+-- defaults to true and is never null). Any captain (the booker on side a, a
+-- team captain) changes it while the match is scheduled and before kickoff.
 begin;
 
 create function tests.set_comp(p_user uuid, p_match uuid, p_value boolean)
@@ -25,7 +24,7 @@ declare
   v_named uuid;
   v_pickup uuid;
 begin
-  -- A pickup from a booking: casual by default; the booker changes it.
+  -- A pickup from a booking: Competitive by default; the booker changes it.
   v_b := tests.booking_with_players(tests.create_user('lv4-booker@futty.test'), tests.create_venue(), 'each_pays_own_spot', 2,
                                     tests.next_weekday(3), '12:00', '13:00', 'lv4');
   perform tests.act_as_postgres();
@@ -35,14 +34,15 @@ begin
   perform tests.act_as_postgres();
   v_m := (tests.match_of(v_b.id)).id;
   v_player := (tests.player(v_b.id, 1)).profile_id;
-  assert (tests.match_of(v_b.id)).competitive is null and not (tests.match_of(v_b.id)).is_competitive, 'pickup: casual';
+  assert (tests.match_of(v_b.id)).competitive and (tests.match_of(v_b.id)).is_competitive, 'pickup: Competitive';
 
-  assert tests.set_comp(v_player, v_m, true) = 'not_captain', 'a player isn''t a captain';
-  assert tests.set_comp(tests.create_user('lv4-stranger@futty.test'), v_m, true) = 'not_captain', 'stranger';
-  assert tests.set_comp(v_b.created_by, v_m, true) is null, 'the booker';
-  assert (tests.match_of(v_b.id)).is_competitive, 'now competitive';
-  assert tests.set_comp(v_b.created_by, v_m, null) is null, 'back to the default';
-  assert not (tests.match_of(v_b.id)).is_competitive, 'casual again';
+  assert tests.set_comp(v_player, v_m, false) = 'not_captain', 'a player isn''t a captain';
+  assert tests.set_comp(tests.create_user('lv4-stranger@futty.test'), v_m, false) = 'not_captain', 'stranger';
+  assert tests.set_comp(v_b.created_by, v_m, false) is null, 'the booker';
+  assert not (tests.match_of(v_b.id)).is_competitive, 'now Friendly';
+  assert tests.set_comp(v_b.created_by, v_m, null) = 'invalid_answer', 'never null';
+  assert tests.set_comp(v_b.created_by, v_m, true) is null, 'Competitive again';
+  assert (tests.match_of(v_b.id)).is_competitive, 'Competitive again';
   assert tests.error_as(v_b.created_by, format('select public.set_match_competitive(%L, true)', gen_random_uuid()))
          = 'match_not_found', 'no such match';
 
@@ -61,16 +61,14 @@ begin
   assert (select is_competitive from public.matches where id = v_named), 'named: competitive';
   assert tests.set_comp(v_member_b, v_named, false) = 'not_captain', 'a team member isn''t a captain';
   assert tests.set_comp(v_cap_b, v_named, false) is null, 'side b''s captain';
-  assert not (select is_competitive from public.matches where id = v_named), 'casual';
+  assert not (select is_competitive from public.matches where id = v_named), 'Friendly';
 
-  -- A pickup that becomes a named game counts, unless a captain chose.
+  -- A pickup that becomes a named game keeps what was chosen.
   v_pickup := tests.form_match(now() + interval '3 hours', 'scheduled');
-  assert not (select is_competitive from public.matches where id = v_pickup), 'pickup';
+  assert (select is_competitive from public.matches where id = v_pickup), 'pickup: Competitive';
+  update public.matches set competitive = false where id = v_pickup;
   update public.matches set kind = 'named' where id = v_pickup;
-  assert (select is_competitive from public.matches where id = v_pickup), 'became named: competitive';
-  update public.matches set kind = 'pickup', competitive = false where id = v_pickup;
-  update public.matches set kind = 'named' where id = v_pickup;
-  assert not (select is_competitive from public.matches where id = v_pickup), 'a captain chose casual: kept';
+  assert not (select is_competitive from public.matches where id = v_pickup), 'a captain chose Friendly: kept';
 
   -- Nobody writes the flag directly.
   assert tests.error_as(v_b.created_by, format('update public.matches set competitive = true where id = %L', v_m))

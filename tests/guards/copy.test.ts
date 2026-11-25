@@ -47,7 +47,7 @@ describe('the copy check', () => {
       expect.arrayContaining([
         'app/(tabs)/index.tsx',
         'components/ui/button.tsx',
-        'components/match/result-panel.tsx',
+        'components/match/log-score-card.tsx',
         'lib/booking-errors.ts',
         'lib/invite.ts',
       ]),

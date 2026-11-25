@@ -2,11 +2,10 @@ import {
   canBalanceTeams,
   competitiveView,
   formatLevel,
-  ratingsView,
   shouldOfferStartingLevel,
+  STARTING_LEVEL_MAX,
   STARTING_QUESTIONS,
   startingLevelOffered,
-  type MatchRatings,
   type PlayerLevel,
 } from '@/lib/match/levels';
 import { mockResultMatch, mockRoster, RESULT_AFTER_END, RESULT_BEFORE_KICKOFF, RESULT_PEOPLE } from '@/lib/match/mock';
@@ -17,14 +16,6 @@ const level = (over: Partial<PlayerLevel> = {}): PlayerLevel => ({
   reliabilityPct: 0,
   competitiveMatches: 0,
   source: 'questionnaire',
-  ...over,
-});
-
-const ratings = (over: Partial<MatchRatings> = {}): MatchRatings => ({
-  ratingsOpen: true,
-  ratingsCloseAt: '2026-11-15T19:00:00.000Z',
-  players: [],
-  myRatings: [],
   ...over,
 });
 
@@ -100,57 +91,26 @@ describe('STARTING_QUESTIONS', () => {
     expect(STARTING_QUESTIONS[1].options.map((o) => o.value)).toEqual(['kickabout', 'amateur', 'semi_pro', 'professional']);
     expect(STARTING_QUESTIONS[2].options.map((o) => o.value)).toEqual(['rarely', 'monthly', 'weekly', 'several_weekly']);
     expect(STARTING_QUESTIONS[3].options.map((o) => o.value)).toEqual(['gk', 'def', 'mid', 'fwd']);
-    expect(STARTING_QUESTIONS[4].options.map((o) => o.value)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
-  });
-});
-
-describe('ratingsView', () => {
-  const roster = mockRoster();
-
-  it('not rateable (no close time): none', () => {
-    expect(ratingsView(ratings({ ratingsOpen: false, ratingsCloseAt: null }), roster, 'me').kind).toBe('none');
+    expect(STARTING_QUESTIONS[4].options.map((o) => o.value)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
   });
 
-  it('open and checked in: every other checked-in player, never yourself, guests or leavers', () => {
-    const view = ratingsView(ratings({ myRatings: [{ playerId: 'p-nikos', score: 7 }] }), roster, 'me');
-    expect(view.kind).toBe('rate');
-    if (view.kind !== 'rate') return;
-    expect(view.players.map((p) => p.id)).toEqual(['p-booker', 'p-nikos', 'p-noside']);
-    expect(view.players.find((p) => p.id === 'p-me')).toBeUndefined();
-    expect(view.players.find((p) => p.id === 'p-nikos')?.rated).toBe(true);
-    expect(view.players.find((p) => p.id === 'p-booker')?.rated).toBe(false);
-  });
-
-  it('open but not checked in, or not in the squad: open, no rating', () => {
-    expect(ratingsView(ratings(), roster, 'maria').kind).toBe('open');
-    expect(ratingsView(ratings(), null, 'me').kind).toBe('open');
-    expect(ratingsView(ratings(), roster, 'stranger').kind).toBe('open');
-  });
-
-  it('closed: only what the server returned', () => {
-    const players = [{ playerId: 'p-nikos', profileId: 'nikos', rating: 7.3, count: 4 }];
-    const view = ratingsView(ratings({ ratingsOpen: false, players }), roster, 'me');
-    expect(view).toEqual({ kind: 'closed', players });
-  });
-
-  it('closed with nothing returned: closed and empty, never computed in the app', () => {
-    const view = ratingsView(
-      ratings({ ratingsOpen: false, myRatings: [{ playerId: 'p-nikos', score: 9 }] }),
-      roster,
-      'me'
-    );
-    expect(view).toEqual({ kind: 'closed', players: [] });
+  // Decided by Panos 25 November: a starting level is at most 8 (app_rules
+  // starting_level_max); only matches take a player higher.
+  it('the self-rating goes from 1 to 8, never above', () => {
+    expect(STARTING_LEVEL_MAX).toBe(8);
+    expect(STARTING_QUESTIONS[4].question).toBe('How would you rate yourself, from 1 to 8?');
+    expect(STARTING_QUESTIONS[4].options.some((o) => Number(o.value) > 8)).toBe(false);
   });
 });
 
 describe('competitiveView', () => {
-  it('a pickup is casual by default, a named game competitive', () => {
-    expect(competitiveView(mockResultMatch({ kind: 'pickup', status: 'scheduled' }), null, 0).isCompetitive).toBe(false);
+  it('every game is Competitive by default, pickups included', () => {
+    expect(competitiveView(mockResultMatch({ kind: 'pickup', status: 'scheduled' }), null, 0).isCompetitive).toBe(true);
     expect(competitiveView(mockResultMatch({ kind: 'named', status: 'scheduled' }), null, 0).isCompetitive).toBe(true);
   });
 
-  it('follows the server flag', () => {
-    expect(competitiveView(mockResultMatch({ status: 'scheduled', competitive: true }), null, 0).isCompetitive).toBe(true);
+  it('follows the server flag (Friendly)', () => {
+    expect(competitiveView(mockResultMatch({ status: 'scheduled', competitive: false }), null, 0).isCompetitive).toBe(false);
   });
 
   it('a captain can switch it while scheduled and before kickoff', () => {

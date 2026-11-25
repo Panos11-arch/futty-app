@@ -37,9 +37,9 @@ export type MatchRecord = {
   forfeit_reason: ForfeitReason | null;
   confirmed_at: string | null;
   confirmed_via: ConfirmedVia | null;
-  /** Set by a captain before kickoff; null = the default (decision 1f.1). */
+  /** Competitive (true, the default) or Friendly (false), set before kickoff (decision 1l item 11). */
   competitive: boolean | null;
-  /** coalesce(competitive, kind = 'named'): whether the match counts for levels. */
+  /** Whether the match counts for levels (= competitive). */
   is_competitive: boolean;
   created_at: string;
   updated_at: string;

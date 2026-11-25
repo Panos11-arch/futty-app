@@ -89,12 +89,8 @@ begin
   perform tests.a7_goal(m1, o, m);
   insert into public.motm_votes (match_id, voter_profile_id, nominee_player_id)
   values (m1, k2, tests.player_id(m1, f)), (m1, k, tests.player_id(m1, f));
-  -- K has a match rating of 7.
-  for i in 1..3 loop
-    v_rater := tests.create_user(format('a7t-r%s@futty.test', i));
-    insert into public.match_ratings (match_id, rater_profile_id, rated_player_id, score)
-    values (m1, v_rater, tests.player_id(m1, k), 7);
-  end loop;
+  -- S13B: m1's players are rated; K won 3-0 = 6.5 + 0.6 + 0.5 clean sheet = 7.6.
+  perform public.match_compute_ratings(m1, '2026-03-09 07:00+00');
   -- m2, side a loses 1-2: F2 scores; D2 concedes 2; D plays for side b (a 2-1 win, conceded 1).
   perform tests.a7_play(m2, d2, 'a', 'd1');
   perform tests.a7_play(m2, f2, 'a', 'f1');
@@ -137,14 +133,14 @@ begin
   from public.team_of_the_week_players p where p.team_of_the_week_id = v_team.id;
   assert v_players = array[format('1:gk:%s', k), format('2:def:%s', d), format('3:mid:%s', m), format('4:fwd:%s', f),
                            format('5:mid:%s', o)],
-    format('K (8, rated 7) over K3 (8, no rating); D (6 + 2 over 2 games = 4); M (8); F (10); then O (4) over F2 (3), got %s',
+    format('K (8, rated 7.6) over K3 (8, no rating); D (6 + 2 over 2 games = 4); M (8); F (10); then O (4) over F2 (3), got %s',
            v_players);
   assert (select (average_points, games, clean_sheets) from public.team_of_the_week_players
           where team_of_the_week_id = v_team.id and profile_id = d) = (4.00, 2, 1), 'D: average per game';
   assert (select (goals, assists, motm) from public.team_of_the_week_players
           where team_of_the_week_id = v_team.id and profile_id = f) = (2, 0, 1), 'F''s week';
   assert (select average_rating from public.team_of_the_week_players
-          where team_of_the_week_id = v_team.id and profile_id = k) = 7.00, 'K''s rating';
+          where team_of_the_week_id = v_team.id and profile_id = k) = 7.60, 'K''s rating';
 
   -- 4. Notifications, once each.
   assert tests.notified(k, 'team_of_the_week') = 1 and tests.notified(o, 'team_of_the_week') = 1, 'picked: told';

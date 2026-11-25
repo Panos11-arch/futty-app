@@ -1,7 +1,9 @@
-// Competitive or casual on the match page (docs/specs/match-record.md
-// decision 1f.1). Everyone in the match sees which it is; a captain of
-// either side can switch it while the match is scheduled and before kickoff
-// (set_match_competitive checks again); after that it is read-only.
+// Game type on the match page: Competitive or Friendly (decided by Panos
+// 25 November, docs/specs/match-record.md decision 1l item 11). Every game is
+// Competitive by default. Everyone in the match sees which it is; the booker
+// (in a named game either captain) can switch it while the match is
+// scheduled and before kickoff (set_match_competitive checks again); after
+// that it is read-only. A Friendly game never moves levels.
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -23,11 +25,11 @@ export type MatchCompetitiveProps = {
   now?: number;
 };
 
-type Choice = 'competitive' | 'casual';
+type Choice = 'competitive' | 'friendly';
 
 const OPTIONS: { value: Choice; label: string }[] = [
   { value: 'competitive', label: 'Competitive' },
-  { value: 'casual', label: 'Casual' },
+  { value: 'friendly', label: 'Friendly' },
 ];
 
 export function MatchCompetitive({ match, captainSide, onChanged, now = Date.now() }: MatchCompetitiveProps) {
@@ -53,7 +55,7 @@ export function MatchCompetitive({ match, captainSide, onChanged, now = Date.now
   return (
     <View style={styles.stack} testID="match-competitive">
       <Text variant="headline" testID="competitive-label">
-        {view.isCompetitive ? 'Competitive' : 'Casual'}
+        {view.isCompetitive ? 'Competitive' : 'Friendly'}
       </Text>
       <Text variant="callout" tone="inkMuted">
         {view.isCompetitive ? 'The result counts towards player levels.' : "The result doesn't change player levels."}
@@ -62,9 +64,9 @@ export function MatchCompetitive({ match, captainSide, onChanged, now = Date.now
         <View style={styles.stack} testID="competitive-switch">
           <SegmentedControl
             options={OPTIONS}
-            value={view.isCompetitive ? 'competitive' : 'casual'}
+            value={view.isCompetitive ? 'competitive' : 'friendly'}
             onChange={change}
-            accessibilityLabel="Competitive or casual"
+            accessibilityLabel="Competitive or Friendly"
           />
           <Text variant="caption" tone="inkMuted">
             Captains can change this until kickoff.

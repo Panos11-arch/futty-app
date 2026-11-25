@@ -62,10 +62,11 @@ begin
       result_deadline_at = now() + interval '22 hours', status = 'confirmed', side_a_score = 3, side_b_score = 1,
       confirmed_at = now() - interval '1 hour', confirmed_via = 'agreed'
   where id = m;
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, sami), 'assistPlayerId', v_guest),
-                             jsonb_build_object('scorerPlayerId', v_guest),
-                             jsonb_build_object('scorerPlayerId', null)))) is null, 'goals';
+  -- S13B: per player goals and assists (the guest set up a goal), and an own goal.
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', jsonb_build_object('ownGoals', 1, 'players', jsonb_build_array(
+             jsonb_build_object('playerId', tests.player_id(m, sami), 'goals', 1),
+             jsonb_build_object('playerId', v_guest, 'goals', 1, 'assists', 1)))))) is null, 'goals';
 
   -- Everyone signed in reads it now.
   v_page := tests.page_as(stranger, m);
@@ -73,10 +74,11 @@ begin
   assert (v_page -> 'sides' -> 0 ->> 'score')::int = 3 and (v_page -> 'sides' -> 1 ->> 'score')::int = 1, 'score';
   assert jsonb_array_length(v_page -> 'goals') = 3, 'three goals';
   assert v_page -> 'goals' -> 0 ->> 'side' = 'a'
-         and v_page -> 'goals' -> 0 -> 'scorer' ->> 'name' = 'Sami S'
-         and v_page -> 'goals' -> 0 -> 'assist' ->> 'guestName' = 'Nikos', 'first goal in order';
+         and v_page -> 'goals' -> 0 -> 'scorer' ->> 'name' = 'Sami S', 'first goal in order';
   assert v_page -> 'goals' -> 1 -> 'scorer' ->> 'name' = 'Nikos' and v_page -> 'goals' -> 1 -> 'assist' = 'null', 'guest goal';
-  assert v_page -> 'goals' -> 2 -> 'scorer' = 'null', 'unknown scorer';
+  assert v_page -> 'goals' -> 2 -> 'scorer' = 'null', 'own goal';
+  assert v_page -> 'assists' -> 0 ->> 'guestName' = 'Nikos' and (v_page -> 'assists' -> 0 ->> 'assists')::int = 1,
+    'assists as a tally';
   assert (v_page ->> 'scorersOpenUntil')::timestamptz = now() + interval '23 hours', 'scorers window';
   assert (v_page ->> 'motmVotingClosesAt')::timestamptz = now() + interval '23 hours', 'voting window';
   assert jsonb_array_length(v_page -> 'lineups') = 1, 'lineup on the page afterwards';

@@ -33,6 +33,8 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
    This is spec 13's free hour: the booking was paid minutes ago and is more than 6 hours before kickoff, so the €65.50 hold is released. After the second tap the flow checks "The booking is cancelled." and "This booking was cancelled." Run it straight after `book-and-pay`. An hour later the quote is different, and so is what this flow expects.
 4. **`book-missing-venue`** (S4): on Book a pitch, opens "Where do you want to play?", types a venue Futty doesn't have, taps **Missing a venue?** and sends its name and town. The server takes 5 a player a day, so a second run on the same day may see "You’ve sent 5 today. Try again tomorrow." instead of "Venue sent"; either one passes.
 
+4. **`log-score`** (S13B): Home shows "Log the score" for the seeded game (a pickup this login booked, played 2 hours ago). It taps **Log**, sets Bibs 1, Non-bibs 0, gives the goal to this login on the pitch, continues past Assists (optional) and confirms on Review. One captain, so the score is final: the match page shows "Bibs 1–0 Non-bibs".
+
 `tests/maestro/flows.test.ts` checks these words and amounts against the app's own code (`describeQuote`, `cancelledMessage`, `payLabel`). The quote it checks is one `cancellation_quote` returned on a local database. The same test fails if a flow uses a testID the app doesn't have.
 
 ### The seed data
@@ -44,6 +46,7 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
   - Two 5-a-side pitches.
   - One price, €60. That's spec 13's €60 5-a-side.
 - **Stripe:** a Stripe TEST connected account for the venue, created like `connect-onboarding` creates one (an Express account with the same parameters and idempotency key), and kept once it exists.
+- **A game to log (S13B):** per platform, a pickup at E2E Arena played 2 hours ago and waiting for its score, with fixed ids (`E2E_LOG_MATCHES` in `scripts/e2e-seed/config.ts`): the `-1` login captains Bibs, the `-2` login plays Non-bibs. It is deleted and made again on every run.
 - **The slot:** two days after today in Cyprus (Asia/Nicosia), at 19:00 on iOS and 20:00 on Android. That is more than 6 hours ahead (so there is a free hour) and inside the 7-day booking window. iOS and Android use separate logins and separate hours, so both can run at once. `book_slot` picks the pitch, and two pitches leave room if a run left a booking behind.
 
 ## Setting up staging (once, Panos)

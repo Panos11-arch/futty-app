@@ -1,9 +1,11 @@
--- A4a (docs/specs/match-record.md sections 4.6, 5.3, decisions 1e): goals.
--- set_match_goals replaces the caller's side's goals: only that side's
--- captain (the booker writes both sides of a pickup); only a confirmed,
--- non-forfeit match, for 24 hours after confirmed_at; the number of goals
--- equals the side's score; scorers and assisters are players on that side
--- (guests allowed).
+-- A4a (docs/specs/match-record.md sections 4.6, 5.3, decisions 1e), as
+-- changed by S13B: goals and assists after the result is confirmed are
+-- corrected with set_match_stats (per player: goals, assists, own goals).
+-- Only that side's captain (the booker writes both sides of a pickup); only
+-- a confirmed, non-forfeit match, for 24 hours after confirmed_at; the
+-- side's goals plus own goals equal its score; every player is on that side
+-- and still in the match (guests allowed). set_match_goals is no longer the
+-- app's.
 begin;
 
 do $$
@@ -24,11 +26,7 @@ declare
   m_disputed uuid := tests.form_match(now() - interval '3 hours', 'disputed', null, null, v_home, v_away);
   m_draw uuid := tests.form_match(now() - interval '3 hours', 'confirmed', 0, 0, v_home, v_away);
   v_m uuid;
-  v_cap_a uuid;
-  v_sami uuid;
   v_guest uuid;
-  v_gone uuid;
-  v_away_player uuid;
 begin
   perform tests.join_team(v_home, cap_a, 'captain');
   perform tests.join_team(v_home, sami);
@@ -41,88 +39,85 @@ begin
     perform tests.form_player(v_m, cap_b, 'b', true, true);
     perform tests.form_player(v_m, away_player, 'b', true, true);
   end loop;
-  v_cap_a := tests.player_id(m, cap_a);
-  v_sami := tests.player_id(m, sami);
-  v_gone := tests.player_id(m, gone);
-  v_away_player := tests.player_id(m, away_player);
   v_guest := tests.guest_player(m, 'a', 'Nikos (guest)');
 
-  -- The scorer count must equal the score (2 for Home).
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami)))) = 'score_mismatch', 'one goal for 2';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami), jsonb_build_object('scorerPlayerId', v_sami),
-                             jsonb_build_object('scorerPlayerId', v_sami)))) = 'score_mismatch', 'three goals for 2';
+  -- The goals must add up to the score (2 for Home).
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami], array[1])))) = 'score_mismatch', 'one goal for 2';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami], array[3])))) = 'score_mismatch', 'three goals for 2';
 
-  -- Exactly 2: Sami (assist: the captain) and the guest.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami, 'assistPlayerId', v_cap_a),
-                             jsonb_build_object('scorerPlayerId', v_guest)))) is null, 'two goals';
+  -- Exactly 2: Sami (one assist: the captain) and the guest.
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', jsonb_build_object('players', jsonb_build_array(
+             jsonb_build_object('playerId', tests.player_id(m, sami), 'goals', 1),
+             jsonb_build_object('playerId', tests.player_id(m, cap_a), 'goals', 0, 'assists', 1),
+             jsonb_build_object('playerId', v_guest, 'goals', 1)))))) is null, 'two goals';
   assert (select count(*) from public.match_goals where match_id = m and side = 'a') = 2, 'two rows';
-  assert exists (select 1 from public.match_goals where match_id = m and scorer_player_id = v_sami
-                 and assist_player_id = v_cap_a and entered_by = cap_a), 'sami from the captain';
+  assert (select assists from public.match_assists where match_id = m and player_id = tests.player_id(m, cap_a)) = 1,
+    'the captain''s assist';
 
-  -- Replacing within the window: an unknown scorer (or own goal) and Sami.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', null), jsonb_build_object('scorerPlayerId', v_sami)))) is null,
-    'replace';
+  -- Replacing within the window: an own goal and Sami.
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami], array[1], null, 1)))) is null, 'replace';
   assert (select count(*) from public.match_goals where match_id = m and side = 'a') = 2, 'still two rows';
-  assert (select count(*) from public.match_goals where match_id = m and scorer_player_id is null) = 1, 'unknown scorer';
+  assert (select count(*) from public.match_goals where match_id = m and scorer_player_id is null) = 1, 'own goal';
+  assert not exists (select 1 from public.match_assists where match_id = m and side = 'a'), 'assists replaced too';
 
   -- A player from the other side, or one who left, isn't on the side.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami), jsonb_build_object('scorerPlayerId', v_away_player)))) = 'not_in_match',
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami, away_player], array[1, 1])))) = 'not_your_player',
     'other side scorer';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami, 'assistPlayerId', v_away_player),
-                             jsonb_build_object('scorerPlayerId', v_sami)))) = 'not_in_match', 'other side assist';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_gone), jsonb_build_object('scorerPlayerId', v_sami)))) = 'not_in_match',
-    'left player';
-  -- Assisting yourself, an assist without a scorer, or a bad id.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_sami, 'assistPlayerId', v_sami),
-                             jsonb_build_object('scorerPlayerId', v_sami)))) = 'invalid_goals', 'self assist';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('assistPlayerId', v_sami), jsonb_build_object('scorerPlayerId', v_sami)))) = 'invalid_goals',
-    'assist without scorer';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', 'x'), jsonb_build_object('scorerPlayerId', v_sami)))) = 'invalid_goals',
-    'bad id';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m, '{}')) = 'invalid_goals', 'not an array';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami, away_player], array[2, 0], array[0, 1])))) = 'not_your_player',
+    'other side assist';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami, gone], array[1, 1])))) = 'not_your_player', 'left player';
+  -- A bad id, the same player twice, a negative count.
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           '{"a": {"players": [{"playerId": "x", "goals": 2}]}}')) = 'invalid_stats', 'bad id';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami, sami], array[1, 1])))) = 'invalid_stats', 'twice';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('a', tests.s13b_side(m, array[sami], array[-1], null, 3)))) = 'invalid_stats', 'negative';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m, '[]')) = 'invalid_stats', 'not an object';
   -- A refused call changed nothing.
   assert (select count(*) from public.match_goals where match_id = m and scorer_player_id is null) = 1, 'unchanged';
 
   -- Only that side's captain: a player isn't, a stranger isn't in the match,
   -- and Home's captain can't write Away's goals.
-  assert tests.error_as(sami, format('select public.set_match_goals(%L, %L)', m, '[]')) = 'not_captain', 'player';
-  assert tests.error_as(stranger, format('select public.set_match_goals(%L, %L)', m, '[]')) = 'not_in_match', 'stranger';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L, %L)', m, '[]', 'b')) = 'not_captain', 'other side';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L, %L)', m, '[]', 'c')) = 'invalid_side', 'bad side';
-  -- Away's captain writes Away's one goal; naming their own side is fine.
-  assert tests.error_as(cap_b, format('select public.set_match_goals(%L, %L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', v_away_player)), 'b')) is null, 'away goal';
+  assert tests.error_as(sami, format('select public.set_match_stats(%L, %L)', m, '{"a": {}}')) = 'not_captain', 'player';
+  assert tests.error_as(stranger, format('select public.set_match_stats(%L, %L)', m, '{"a": {}}')) = 'not_in_match', 'stranger';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('b', tests.s13b_side(m, array[away_player], array[1])))) = 'not_your_player', 'other side';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m, '{"c": {}}')) = 'invalid_stats', 'bad side';
+  -- Away's captain writes Away's one goal.
+  assert tests.error_as(cap_b, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('b', tests.s13b_side(m, array[away_player], array[1])))) is null, 'away goal';
   assert (select count(*) from public.match_goals where match_id = m and side = 'b') = 1, 'away row';
   assert (select count(*) from public.match_goals where match_id = m and side = 'a') = 2, 'home rows kept';
 
-  -- 0-0: an empty list.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m_draw, '[]')) is null, '0-0';
+  -- 0-0: nothing to log.
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m_draw,
+           jsonb_build_object('a', tests.s13b_side(m_draw, '{}', '{}')))) is null, '0-0';
 
   -- Forfeits and disputed matches have no goals; 24 hours after
   -- confirmation the window is closed.
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m_forfeit, '[]')) = 'match_not_confirmed', 'forfeit';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m_disputed, '[]')) = 'match_not_confirmed', 'disputed';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', m_late,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m_late, sami))))) = 'scorers_window_closed', 'at 24h';
-  assert tests.error_as(cap_a, format('select public.set_match_goals(%L, %L)', gen_random_uuid(), '[]')) = 'match_not_found', 'no match';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m_forfeit, '{"a": {}}')) = 'match_not_confirmed', 'forfeit';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m_disputed, '{"a": {}}')) = 'match_not_confirmed', 'disputed';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', m_late,
+           jsonb_build_object('a', tests.s13b_side(m_late, array[sami], array[1])))) = 'scorers_window_closed', 'at 24h';
+  assert tests.error_as(cap_a, format('select public.set_match_stats(%L, %L)', gen_random_uuid(), '{"a": {}}')) = 'match_not_found', 'no match';
 
-  -- Nobody writes match_goals directly.
+  -- Nobody writes match_goals or match_assists directly.
   assert tests.error_as(cap_a, format('insert into public.match_goals (match_id, side, entered_by) values (%L, %L, %L)', m, 'a', cap_a))
          like 'permission denied%', 'direct insert';
+  assert tests.error_as(cap_a, format('insert into public.match_assists (match_id, side, player_id, assists, entered_by) values (%L, %L, %L, 1, %L)',
+                                      m, 'a', tests.player_id(m, sami), cap_a)) like 'permission denied%', 'direct assist';
 end $$;
 
--- Pickup: the booker (side a's captain) enters goals for both Bibs and
--- Non-bibs; a Non-bibs player can't.
+-- Pickup: the booker (side a's captain) corrects both Bibs and Non-bibs; a
+-- Non-bibs player can't.
 do $$
 declare
   booker uuid := tests.create_user('a4g2-booker@futty.test');
@@ -135,17 +130,13 @@ begin
   perform tests.form_player(m, bib, 'a', true, true);
   perform tests.form_player(m, nonbib, 'b', true, true);
 
-  -- The booker must say which side.
-  assert tests.error_as(booker, format('select public.set_match_goals(%L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, bib))))) = 'invalid_side', 'side needed';
-  assert tests.error_as(booker, format('select public.set_match_goals(%L, %L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, bib))), 'a')) is null, 'bibs';
-  assert tests.error_as(booker, format('select public.set_match_goals(%L, %L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, nonbib))), 'b')) is null, 'non-bibs';
-  assert tests.error_as(booker, format('select public.set_match_goals(%L, %L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, bib))), 'b')) = 'not_in_match', 'bib for non-bibs';
-  assert tests.error_as(nonbib, format('select public.set_match_goals(%L, %L, %L)', m,
-           jsonb_build_array(jsonb_build_object('scorerPlayerId', tests.player_id(m, nonbib))), 'b')) = 'not_captain', 'non-bibs player';
+  assert tests.error_as(booker, format('select public.set_match_stats(%L, %L)', m, jsonb_build_object(
+           'a', tests.s13b_side(m, array[bib], array[1]), 'b', tests.s13b_side(m, array[nonbib], array[1])))) is null,
+    'both sides';
+  assert tests.error_as(booker, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('b', tests.s13b_side(m, array[bib], array[1])))) = 'not_your_player', 'bib for non-bibs';
+  assert tests.error_as(nonbib, format('select public.set_match_stats(%L, %L)', m,
+           jsonb_build_object('b', tests.s13b_side(m, array[nonbib], array[1])))) = 'not_captain', 'non-bibs player';
   assert (select count(*) from public.match_goals where match_id = m) = 2, 'one each';
 end $$;
 

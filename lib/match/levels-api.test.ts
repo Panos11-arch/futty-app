@@ -1,8 +1,6 @@
 import {
   balanceMatchTeams,
-  getMatchRatings,
   getPlayerLevel,
-  rateMatchPlayer,
   setMatchCompetitive,
   setStartingLevel,
 } from '@/lib/match/levels-api';
@@ -83,11 +81,6 @@ describe('match writes send ids only', () => {
     expect(mockCalls).toContainEqual(['rpc', 'set_match_competitive', { p_match_id: 'm1', p_competitive: false }]);
   });
 
-  it('rate_match_player', async () => {
-    await rateMatchPlayer('m1', 'p-nikos', 8);
-    expect(mockCalls).toContainEqual(['rpc', 'rate_match_player', { p_match_id: 'm1', p_player_id: 'p-nikos', p_score: 8 }]);
-  });
-
   it('balance_match_teams', async () => {
     mockAnswers.balance_match_teams = {
       data: { sideA: { players: ['a'], average: 3.25 }, sideB: { players: ['b'], average: 3.2 } },
@@ -101,31 +94,3 @@ describe('match writes send ids only', () => {
   });
 });
 
-describe('getMatchRatings', () => {
-  it('reads get_match_ratings and names the rated players', async () => {
-    mockAnswers.get_match_ratings = {
-      data: {
-        ratingsOpen: false,
-        ratingsCloseAt: '2026-11-15T19:00:00.000Z',
-        players: [{ playerId: 'p-nikos', profileId: 'nikos', rating: 7.3, count: 4 }],
-        myRatings: [],
-      },
-      error: null,
-    };
-    mockAnswers.get_public_profiles = {
-      data: [{ id: 'nikos', username: 'nik', full_name: 'Nikos Away', avatar_style: 'kit', avatar_kit_colour: 'kitRed', avatar_number: 4 }],
-      error: null,
-    };
-    const { ratings, names, kits, error } = await getMatchRatings('m1');
-    expect(error).toBeNull();
-    expect(ratings?.players[0].rating).toBe(7.3);
-    expect(names).toEqual({ nikos: 'Nikos Away' });
-    expect(kits).toEqual({ nikos: { colour: 'kitRed', number: 4 } });
-    expect(mockCalls).toContainEqual(['rpc', 'get_match_ratings', { p_match_id: 'm1' }]);
-  });
-
-  it('an error comes back', async () => {
-    mockAnswers.get_match_ratings = { data: null, error: { message: 'boom' } };
-    await expect(getMatchRatings('m1')).resolves.toEqual({ ratings: null, names: {}, kits: {}, error: { message: 'boom' } });
-  });
-});
