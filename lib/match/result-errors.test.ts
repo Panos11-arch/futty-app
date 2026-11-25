@@ -10,6 +10,12 @@ describe('describeMatchResultError', () => {
     ['stats_required', "Your side's score changed. Log its goals again."],
     ['scorers_window_closed', 'The time to correct this has passed.'],
     ['match_not_found', "We couldn't find this match."],
+    // Decided 25 November: who played, and the lone captain's score correction.
+    ['player_did_not_play', "A player who didn't play can't score or assist."],
+    ['cannot_remove_check_in', 'They checked in at the venue, so they played.'],
+    ['check_in_used', 'They voted for man of the match, so they played.'],
+    ['check_in_closed', "Who played can't change after the result deadline."],
+    ['score_locked', 'This score is final.'],
   ])('%s', (code, words) => {
     expect(describeMatchResultError({ message: code })).toBe(words);
   });
@@ -25,6 +31,10 @@ describe('describeMatchResultError', () => {
   it('stale codes reload the screen', () => {
     expect(STALE_RESULT_ERRORS.has('result_window_closed')).toBe(true);
     expect(STALE_RESULT_ERRORS.has('score_mismatch')).toBe(false);
+    for (const code of ['cannot_remove_check_in', 'check_in_used', 'check_in_closed', 'score_locked']) {
+      expect(STALE_RESULT_ERRORS.has(code)).toBe(true);
+    }
+    expect(STALE_RESULT_ERRORS.has('player_did_not_play')).toBe(false);
   });
 
   it('anything else gets a plain fallback, never the raw message', () => {

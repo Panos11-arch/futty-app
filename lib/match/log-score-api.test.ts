@@ -45,6 +45,11 @@ describe('log-score-api', () => {
   it('corrects the stats', async () => {
     expect(await setMatchStats('m1', { a: { players: [], ownGoals: 1 } })).toEqual({ error: null });
     expect(mockCalls[0]).toEqual(['set_match_stats', { p_match_id: 'm1', p_stats: { a: { players: [], ownGoals: 1 } } }]);
+    // A lone captain's correction carries the new score (decided 25 November).
+    expect(await setMatchStats('m1', { a: { players: [], ownGoals: 5 } }, { a: 5, b: 1 })).toEqual({ error: null });
+    expect(mockCalls[1]).toEqual(['set_match_stats', {
+      p_match_id: 'm1', p_stats: { a: { players: [], ownGoals: 5 } }, p_side_a_score: 5, p_side_b_score: 1,
+    }]);
     mockAnswers.set_match_stats = { data: null, error: { message: 'scorers_window_closed' } };
     expect((await setMatchStats('m1', {})).error).toEqual({ message: 'scorers_window_closed' });
   });

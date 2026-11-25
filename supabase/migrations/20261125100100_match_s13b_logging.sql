@@ -23,7 +23,10 @@
 --     disputed; one captain's score → confirmed (deadline), as before; none
 --     → no_result.
 --   * Corrections: set_match_stats, by the same captains, for 24 hours after
---     confirmation, as before. The score itself is final once confirmed.
+--     confirmation, as before. Two captains' agreed score is final; a lone
+--     captain (both sides his) can correct the score too in that window
+--     (decided by Anghelo 25 November), except for a Losers pay match,
+--     whose money settles from it.
 --   * match_result_submissions keeps one row per match for every function
 --     that already reads it (sides lock, reminders, post-match offers, the
 --     settlement view): the first score logged, answered "accepted" on
@@ -640,9 +643,19 @@ begin
 end;
 $$;
 
--- Corrects the caller's sides' goals and assists, for 24 hours after the
--- result was confirmed (as before); the ratings follow.
-create or replace function public.set_match_stats(p_match_id uuid, p_stats jsonb)
+-- Corrects the caller's sides' goals and assists (and who played), for 24
+-- hours after the result was confirmed; the ratings follow. A lone captain
+-- (both sides his) may also send a new score, p_side_a_score and
+-- p_side_b_score (decided by Anghelo 25 November): a side whose score
+-- changed must be sent with goals that add up to it; the other side's stats
+-- stay. Two captains' agreed score is final (score_locked), and so is a
+-- Losers pay match's, whose money settles from it (score_locked). A changed
+-- score tells every player "Score corrected" (match_result_confirmed, so the
+-- same preference); levels, applied after the window, read the corrected
+-- score.
+create or replace function public.set_match_stats(p_match_id uuid, p_stats jsonb,
+                                                  p_side_a_score integer default null,
+                                                  p_side_b_score integer default null)
 returns void
 language plpgsql
 security definer
@@ -652,6 +665,7 @@ declare
   v_uid uuid := auth.uid();
   v_match public.matches;
   v_sides text[];
+  v_score_changed boolean := false;
   s text;
 begin
   select * into v_match from public.matches where id = p_match_id for update;
@@ -674,6 +688,29 @@ begin
   if p_stats is null or jsonb_typeof(p_stats) <> 'object' or p_stats = '{}'::jsonb then
     raise exception 'invalid_stats';
   end if;
+
+  if p_side_a_score is not null or p_side_b_score is not null then
+    if p_side_a_score is null or p_side_b_score is null or p_side_a_score < 0 or p_side_b_score < 0 then
+      raise exception 'invalid_score';
+    end if;
+    v_score_changed := (p_side_a_score, p_side_b_score) <> (v_match.side_a_score, v_match.side_b_score);
+  end if;
+  if v_score_changed then
+    if cardinality(v_sides) < 2
+       or exists (select 1 from public.venue_bookings b where b.id = v_match.booking_id and b.losers_pay) then
+      raise exception 'score_locked';
+    end if;
+    if (p_side_a_score <> v_match.side_a_score and not p_stats ? 'a')
+       or (p_side_b_score <> v_match.side_b_score and not p_stats ? 'b') then
+      raise exception 'stats_required';
+    end if;
+    update public.matches set side_a_score = p_side_a_score, side_b_score = p_side_b_score
+    where id = p_match_id
+    returning * into v_match;
+    update public.match_score_entries set side_a_score = p_side_a_score, side_b_score = p_side_b_score
+    where match_id = p_match_id and side = 'a';
+  end if;
+
   for s in select k from jsonb_object_keys(p_stats) k loop
     if s not in ('a', 'b') then
       raise exception 'invalid_stats';
@@ -686,6 +723,11 @@ begin
     perform public.match_write_side_attendance(p_match_id, s, p_stats -> s, v_uid);
   end loop;
   perform public.match_compute_ratings(p_match_id);
+
+  if v_score_changed then
+    perform public.match_notify(p_match_id, 'match_result_confirmed', 'Score corrected',
+      public.match_score_line(p_match_id, p_side_a_score, p_side_b_score), array['a', 'b'], true, v_uid);
+  end if;
 end;
 $$;
 
@@ -1077,8 +1119,8 @@ grant execute on function public.match_rating_shown(uuid, uuid) to authenticated
 
 revoke all on function public.log_match_result(uuid, integer, integer, jsonb) from public, anon;
 grant execute on function public.log_match_result(uuid, integer, integer, jsonb) to authenticated, service_role;
-revoke all on function public.set_match_stats(uuid, jsonb) from public, anon;
-grant execute on function public.set_match_stats(uuid, jsonb) to authenticated, service_role;
+revoke all on function public.set_match_stats(uuid, jsonb, integer, integer) from public, anon;
+grant execute on function public.set_match_stats(uuid, jsonb, integer, integer) to authenticated, service_role;
 revoke all on function public.get_my_matches_to_log() from public, anon;
 grant execute on function public.get_my_matches_to_log() to authenticated, service_role;
 revoke all on function public.get_match_log(uuid) from public, anon;

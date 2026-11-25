@@ -96,8 +96,11 @@ describe('log-score', () => {
 
     const pickup = mockMatchLog({ myEntry: { a: 1, b: 0 } });
     expect(needsStats(pickup, draftFrom(pickup))).toBe(true);
+    // A correction: a lone captain can fix the score too (decided 25 November); two captains' score is final.
     const correction = mockMatchLog({ status: 'confirmed', score: { a: 1, b: 0 }, canLog: false, canCorrect: true });
-    expect(stepsFor(correction, draftFrom(correction))).toEqual(['goals', 'assists', 'review']);
+    expect(stepsFor(correction, draftFrom(correction))).toEqual(['score', 'goals', 'assists', 'review']);
+    const named = mockNamedLog({ status: 'confirmed', score: { a: 1, b: 0 }, canLog: false, canCorrect: true });
+    expect(stepsFor(named, draftFrom(named))).toEqual(['goals', 'assists', 'review']);
   });
 
   it('the payload: only the sides he logs, every player with goals, assists and played, own goals', () => {

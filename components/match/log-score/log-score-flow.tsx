@@ -25,6 +25,7 @@ import {
   goalsComplete,
   needsStats,
   scoresDiffer,
+  singleCaptain,
   stepsFor,
   toStatsPayload,
   waitingForOther,
@@ -89,7 +90,9 @@ export function LogScoreFlow({ log, onLogged, onExit, onOpenMatch, onStale }: Lo
     setError(null);
     const stats = needsStats(log, draft) ? toStatsPayload(log, draft, sides) : {};
     if (log.canCorrect) {
-      const { error: saveError } = await setMatchStats(log.matchId, stats);
+      const { error: saveError } = singleCaptain(log)
+        ? await setMatchStats(log.matchId, stats, draft.score)
+        : await setMatchStats(log.matchId, stats);
       setSaving(false);
       if (saveError) return fail(saveError);
       haptic.success();

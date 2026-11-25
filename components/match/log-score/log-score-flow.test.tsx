@@ -204,16 +204,47 @@ describe('LogScoreFlow: two captains (he does not know the opposition)', () => {
 });
 
 describe('LogScoreFlow: a correction (24 hours after the result)', () => {
-  it('Goals → Assists → Review, the score fixed; Confirm saves the stats', async () => {
-    const log = mockMatchLog({
+  const stats = {
+    a: { players: [{ playerId: 'a2', goals: 1, assists: 0 }], ownGoals: 0 },
+    b: { players: [], ownGoals: 0 },
+  };
+
+  // Decided 25 November: a lone captain can correct the score too.
+  it('a lone captain: Score → Goals → Assists → Review; a changed score needs its goals redone', async () => {
+    const log = mockMatchLog({ status: 'confirmed', score: { a: 1, b: 0 }, canLog: false, canCorrect: true, stats });
+    const { onLogged } = await show(log);
+    expect(screen.getByTestId('post-match-step-score')).toBeTruthy();
+    await press('add-goal');
+    await press('post-match-next');
+    expect(screen.getByTestId('log-score-counter-a')).toHaveTextContent('Bibs 1 of 2');
+    expect(disabled('post-match-next')).toBe(true);
+    await press('log-score-goal-plus-a3');
+    await press('post-match-next');
+    await press('post-match-next');
+    await press('save-scorers');
+    expect(correct).toHaveBeenCalledWith(
+      'm1',
+      {
+        a: { players: SIDE_A.map((id) => row(id, id === 'a1' ? 0 : 1)), ownGoals: 0 },
+        b: { players: [row('b1'), row('b2')], ownGoals: 0 },
+      },
+      { a: 2, b: 0 }
+    );
+    expect(logResult).not.toHaveBeenCalled();
+    expect(onLogged).toHaveBeenCalledWith('corrected');
+  });
+
+  it('two captains: Goals → Assists → Review, the agreed score fixed', async () => {
+    const log = mockNamedLog({
       status: 'confirmed',
       score: { a: 1, b: 0 },
       canLog: false,
       canCorrect: true,
-      stats: { a: { players: [{ playerId: 'a2', goals: 1, assists: 0 }], ownGoals: 0 }, b: { players: [], ownGoals: 0 } },
+      stats: { a: stats.a },
     });
-    const { onLogged } = await show(log);
+    await show(log);
     expect(screen.getByTestId('post-match-step-goals')).toBeTruthy();
+    expect(screen.queryByTestId('post-match-step-score')).toBeNull();
     await press('log-score-goal-minus-a2');
     await press('log-score-goal-plus-a3');
     await press('post-match-next');
@@ -221,10 +252,7 @@ describe('LogScoreFlow: a correction (24 hours after the result)', () => {
     await press('save-scorers');
     expect(correct).toHaveBeenCalledWith('m1', {
       a: { players: SIDE_A.map((id) => row(id, id === 'a3' ? 1 : 0)), ownGoals: 0 },
-      b: { players: [row('b1'), row('b2')], ownGoals: 0 },
     });
-    expect(logResult).not.toHaveBeenCalled();
-    expect(onLogged).toHaveBeenCalledWith('corrected');
   });
 });
 

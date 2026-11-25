@@ -36,12 +36,20 @@ export async function logMatchResult(
   return { result: data as LogResult, error: null };
 }
 
-/** A correction of the caller's sides' goals and assists, for 24 hours after confirmation. */
+/**
+ * A correction of the caller's sides' goals, assists and who played, for 24
+ * hours after confirmation. A lone captain may send a new score too (decided
+ * 25 November); the server refuses it for two captains (score_locked).
+ */
 export async function setMatchStats(
   matchId: string,
-  stats: Partial<Record<Side, SideStats>>
+  stats: Partial<Record<Side, SideStats>>,
+  score?: Score
 ): Promise<{ error: ApiError | null }> {
-  const { error } = await supabase.rpc('set_match_stats', { p_match_id: matchId, p_stats: stats });
+  const args = score
+    ? { p_match_id: matchId, p_stats: stats, p_side_a_score: score.a, p_side_b_score: score.b }
+    : { p_match_id: matchId, p_stats: stats };
+  const { error } = await supabase.rpc('set_match_stats', args);
   return { error: error ?? null };
 }
 

@@ -235,7 +235,9 @@ export function needsStats(log: MatchLog, draft: Draft): boolean {
 
 /** The steps of this pass, in order. */
 export function stepsFor(log: MatchLog, draft: Draft): LogStep[] {
-  if (log.canCorrect) return ['goals', 'assists', 'review'];
+  // A correction: a lone captain can fix the score too (decided 25 November);
+  // two captains' agreed score is final.
+  if (log.canCorrect) return singleCaptain(log) ? ['score', 'goals', 'assists', 'review'] : ['goals', 'assists', 'review'];
   return needsStats(log, draft) ? ['score', 'goals', 'assists', 'review'] : ['score', 'review'];
 }
 

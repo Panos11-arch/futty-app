@@ -16,6 +16,12 @@ const WORDS: Record<string, string> = {
   invalid_stats: 'Check the goals and assists, then try again.',
   match_not_confirmed: 'This match has no confirmed score yet.',
   scorers_window_closed: 'The time to correct this has passed.',
+  // Decided 25 November: who played, and the lone captain's score correction.
+  player_did_not_play: "A player who didn't play can't score or assist.",
+  cannot_remove_check_in: 'They checked in at the venue, so they played.',
+  check_in_used: 'They voted for man of the match, so they played.',
+  check_in_closed: "Who played can't change after the result deadline.",
+  score_locked: 'This score is final.',
 };
 
 export const MATCH_RESULT_ERROR_CODES = Object.keys(WORDS);
@@ -27,6 +33,10 @@ export const STALE_RESULT_ERRORS = new Set([
   'match_not_confirmed',
   'scorers_window_closed',
   'not_your_player',
+  'cannot_remove_check_in',
+  'check_in_used',
+  'check_in_closed',
+  'score_locked',
 ]);
 
 export function describeMatchResultError(error: { message: string }): string {
