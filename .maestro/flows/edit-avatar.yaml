@@ -1,0 +1,65 @@
+# Journey (S18): Profile → Edit avatar → tap the initials → pick an
+# illustrated avatar → Save, and the Profile shows it. Ends back on initials
+# so the next run starts from the default.
+appId: com.panosalepis.futtyapp
+name: edit-avatar
+tags:
+  - e2e
+  - profile
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: profile
+- assertVisible:
+    id: profile-screen
+
+# ---- Pick an illustration ------------------------------------------------------
+- tapOn:
+    id: profile-edit-avatar
+- assertVisible:
+    id: avatar-preview
+- tapOn:
+    id: edit-avatar-initials
+- assertVisible: 'Choose avatar'
+- assertVisible:
+    id: avatar-sheet-use-initials
+- tapOn:
+    id: avatar-sheet-item-avatar-07
+- assertNotVisible: 'Choose avatar'
+- takeScreenshot: edit-avatar-illustration-${PLATFORM}
+- tapOn:
+    id: edit-avatar-save
+- assertVisible:
+    id: profile-screen
+- takeScreenshot: profile-illustration-${PLATFORM}
+
+# ---- Kit is unchanged: no sheet from its preview --------------------------------
+- tapOn:
+    id: profile-edit-avatar
+- tapOn:
+    id: edit-avatar-style-kit
+- assertNotVisible:
+    id: edit-avatar-initials
+
+# ---- Back to initials ------------------------------------------------------------
+- tapOn:
+    id: edit-avatar-style-initials
+- tapOn:
+    id: edit-avatar-initials
+- tapOn:
+    id: avatar-sheet-use-initials
+- tapOn:
+    id: edit-avatar-save
+- assertVisible:
+    id: profile-screen
+- takeScreenshot: edit-avatar-${PLATFORM}

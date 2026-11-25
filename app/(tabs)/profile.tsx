@@ -15,7 +15,7 @@ import { Text } from '@/components/ui/text';
 import { radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
-import { avatarKit } from '@/lib/avatar';
+import { avatarLook } from '@/lib/avatar';
 import { isPremiumPlayer } from '@/lib/premium';
 import { type Profile, useProfile } from '@/lib/use-profile';
 import { isVenueStaff } from '@/lib/venue-staff';
@@ -53,13 +53,14 @@ export function ProfileCard({ profile, editable = true }: { profile: Profile; ed
         {editable ? (
           <Pressable
             accessibilityRole="button"
+            testID="profile-edit-avatar"
             accessibilityLabel="Edit avatar"
             onPress={() => router.push('/edit-avatar')}
             style={({ pressed }) => pressed && styles.pressed}>
-            <Avatar name={name} kit={avatarKit(profile)} size={AVATAR_SIZE} />
+            <Avatar name={name} kit={avatarLook(profile)} size={AVATAR_SIZE} />
           </Pressable>
         ) : (
-          <Avatar name={name} kit={avatarKit(profile)} size={AVATAR_SIZE} />
+          <Avatar name={name} kit={avatarLook(profile)} size={AVATAR_SIZE} />
         )}
         <View style={styles.identity}>
           <Text variant="headline">{name}</Text>

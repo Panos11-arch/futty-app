@@ -4,7 +4,7 @@
 import type { BalancedTeams, MatchRatings, PlayerLevel, StartingAnswers } from '@/lib/match/levels';
 import { getPublicNames } from '@/lib/match/profile-api';
 import { supabase } from '@/lib/supabase';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 type ApiError = { message: string };
 
@@ -68,7 +68,7 @@ export async function getMatchRatings(
 ): Promise<{
   ratings: MatchRatings | null;
   names: Record<string, string>;
-  kits: Record<string, AvatarKit | null>;
+  kits: Record<string, AvatarLook | null>;
   error: ApiError | null;
 }> {
   const { data, error } = await supabase.rpc('get_match_ratings', { p_match_id: matchId });

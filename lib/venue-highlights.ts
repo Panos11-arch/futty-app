@@ -2,7 +2,7 @@
 // venue, from venue_highlights (supabase/migrations/
 // 20261124200100_match_venue_highlights.sql). Names come from
 // get_public_profiles, as on every other list.
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 import { getPublicNames } from '@/lib/match/profile-api';
 import { supabase } from '@/lib/supabase';
 
@@ -15,7 +15,7 @@ type ServerHighlights = {
   }[];
 };
 
-export type TopPlayer = { profileId: string; name: string; kit: AvatarKit | null; rating: string; matches: number };
+export type TopPlayer = { profileId: string; name: string; kit: AvatarLook | null; rating: string; matches: number };
 export type VenueResult = { matchId: string; day: string; sides: { label: string; teamId: string | null; score: number }[] };
 export type VenueHighlights = { topPlayers: TopPlayer[]; results: VenueResult[] };
 

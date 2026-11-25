@@ -5,7 +5,7 @@ import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { getPublicNames } from '@/lib/match/profile-api';
 import type { PlayerRecentMatchRow } from '@/lib/match/types';
 import { supabase } from '@/lib/supabase';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 
 /** 'year' = a calendar year in Cyprus time; 'all' = all time (decision 1g.2). */
 export type SeasonChoice = { kind: 'year'; year: number } | { kind: 'all' };
@@ -53,7 +53,7 @@ export type LeaderboardRow = {
   win_pct: number;
   rank: number;
   /** A12: the player's kit avatar; null shows initials. */
-  kit?: AvatarKit | null;
+  kit?: AvatarLook | null;
 };
 
 /** One team of the week for all of Futty (decision 1g.4). */
@@ -69,7 +69,7 @@ export type TeamOfTheWeekPlayer = {
   profile_id: string;
   name: string;
   /** A12: the player's kit avatar; null shows initials. */
-  kit?: AvatarKit | null;
+  kit?: AvatarLook | null;
   position_group: PositionGroup;
   sort: number;
   /** Average points per game that week, from the server. */

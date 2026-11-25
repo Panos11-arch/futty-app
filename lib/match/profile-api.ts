@@ -12,7 +12,7 @@ import type {
   Side,
   TeammateRow,
 } from '@/lib/match/types';
-import { avatarKit, type AvatarFields, type AvatarKit } from '@/lib/avatar';
+import { avatarLook, type AvatarFields, type AvatarLook } from '@/lib/avatar';
 import { supabase } from '@/lib/supabase';
 
 type FormRows = { position: number; result: FormResult }[] | null;
@@ -77,13 +77,13 @@ export async function getMyTeammates(limit = 5) {
  *  function (no private columns): one call for the whole list. */
 export async function getPublicNames(ids: string[]) {
   const names: Record<string, string> = {};
-  const kits: Record<string, AvatarKit | null> = {};
+  const kits: Record<string, AvatarLook | null> = {};
   if (ids.length === 0) return { names, kits, error: null };
   const { data, error } = await supabase.rpc('get_public_profiles', { p_profile_ids: ids });
   type Row = { id: string; username: string | null; full_name: string | null } & Partial<AvatarFields>;
   for (const p of (data as Row[] | null) ?? []) {
     names[p.id] = p.full_name || p.username || 'Player';
-    kits[p.id] = avatarKit(p);
+    kits[p.id] = avatarLook(p);
   }
   return { names, kits, error };
 }

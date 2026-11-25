@@ -222,6 +222,16 @@ describe('Profile', () => {
     expect(router.push).toHaveBeenLastCalledWith('/edit-avatar');
   });
 
+  it('S18: the header shows a saved illustration', async () => {
+    mockProfile = {
+      status: 'ready',
+      profile: { ...profile, avatar_style: 'illustration', avatar_illustration: 'avatar-11' },
+    };
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('avatar-illustration')).toBeTruthy();
+    expect(screen.getByTestId('profile-edit-avatar')).toBeTruthy();
+  });
+
   it("A12: another player's card shows their kit but can't be edited", async () => {
     mockLevel = { status: 'ready', level: null };
     const other = { ...profile, avatar_style: 'kit', avatar_kit_colour: 'kitBlack', avatar_number: 5 };

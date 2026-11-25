@@ -5,13 +5,13 @@ import { MIN_TOUCH } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
 import { Text } from '@/components/ui/text';
 import { hairline, space } from '@/constants/futty-theme';
-import type { AvatarKit } from '@/lib/avatar';
+import type { AvatarLook } from '@/lib/avatar';
 import { makeStyles } from '@/lib/theme';
 
 export type ChatHeaderProps = {
   title: string;
   subtitle?: string | null;
-  kit?: AvatarKit | null;
+  kit?: AvatarLook | null;
   onBack: () => void;
   /** Opens the profile (or the team, when the title is the team). */
   onOpenTitle?: () => void;
