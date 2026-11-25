@@ -23,8 +23,7 @@ jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
 
-// The Card button's sheet (S19): its icon preload, the card and its QR.
-jest.mock('@expo/vector-icons/MaterialIcons', () => ({ __esModule: true, default: { loadFont: () => Promise.resolve() } }));
+// The Card button's sheet (S19): the card and its QR.
 jest.mock('react-native-qrcode-svg', () => () => null);
 jest.mock('@/lib/player-card', () => ({
   ...jest.requireActual('@/lib/player-card'),

@@ -94,7 +94,7 @@ function leave() {
 describe('Edit profile: preferences', () => {
   it('saves position, foot, preferred days and times', async () => {
     await render(<EditProfileScreen />);
-    await fireEvent.press(screen.getByText('Striker'));
+    await fireEvent.press(screen.getByText('Forward'));
     await fireEvent.press(screen.getByText('Right'));
     await fireEvent.press(screen.getByText('Mon'));
     await fireEvent.press(screen.getByText('Sat')); // already chosen: turns it off
@@ -105,7 +105,7 @@ describe('Edit profile: preferences', () => {
     expect(mockUpdate).toHaveBeenCalledWith(
       'me',
       expect.objectContaining({
-        position: 'Striker',
+        position: 'Forward',
         preferred_foot: 'Right',
         preferred_days: ['mon', 'thu'],
         preferred_times: ['evening'],

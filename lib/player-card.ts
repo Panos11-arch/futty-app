@@ -24,7 +24,7 @@ export type PlayerCard = {
   avatar_kit_colour: string | null;
   avatar_number: number | null;
   avatar_illustration: string | null;
-  /** A5 skill level, 1.00-7.00, or null before the first one. */
+  /** Skill level (A5, on 1.0-10.0 since S13B), or null before the first one. */
   level: number | null;
   position: string | null;
   preferred_foot: string | null;

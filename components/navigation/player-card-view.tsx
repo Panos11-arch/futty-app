@@ -77,7 +77,7 @@ export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function Pla
             </View>
           ) : (
             <View testID="my-card-avatar" style={[styles.avatar, styles.avatarInitials]}>
-              <Text variant="title" tone="greenInk" allowFontScaling={false}>
+              <Text variant="title" tone="greenInk" numberOfLines={1} adjustsFontSizeToFit>
                 {initials(name)}
               </Text>
             </View>

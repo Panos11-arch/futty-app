@@ -9,7 +9,6 @@
 //   Edit:  Edit profile.
 // The card is read from the server each time the sheet opens, keeping the
 // last one on screen while it loads.
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -17,6 +16,7 @@ import {
   Dimensions,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -48,9 +48,17 @@ type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; car
  * tab bar mounts, well before the sheet first opens, so they never show as
  * empty boxes. SF Symbols on iPhone need no loading.
  */
-function usePreloadIcons() {
+export function usePreloadIcons() {
   useEffect(() => {
-    void MaterialIcons.loadFont().catch(() => {});
+    if (Platform.OS === 'ios') return;
+    // Required here, not at the top, so iPhone never loads the Material set.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const icons = require('@expo/vector-icons/MaterialIcons') as typeof import('@expo/vector-icons/MaterialIcons');
+      void icons.default.loadFont().catch(() => {});
+    } catch {
+      // The icons then load on first draw, as before.
+    }
   }, []);
 }
 

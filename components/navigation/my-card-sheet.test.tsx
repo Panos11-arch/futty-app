@@ -4,7 +4,7 @@
 // no QR and no Share (A5).
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { Image } from 'expo-image';
-import { Modal } from 'react-native';
+import { Modal, Platform } from 'react-native';
 
 import { CARD_LOAD_FAILED, MyCardSheet } from '@/components/navigation/my-card-sheet';
 import { flatStyle, loadWithFile, withTheme } from '@/components/ui/test-utils';
@@ -98,12 +98,29 @@ beforeEach(() => {
 });
 
 describe('the sheet', () => {
-  it('shows nothing while closed, but loads the button icons already', async () => {
-    mockLoadFont.mockClear();
+  it('shows nothing while closed', async () => {
     await render(withTheme(<MyCardSheet visible={false} onClose={jest.fn()} onOpenProfile={jest.fn()} />));
     expect(screen.queryByTestId('my-card-sheet')).toBeNull();
     expect(mockFetch).not.toHaveBeenCalled();
-    expect(mockLoadFont).toHaveBeenCalledTimes(1);
+  });
+
+  it('on Android, loads the button icons before it first opens', async () => {
+    const os = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { configurable: true, get: () => 'android' });
+    try {
+      mockLoadFont.mockClear();
+      await render(withTheme(<MyCardSheet visible={false} onClose={jest.fn()} onOpenProfile={jest.fn()} />));
+      await waitFor(() => expect(mockLoadFont).toHaveBeenCalledTimes(1));
+    } finally {
+      Object.defineProperty(Platform, 'OS', { configurable: true, get: () => os });
+    }
+  });
+
+  it('on iPhone, loads nothing (SF Symbols are built in)', async () => {
+    mockLoadFont.mockClear();
+    await render(withTheme(<MyCardSheet visible={false} onClose={jest.fn()} onOpenProfile={jest.fn()} />));
+    await act(async () => {});
+    expect(mockLoadFont).not.toHaveBeenCalled();
   });
 
   it('shows skeletons while the card loads', async () => {
