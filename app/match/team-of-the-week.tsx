@@ -1,8 +1,9 @@
 // Team of the week (docs/specs/match-record.md decision 1k): the latest
-// week's General · All Cyprus team, as the server picked and placed it.
-// Opened from Home, Rankings and the team_of_the_week notification. S15
+// week's General · All Cyprus team, as the server picked and placed it, or
+// the team a team_of_the_week notification names (teamId). Opened from Home,
+// Rankings and that notification. S15
 // moves it into Rankings with its format, week and area pickers.
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -28,7 +29,8 @@ function Team({ team }: { team: TeamOfTheWeek }) {
 
 export default function TeamOfTheWeekScreen() {
   const styles = useStyles();
-  const latest = useLatestTeamOfTheWeek();
+  const { teamId } = useLocalSearchParams<{ teamId?: string }>();
+  const latest = useLatestTeamOfTheWeek(typeof teamId === 'string' && teamId ? teamId : undefined);
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <Stack.Screen options={{ title: 'Team of the week' }} />

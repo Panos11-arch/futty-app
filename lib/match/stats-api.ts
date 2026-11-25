@@ -269,6 +269,12 @@ export async function getLatestTeamOfTheWeek() {
   return { team: defaultTeam((data as TeamOfTheWeek[] | null) ?? []), error: null };
 }
 
+/** One team of the week by id (a notification names it); null once it no longer exists. */
+export async function getTeamOfTheWeek(id: string) {
+  const { data, error } = await supabase.from('team_of_the_week').select(TEAM_COLUMNS).eq('id', id).maybeSingle();
+  return { team: (data as TeamOfTheWeek | null) ?? null, error };
+}
+
 /** A team of the week's players, in the server's order, with names. */
 export async function getTeamOfTheWeekPlayers(teamOfTheWeekId: string) {
   const { data, error } = await supabase

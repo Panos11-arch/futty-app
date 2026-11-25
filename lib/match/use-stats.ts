@@ -2,6 +2,7 @@
 // gives loading, error (with reload) or ready.
 import {
   getLatestTeamOfTheWeek,
+  getTeamOfTheWeek,
   getLeaderboard,
   getLeaderboardScopes,
   getMinAppearances,
@@ -90,11 +91,17 @@ export function useLeaderboard(scope: LeaderboardScope | null, year: number, boa
   return { ...state, reload };
 }
 
-export function useLatestTeamOfTheWeek() {
+/** The team a notification names (teamId), or the latest default team; the latest too if that team is gone. */
+export function useLatestTeamOfTheWeek(teamId?: string) {
   const { state, reload } = useLoad<{ team: TeamOfTheWeek | null }>(async () => {
+    if (teamId) {
+      const named = await getTeamOfTheWeek(teamId);
+      if (named.error) return { error: named.error.message };
+      if (named.team) return { value: { team: named.team } };
+    }
     const { team, error } = await getLatestTeamOfTheWeek();
     return error ? { error: error.message } : { value: { team } };
-  }, 'latest');
+  }, teamId ?? 'latest');
   return { ...state, reload };
 }
 

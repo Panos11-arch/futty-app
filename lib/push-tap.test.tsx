@@ -145,9 +145,18 @@ describe('routeForPushData', () => {
 
   it('the venue type wins over a match id too', () => {
     expect(routeForPushData({ type: 'venue_new_booking', matchId: 'm1', bookingId: 'b1' })).toBe('/venue-dashboard');
-    expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09' })).toBe(
-      '/match/team-of-the-week',
-    );
+    expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09', matchId: 'm1' })).toEqual({
+      pathname: '/match/team-of-the-week',
+      params: { teamId: 't1' },
+    });
+  });
+
+  it('S14: a Team of the Week pick opens the team it names; without an id, the latest team', () => {
+    expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09' })).toEqual({
+      pathname: '/match/team-of-the-week',
+      params: { teamId: 't1' },
+    });
+    expect(routeForPushData({ type: 'team_of_the_week' })).toBe('/match/team-of-the-week');
   });
 
   it('S14: a Team of the Week nudge (premium_offers) opens Premium', () => {

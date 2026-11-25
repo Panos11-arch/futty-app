@@ -59,6 +59,11 @@ begin
   end loop;
   perform tests.act_as_postgres();
 
+  -- One nudge per week in total (Panos, 25 November): the skip scope is ''.
+  perform tests.act_as_service_role();
+  assert public.team_of_the_week_skip_scope('general', 'city', 'limassol') = '', 'one scope for the whole week';
+  perform tests.act_as_postgres();
+
   -- RLS on every new table.
   assert (select bool_and(c.relrowsecurity) from pg_class c join pg_namespace n on n.oid = c.relnamespace
           where n.nspname = 'public'

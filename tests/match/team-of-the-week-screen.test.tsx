@@ -5,7 +5,12 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import TeamOfTheWeekScreen from '@/app/match/team-of-the-week';
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() }, Stack: { Screen: () => null } }));
+let mockParams: { teamId?: string } = {};
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn() },
+  Stack: { Screen: () => null },
+  useLocalSearchParams: () => mockParams,
+}));
 jest.mock('react-native-safe-area-context', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { SafeAreaView: View };
@@ -16,10 +21,14 @@ jest.mock('@/components/ui/icon-symbol', () =>
 );
 
 const mockReload = jest.fn();
+const mockLatestArgs: unknown[] = [];
 let mockLatest: unknown = { status: 'loading', reload: mockReload };
 let mockPlayers: unknown = { status: 'loading', reload: jest.fn() };
 jest.mock('@/lib/match/use-stats', () => ({
-  useLatestTeamOfTheWeek: () => mockLatest,
+  useLatestTeamOfTheWeek: (teamId?: string) => {
+    mockLatestArgs.push(teamId);
+    return mockLatest;
+  },
   useTeamOfTheWeekPlayers: () => mockPlayers,
 }));
 
@@ -35,7 +44,25 @@ const team = {
   matches: 3,
 };
 
+beforeEach(() => {
+  mockParams = {};
+  mockLatestArgs.length = 0;
+});
+
 describe('Team of the Week screen', () => {
+  it('opened from a notification: loads the team it names', async () => {
+    mockParams = { teamId: 't9' };
+    mockLatest = { status: 'loading', reload: mockReload };
+    await render(<TeamOfTheWeekScreen />);
+    expect(mockLatestArgs).toContain('t9');
+  });
+
+  it('opened from Home or Rankings: the latest team', async () => {
+    mockLatest = { status: 'loading', reload: mockReload };
+    await render(<TeamOfTheWeekScreen />);
+    expect(mockLatestArgs.every((a) => a === undefined)).toBe(true);
+  });
+
   it('loading: a skeleton', async () => {
     mockLatest = { status: 'loading', reload: mockReload };
     await render(<TeamOfTheWeekScreen />);

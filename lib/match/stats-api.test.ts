@@ -6,6 +6,7 @@ import {
   formatRating,
   formatWeekOf,
   getLatestTeamOfTheWeek,
+  getTeamOfTheWeek,
   getTeamShape,
   getLeaderboard,
   getLeaderboardScopes,
@@ -207,6 +208,18 @@ describe('team of the week', () => {
     const failed = await getLatestTeamOfTheWeek();
     expect(failed.team).toBeNull();
     expect(failed.error).toEqual({ message: 'boom' });
+  });
+
+  it('one team by id (a notification opens it); null once it is gone; an error is passed on', async () => {
+    mockResponses = [{ data: totw({ id: 'x', area_name: 'Limassol' }), error: null }];
+    expect((await getTeamOfTheWeek('x')).team?.area_name).toBe('Limassol');
+    expect(mockCalls).toContainEqual(['from', 'team_of_the_week']);
+    expect(mockCalls).toContainEqual(['eq', 'id', 'x']);
+    expect(mockCalls).toContainEqual(['maybeSingle']);
+    mockResponses = [{ data: null, error: null }];
+    expect((await getTeamOfTheWeek('gone')).team).toBeNull();
+    mockResponses = [{ data: null, error: { message: 'boom' } }];
+    expect((await getTeamOfTheWeek('x')).error).toEqual({ message: 'boom' });
   });
 
   it('defaultTeam: latest week, General · All Cyprus, then 5, 6, 7, 9, 11', () => {

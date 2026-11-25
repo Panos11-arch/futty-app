@@ -61,8 +61,11 @@ export function routeForPushData(raw: unknown): Href {
   const conversationId = stringId(data, 'conversationId');
   if (data.type === 'message_new' && conversationId) return { pathname: '/messages/[id]', params: { id: conversationId } };
 
-  // A7: team of the week opens the week's teams.
-  if (data.type === 'team_of_the_week') return '/match/team-of-the-week';
+  // S14: a pick names one team and opens it; an older one opens the latest team.
+  if (data.type === 'team_of_the_week') {
+    const teamId = stringId(data, 'teamOfTheWeekId');
+    return teamId ? { pathname: '/match/team-of-the-week', params: { teamId } } : '/match/team-of-the-week';
+  }
   // S14: "You'd have made Team of the Week" (and any Premium and offers notice) opens Premium.
   if (data.type === 'premium_offers') return '/account/premium';
 
