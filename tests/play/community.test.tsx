@@ -14,6 +14,8 @@ const mockShareInvite = jest.fn();
 const mockListTeams = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+let mockUnread = 0;
+jest.mock('@/lib/use-messages', () => ({ useUnreadMessages: () => mockUnread }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 jest.mock('@/lib/use-contacts', () => ({ useContacts: () => ({ ...mockContacts, load: mockLoad }) }));
 jest.mock('@/lib/use-follows', () => ({
@@ -45,6 +47,20 @@ beforeEach(() => {
 });
 
 describe('Community segment', () => {
+  // S13: Messages, with the unread count, opens the inbox.
+  it('Messages opens the inbox and shows the unread count', async () => {
+    mockContacts = { status: 'loading' };
+    mockUnread = 2;
+    await render(<CommunityContent />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Messages, 2 unread' }));
+    expect(router.push).toHaveBeenCalledWith('/messages');
+    expect(screen.getByTestId('community-messages-badge', { includeHiddenElements: true })).toBeTruthy();
+    mockUnread = 0;
+    await render(<CommunityContent />);
+    expect(screen.getByRole('button', { name: 'Messages' })).toBeTruthy();
+    expect(screen.queryByTestId('community-messages-badge', { includeHiddenElements: true })).toBeNull();
+  });
+
   it('loads contacts once on open and shows a skeleton', async () => {
     mockContacts = { status: 'loading' };
     const view = await render(<CommunityContent />);

@@ -7,8 +7,10 @@ jest.mock('@/components/ui/icon-symbol', () =>
 jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
   return {
-    router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
+    router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: () => true },
     Redirect: () => null,
+    // S13: chat screens set their own header options.
+    Stack: { Screen: () => null },
     useLocalSearchParams: () => (globalThis as { mockSearchParams?: Record<string, string> }).mockSearchParams ?? {},
     useFocusEffect: (effect: () => void) => useEffect(effect, [effect]),
   };

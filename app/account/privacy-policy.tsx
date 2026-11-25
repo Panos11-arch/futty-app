@@ -206,6 +206,30 @@ function PrivacyPolicyEn() {
         A report involving a player under 18 is marked urgent and sent to the founders straight away.
       </DocBullet>
 
+      <DocHeading>Messages and friends</DocHeading>
+      <DocBullet>
+        Captains of two teams in the same league can message each other. Friends can message each
+        other while they are friends.
+      </DocBullet>
+      <DocBullet>
+        Messages are text only, up to 1,000 characters. They are stored on our servers so both sides
+        can read the chat, and so we can review a report.
+      </DocBullet>
+      <DocBullet>
+        The other side can see when a message reached your phone and when you read it.
+      </DocBullet>
+      <DocBullet>Blocking a player stops messages both ways.</DocBullet>
+      <DocBullet>
+        To stop spam, each player can send up to 30 messages a minute and 500 in any 24-hour period.
+      </DocBullet>
+      <DocBullet>
+        If you delete your account, your messages stay in the other player&apos;s chat under
+        &quot;Former player&quot;.
+      </DocBullet>
+      <DocBullet>
+        A new message sends a notification, which you can turn off in Settings.
+      </DocBullet>
+
       <DocHeading>Your choices</DocHeading>
       <DocBullet>You can edit or remove most profile fields at any time from Edit Profile.</DocBullet>
       <DocBullet>You can turn off notifications and phone number visibility at any time.</DocBullet>
@@ -450,6 +474,31 @@ function PrivacyPolicyEl() {
       <DocBullet>
         Μια αναφορά που αφορά παίκτη κάτω των 18 σημειώνεται ως επείγουσα και στέλνεται αμέσως στους
         ιδρυτές.
+      </DocBullet>
+
+      <DocHeading>Μηνύματα και φίλοι</DocHeading>
+      <DocBullet>
+        Οι αρχηγοί δύο ομάδων στο ίδιο πρωτάθλημα μπορούν να στέλνουν μηνύματα ο ένας στον άλλον. Οι
+        φίλοι μπορούν να στέλνουν μηνύματα ο ένας στον άλλον όσο είναι φίλοι.
+      </DocBullet>
+      <DocBullet>
+        Τα μηνύματα είναι μόνο κείμενο, έως 1.000 χαρακτήρες. Αποθηκεύονται στους διακομιστές μας,
+        ώστε να τα διαβάζουν και οι δύο πλευρές και να μπορούμε να εξετάσουμε μια αναφορά.
+      </DocBullet>
+      <DocBullet>
+        Η άλλη πλευρά βλέπει πότε ένα μήνυμα έφτασε στο κινητό σας και πότε το διαβάσατε.
+      </DocBullet>
+      <DocBullet>Ο αποκλεισμός ενός παίκτη σταματά τα μηνύματα και προς τις δύο κατευθύνσεις.</DocBullet>
+      <DocBullet>
+        Για την αποφυγή ανεπιθύμητων μηνυμάτων, κάθε παίκτης μπορεί να στείλει έως 30 μηνύματα το
+        λεπτό και 500 μέσα σε 24 ώρες.
+      </DocBullet>
+      <DocBullet>
+        Αν διαγράψετε τον λογαριασμό σας, τα μηνύματά σας μένουν στη συνομιλία του άλλου παίκτη ως
+        «Former player».
+      </DocBullet>
+      <DocBullet>
+        Ένα νέο μήνυμα στέλνει ειδοποίηση, την οποία μπορείτε να απενεργοποιήσετε από τις Ρυθμίσεις.
       </DocBullet>
 
       <DocHeading>Οι επιλογές σας</DocHeading>

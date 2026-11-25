@@ -14,5 +14,6 @@ executionOrder:
     - cancel
     - appearance
     - navigation
+    - messages
     - book-missing-venue
     - venue-book-and-pay

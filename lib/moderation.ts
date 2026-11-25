@@ -18,7 +18,9 @@ export async function listMyBlocks(blockerId: string) {
   return supabase.from('blocked_users').select('blocked_id').eq('blocker_id', blockerId);
 }
 
-export type ReportContext = 'player' | 'team' | 'fixture_chat';
+/** S13: 'conversation' reports a whole chat, 'message' one message (context_id
+ *  is its id); the reported player makes it urgent when they are a minor (A7). */
+export type ReportContext = 'player' | 'team' | 'fixture_chat' | 'conversation' | 'message';
 
 /** Insert-only by design (see supabase/moderation.sql) — there's nothing to
  *  read back, just a confirmation that the write succeeded. */

@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import { UnreadBadge } from '@/components/messages/unread-badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
 import { MIN_TOUCH } from '@/components/ui/foundation';
 import { IconButton } from '@/components/ui/icon-button';
+import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
@@ -24,6 +26,7 @@ import { useAuth } from '@/lib/auth';
 import { useBlocks } from '@/lib/use-blocks';
 import { useContacts } from '@/lib/use-contacts';
 import { useFollows } from '@/lib/use-follows';
+import { useUnreadMessages } from '@/lib/use-messages';
 
 type CommunityView = 'contacts' | 'teams';
 
@@ -399,6 +402,7 @@ export function CommunityContent() {
   // fetch either way — so remounting re-ran all of that from scratch on
   // every single switch back, which is what made switching feel slow.
   const [openedTeams, setOpenedTeams] = useState(false);
+  const unread = useUnreadMessages();
 
   function selectTeams() {
     setOpenedTeams(true);
@@ -407,6 +411,19 @@ export function CommunityContent() {
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
+      {/* S13: Messages, with the unread count. */}
+      <Card padded={false}>
+        <ListRow
+          testID="community-messages"
+          title="Messages"
+          leading={{ icon: 'bubble.left.fill' }}
+          trailing={<UnreadBadge count={unread} testID="community-messages-badge" />}
+          chevron
+          accessibilityLabel={unread > 0 ? `Messages, ${unread} unread` : 'Messages'}
+          onPress={() => router.push('/messages')}
+        />
+      </Card>
+
       <View style={styles.chipRow}>
         <Chip label="Contacts" selected={view === 'contacts'} onPress={() => setView('contacts')} />
         <Chip label="Teams" selected={view === 'teams'} onPress={selectTeams} />
