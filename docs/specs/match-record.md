@@ -252,6 +252,12 @@ Replaces decision 1g.4. Recorded in S0; built in S14 and shown in Rankings (S15;
    - then (an S14 assumption, flagged on PR #214) their higher rating in that team, then the smaller format, then the area name.
 7. **A skipped player** (one who would have been picked but isn't Premium) gets **one** in-app notification per week in total (decided by Panos, 25 November; `team_of_the_week_skip_scope` returns `''`): "You'd have made the <area> <format> Team of the Week (<rating>). Get Futty Premium to be eligible.", naming their best team by the same order, with their rating in that team. It opens Premium (`premium_offers`).
    - It goes out as a push only if they switched on a new **"Premium and offers"** notification setting. That setting is off by default (Apple guideline 4.5.4).
+8. **One general team per format a week** (decided by Panos, 26 November). Within the general teams of one format, a player is in at most one team a week.
+   - Teams are picked in the order **All Cyprus → city → venue**. A player already in a higher team is passed over, and the next best eligible player fills his place.
+   - Being passed over is **not a skip**: it brings no Premium nudge (item 7). A non-Premium player is still skipped (item 2) in a team he would have made, which can now be a lower team when the higher players are already picked above.
+   - **League teams and other formats are separate:** a player can be in the 5-a-side and the 7-a-side general teams and in his league's team in the same week.
+   - Two teams at the same level (two cities, or two venues) are picked in order of **more matches that week first, then the area name** (an assumption, flagged for Panos on the PR).
+   - Notifications stay one of each per week in total (items 6 and 7).
 
 ## 1l. Logging after the game, ratings and levels (S13B; decided by Panos, 21 and 22 November)
 
