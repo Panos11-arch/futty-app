@@ -7,7 +7,6 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { hairline, space } from '@/constants/futty-theme';
 import { chatHref, FORMER_PLAYER, profileHref, teamHref } from '@/lib/messages';
-import { playHref } from '@/lib/play-segments';
 import { makeStyles, useTheme } from '@/lib/theme';
 import { useInbox } from '@/lib/use-messages';
 
@@ -75,7 +74,7 @@ export default function InboxScreen() {
             <EmptyState
               icon="bubble.left.fill"
               message="No messages yet."
-              action={{ label: 'Open leagues', onPress: () => router.push(playHref('leagues')) }}
+              action={{ label: 'Open leagues', onPress: () => router.push('/leagues') }}
             />
           }
         />

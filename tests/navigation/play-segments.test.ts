@@ -1,17 +1,23 @@
-import { PLAY_SEGMENTS, parsePlaySegment, playHref } from '@/lib/play-segments';
+import { isLeaguesSegment, PLAY_SEGMENTS, parsePlaySegment, playHref } from '@/lib/play-segments';
 
 describe('Play segments', () => {
-  it('lists the three segments in order (Community is a tab since S2)', () => {
+  it('lists the two segments in order (Community is a tab since S2, Leagues its own screen since S9)', () => {
     expect(PLAY_SEGMENTS.map((s) => [s.value, s.label])).toEqual([
       ['teams', 'Teams'],
       ['matches', 'Matches'],
-      ['leagues', 'Leagues'],
     ]);
   });
 
   it('parses a known segment', () => {
-    expect(parsePlaySegment('leagues')).toBe('leagues');
     expect(parsePlaySegment('matches')).toBe('matches');
+    expect(parsePlaySegment('teams')).toBe('teams');
+  });
+
+  it('knows the old Leagues segment moved to /leagues (S9)', () => {
+    expect(isLeaguesSegment('leagues')).toBe(true);
+    expect(isLeaguesSegment(['leagues'])).toBe(true);
+    expect(isLeaguesSegment('teams')).toBe(false);
+    expect(isLeaguesSegment(undefined)).toBe(false);
   });
 
   it('defaults to teams when missing or unknown', () => {
@@ -22,11 +28,11 @@ describe('Play segments', () => {
   });
 
   it('takes the first value of a repeated param', () => {
-    expect(parsePlaySegment(['matches', 'leagues'])).toBe('matches');
+    expect(parsePlaySegment(['matches', 'teams'])).toBe('matches');
   });
 
   it('builds the Play href, keeping a team id', () => {
-    expect(playHref('leagues')).toEqual({ pathname: '/play', params: { segment: 'leagues' } });
+    expect(playHref('matches')).toEqual({ pathname: '/play', params: { segment: 'matches' } });
     expect(playHref('teams', { teamId: 't1' })).toEqual({
       pathname: '/play',
       params: { segment: 'teams', teamId: 't1' },
