@@ -407,6 +407,15 @@ Unique (`match_id`, `profile_id`) where `profile_id` is not null. RLS: select as
 
 Checked-in players are the only ones who can vote for man of the match and rate (05 sections 3 and 4), and the only ones counted in form, stats, ratings, man of the match and levels (decision 1b.2). The venue's no-show record (05 section 10; 13 "No-shows", decided 17 November) is the players holding a spot (`share_id` set, its share still in, `left_at` null) without a row here, final at `result_deadline_at`. RLS: select for match members and venue staff.
 
+**Showed up (Profile tile; decided by Panos, 26 November).** The share of this season's games where you held a spot that you turned up to: checked in ÷ (checked in + no-show + late cancel), as a whole percentage (`round`), shown as "–" until 3 games count. The season is the Cyprus calendar year, and the tile follows the Profile's format filter. Server: `my_profile_showed_up(p_format)`, the caller's own figures only.
+
+- **Checked in and no-show** count only in games that went ahead and are final: status `confirmed`, past `result_deadline_at`, and you held a spot (`match_spot_holder`). A cancelled booking or a void, no-result or not-yet-final game never gives anyone a no-show.
+- **Late cancel** (a miss): you cancelled after spec 13's free-cancellation cut-off and the server recorded it as your own `booking_cancellation_lines` row with `"window" = 'late'`. It counts once per booking, by the booking's Cyprus day. When a booker cancels the whole booking late, only the booker gets the miss; the other players' lines are `'other'`. Free-hour and middle-window cancels are not misses.
+- **Friendly games count.** **Forfeits don't count either way**, as a check-in, a no-show or a late cancel.
+- **Not recorded as late today (not counted as misses):**
+  1. A late cancel of a share with no money on it yet (a pending share, or cash not ticked): the line's `window` is null.
+  2. Leaving a Losers-pay game: `losers_pay_leave` works out the window but doesn't store it.
+
 ### 4.5 `match_result_submissions`
 
 | Column | Type | Notes |

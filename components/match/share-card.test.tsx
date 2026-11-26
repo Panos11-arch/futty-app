@@ -60,6 +60,13 @@ describe('ResultCard', () => {
     expect(text('card-motm')).toBe(booker);
   });
 
+  it('S7: futty.app at the foot of both cards', async () => {
+    await render(<ResultCard data={data()} width={360} />);
+    expect(text('card-site')).toBe('futty.app');
+    await render(<MotmCard data={data()} width={360} />);
+    expect(text('card-site')).toBe('futty.app');
+  });
+
   it('draws the wordmark in ink, not brand', async () => {
     await render(<ResultCard data={data()} width={360} />);
     expect(lines('card-wordmark')[0].props.fill).toBe(colors.ink);

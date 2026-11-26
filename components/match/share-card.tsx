@@ -55,7 +55,8 @@ export type ShareCardProps = {
   ref?: Ref<Svg>;
 };
 
-/** The white card with the wordmark at the top and the date and venue under it. */
+/** The white card with the wordmark at the top and the date and venue under it,
+ *  and futty.app at the foot (S7). */
 function Canvas({ data, width, ref, testID, children }: ShareCardProps & { testID: string; children: ReactNode }) {
   const top = EDGE + type.display.lineHeight;
   return (
@@ -73,6 +74,9 @@ function Canvas({ data, width, ref, testID, children }: ShareCardProps & { testI
         {[data.date, data.venue].filter(Boolean).join(' · ')}
       </Line>
       {children}
+      <Line y={CARD.height - space.md} font={type.caption} fill={colors.inkMuted} testID="card-site">
+        futty.app
+      </Line>
     </Svg>
   );
 }
@@ -110,7 +114,8 @@ export function ResultCard(props: ShareCardProps) {
   const labelA = 200;
   const scoreY = labelA + space.xl + SCORE.lineHeight;
   const labelB = scoreY + space.lg + type.title.lineHeight;
-  const motmY = CARD.height - EDGE - type.headline.lineHeight;
+  // Above the futty.app line at the foot of the card.
+  const motmY = CARD.height - EDGE - type.headline.lineHeight - type.caption.lineHeight;
   return (
     <Canvas {...props} testID="result-card">
       <Line y={labelA} font={type.title} testID="card-side-a">

@@ -24,9 +24,10 @@ export function tabAccessibilityLabel(title: string, index: number, os: typeof P
 
 /** The title of the tabs screen as a pushed screen's back button reads it:
  *  the tab it goes back to, never the route group's name "(tabs)". The
- *  hidden team and leagues routes redirect to Play. */
+ *  hidden team route redirects to Play; leagues is its own screen (S9). */
 export function tabsBackTitle(focusedRoute: string | undefined): string {
-  if (focusedRoute === 'play' || focusedRoute === 'team' || focusedRoute === 'leagues') return 'Play';
+  if (focusedRoute === 'play' || focusedRoute === 'team') return 'Play';
+  if (focusedRoute === 'leagues') return 'Leagues';
   if (focusedRoute === 'community') return 'Community';
   if (focusedRoute === 'rankings') return 'Rankings';
   if (focusedRoute === 'profile') return 'Profile';

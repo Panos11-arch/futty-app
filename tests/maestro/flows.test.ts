@@ -73,7 +73,7 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the fourteen journeys and their subflows', () => {
+  it('has the sixteen journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
@@ -81,13 +81,16 @@ describe('.maestro', () => {
       'flows/book-and-pay.yaml',
       'flows/book-missing-venue.yaml',
       'flows/cancel.yaml',
+      'flows/community.yaml',
       'flows/edit-avatar.yaml',
       'flows/find-match.yaml',
       'flows/futty-ai.yaml',
+      'flows/leagues.yaml',
       'flows/log-score.yaml',
       'flows/messages.yaml',
       'flows/navigation.yaml',
       'flows/player-card.yaml',
+      'flows/profile.yaml',
       'flows/sign-in.yaml',
       'flows/venue-book-and-pay.yaml',
       'subflows/open-my-booking.yaml',
@@ -107,7 +110,7 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card', 'block-clashes']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card', 'block-clashes', 'community']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }

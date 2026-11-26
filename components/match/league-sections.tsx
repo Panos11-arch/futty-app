@@ -1,31 +1,28 @@
+// The league standings and join flow, moved unchanged from the old Play →
+// Leagues screen (app/(tabs)/leagues.tsx before S9). The temporary league
+// page (app/(tabs)/leagues/[id].tsx) shows them until S10 builds the
+// competition page.
 import type { PostgrestError } from '@supabase/supabase-js';
-import { Redirect, router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { Chip } from '@/components/chip';
-import { FixtureScoreEntry } from '@/components/match/fixture-score-entry';
 import { MessageCaptainButton } from '@/components/messages/message-captain';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
 import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ListRow } from '@/components/ui/list-row';
-import { SectionHeader } from '@/components/ui/section-header';
 import { SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { TextField } from '@/components/ui/text-field';
 import { hairline, space } from '@/constants/futty-theme';
-import { makeStyles, useTheme } from '@/lib/theme';
-import { CAPACITY_OPTIONS } from '@/lib/booking';
-import { canLogFixtureScore, formatFixtureWhen } from '@/lib/fixtures';
 import { describeLeagueError } from '@/lib/league-errors';
-import { playHref } from '@/lib/play-segments';
-import { leagueFormatOpen } from '@/lib/premium';
 import { registerTeamForLeague, startLeagueSeason, type League } from '@/lib/leagues';
+import { leagueFormatOpen } from '@/lib/premium';
 import { supabase } from '@/lib/supabase';
 import {
   createTeam,
@@ -37,13 +34,11 @@ import {
   type RosterMember,
   type Team,
 } from '@/lib/teams';
-import { useMyCaptainTeamIds, useMyFixtures } from '@/lib/use-fixtures';
-import { useLeagues } from '@/lib/use-leagues';
+import { makeStyles, useTheme } from '@/lib/theme';
 import { useLeagueStandings, type StandingsRow } from '@/lib/use-league-standings';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
 
-const FORMATS = CAPACITY_OPTIONS.map((option) => option.format);
 const CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'];
 
 const STAT_COLUMNS = ['P', 'W', 'D', 'L', 'F', 'A', 'GD', 'Pts'] as const;
@@ -440,94 +435,16 @@ function JoinLeagueControl({
   );
 }
 
-/** Just the next fixture, plus a link to the full list (app/upcoming-fixtures.tsx)
- *  — the format/city pickers above only scope the standings view, so this
- *  stays a simple teaser rather than repeating the whole fixtures UI here. */
-function FixturesSection() {
+/** An island-wide (standard) league: its table and the join flow. */
+export function StandardLeagueSection({ league, myTeamIds }: { league: League; myTeamIds: Set<string> }) {
   const styles = useStyles();
-  const fixtures = useMyFixtures();
-  const myCaptainTeamIds = useMyCaptainTeamIds();
-
-  // useMyFixtures only fetches on mount — this tab stays mounted underneath
-  // when Matchmaking is pushed on top of it, so without this a date agreed
-  // there wouldn't show here until something else happened to trigger a
-  // reload. Same fix as app/upcoming-fixtures.tsx.
-  useFocusEffect(
-    useCallback(() => {
-      fixtures.reload();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-  );
-
-  if (fixtures.status === 'loading') return <SkeletonText lines={2} />;
-  if (fixtures.status === 'error') {
-    return (
-      <Banner
-        tone="danger"
-        message={`Could not load fixtures: ${fixtures.message}`}
-        action={{ label: 'Try again', onPress: fixtures.reload }}
-      />
-    );
-  }
-
-  // Completed fixtures aren't "upcoming" — excluded so a past result can't
-  // outrank a not-yet-scheduled fixture just because it has an earlier date.
-  const upcoming = fixtures.fixtures.filter((f) => f.status !== 'completed');
-
-  if (upcoming.length === 0) {
-    return <EmptyState icon="calendar" message="No upcoming fixtures yet." />;
-  }
-
-  const next = upcoming[0];
-  const when = formatFixtureWhen(next);
-  const statusLabel =
-    next.status === 'agreed'
-      ? `${when ?? 'Date tbc'} · ${next.venue?.name ?? 'pitch tbc'}`
-      : next.status === 'proposed'
-        ? 'Awaiting agreement'
-        : 'Not yet scheduled';
-
-  return (
-    <View style={styles.section}>
-      <Card style={styles.section}>
-        <Text variant="headline">
-          {next.home_team?.name ?? 'Unknown team'} vs {next.away_team?.name ?? 'Unknown team'}
-        </Text>
-        <Text variant="callout" tone="inkMuted" tabular>
-          {statusLabel}
-        </Text>
-        {canLogFixtureScore(next, myCaptainTeamIds) ? (
-          <FixtureScoreEntry fixture={next} onSubmitted={fixtures.reload} />
-        ) : null}
-      </Card>
-
-      <Button label="Upcoming fixtures" variant="plain" onPress={() => router.push('/upcoming-fixtures')} />
-    </View>
-  );
-}
-
-function StandardLeagueSection({
-  format,
-  leagues,
-  myTeamIds,
-}: {
-  format: string;
-  leagues: League[];
-  myTeamIds: Set<string>;
-}) {
-  const styles = useStyles();
-  const league = leagues.find((l) => l.format === format && l.scope === 'Island-wide');
-  const standings = useLeagueStandings(league?.id ?? '');
-
-  if (!league) {
-    return <EmptyState icon="trophy.fill" message={`No ${format} league found yet.`} />;
-  }
+  const format = league.format;
+  const standings = useLeagueStandings(league.id);
 
   const registeredTeamIds = new Set(standings.status === 'ready' ? standings.rows.map((r) => r.team_id) : []);
 
   return (
     <View style={styles.section}>
-      <Text variant="headline">{league.name}</Text>
       {standings.status === 'loading' ? <SkeletonText lines={3} /> : null}
       {standings.status === 'error' ? (
         <Banner
@@ -558,22 +475,23 @@ function StandardLeagueSection({
   );
 }
 
-function OpenLeagueSection({
-  format,
-  city,
+/** A city's Open League hub: its table (or divisions and waiting pool),
+ *  and the join flow. */
+export function OpenLeagueSection({
+  hub,
   leagues,
   reloadLeagues,
   myTeamIds,
 }: {
-  format: string;
-  city: string;
+  hub: League;
   leagues: League[];
   reloadLeagues: () => void;
   myTeamIds: Set<string>;
 }) {
   const styles = useStyles();
-  const hub = leagues.find((l) => l.format === format && l.scope === city && !l.parent_league_id);
-  const standings = useLeagueStandings(hub?.id ?? '');
+  const format = hub.format;
+  const city = hub.scope.trim();
+  const standings = useLeagueStandings(hub.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Every team already placed anywhere under this hub — the pool AND every
@@ -581,11 +499,10 @@ function OpenLeagueSection({
   const [treeTeamIds, setTreeTeamIds] = useState<Set<string>>(new Set());
 
   const divisions = leagues
-    .filter((l) => hub && l.parent_league_id === hub.id)
+    .filter((l) => l.parent_league_id === hub.id)
     .sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
-    if (!hub) return;
     const divisionIds = divisions.map((d) => d.id);
     supabase
       .from('league_teams')
@@ -595,11 +512,7 @@ function OpenLeagueSection({
     // divisions is derived fresh from `leagues` each render; comparing its ids
     // (not the array reference) is what should actually trigger a refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hub, divisions.map((d) => d.id).join(',')]);
-
-  if (!hub) {
-    return <EmptyState icon="trophy.fill" message={`No ${city} league found yet.`} />;
-  }
+  }, [hub.id, divisions.map((d) => d.id).join(',')]);
 
   async function runAction(action: () => Promise<{ error: PostgrestError | null }>) {
     setBusy(true);
@@ -616,7 +529,6 @@ function OpenLeagueSection({
 
   return (
     <View style={styles.section}>
-      <Text variant="headline">{hub.name}</Text>
       <Text variant="callout" tone="inkMuted" tabular>
         {hub.stage === 'signup' ? 'Open for signups' : hub.stage === 'season' ? 'Season in progress' : 'In divisions'}
         {hub.capacity ? ` · ${hub.capacity} spots` : ''}
@@ -689,91 +601,6 @@ function OpenLeagueSection({
       <MessageCaptainButton leagueId={hub.id} />
     </View>
   );
-}
-
-/** Leagues, shown in Play's Leagues segment (app/(tabs)/play.tsx). Scrolls
- *  itself. */
-export function LeaguesContent() {
-  const styles = useStyles();
-  const leaguesState = useLeagues();
-  const [format, setFormat] = useState(FORMATS[0]);
-  const [city, setCity] = useState(CITIES[0]);
-
-  const leagues = leaguesState.status === 'ready' ? leaguesState.leagues : [];
-  // Table rows are highlighted only for the user's own teams (Anghelo, #93);
-  // nothing while those are loading or failed to load.
-  const myTeams = useMyTeams();
-  const myTeamIds = new Set(myTeams.status === 'ready' ? myTeams.teams.map(({ team }) => team.id) : []);
-
-  return (
-    <ScrollView style={styles.flex} contentContainerStyle={styles.content}>
-      <Card padded={false}>
-        <ListRow
-          title="Matchmaking"
-          leading={{ icon: 'calendar' }}
-          chevron
-          onPress={() => router.push('/matchmaking')}
-        />
-      </Card>
-
-      <View style={styles.section}>
-        <SectionHeader title="Format" />
-        <View style={styles.wrapRow}>
-          {FORMATS.map((f) => (
-            <Chip key={f} label={f} selected={f === format} onPress={() => setFormat(f)} />
-          ))}
-        </View>
-      </View>
-
-      {leaguesState.status === 'loading' ? (
-        <Card testID="leagues-skeleton">
-          <SkeletonText lines={4} />
-        </Card>
-      ) : null}
-      {leaguesState.status === 'error' ? (
-        <Banner
-          tone="danger"
-          message={`Could not load leagues: ${leaguesState.message}`}
-          action={{ label: 'Try again', onPress: leaguesState.reload }}
-        />
-      ) : null}
-
-      {leaguesState.status === 'ready' ? (
-        <>
-          <View style={styles.section}>
-            <SectionHeader title="Island-wide league" />
-            <StandardLeagueSection format={format} leagues={leagues} myTeamIds={myTeamIds} />
-          </View>
-
-          <View style={styles.section}>
-            <SectionHeader title="Open League city" />
-            <View style={styles.wrapRow}>
-              {CITIES.map((c) => (
-                <Chip key={c} label={c} selected={c === city} onPress={() => setCity(c)} />
-              ))}
-            </View>
-            <OpenLeagueSection
-              format={format}
-              city={city}
-              leagues={leagues}
-              reloadLeagues={leaguesState.reload}
-              myTeamIds={myTeamIds}
-            />
-          </View>
-        </>
-      ) : null}
-
-      <View style={styles.section}>
-        <SectionHeader title="Your fixtures" />
-        <FixturesSection />
-      </View>
-    </ScrollView>
-  );
-}
-
-/** /leagues is no longer a tab: it opens Play on Leagues. */
-export default function LeaguesRoute() {
-  return <Redirect href={playHref('leagues')} />;
 }
 
 const useStyles = makeStyles(({ colors, type }) => ({

@@ -5,3 +5,5 @@
   Content-Type: application/json
 /.well-known/assetlinks.json
   Content-Type: application/json
+/app-ads.txt
+  Content-Type: text/plain; charset=utf-8

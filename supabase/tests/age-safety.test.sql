@@ -371,7 +371,7 @@ begin
   perform tests.join_team(t_almost, almost_cap, 'captain');
 
   insert into public.leagues (format, scope, capacity, name) values ('5-a-side', 'city', 8, 'Age League')
-  on conflict (format, scope) do update set name = excluded.name
+  on conflict (format, scope) where parent_league_id is null do update set name = excluded.name
   returning id into v_league;
   insert into public.league_fixtures (league_id, home_team_id, away_team_id) values (v_league, t_adult, t_minor)
   returning id into f_mixed;
@@ -435,7 +435,7 @@ begin
   perform tests.join_team(t_young, young, 'captain');
   perform tests.join_team(t_adult, adult, 'captain');
   insert into public.leagues (format, scope, capacity, name) values ('5-a-side', 'city', 8, 'Locked League')
-  on conflict (format, scope) do update set name = excluded.name
+  on conflict (format, scope) where parent_league_id is null do update set name = excluded.name
   returning id into v_league;
   insert into public.league_fixtures (league_id, home_team_id, away_team_id) values (v_league, t_young, t_adult)
   returning id into v_fixture;
@@ -464,7 +464,7 @@ begin
   perform tests.join_team(t_adult, adult, 'captain');
   perform tests.join_team(t_minor, minor, 'captain');
   insert into public.leagues (format, scope, capacity, name) values ('5-a-side', 'city', 8, 'Report League')
-  on conflict (format, scope) do update set name = excluded.name
+  on conflict (format, scope) where parent_league_id is null do update set name = excluded.name
   returning id into v_league;
   insert into public.league_fixtures (league_id, home_team_id, away_team_id) values (v_league, t_adult, t_minor)
   returning id into v_fixture;
