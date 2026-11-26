@@ -102,6 +102,34 @@ describe('NextBookingCard', () => {
     expect(screen.getByText('NC')).toBeTruthy();
   });
 
+  it('shows the venue photo when there is one (the default)', async () => {
+    await render(
+      <NextBookingCard booking={booking} venue={{ ...venue, photoUrl: 'https://example.com/v.jpg' }} onPress={jest.fn()} />,
+    );
+    expect(screen.getByLabelText('Photo of Nuevo Campo')).toBeTruthy();
+    expect(screen.queryByTestId('next-game-photo-placeholder')).toBeNull();
+  });
+
+  // Home asks for no photo block (image 01; Dimitris, 26 November).
+  it.each([null, 'https://example.com/v.jpg'])('showPhoto false: no photo and no placeholder (photo %s)', async (photoUrl) => {
+    await render(
+      <NextBookingCard booking={booking} venue={{ ...venue, photoUrl }} onPress={jest.fn()} showPhoto={false} />,
+    );
+    expect(screen.queryByTestId('next-game-photo-placeholder')).toBeNull();
+    expect(screen.queryByLabelText('Photo of Nuevo Campo')).toBeNull();
+    expect(screen.queryByText('NC')).toBeNull();
+    expect(screen.getByText('Nuevo Campo')).toBeTruthy();
+    expect(screen.getByText('Sat 14 Nov · 19:00–20:00')).toBeTruthy();
+  });
+
+  it('showPhoto false still shows who’s in', async () => {
+    mockRpc.mockImplementation((fn: string) =>
+      Promise.resolve(fn === 'booking_detail' ? { data: { roster }, error: null } : { data: { roster: [] }, error: null }),
+    );
+    await render(<NextBookingCard booking={booking} venue={venue} onPress={jest.fn()} showPhoto={false} />);
+    await waitFor(() => expect(screen.getByTestId('next-game-roster')).toBeTruthy());
+  });
+
   it('copes with an unknown venue', async () => {
     await render(<NextBookingCard booking={booking} venue={null} onPress={jest.fn()} />);
     expect(screen.getByText('Booked venue')).toBeTruthy();

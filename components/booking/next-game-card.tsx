@@ -37,6 +37,9 @@ export type NextBookingCardProps = {
   onPress?: () => void;
   /** Weather chip slot (P11). Nothing renders until one is passed in. */
   weather?: ReactNode;
+  /** The venue photo block (or its initials). Home turns it off (image 01;
+   *  asked by Dimitris, 26 November); every other screen keeps it. */
+  showPhoto?: boolean;
   testID?: string;
 };
 
@@ -47,7 +50,7 @@ export function bookingWhen(booking: Pick<MyBooking, 'booking_day' | 'start_time
   return `${formatMatchDate(start)} · ${formatKickoff(start)}–${formatKickoff(end)}`;
 }
 
-export function NextBookingCard({ booking, venue, onPress, weather, testID }: NextBookingCardProps) {
+export function NextBookingCard({ booking, venue, onPress, weather, showPhoto = true, testID }: NextBookingCardProps) {
   const styles = useStyles();
   const name = venue?.name ?? 'Booked venue';
   const when = bookingWhen(booking);
@@ -68,7 +71,7 @@ export function NextBookingCard({ booking, venue, onPress, weather, testID }: Ne
       onPress={onPress ?? (() => openBookingDetail(booking.id, router))}
       accessibilityLabel={`Next game, ${name}, ${when}`}
     >
-      {venue?.photoUrl ? (
+      {!showPhoto ? null : venue?.photoUrl ? (
         <Image source={{ uri: venue.photoUrl }} contentFit="cover" accessibilityLabel={`Photo of ${name}`} style={styles.photo} />
       ) : (
         <View testID="next-game-photo-placeholder" style={[styles.photo, styles.placeholder]}>
