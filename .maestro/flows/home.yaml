@@ -1,0 +1,83 @@
+# Journey (S3): Home. The greeting and the four quick actions show, each
+# action opens its screen (Leagues and Join an event open Leagues until S9 and
+# S10B), and a tap on the rotating banner opens the slide it is showing.
+# Sections with nothing to show stay hidden, so this flow only checks what
+# the seeded e2e login always sees.
+appId: com.panosalepis.futtyapp
+name: home
+tags:
+  - e2e
+  - home
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- assertVisible:
+    id: home-greeting
+- takeScreenshot: home-top-${PLATFORM}
+
+# ---- Quick actions ---------------------------------------------------------
+- tapOn:
+    id: tab-book
+- assertVisible:
+    id: book-search-field
+- back
+- assertVisible:
+    id: home-screen
+
+- tapOn:
+    id: home-action-find-match
+- extendedWaitUntil:
+    visible:
+      id: find-match-screen
+    timeout: 20000
+- back
+- assertVisible:
+    id: home-screen
+
+# /leagues opens Play on its Leagues segment until S9.
+- tapOn:
+    id: home-action-leagues
+- assertVisible:
+    id: play-screen
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+
+- tapOn:
+    id: home-action-event
+- assertVisible:
+    id: play-screen
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+
+# ---- Rotating banner -------------------------------------------------------
+- scrollUntilVisible:
+    element:
+      id: home-banner
+    direction: DOWN
+- takeScreenshot: home-banner-${PLATFORM}
+# The banner moves every 5 seconds, so tap whichever slide is showing: each
+# one leaves Home for its screen.
+- tapOn:
+    id: home-banner-list
+- assertNotVisible:
+    id: home-greeting
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- assertVisible:
+    id: home-screen
+- takeScreenshot: home-${PLATFORM}
