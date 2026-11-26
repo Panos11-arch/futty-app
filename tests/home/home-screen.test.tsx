@@ -3,11 +3,13 @@ import '../navigation/mocks';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import HomeScreen from '@/app/(tabs)/index';
-import type { RecentResult } from '@/lib/use-recent-results';
+import { UPCOMING_SHOWN } from '@/components/home/upcoming-matches';
+import type { MatchCard } from '@/lib/find-match';
+import type { FeaturedEventState } from '@/lib/use-featured-event';
 import { type Owed, type OwedDebt, type OwedPayment, paymentSentence } from '@/lib/use-owed';
 
 type HookState = { status: string; [key: string]: unknown };
@@ -15,14 +17,15 @@ const mockReloads = {
   bookings: jest.fn(),
   unscored: jest.fn(),
   venues: jest.fn(),
-  posts: jest.fn(),
   friendly: jest.fn(),
   fixtures: jest.fn(),
-  results: jest.fn(),
 };
 let mockBookings: HookState;
 let mockVenues: HookState;
-let mockPosts: HookState;
+// S3: Games needing players come from Find a match (find_matches), the
+// featured event from lib/use-featured-event.ts.
+let mockGames: MatchCard[] = [];
+let mockFeatured: FeaturedEventState = { status: 'ready', event: null };
 let mockUnscored: { id: string; venue_id: string; booking_day: string; start_time: string }[] = [];
 let mockFriendlies: Record<string, unknown>[] = [];
 let mockLinks: { bookings: Map<string, string>; friendlies: Map<string, string> } = { bookings: new Map(), friendlies: new Map() };
@@ -39,7 +42,6 @@ const mockReloadCheck = jest.fn();
 const mockReloadLinks = jest.fn();
 /** Every candidate list Home passed to useMatchLinks, in render order. */
 let mockLinkCandidates: { bookingIds?: string[] }[] = [];
-let mockRecent: RecentResult[] = [];
 const nothingOwed: Owed = { blocked: false, debt_cents: 0, debts: [], payments: [] };
 let mockOwedState: { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; data: Owed } = {
   status: 'ready',
@@ -63,16 +65,17 @@ jest.mock('@/lib/use-my-bookings', () => ({
       : { status: mockUnscoredStatus, message: 'offline', reload: mockReloads.unscored },
 }));
 jest.mock('@/lib/use-venues', () => ({ useVenues: () => ({ ...mockVenues, cities: [], reload: mockReloads.venues }) }));
-jest.mock('@/lib/use-squad-posts', () => ({ useSquadPosts: () => ({ ...mockPosts, reload: mockReloads.posts }) }));
+jest.mock('@/lib/find-match', () => ({
+  ...jest.requireActual('@/lib/find-match'),
+  fetchMatches: () => Promise.resolve(mockGames),
+}));
+jest.mock('@/lib/use-featured-event', () => ({ useFeaturedEvent: () => ({ ...mockFeatured, reload: jest.fn() }) }));
 jest.mock('@/lib/use-friendly-matches', () => ({
   useMyFriendlyMatches: () => ({ status: 'ready', matches: mockFriendlies, reload: mockReloads.friendly }),
 }));
 jest.mock('@/lib/use-fixtures', () => ({
   useMyFixtures: () => ({ status: 'ready', fixtures: [], reload: mockReloads.fixtures }),
   useMyCaptainTeamIds: () => [],
-}));
-jest.mock('@/lib/use-recent-results', () => ({
-  useRecentResults: () => ({ status: 'ready', results: mockRecent, reload: mockReloads.results }),
 }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
 jest.mock('@/components/booking-result-form', () => {
@@ -102,8 +105,6 @@ jest.mock('@/lib/match/use-match-result', () => ({
   },
 }));
 jest.mock('@/components/fixture-score-form', () => ({ FixtureScoreForm: () => null }));
-// A7's team of the week has its own tests (components/match/team-of-the-week-home.test.tsx).
-jest.mock('@/components/match/team-of-the-week-home', () => ({ TeamOfTheWeekHome: () => null }));
 const mockStartingLevelOffer = jest.fn();
 jest.mock('@/lib/match/use-levels', () => ({ useStartingLevelOffer: () => mockStartingLevelOffer() }));
 // Only the hook is faked: the banner's words come from the real helpers.
@@ -133,24 +134,46 @@ const venue = {
   price_per_pitch_hour: null,
   is_live: true,
 };
-const post = {
-  id: 'p1',
-  venue_id: 'v1',
+const game: MatchCard = {
+  post_id: 'p1',
+  kind: 'players',
   // 17:30 UTC on 14 Nov is 19:30 in Cyprus (UTC+2 in winter).
   scheduled_at: '2026-11-14T17:30:00.000Z',
   format: '5-a-side',
-  type: 'players',
-  level: null,
-  level_needed: 'Intermediate',
-  position_needed: null,
-  players_needed: 3,
-  joined_count: 1,
-  status: 'open',
+  venue_id: 'v1',
   venue_name: 'English School',
   venue_city: 'Nicosia',
+  organiser_id: 'u1',
+  organiser_name: 'Maria',
+  team_id: null,
+  team_name: null,
+  players_in: 8,
+  capacity: 10,
+  level_min: null,
+  level_max: null,
+  people: [],
+  day: '2026-11-14',
+  time: '19:30',
+  priceCents: 680,
+  v2: true,
+  mine: false,
+};
+const owedPayment: OwedPayment = {
+  kind: 'payment_due',
+  booking_id: 'b1',
+  share_id: null,
+  venue_name: 'English School',
+  booking_day: '2026-11-20',
+  start_time: '19:00:00',
+  amount_cents: 680,
 };
 
-describe('Home', () => {
+/** The rendered tree as text, for order checks (the refresh control's props point back into React). */
+function treeText() {
+  return JSON.stringify(screen.toJSON(), (key, value) => (key === 'refreshControl' ? undefined : value));
+}
+
+describe('Home (S3, image 01)', () => {
   const originalTz = process.env.TZ;
   beforeAll(() => {
     process.env.TZ = 'America/New_York';
@@ -162,7 +185,9 @@ describe('Home', () => {
   beforeEach(() => {
     mockBookings = { status: 'ready', bookings: [] };
     mockVenues = { status: 'ready', venues: [venue] };
-    mockPosts = { status: 'ready', posts: [] };
+    mockGames = [];
+    mockFeatured = { status: 'ready', event: null };
+    mockOwedState = { status: 'ready', data: nothingOwed };
     jest.mocked(router.push).mockClear();
     Object.values(mockReloads).forEach((fn) => fn.mockClear());
   });
@@ -186,104 +211,141 @@ describe('Home', () => {
     expect(mockStartingLevelOffer).toHaveBeenCalled();
   });
 
-  it('shows skeletons while the next game loads', async () => {
+  it('greets, then the four quick actions', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-greeting')).toHaveTextContent('Ready for your next game?');
+    expect(['tab-book', 'home-action-find-match', 'home-action-leagues', 'home-action-event'].map((id) => screen.getByTestId(id).props.accessibilityLabel)).toEqual([
+      'Book a pitch',
+      'Find a match',
+      'Leagues',
+      'Join an event',
+    ]);
+  });
+
+  it('nothing booked, no game, no event: only the greeting, the actions and the banner', async () => {
+    await render(<HomeScreen />);
+    for (const title of ['Upcoming matches', 'Games needing players', 'Featured event', 'Log the score', 'Check the score']) {
+      expect(screen.queryByText(title)).toBeNull();
+    }
+    expect(screen.queryByText('No games booked')).toBeNull();
+    expect(screen.getByTestId('home-banner')).toBeTruthy();
+  });
+
+  it('never shows a weather card, a venues row or Futty Games', async () => {
+    await render(<HomeScreen />);
+    expect(screen.queryByText('Venues')).toBeNull();
+    expect(screen.queryByText('Futty Games')).toBeNull();
+    expect(screen.queryByTestId('next-game-weather')).toBeNull();
+  });
+
+  it('shows skeletons while the upcoming matches load', async () => {
     mockBookings = { status: 'loading' };
     await render(<HomeScreen />);
     expect(screen.getByTestId('next-game-skeleton')).toBeTruthy();
-    expect(screen.queryByText('No games booked')).toBeNull();
   });
 
-  it('shows an empty state with Book a pitch when nothing is booked', async () => {
+  it('shows the next games in Cyprus time; a card opens its booking', async () => {
+    mockBookings = { status: 'ready', bookings: [booking, { ...booking, id: 'b2', booking_day: '2026-11-15' }] };
     await render(<HomeScreen />);
-    expect(screen.getByText('No games booked')).toBeTruthy();
-    await fireEvent.press(screen.getAllByRole('button', { name: 'Book a pitch' })[0]);
-    expect(router.push).toHaveBeenCalledWith('/book');
-  });
-
-  it('shows the next game in Cyprus time and opens My bookings', async () => {
-    mockBookings = { status: 'ready', bookings: [booking] };
-    await render(<HomeScreen />);
+    expect(screen.getByText('Upcoming matches')).toBeTruthy();
     expect(screen.getByText('Sat 14 Nov · 19:00–20:00')).toBeTruthy();
-    expect(screen.queryByText('No games booked')).toBeNull();
-    await fireEvent.press(screen.getByRole('button', { name: /Next game, Nuevo Campo/ }));
+    expect(screen.getByText('Sun 15 Nov · 19:00–20:00')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('home-upcoming-b1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } });
+  });
+
+  it(`shows at most ${UPCOMING_SHOWN}; See all opens My bookings`, async () => {
+    const many = ['b1', 'b2', 'b3', 'b4'].map((id, i) => ({ ...booking, id, booking_day: `2026-11-${14 + i}` }));
+    mockBookings = { status: 'ready', bookings: many };
+    await render(<HomeScreen />);
+    expect(screen.queryByTestId('home-upcoming-b4')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'See all' }));
     expect(router.push).toHaveBeenCalledWith('/my-bookings');
   });
 
-  it('lists the other upcoming bookings under the next game', async () => {
-    mockBookings = {
-      status: 'ready',
-      bookings: [booking, { ...booking, id: 'b2', booking_day: '2026-11-15' }],
-    };
+  it('no See all when every booking is shown', async () => {
+    mockBookings = { status: 'ready', bookings: [booking] };
     await render(<HomeScreen />);
-    expect(screen.getByText('Also booked')).toBeTruthy();
-    expect(screen.getByText('Sun 15 Nov · 19:00–20:00')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'See all' })).toBeNull();
   });
 
   it('shows an inline error with retry when bookings fail to load', async () => {
     mockBookings = { status: 'error', message: 'offline' };
     await render(<HomeScreen />);
+    expect(screen.getByText('Could not load your bookings.')).toBeTruthy();
     mockReloads.bookings.mockClear();
-    await fireEvent.press(screen.getAllByRole('button', { name: 'Try again' })[0]);
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(mockReloads.bookings).toHaveBeenCalled();
   });
 
-  it('has the two quick actions', async () => {
+  it('shows games needing players and the featured event when there are some', async () => {
+    mockGames = [game];
+    mockFeatured = {
+      status: 'ready',
+      event: { id: 'l1', kind: 'league', name: 'Limassol League', format: '5-a-side', startDate: '2026-12-05' },
+    };
+    await render(<HomeScreen />);
+    expect(await screen.findByText('Games needing players')).toBeTruthy();
+    expect(screen.getByTestId('home-game-p1')).toBeTruthy();
+    expect(screen.getByText('Featured event')).toBeTruthy();
+    expect(screen.getByTestId('home-featured-event')).toHaveTextContent(/Limassol League/);
+  });
+
+  // spec 15 section 0.6 order; the owed banner sits under the quick actions so
+  // money owed always shows (not in image 01).
+  it('keeps the agreed order', async () => {
     mockBookings = { status: 'ready', bookings: [booking] };
+    mockOpenMatches = [toLog()];
+    mockGames = [game];
+    mockFeatured = {
+      status: 'ready',
+      event: { id: 'l1', kind: 'league', name: 'Limassol League', format: '5-a-side', startDate: '2026-12-05' },
+    };
+    mockOwedState = { status: 'ready', data: { ...nothingOwed, payments: [owedPayment] } };
     await render(<HomeScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Book a pitch' }));
-    expect(router.push).toHaveBeenCalledWith('/book');
-    await fireEvent.press(screen.getAllByRole('button', { name: 'Find a game' })[0]);
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/squads', params: { view: 'players' } });
-  });
-
-  it('lists venues, opening Book', async () => {
-    await render(<HomeScreen />);
-    expect(screen.getByText('Venues')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Nuevo Campo'));
-    expect(router.push).toHaveBeenCalledWith('/book');
-  });
-
-  it('lists need players games with level and Cyprus time', async () => {
-    mockPosts = { status: 'ready', posts: [post, { ...post, id: 'full', joined_count: 3 }] };
-    await render(<HomeScreen />);
-    expect(screen.getByText('English School')).toBeTruthy();
-    expect(screen.getByText('Intermediate · Sat 14 Nov · 19:30')).toBeTruthy();
-    expect(screen.getAllByText('English School')).toHaveLength(1);
-    await fireEvent.press(screen.getByText('English School'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/join-squad-post', params: { postId: 'p1' } });
-  });
-
-  it('retries need players games inline', async () => {
-    mockPosts = { status: 'error', message: 'offline' };
-    await render(<HomeScreen />);
-    expect(screen.getByText('Could not load games looking for players.')).toBeTruthy();
-  });
-
-  it('each Book a pitch opens /book exactly once per tap', async () => {
-    await render(<HomeScreen />);
-    const buttons = screen.getAllByRole('button', { name: 'Book a pitch' });
-    expect(buttons).toHaveLength(2);
-    for (const button of buttons) {
-      jest.mocked(router.push).mockClear();
-      await fireEvent.press(button);
-      expect(router.push).toHaveBeenCalledTimes(1);
-      expect(router.push).toHaveBeenCalledWith('/book');
-    }
+    await screen.findByTestId('home-game-p1');
+    const tree = treeText();
+    const order = [
+      '"home-greeting"',
+      '"tab-book"',
+      '"owed-banner"',
+      '"home-log-score-section"',
+      '"home-upcoming"',
+      '"home-games-row"',
+      '"home-featured-event"',
+      '"home-banner"',
+    ].map((id) => tree.indexOf(id));
+    expect(order.every((i) => i > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    mockOpenMatches = [];
   });
 
   // A tap is lost when the button moves under the finger (Pressable cancels
-  // the press). Nothing that loads may sit above the quick actions: they come
-  // first, then the owed banner, then the next game.
+  // the press). Nothing that loads may sit above the quick actions.
   it('the quick actions come first, above the owed banner and the loading next game', async () => {
     mockBookings = { status: 'loading' };
-    mockOwedState = { status: 'ready', data: { ...nothingOwed, payments: [{ kind: 'payment_due', booking_id: 'b1', share_id: null, venue_name: 'English School', booking_day: '2026-11-20', start_time: '19:00:00', amount_cents: 680 }] } };
+    mockOwedState = { status: 'ready', data: { ...nothingOwed, payments: [owedPayment] } };
     await render(<HomeScreen />);
-    const tree = JSON.stringify(screen.toJSON());
+    const tree = treeText();
     const quick = tree.indexOf('"Book a pitch"');
     expect(quick).toBeGreaterThan(-1);
     expect(quick).toBeLessThan(tree.indexOf('"owed-banner"'));
     expect(tree.indexOf('"owed-banner"')).toBeLessThan(tree.indexOf('"next-game-skeleton"'));
-    mockOwedState = { status: 'ready', data: nothingOwed };
+  });
+
+  it('pull to refresh reloads the sections', async () => {
+    mockBookings = { status: 'ready', bookings: [booking] };
+    await render(<HomeScreen />);
+    mockReloads.bookings.mockClear();
+    mockReloadOwed.mockClear();
+    mockReloadOpen.mockClear();
+    const scroll = screen.getByTestId('home-scroll');
+    await act(async () => {
+      scroll.props.refreshControl.props.onRefresh();
+    });
+    expect(mockReloads.bookings).toHaveBeenCalled();
+    expect(mockReloadOwed).toHaveBeenCalled();
+    expect(mockReloadOpen).toHaveBeenCalled();
   });
 });
 
@@ -317,7 +379,6 @@ describe('Home owed banner (contract 6)', () => {
     mockBookings = { status: 'ready', bookings: [] };
     // No venue rows, so a venue name on screen can only be the banner's.
     mockVenues = { status: 'ready', venues: [] };
-    mockPosts = { status: 'ready', posts: [] };
     mockOwedState = { status: 'ready', data: nothingOwed };
     jest.mocked(router.push).mockClear();
   });
@@ -393,7 +454,7 @@ describe('Home owed banner (contract 6)', () => {
     await render(<HomeScreen />);
     expect(screen.queryByTestId('owed-banner')).toBeNull();
     expect(screen.getByTestId('home-screen')).toBeTruthy();
-    expect(screen.getByText('No games booked')).toBeTruthy();
+    expect(screen.getByTestId('home-greeting')).toBeTruthy();
   });
 
   it('Pay what I owe opens the pay screen', async () => {
@@ -419,7 +480,6 @@ describe('Home score logging: new matches are logged by their captain (S13B), ol
   beforeEach(() => {
     mockBookings = { status: 'ready', bookings: [] };
     mockVenues = { status: 'ready', venues: [venue] };
-    mockPosts = { status: 'ready', posts: [] };
     mockUnscored = [];
     mockFriendlies = [];
     mockLinks = { bookings: new Map(), friendlies: new Map() };
@@ -462,7 +522,6 @@ describe('Home score logging: new matches are logged by their captain (S13B), ol
     // Home's focus effect reloads on mount; only the button counts here.
     mockReloadOpen.mockClear();
     mockReloadLinks.mockClear();
-    // LogScoreSection's Try again (the previous-game section has no error here).
     await fireEvent.press(screen.getAllByRole('button', { name: 'Try again' })[0]);
     expect(mockReloadLinks).toHaveBeenCalled();
     expect(mockReloadOpen).not.toHaveBeenCalled();
@@ -487,9 +546,8 @@ describe('Home score logging: new matches are logged by their captain (S13B), ol
     mockUnscoredStatus = 'loading';
     mockLinkCandidates = [];
     await screen.rerender(<HomeScreen />);
-    // Each render calls useMatchLinks twice: LogScoreSection, then the
-    // previous-game section (no recent results here, so always []).
-    const logScoreCalls = mockLinkCandidates.filter((_, i) => i % 2 === 0);
+    // Each render calls useMatchLinks once, from the Log the score section.
+    const logScoreCalls = mockLinkCandidates;
     expect(logScoreCalls.length).toBeGreaterThan(0);
     for (const c of logScoreCalls) expect(c.bookingIds).toEqual(['a', 'b']);
   });
@@ -559,7 +617,6 @@ describe('Home "Check the score" (levels like Playtomic, Panos 25 November)', ()
   beforeEach(() => {
     mockBookings = { status: 'ready', bookings: [] };
     mockVenues = { status: 'ready', venues: [venue] };
-    mockPosts = { status: 'ready', posts: [] };
     mockOpenMatches = [];
     mockScoresToCheck = [];
     mockCheckStatus = 'ready';
@@ -585,65 +642,12 @@ describe('Home "Check the score" (levels like Playtomic, Panos 25 November)', ()
   });
 });
 
-describe('Home previous game: the post-match flow (A10, decision 1j)', () => {
-  const recent = (over: Partial<RecentResult>): RecentResult => ({
-    key: 'booking:b1',
-    kind: 'booking',
-    homeTeamName: 'You',
-    awayTeamName: '',
-    homeScore: 5,
-    awayScore: 3,
-    playedAt: '2026-11-14T17:00:00.000Z',
-    ...over,
-  });
+const homeComponents = fs
+  .readdirSync(path.join(__dirname, '..', '..', 'components', 'home'))
+  .filter((name) => /\.tsx?$/.test(name) && !name.includes('.test.'))
+  .map((name) => `components/home/${name}`);
 
-  beforeEach(() => {
-    mockBookings = { status: 'ready', bookings: [] };
-    mockVenues = { status: 'ready', venues: [venue] };
-    mockPosts = { status: 'ready', posts: [] };
-    mockLinks = { bookings: new Map(), friendlies: new Map() };
-    mockFixtureLinks = new Map();
-    mockRecent = [];
-    jest.mocked(router.push).mockClear();
-  });
-
-  afterAll(() => {
-    mockRecent = [];
-    mockLinks = { bookings: new Map(), friendlies: new Map() };
-    mockFixtureLinks = new Map();
-  });
-
-  it('a game with a match offers "Add your stats", which opens the flow', async () => {
-    mockRecent = [recent({ bookingId: 'b1' })];
-    mockLinks.bookings.set('b1', 'm1');
-    await render(<HomeScreen />);
-    await fireEvent.press(screen.getByTestId('previous-game-stats-booking:b1'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm1' } });
-  });
-
-  it('friendlies and league fixtures with a match offer it too', async () => {
-    mockRecent = [
-      recent({ key: 'friendly:f1', kind: 'friendly', homeTeamName: 'Home FC', awayTeamName: 'Away FC', friendlyMatchId: 'f1' }),
-      recent({ key: 'league:l1', kind: 'league', homeTeamName: 'Lions', awayTeamName: 'Tigers', leagueFixtureId: 'l1' }),
-    ];
-    mockLinks.friendlies.set('f1', 'm2');
-    mockFixtureLinks.set('l1', 'm3');
-    await render(<HomeScreen />);
-    await fireEvent.press(screen.getByTestId('previous-game-stats-friendly:f1'));
-    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/match/after-game', params: { id: 'm2' } });
-    await fireEvent.press(screen.getByTestId('previous-game-stats-league:l1'));
-    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/match/after-game', params: { id: 'm3' } });
-  });
-
-  it('a game recorded before A2 (no match) has no "Add your stats"', async () => {
-    mockRecent = [recent({ bookingId: 'old' })];
-    await render(<HomeScreen />);
-    expect(screen.getByText('You 5–3')).toBeTruthy();
-    expect(screen.queryByText('Add your stats')).toBeNull();
-  });
-});
-
-describe.each(['app/(tabs)/index.tsx', 'components/booking/next-game-card.tsx'])('%s uses tokens only', (file) => {
+describe.each(['app/(tabs)/index.tsx', 'components/booking/next-game-card.tsx', ...homeComponents])('%s uses tokens only', (file) => {
   const text = fs.readFileSync(path.join(__dirname, '..', '..', file), 'utf8');
 
   it('has no hex colour', () => expect(text.match(/#[0-9a-f]{3,8}\b/gi)).toBeNull());

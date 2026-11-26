@@ -34,4 +34,3 @@ export {
 } from './season-stats';
 export { boardValue, LeaderboardList, type LeaderboardState } from './leaderboard-list';
 export { TeamOfTheWeekCard, type TeamOfTheWeekPlayersState } from './team-of-the-week-card';
-export { TeamOfTheWeekHome } from './team-of-the-week-home';
