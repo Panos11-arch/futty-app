@@ -65,7 +65,14 @@ export function UpcomingMatches({ refreshSignal }: { refreshSignal: number }) {
         }
       />
       {shown.map((booking) => (
-        <NextBookingCard key={booking.id} testID={`home-upcoming-${booking.id}`} booking={booking} venue={venueFor(booking.venue_id)} />
+        // No photo block on Home (image 01; Dimitris, 26 November).
+        <NextBookingCard
+          key={booking.id}
+          testID={`home-upcoming-${booking.id}`}
+          booking={booking}
+          venue={venueFor(booking.venue_id)}
+          showPhoto={false}
+        />
       ))}
     </View>
   );

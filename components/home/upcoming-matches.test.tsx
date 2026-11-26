@@ -83,6 +83,9 @@ describe('Home "Upcoming matches" (image 01)', () => {
     const card = screen.getByTestId('home-upcoming-b1');
     expect(card).toHaveTextContent(/Nuevo Campo/);
     expect(card).toHaveTextContent(/Sat 14 Nov · 19:00–20:00/);
+    // No photo block on Home (image 01; Dimitris, 26 November).
+    expect(screen.queryByTestId('next-game-photo-placeholder')).toBeNull();
+    expect(screen.queryByLabelText(/^Photo of /)).toBeNull();
     await fireEvent.press(card);
     expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } });
   });

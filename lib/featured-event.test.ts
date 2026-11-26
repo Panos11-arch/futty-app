@@ -1,6 +1,9 @@
 import { featuredEventRoute, getFeaturedEvent } from '@/lib/featured-event';
 import type { League } from '@/lib/leagues';
 
+// lib/premium (Team Premium's flag) loads the Supabase client.
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+
 const league = (over: Partial<League> = {}): League => ({
   id: 'l1',
   name: 'Limassol 5-a-side League',
@@ -16,6 +19,20 @@ const league = (over: Partial<League> = {}): League => ({
 
 describe('getFeaturedEvent (S3; events are leagues in sign-up until S10B)', () => {
   const today = '2026-11-26';
+
+  // S9: 9 and 11-a-side show Coming soon while Team Premium is off, so Home
+  // never features them as "Sign-up open".
+  it('never features a 9 or 11-a-side league while Team Premium is off; the next open one instead', () => {
+    const nine = league({ id: 'l9', format: '9-a-side', start_date: '2026-11-28' });
+    const eleven = league({ id: 'l11', format: '11-a-side', start_date: '2026-11-29' });
+    expect(getFeaturedEvent([nine, eleven, league()], today)?.id).toBe('l1');
+    expect(getFeaturedEvent([nine, eleven], today)).toBeNull();
+  });
+
+  it('features them once Team Premium is on', () => {
+    const nine = league({ id: 'l9', format: '9-a-side', start_date: '2026-11-28' });
+    expect(getFeaturedEvent([nine, league()], today, { teamPremiumEnabled: true })?.id).toBe('l9');
+  });
 
   it('nothing in sign-up: no event, so Home hides the section', () => {
     expect(getFeaturedEvent([], today)).toBeNull();

@@ -5,6 +5,7 @@
 // featuredEventRoute. Leagues have no photo and no price per player, so the
 // card shows neither.
 import type { League } from '@/lib/leagues';
+import { leagueFormatOpen } from '@/lib/premium';
 
 export type FeaturedEvent = {
   id: string;
@@ -16,10 +17,19 @@ export type FeaturedEvent = {
 };
 
 /** The league to feature, or null (Home then hides the section). `today` is
- *  the Cyprus date (lib/days.ts cyprusDateKey). */
-export function getFeaturedEvent(leagues: League[], today: string): FeaturedEvent | null {
+ *  the Cyprus date (lib/days.ts cyprusDateKey). A format that needs Team
+ *  Premium while it's off (9 and 11-a-side) is never featured: S9's Leagues
+ *  screen shows it as Coming soon. */
+export function getFeaturedEvent(
+  leagues: League[],
+  today: string,
+  { teamPremiumEnabled }: { teamPremiumEnabled?: boolean } = {},
+): FeaturedEvent | null {
+  const formatOpen = (format: string) =>
+    teamPremiumEnabled === undefined ? leagueFormatOpen(format) : leagueFormatOpen(format, teamPremiumEnabled);
   const open = leagues
     .filter((l) => l.stage === 'signup' && !l.parent_league_id && l.start_date !== null && l.start_date >= today)
+    .filter((l) => formatOpen(l.format))
     .sort((a, b) => a.start_date!.localeCompare(b.start_date!));
   const league = open[0];
   if (!league) return null;

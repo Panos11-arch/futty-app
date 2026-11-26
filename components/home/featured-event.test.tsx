@@ -8,6 +8,8 @@ import type { FeaturedEventState } from '@/lib/use-featured-event';
 let mockState: FeaturedEventState = { status: 'loading' };
 const mockReload = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+// lib/featured-event reads Team Premium's flag (lib/premium), which loads the Supabase client.
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/use-featured-event', () => ({ useFeaturedEvent: () => ({ ...mockState, reload: mockReload }) }));
 
 const event: Event = { id: 'l1', kind: 'league', name: 'Limassol League', format: '5-a-side', startDate: '2026-12-05' };
