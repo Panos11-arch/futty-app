@@ -1,5 +1,5 @@
 -- S13: messages (20261125014424_match_messages.sql). Captain chats between two
--- teams of a league, friend chats (closed until S20), blocks both ways, the
+-- teams of a league, friend chats (between friends, S20), blocks both ways, the
 -- adult-minor rule (A4), the rate limit, read receipts, pushes and
 -- "Former player". Every rule has its allowed case and each refused case.
 begin;
@@ -401,7 +401,7 @@ begin
     'until then, the name';
 end $$;
 
--- ---- Friend chats: closed until S20 -------------------------------------------------
+-- ---- Friend chats: only between friends (S20) ------------------------------------------
 do $$
 declare
   ana uuid := (select v from msg where k = 'ana');
@@ -416,6 +416,22 @@ begin
     'a friend chat without the friendship: no sending';
   assert tests.msg_value(ana, format('select count(*) from public.conversations where id = %L', conv))::integer = 0,
     'nor reading';
+
+  -- S20: friends open it, read it and send.
+  insert into public.friendships (requester_id, addressee_id, status, accepted_at) values (ana, ben, 'accepted', now());
+  assert tests.msg_value(ana, format('select public.open_friend_conversation(%L)', ben))::uuid = conv, 'friends: the chat opens';
+  assert tests.error_as(ana, format('select * from public.send_message(%L, %L, %L)', conv, 'hi', gen_random_uuid())) is null,
+    'friends: sending';
+  assert tests.msg_value(ben, format('select count(*) from public.messages where conversation_id = %L', conv))::integer = 1,
+    'friends: reading';
+  -- A block closes it, both ways.
+  insert into public.blocked_users (blocker_id, blocked_id) values (ben, ana);
+  assert tests.error_as(ana, format('select public.open_friend_conversation(%L)', ben)) = 'not_friends', 'blocked: refused';
+  assert tests.error_as(ben, format('select * from public.send_message(%L, %L, %L)', conv, 'x', gen_random_uuid())) = 'not_in_conversation',
+    'blocked: no sending';
+  delete from public.blocked_users where blocker_id = ben and blocked_id = ana;
+  delete from public.messages where conversation_id = conv;
+  delete from public.friendships where requester_id = ana and addressee_id = ben;
 end $$;
 
 -- ---- The rate limit: 30 a minute, 500 in 24 hours, fixture chat included --------
