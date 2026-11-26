@@ -326,8 +326,10 @@ begin
     assert not has_function_privilege('anon', f, 'execute'), f || ' not signed out';
   end loop;
   assert (select relrowsecurity from pg_class where oid = 'public.friendships'::regclass), 'RLS on friendships';
-  assert exists (select 1 from public.notification_types where type = 'friend_request'), 'friend_request type';
-  assert exists (select 1 from public.notification_types where type = 'friend_accepted'), 'friend_accepted type';
+  assert (select default_enabled and not always_sent from public.notification_types where type = 'friend_request'),
+    'friend_request: on by default, can be turned off';
+  assert (select default_enabled and not always_sent from public.notification_types where type = 'friend_accepted'),
+    'friend_accepted: on by default, can be turned off';
 end $$;
 
 rollback;

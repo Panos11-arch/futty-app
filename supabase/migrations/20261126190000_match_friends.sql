@@ -50,9 +50,10 @@ create policy "The two players read their friendship"
 revoke all on public.friendships from anon;
 revoke insert, update, delete, truncate on public.friendships from authenticated;
 
-insert into public.notification_types (type, always_sent) values
-  ('friend_request', false),
-  ('friend_accepted', false)
+-- On by default (default_enabled, since S14); a player can turn them off.
+insert into public.notification_types (type, always_sent, default_enabled) values
+  ('friend_request', false, true),
+  ('friend_accepted', false, true)
 on conflict (type) do nothing;
 
 -- ---- Internal helpers (service_role only) ----------------------------------
