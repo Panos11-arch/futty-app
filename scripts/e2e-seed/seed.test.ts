@@ -8,6 +8,7 @@ import {
   connectAccountKey,
   connectAccountParams,
   E2E_UNTOUCHED_LEVEL,
+  e2eFriendship,
   e2eLogScoreMatch,
   e2eStaffBooking,
   e2eStaffVenue,
@@ -269,5 +270,17 @@ describe('the venue staff’s test venue and its phone booking', () => {
     });
     // 00:30 on 25 November in Cyprus (22:30 UTC on the 24th): tomorrow is the 26th.
     expect(e2eStaffBooking(E2E_STAFF[1], new Date('2026-11-24T22:30:00Z')).p_day).toBe('2026-11-26');
+  });
+});
+
+// S20 (friends.yaml): the two logins of a platform are friends.
+describe('the e2e friendship', () => {
+  it('the first asked, the second accepted', () => {
+    expect(e2eFriendship('first', 'second')).toEqual({
+      requester_id: 'first',
+      addressee_id: 'second',
+      status: 'accepted',
+      accepted_at: '1970-01-01T00:00:00.000Z',
+    });
   });
 });

@@ -118,6 +118,32 @@ describe('Book a pitch screen', () => {
     await waitFor(async () => expect(await AsyncStorage.getItem('futty.book.last_format')).toBe('9-a-side'));
   });
 
+  // S20: opened from a friend chat (Book together, Team vs team): the friend
+  // or team is carried to the screen after paying while this screen is open.
+  it('from a friend chat, holds the friend or team while open', async () => {
+    const { peekBookingPreselect, armBookingPreselect } = jest.requireActual<typeof import('@/lib/booking-preselect')>(
+      '@/lib/booking-preselect',
+    );
+    armBookingPreselect(null);
+    mockParams = { inviteProfileId: 'p-ben' };
+    const view = await render(<BookScreen />);
+    await ready();
+    expect(peekBookingPreselect()).toEqual({ inviteProfileId: 'p-ben', oppositionTeamId: null });
+    await view.unmount();
+    expect(peekBookingPreselect()).toBeNull();
+
+    mockParams = { oppositionTeamId: 't-ben' };
+    const team = await render(<BookScreen />);
+    await ready();
+    expect(peekBookingPreselect()).toEqual({ inviteProfileId: null, oppositionTeamId: 't-ben' });
+    await team.unmount();
+
+    mockParams = {};
+    await render(<BookScreen />);
+    await ready();
+    expect(peekBookingPreselect()).toBeNull();
+  });
+
   // S6: opened from Find a match's "Start a match": Publish starts on after
   // paying, while this screen is open; never once it has closed.
   it('from Start a match, holds the Start a match flag while open', async () => {

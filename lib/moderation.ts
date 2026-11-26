@@ -41,8 +41,8 @@ export async function submitReport(params: {
   });
 }
 
-/** S19: reports the favourite player shown on a player's card (the button
- *  comes with S20, which shows other players' cards). */
+/** S19: reports the favourite player shown on a player's card (the Report
+ *  button is on S20's player sheet, components/friends/profile-sheet.tsx). */
 export async function reportFavouritePlayer(reporterId: string, reportedUserId: string, reason: string) {
   return submitReport({ reporterId, reportedUserId, context: 'favourite_player', reason });
 }

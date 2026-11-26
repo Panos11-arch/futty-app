@@ -36,6 +36,8 @@ jest.mock('@/lib/teams', () => ({
   createTeam: (...a: unknown[]) => mockCreateTeam(...a),
 }));
 jest.mock('@/lib/use-messages', () => ({ useUnreadMessages: () => mockUnread }));
+let mockRequests = 0;
+jest.mock('@/lib/use-friends', () => ({ useFriendRequestCount: () => mockRequests }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 jest.mock('@/lib/use-follows', () => ({
   useFollows: () => ({
@@ -59,6 +61,7 @@ const cy = { id: 'c3', name: 'Cy Tan', phones: [], match: null };
 beforeEach(() => {
   jest.clearAllMocks();
   mockUnread = 0;
+  mockRequests = 0;
   mockContacts = { status: 'loading' };
   mockFetchFeed.mockResolvedValue({ data: [], error: null });
   mockFetchSuggestions.mockResolvedValue({ data: [], error: null });
@@ -89,6 +92,28 @@ describe('Community screen (image 18)', () => {
     await render(<CommunityContent />);
     await fireEvent.press(screen.getByRole('button', { name: 'Messages, 2 unread' }));
     expect(router.push).toHaveBeenCalledWith('/messages');
+  });
+
+  it('S20: Friends, next to Messages, opens Friends with the requests waiting', async () => {
+    mockRequests = 3;
+    await render(<CommunityContent />);
+    // The count is in the button's label for VoiceOver; the badge itself is hidden from it.
+    expect(screen.getByTestId('community-friends-badge', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Friends, 3 friend requests' }));
+    expect(router.push).toHaveBeenCalledWith('/friends');
+  });
+
+  it('S20: no badge without requests; one request reads in the singular', async () => {
+    await render(<CommunityContent />);
+    expect(screen.getByTestId('community-friends')).toBeTruthy();
+    expect(screen.queryByTestId('community-friends-badge', { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Friends' })).toBeTruthy();
+  });
+
+  it('S20: one request', async () => {
+    mockRequests = 1;
+    await render(<CommunityContent />);
+    expect(screen.getByRole('button', { name: 'Friends, 1 friend request' })).toBeTruthy();
   });
 
   describe('For you', () => {

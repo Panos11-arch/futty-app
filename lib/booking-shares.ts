@@ -25,6 +25,13 @@ export async function addBookingPlayer(bookingId: string, username: string) {
   return supabase.rpc('add_booking_player', { p_booking_id: bookingId, p_username: username });
 }
 
+/** S20, Book together: invites a friend by id. The server checks the
+ *  friendship (friends, not blocked, A4), then runs add_booking_player with
+ *  their username, so every booking check still applies. */
+export async function inviteFriendToBooking(bookingId: string, profileId: string) {
+  return supabase.rpc('invite_friend_to_booking', { p_booking_id: bookingId, p_profile_id: profileId });
+}
+
 /** How the player pays their share. Only choices: the amounts are the
  *  server's (create-share-payment prices the share itself). */
 export type SharePaymentOptions = {

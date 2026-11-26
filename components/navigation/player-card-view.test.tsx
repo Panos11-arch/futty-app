@@ -93,3 +93,17 @@ describe('the QR', () => {
     expect(screen.queryByTestId('my-card-username')).toBeNull();
   });
 });
+
+// S20: another player's card (the player sheet) uses its own testIDs and
+// never shows a QR, even if one were allowed: there is no QR to open.
+describe("another player's card", () => {
+  it('takes a testID prefix, and has no QR without onOpenQr', async () => {
+    await render(withTheme(<PlayerCardView card={CARD} onOpenProfile={jest.fn()} testIDPrefix="profile-card" />));
+    expect(screen.getByTestId('profile-card')).toBeTruthy();
+    expect(screen.getByTestId('profile-card-name')).toBeTruthy();
+    expect(screen.getByTestId('profile-card-avatar')).toBeTruthy();
+    expect(screen.queryByTestId('my-card')).toBeNull();
+    expect(screen.queryByTestId('profile-card-qr')).toBeNull();
+    expect(screen.queryByTestId('qr')).toBeNull();
+  });
+});

@@ -1,7 +1,7 @@
 # Journey (S13): Messages. Community and Account both open the inbox; the
 # seeded e2e login has no chats yet, so the inbox shows its one-line empty
-# state and its one button. Captain chats need two seeded league captains,
-# and friend chats open with S20 (friends).
+# state and its one button. Captain chats need two seeded league captains;
+# friend chats are in friends.yaml (S20).
 appId: com.panosalepis.futtyapp
 name: messages
 tags:

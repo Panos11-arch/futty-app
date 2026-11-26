@@ -60,6 +60,9 @@ export function routeForPushData(raw: unknown): Href {
   // S13: a new message opens its chat.
   const conversationId = stringId(data, 'conversationId');
   if (data.type === 'message_new' && conversationId) return { pathname: '/messages/[id]', params: { id: conversationId } };
+  // S20: an accepted request opens the friend chat; a new one opens Friends.
+  if (data.type === 'friend_accepted' && conversationId) return { pathname: '/messages/[id]', params: { id: conversationId } };
+  if (data.type === 'friend_request' || data.type === 'friend_accepted') return '/friends';
 
   // S14: a pick names one team and opens it; an older one opens the latest team.
   if (data.type === 'team_of_the_week') {

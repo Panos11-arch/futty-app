@@ -188,6 +188,13 @@ export function e2eLogScoreMatch(platform: Platform, captainId: string, otherId:
   };
 }
 
+/** S20 (friends.yaml): each platform's two logins are friends, so Community
+ *  → Friends lists the second, and its chat has Book together. The first
+ *  asked; the second accepted. */
+export function e2eFriendship(firstId: string, secondId: string) {
+  return { requester_id: firstId, addressee_id: secondId, status: 'accepted' as const, accepted_at: new Date(0).toISOString() };
+}
+
 /** Doc 28 (block-clashes.yaml): a staff login's own test venue. Not live, so
  *  players never see it in Book; one 5-a-side pitch with the same €60 price
  *  and hours as the E2E Arena (add_counter_booking needs both). */
@@ -409,6 +416,20 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     check(await admin.from('match_players').insert(rows.players), `writing the ${platform} game's players`);
   }
   log(`games to log: ${Object.values(E2E_LOG_MATCHES).map((m) => m.matchId).join(', ')}`);
+
+  // ---- 6b. Each platform's two logins are friends (S20) ----------------------------
+  for (const platform of ['ios', 'android'] as Platform[]) {
+    const [first, second] = E2E_USERS.filter((u) => u.platform === platform);
+    const a = ids.get(first.email)!;
+    const b = ids.get(second.email)!;
+    // One row per pair, whoever asked: clear both ways, then write it again.
+    check(
+      await admin.from('friendships').delete().or(`and(requester_id.eq.${a},addressee_id.eq.${b}),and(requester_id.eq.${b},addressee_id.eq.${a})`),
+      `clearing the ${platform} friendship`,
+    );
+    check(await admin.from('friendships').insert(e2eFriendship(a, b)), `writing the ${platform} friendship`);
+  }
+  log("friends: each platform's two logins");
 
   // ---- 7. Each staff login's venue, with a phone booking to clash with ----------
   for (const staff of E2E_STAFF) {

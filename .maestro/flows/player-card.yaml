@@ -34,6 +34,9 @@ env:
     id: my-card-share
 - assertVisible:
     id: my-card-edit
+# S20: Scan opens the scanner (friends.yaml taps it).
+- assertVisible:
+    id: my-card-scan
 - takeScreenshot: player-card-sheet-${PLATFORM}
 
 # ---- The QR, full screen ------------------------------------------------------
