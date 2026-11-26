@@ -81,6 +81,7 @@ describe('.maestro', () => {
       'flows/book-and-pay.yaml',
       'flows/book-missing-venue.yaml',
       'flows/cancel.yaml',
+      'flows/community.yaml',
       'flows/edit-avatar.yaml',
       'flows/find-match.yaml',
       'flows/futty-ai.yaml',
@@ -109,7 +110,7 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card', 'block-clashes']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card', 'block-clashes', 'community']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }
