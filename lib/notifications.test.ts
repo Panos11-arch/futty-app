@@ -255,3 +255,11 @@ describe('Premium and offers notification type', () => {
     expect(withDefaults([], { squad_post: false })).toEqual({ squad_post: false });
   });
 });
+
+// Doc 28 prompt 1 (block clashes): staff moved a game to another pitch. Always
+// sent, so it shows in the always-sent list with a label, not as its type.
+describe('booking_pitch_moved', () => {
+  it('has a plain-word label', () => {
+    expect(notificationLabel('booking_pitch_moved')).toBe('Your game moves pitch');
+  });
+});

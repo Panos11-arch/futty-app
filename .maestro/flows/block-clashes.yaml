@@ -1,0 +1,83 @@
+# Journey (doc 28 prompt 1, block clashes): venue staff block a pitch over a
+# game already booked. Account > Venue dashboard, tomorrow, Block, the
+# pitch, whole day: the clash sheet lists the phone booking the seed made
+# (E2E Caller, 21:00–22:00, not paid). Block and cancel saves the block and
+# cancels it; then "Call them" shows the contact to phone. The seed gives
+# each platform its own staff login and venue, and makes the phone booking
+# again on every run.
+appId: com.panosalepis.futtyapp
+name: block-clashes
+tags:
+  - e2e
+  - venue
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-staff@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  # E2E_STAFF[platform].pitchId in scripts/e2e-seed/config.ts.
+  PITCH: "${MAESTRO_E2E_PLATFORM == 'ios' ? 'e2e00000-0000-4000-8000-000000000051' : 'e2e00000-0000-4000-8000-000000000052'}"
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+
+# ---- The dashboard, tomorrow ---------------------------------------------------
+- tapOn:
+    id: header-menu
+- scrollUntilVisible:
+    element:
+      id: account-venue-dashboard
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: account-venue-dashboard
+- extendedWaitUntil:
+    visible:
+      id: venue-dashboard-next-day
+    timeout: 20000
+- tapOn:
+    id: venue-dashboard-next-day
+
+# ---- Block the pitch for the day ---------------------------------------------------
+- scrollUntilVisible:
+    element:
+      id: venue-dashboard-block
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: venue-dashboard-block
+- tapOn:
+    id: mark-sheet-pitch-${PITCH}
+- tapOn:
+    id: mark-sheet-submit
+
+# ---- The clash sheet lists the phone booking before anything is saved ---------------
+- extendedWaitUntil:
+    visible:
+      id: clash-sheet
+    timeout: 20000
+- assertVisible: 'Walk-ins and phone'
+- assertVisible: '21:00–22:00 · E2E Caller'
+- assertVisible: 'Phone · \+35799000000 · Not paid'
+- takeScreenshot: block-clashes-sheet-${PLATFORM}
+- tapOn:
+    id: clash-sheet-confirm
+
+# ---- Saved: who to phone ------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: clash-sheet-call
+    timeout: 20000
+- assertVisible: 'Call them'
+- assertVisible: 'E2E Caller'
+- assertVisible: '\+35799000000'
+- takeScreenshot: block-clashes-call-${PLATFORM}
+- tapOn:
+    id: clash-sheet-done
+- assertNotVisible:
+    id: clash-sheet-call
+- takeScreenshot: block-clashes-${PLATFORM}

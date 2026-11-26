@@ -35,18 +35,21 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
 
 4. **`log-score`** (S13B): Home shows "Log the score" for the seeded game (a pickup this login booked, played 2 hours ago). It taps **Log**, sets Bibs 1, Non-bibs 0, gives the goal to this login on the pitch, continues past Assists (optional) and confirms on Review. One captain, so the score is final: the match page shows "Bibs 1–0 Non-bibs".
 
+5. **`block-clashes`** (doc 28 prompt 1): signs in as the platform's venue-staff login, opens Account > Venue dashboard, moves to tomorrow and taps **Block**, picks the staff venue's pitch and taps **Block pitches** (whole day). The clash sheet (`clash-sheet`) lists the seeded phone booking before anything is saved: "21:00–22:00 · E2E Caller" and "Phone · +35799000000 · Not paid". **Block and cancel** saves the block and cancels the booking (`venue_add_block`); then "Call them" names the contact and phone, and **Done** closes it. Nothing was paid, so no money moves.
+
 `tests/maestro/flows.test.ts` checks these words and amounts against the app's own code (`describeQuote`, `cancelledMessage`, `payLabel`). The quote it checks is one `cancellation_quote` returned on a local database. The same test fails if a flow uses a testID the app doesn't have.
 
 ### The seed data
 
 `scripts/e2e-seed/seed.ts` resets and creates the e2e data on every run:
 
-- **Logins:** four confirmed logins with the password from `STAGING_E2E_PASSWORD`: `e2e-ios-1`, `e2e-ios-2`, `e2e-android-1` and `e2e-android-2` @e2e.futty.app. Each platform uses its own `-1` login.
+- **Logins:** four confirmed player logins with the password from `STAGING_E2E_PASSWORD`: `e2e-ios-1`, `e2e-ios-2`, `e2e-android-1` and `e2e-android-2` @e2e.futty.app. Each platform uses its own `-1` login.
 - **Venue:** "E2E Arena" with a fixed id, live, open 07:00 to midnight every day.
   - Two 5-a-side pitches.
   - One price, €60. That's spec 13's €60 5-a-side.
 - **Stripe:** a Stripe TEST connected account for the venue, created like `connect-onboarding` creates one (an Express account with the same parameters and idempotency key), and kept once it exists.
 - **A game to log (S13B):** per platform, a pickup at E2E Arena played 2 hours ago and waiting for its score, with fixed ids (`E2E_LOG_MATCHES` in `scripts/e2e-seed/config.ts`): the `-1` login captains Bibs, the `-2` login plays Non-bibs. It is deleted and made again on every run.
+- **Venue staff (doc 28, `block-clashes`):** two more logins, `e2e-ios-staff` and `e2e-android-staff` @e2e.futty.app, set to `venue_owner`. Each owns its own venue ("E2E Staff Arena iOS" / "E2E Staff Arena Android", fixed ids, not live, so players never see them in Book) with one 5-a-side pitch, the same hours and price. On every run the seed clears that venue's blocks, cancels any walk-in a run left open (as staff, `cancel_counter_booking`; never paid, so no money row) and adds a phone booking for tomorrow in Cyprus, 21:00–22:00, contact "E2E Caller", not paid (`E2E_STAFF` and `E2E_STAFF_BOOKING` in `scripts/e2e-seed/config.ts`). A run that crosses Cyprus midnight between the seed and the flow would look at the wrong day.
 - **The slot:** two days after today in Cyprus (Asia/Nicosia), at 19:00 on iOS and 20:00 on Android. That is more than 6 hours ahead (so there is a free hour) and inside the 7-day booking window. iOS and Android use separate logins and separate hours, so both can run at once. `book_slot` picks the pitch, and two pitches leave room if a run left a booking behind.
 
 ## Setting up staging (once, Panos)

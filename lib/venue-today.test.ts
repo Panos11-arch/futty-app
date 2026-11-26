@@ -5,6 +5,19 @@
 // the venue's price (spec 13: that money never goes through Futty).
 import {
   addBlock,
+  appClashSummary,
+  blockFeeLine,
+  blocksOnLegacy,
+  clashesToCancel,
+  clashTime,
+  clashTitle,
+  confirmBlock,
+  counterClashSummary,
+  counterRefundLine,
+  fetchBlockClashes,
+  moveBooking,
+  moveLabel,
+  startBlock,
   addCounterBooking,
   addDays,
   attendanceLabel,
@@ -51,7 +64,19 @@ import {
   weekdayIndex,
   withdrawVenuePlayer,
 } from './venue-today';
-import { appBooking, appRoster, dayBoard, phoneBooking, PITCH_1, venueQuote, walkIn } from './venue-today.fixtures';
+import {
+  appBooking,
+  appClash,
+  appRoster,
+  blockClashes,
+  blockSaved,
+  counterClash,
+  dayBoard,
+  phoneBooking,
+  PITCH_1,
+  venueQuote,
+  walkIn,
+} from './venue-today.fixtures';
 
 const mockRpc = jest.fn();
 const mockInvoke = jest.fn();
@@ -105,7 +130,7 @@ async function everyWrite() {
   await flagConditions({ venueId: 'v1', day: '2026-11-16', start: '18:00', end: '20:00', pitchId: null, note: null });
   await clearConditions('f1');
   await setAllows6v6('v1', true);
-  await addBlock({ venueId: 'v1', day: '2026-11-16', start: null, end: null, pitchId: 'p1', reason: null }, 'staff1');
+  await addBlock({ venueId: 'v1', day: '2026-11-16', start: null, end: null, pitchId: 'p1', reason: null }, 'bq-0');
   await removeBlock('blk1');
   await confirmVenueCancel('b-app', 'q-1', { quote: jest.fn() });
 }
@@ -158,17 +183,23 @@ describe('writes', () => {
       ],
       ['clear_conditions', { p_flag_id: 'f1' }],
       ['set_venue_allows_6v6', { p_venue_id: 'v1', p_allowed: true }],
+      // Doc 28: a block is saved only through venue_add_block, with the clash list's quote.
+      [
+        'venue_add_block',
+        {
+          p_venue_id: 'v1',
+          p_pitch_id: 'p1',
+          p_day: '2026-11-16',
+          p_start: null,
+          p_end: null,
+          p_reason: null,
+          p_expected_quote: 'bq-0',
+        },
+      ],
     ]);
-    expect(mockFrom.mock.calls).toEqual([['venue_blocks'], ['venue_blocks']]);
-    expect(mockInsert).toHaveBeenCalledWith({
-      venue_id: 'v1',
-      pitch_id: 'p1',
-      block_day: '2026-11-16',
-      starts_at: null,
-      ends_at: null,
-      reason: null,
-      created_by: 'staff1',
-    });
+    // Removing stays a delete of the venue's own row; nothing inserts a block directly.
+    expect(mockFrom.mock.calls).toEqual([['venue_blocks']]);
+    expect(mockInsert).not.toHaveBeenCalled();
     expect(mockDeleteEq).toHaveBeenCalledWith('id', 'blk1');
     expect(mockInvoke).toHaveBeenCalledWith('cancel-booking', {
       body: { bookingId: 'b-app', scope: 'venue', quote: 'q-1' },
@@ -183,10 +214,192 @@ describe('writes', () => {
   it('an empty phone or note goes as null', async () => {
     await addCounterBooking({ ...counterInput, contactPhone: '  ' });
     await flagConditions({ venueId: 'v1', day: '2026-11-16', start: null, end: null, pitchId: 'p1', note: ' ' });
-    await addBlock({ venueId: 'v1', day: '2026-11-16', start: '19:00', end: '20:00', pitchId: null, reason: '' }, 's');
+    await addBlock({ venueId: 'v1', day: '2026-11-16', start: '19:00', end: '20:00', pitchId: null, reason: '' }, 'bq-0');
     expect(mockRpc.mock.calls[0][1].p_contact_phone).toBeNull();
     expect(mockRpc.mock.calls[1][1].p_note).toBeNull();
-    expect(mockInsert.mock.calls[0][0]).toMatchObject({ starts_at: '19:00', ends_at: '20:00', reason: null });
+    expect(mockRpc.mock.calls[2]).toEqual([
+      'venue_add_block',
+      expect.objectContaining({ p_start: '19:00', p_end: '20:00', p_pitch_id: null, p_reason: null }),
+    ]);
+  });
+});
+
+// ---- Block clashes (doc 28 prompt 1; spec 13 "Blocking pitches") ---------
+
+const blockRange = { venueId: 'v1', day: '2026-11-16', start: '18:00', end: '20:00', pitchId: 'p1' };
+
+describe('block clashes: reads and writes', () => {
+  it('lists the clashes for exactly the range staff chose, and changes nothing', async () => {
+    await fetchBlockClashes(blockRange);
+    expect(mockRpc).toHaveBeenCalledWith('venue_block_clashes', {
+      p_venue_id: 'v1',
+      p_pitch_id: 'p1',
+      p_day: '2026-11-16',
+      p_start: '18:00',
+      p_end: '20:00',
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('a whole-day block on every pitch sends nulls', async () => {
+    await fetchBlockClashes({ ...blockRange, start: null, end: null, pitchId: null });
+    expect(mockRpc.mock.calls[0][1]).toEqual({
+      p_venue_id: 'v1',
+      p_pitch_id: null,
+      p_day: '2026-11-16',
+      p_start: null,
+      p_end: null,
+    });
+  });
+
+  it('moves a booking with its id and the server’s pitch ids only', async () => {
+    await moveBooking('b-app', ['p4', 'p5']);
+    expect(mockRpc).toHaveBeenCalledWith('venue_move_booking', { p_booking_id: 'b-app', p_pitch_ids: ['p4', 'p5'] });
+  });
+});
+
+describe('startBlock', () => {
+  it('nothing clashes: saves at once with the empty list’s quote', async () => {
+    const list = blockClashes({ clashes: [], venue_stripe_fee_cents: 0, quote: 'bq-empty' });
+    const saved = blockSaved({ cancelled: 0, call_them: [] });
+    mockRpc.mockResolvedValueOnce({ data: list, error: null }).mockResolvedValueOnce({ data: saved, error: null });
+    const result = await startBlock({ ...blockRange, reason: ' Resurfacing ' });
+    expect(result).toEqual({ status: 'saved', saved });
+    expect(mockRpc.mock.calls.map((c) => c[0])).toEqual(['venue_block_clashes', 'venue_add_block']);
+    expect(mockRpc.mock.calls[1][1]).toMatchObject({ p_reason: 'Resurfacing', p_expected_quote: 'bq-empty' });
+  });
+
+  it('something clashes: returns the list and saves nothing', async () => {
+    const list = blockClashes();
+    mockRpc.mockResolvedValueOnce({ data: list, error: null });
+    expect(await startBlock({ ...blockRange, reason: '' })).toEqual({ status: 'clashes', clashes: list });
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('a refused list reads as words, and nothing is saved', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'not_venue_staff' } });
+    expect(await startBlock({ ...blockRange, reason: '' })).toEqual({
+      status: 'error',
+      message: "You're not staff at this venue.",
+    });
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('the list changed between reading and saving: shows the new list', async () => {
+    const empty = blockClashes({ clashes: [], quote: 'bq-empty' });
+    const fresh = blockClashes({ quote: 'bq-2' });
+    mockRpc
+      .mockResolvedValueOnce({ data: empty, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'clashes_changed' } })
+      .mockResolvedValueOnce({ data: fresh, error: null });
+    expect(await startBlock({ ...blockRange, reason: '' })).toEqual({ status: 'clashes', clashes: fresh });
+  });
+});
+
+describe('confirmBlock', () => {
+  const input = { ...blockRange, reason: 'Resurfacing' };
+
+  it('saves with exactly the quote staff saw and returns who to call', async () => {
+    const saved = blockSaved();
+    mockRpc.mockResolvedValueOnce({ data: saved, error: null });
+    expect(await confirmBlock(input, 'bq-1')).toEqual({ status: 'saved', saved });
+    expect(mockRpc).toHaveBeenCalledWith('venue_add_block', {
+      p_venue_id: 'v1',
+      p_pitch_id: 'p1',
+      p_day: '2026-11-16',
+      p_start: '18:00',
+      p_end: '20:00',
+      p_reason: 'Resurfacing',
+      p_expected_quote: 'bq-1',
+    });
+  });
+
+  it('clashes_changed: reloads the list and says so in one line', async () => {
+    const fresh = blockClashes({ quote: 'bq-2' });
+    mockRpc
+      .mockResolvedValueOnce({ data: null, error: { message: 'clashes_changed' } })
+      .mockResolvedValueOnce({ data: fresh, error: null });
+    expect(await confirmBlock(input, 'bq-1')).toEqual({
+      status: 'changed',
+      clashes: fresh,
+      message: 'The games changed. Check the list again.',
+    });
+    expect(mockRpc.mock.calls[1][0]).toBe('venue_block_clashes');
+  });
+
+  it('clashes_changed and the reload fails: an error to try again', async () => {
+    mockRpc
+      .mockResolvedValueOnce({ data: null, error: { message: 'clashes_changed' } })
+      .mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    expect(await confirmBlock(input, 'bq-1')).toEqual({ status: 'error', message: 'Something went wrong. Try again.' });
+  });
+
+  it('legacy_booking: one line, nothing saved', async () => {
+    mockRpc.mockResolvedValueOnce({ data: null, error: { message: 'legacy_booking' } });
+    expect(await confirmBlock(input, 'bq-1')).toEqual({
+      status: 'error',
+      message: 'Move or cancel the older booking first.',
+    });
+    expect(mockRpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('block clashes: words', () => {
+  it('an app booking: players in, unpaid and how they pay', () => {
+    expect(appClashSummary(appClash())).toBe('7 of 10 in · 1 unpaid · Each pays');
+    expect(appClashSummary(appClash({ unpaid: 0, payment_mode: 'pay_all' }))).toBe('7 of 10 in · Booker pays all');
+    expect(appClashSummary(appClash({ payment_mode: 'each_pays_responsible', unpaid: 0 }))).toBe('7 of 10 in · Each pays');
+    expect(appClashSummary(appClash({ payment_mode: 'gipedo_pano', unpaid: 0 }))).toBe('7 of 10 in · Gipedo Pano');
+    expect(appClashSummary(appClash({ payment_mode: null, unpaid: 0, capacity: null }))).toBe('7 of 0 in');
+  });
+
+  it('a walk-in or phone booking: source, phone and what they paid (the server’s refund_cents)', () => {
+    expect(counterClashSummary(counterClash())).toBe('Phone · +35799000002 · Paid €45.00');
+    expect(counterClashSummary(counterClash({ source: 'walk_in', phone: null, paid: false, refund_cents: 0 }))).toBe(
+      'Walk-in · Not paid',
+    );
+    expect(counterClashSummary(counterClash({ paid: true, refund_cents: 0 }))).toBe('Phone · +35799000002 · Free');
+  });
+
+  it('times, titles and where it can move', () => {
+    expect(clashTime(appClash())).toBe('18:00–19:00');
+    expect(clashTitle(appClash())).toBe('Nikos Georgiou');
+    expect(clashTitle(appClash({ booker_name: null }))).toBe('App booking');
+    expect(clashTitle(counterClash())).toBe('Maria');
+    expect(clashTitle(counterClash({ contact_name: null, source: 'walk_in' }))).toBe('Walk-in');
+    expect(moveLabel({ pitch_ids: ['p4', 'p5'], pitch_names: ['Pitch 4', 'Pitch 5'] })).toBe('Pitch 4 + Pitch 5');
+  });
+
+  it('the fee line is the server’s total, as spec 13 words it; none when it’s nothing', () => {
+    expect(blockFeeLine(blockClashes())).toBe("Stripe's fees on these payments: €3.15");
+    expect(blockFeeLine(blockClashes({ venue_stripe_fee_cents: 0 }))).toBeNull();
+  });
+
+  it('the counter refund line, as spec 13 words it; none when nothing was paid', () => {
+    expect(counterRefundLine(4500)).toBe('They paid €45.00 at the counter — refund it.');
+    expect(counterRefundLine(0)).toBeNull();
+  });
+
+  it('what saving would cancel: every clash that hasn’t started', () => {
+    expect(clashesToCancel(blockClashes())).toBe(2);
+    expect(
+      clashesToCancel(blockClashes({ clashes: [appClash({ started: true }), counterClash({ started: true })] })),
+    ).toBe(0);
+  });
+
+  it('an older (legacy) booking that hasn’t started stops the block', () => {
+    expect(blocksOnLegacy(blockClashes())).toBe(false);
+    expect(blocksOnLegacy(blockClashes({ clashes: [appClash({ legacy: true })] }))).toBe(true);
+    expect(blocksOnLegacy(blockClashes({ clashes: [appClash({ legacy: true, started: true })] }))).toBe(false);
+  });
+
+  it('the move and block refusals in one line each', () => {
+    expect(describeVenueError('clashes_changed')).toBe('The games changed. Check the list again.');
+    expect(describeVenueError('legacy_booking')).toBe('Move or cancel the older booking first.');
+    expect(describeVenueError('pitch_blocked')).toBe('That pitch is blocked then. Pick another.');
+    expect(describeVenueError('invalid_pitches')).toBe("That pitch can't take this game. Pick another.");
+    expect(describeVenueError('invalid_block_time')).toBe('Pick an end time after the start time.');
+    expect(describeVenueError('not_found')).toBe('This booking is no longer there.');
   });
 });
 

@@ -41,8 +41,11 @@ begin
   select count(*) into v_count from public.squad_post_block_notice(v_post.id);
   assert v_count = 0, format('no block, no notice: got %s rows', v_count);
 
-  -- A block on the other pitch doesn't cover this game.
-  perform tests.act_as(v_owner);
+  -- A block on the other pitch doesn't cover this game. Blocks are set up
+  -- directly (as postgres): staff save them only through venue_add_block
+  -- now, which would cancel a game it covers. A block over a game that
+  -- stays on is still possible (a game already started, an older block).
+  perform tests.act_as_postgres();
   insert into public.venue_blocks (venue_id, pitch_id, block_day, starts_at, ends_at, reason, created_by)
   values (v_venue, v_p2, v_day, '17:00', '21:00', 'Private reason', v_owner);
   perform tests.act_as(v_joiner);
@@ -50,7 +53,7 @@ begin
   assert v_count = 0, format('a block on another pitch: got %s rows', v_count);
 
   -- Now the venue blocks the game's own pitch.
-  perform tests.act_as(v_owner);
+  perform tests.act_as_postgres();
   insert into public.venue_blocks (venue_id, pitch_id, block_day, starts_at, ends_at, reason, created_by)
   values (v_venue, v_p1, v_day, '17:00', '21:00', 'Private reason', v_owner);
 
