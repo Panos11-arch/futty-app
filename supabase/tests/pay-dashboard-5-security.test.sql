@@ -69,7 +69,7 @@ begin
            = 'not_your_venue', 'moving another venue''s walk-in';
     assert tests.error_of(format($q$ insert into public.venue_blocks (venue_id, pitch_id, block_day, created_by)
                                      values (%L, %L, %L, %L) $q$, v_venue_b, v_pitch_b, v_day, v_caller))
-           = 'not_your_venue', 'blocking another venue''s pitch';
+           like 'permission denied%', 'blocking another venue''s pitch (no direct insert at all since doc 28)';
     -- Their rows are invisible.
     assert not exists (select 1 from public.venue_contacts where venue_id = v_venue_b), 'B''s contacts';
     assert not exists (select 1 from public.venue_counter_bookings where venue_id = v_venue_b), 'B''s walk-ins';

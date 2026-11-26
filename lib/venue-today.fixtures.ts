@@ -4,7 +4,11 @@
 // *_pay_dashboard_guards.sql). Amounts are the server's, in cents.
 import type { CancellationLine, CancellationQuote } from '@/lib/booking-actions';
 import type {
+  AppClash,
   AppRoster,
+  BlockClashes,
+  BlockSaved,
+  CounterClash,
   BoardBooking,
   BoardPitch,
   CounterRoster,
@@ -261,6 +265,86 @@ export function venuePlayer(overrides: Partial<RosterVenuePlayer> = {}): RosterV
     offered_at: '2026-11-16T10:00:00+00:00',
     answered_at: null,
     can_withdraw: true,
+    ...overrides,
+  };
+}
+
+// ---- Block clashes (doc 28 prompt 1) -------------------------------------
+// Shaped exactly as venue_block_clashes and venue_add_block return them
+// (supabase/migrations/20261118212511_pay_block_clashes.sql).
+
+/** An app booking the block clashes with, with the free pitches it can move to. */
+export function appClash(overrides: Partial<AppClash> = {}): AppClash {
+  return {
+    id: 'b-app',
+    kind: 'app',
+    start_time: '18:00:00',
+    end_time: '19:00:00',
+    format: '5-a-side',
+    started: false,
+    pitch_ids: ['p1'],
+    pitch_names: ['Pitch 1'],
+    booker_name: 'Nikos Georgiou',
+    status: 'confirmed',
+    payment_mode: 'each_pays_own_spot',
+    capacity: 10,
+    joined: 7,
+    unpaid: 1,
+    legacy: false,
+    quote: 'cq-app',
+    venue_stripe_fee_cents: 245,
+    moves: [
+      { pitch_ids: ['p3'], pitch_names: ['Pitch 3'] },
+      { pitch_ids: ['p4', 'p5'], pitch_names: ['Pitch 4', 'Pitch 5'] },
+    ],
+    ...overrides,
+  };
+}
+
+/** A walk-in or phone booking the block clashes with. */
+export function counterClash(overrides: Partial<CounterClash> = {}): CounterClash {
+  return {
+    id: 'b-phone',
+    kind: 'counter',
+    start_time: '19:00:00',
+    end_time: '20:00:00',
+    format: '5-a-side',
+    started: false,
+    pitch_ids: ['p1'],
+    pitch_names: ['Pitch 1'],
+    source: 'phone',
+    contact_name: 'Maria',
+    phone: '+35799000002',
+    paid: true,
+    refund_cents: 4500,
+    ...overrides,
+  };
+}
+
+export function blockClashes(overrides: Partial<BlockClashes> = {}): BlockClashes {
+  return {
+    clashes: [appClash(), counterClash()],
+    // The server's total: deliberately not anything the items add up to.
+    venue_stripe_fee_cents: 315,
+    quote: 'bq-1',
+    ...overrides,
+  };
+}
+
+export function blockSaved(overrides: Partial<BlockSaved> = {}): BlockSaved {
+  return {
+    block_id: 'blk-new',
+    cancelled: 2,
+    call_them: [
+      {
+        booking_id: 'b-phone',
+        source: 'phone',
+        contact_name: 'Maria',
+        phone: '+35799000002',
+        start_time: '19:00:00',
+        refund_cents: 4500,
+      },
+    ],
     ...overrides,
   };
 }

@@ -8,7 +8,8 @@
 // (sk_test_ only) and STAGING_E2E_PASSWORD, checks them with
 // lib/e2e-guard.ts before anything else, then resets and re-creates only
 // e2e data:
-//   1. the four e2e logins (@e2e.futty.app), confirmed, with the password;
+//   1. the e2e logins (@e2e.futty.app): four players and two venue staff,
+//      confirmed, with the password;
 //   2. any booking a run left behind at the E2E venue, cancelled as its
 //      booker through the app's own path (cancellation_quote, then the
 //      cancel-booking function), so Stripe and the ledger stay right;
@@ -19,7 +20,10 @@
 //   5. its Stripe TEST connected account, made the way connect-onboarding
 //      makes it (same parameters and idempotency key), kept once it exists;
 //   6. per platform, a pickup played 2 hours ago at the E2E venue, waiting
-//      for its score (S13B, log-score.yaml), made again from scratch.
+//      for its score (S13B, log-score.yaml), made again from scratch;
+//   7. per platform, a venue-staff login's own test venue (not live) with a
+//      phone booking tomorrow, not paid, for block-clashes.yaml (doc 28):
+//      its blocks cleared and open walk-ins cancelled first.
 // Money rows (ledger, payments, cancellations) are never deleted.
 //
 // With E2E_SEED_OUTPUT set it writes { slot_day, ios_start, android_start,
@@ -44,12 +48,15 @@ import {
   E2E_OPENING_HOURS,
   E2E_PITCHES,
   E2E_PRICE_CENTS,
+  E2E_STAFF,
+  E2E_STAFF_BOOKING,
   E2E_USERS,
   E2E_VENUE,
+  type E2eStaff,
   type Platform,
 } from './config';
 import { assertE2eVenue, selectBookingsToCancel, selectE2eUsers, type BookingRow } from './reset';
-import { e2eSlot } from './slot';
+import { addDays, cyprusToday, e2eSlot } from './slot';
 
 export type SeedEnv = { url: string; serviceKey: string; stripeKey: string; password: string };
 
@@ -181,6 +188,51 @@ export function e2eLogScoreMatch(platform: Platform, captainId: string, otherId:
   };
 }
 
+/** Doc 28 (block-clashes.yaml): a staff login's own test venue. Not live, so
+ *  players never see it in Book; one 5-a-side pitch with the same €60 price
+ *  and hours as the E2E Arena (add_counter_booking needs both). */
+export function e2eStaffVenue(staff: E2eStaff, ownerId: string) {
+  return {
+    venue: {
+      id: staff.venue.id,
+      name: staff.venue.name,
+      city: E2E_VENUE.city,
+      address: E2E_VENUE.address,
+      owner_profile_id: ownerId,
+      is_live: false,
+      allows_6v6_on_5s: false,
+    },
+    pitch: {
+      id: staff.pitchId,
+      venue_id: staff.venue.id,
+      name: 'Pitch 1',
+      size: E2E_FORMAT,
+      formats: [E2E_FORMAT],
+      is_open: true,
+      sort_order: 1,
+    },
+    hours: [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ venue_id: staff.venue.id, weekday, ...E2E_OPENING_HOURS })),
+    price: { venue_id: staff.venue.id, format: E2E_FORMAT, price_cents: E2E_PRICE_CENTS },
+  };
+}
+
+/** The phone booking the block will clash with: tomorrow in Cyprus, on the
+ *  staff venue's pitch, not paid. add_counter_booking's arguments, called as
+ *  the staff login, the way the dashboard adds one. */
+export function e2eStaffBooking(staff: E2eStaff, now: Date) {
+  return {
+    p_venue_id: staff.venue.id,
+    p_day: addDays(cyprusToday(now), E2E_STAFF_BOOKING.daysAhead),
+    p_start: E2E_STAFF_BOOKING.start,
+    p_end: E2E_STAFF_BOOKING.end,
+    p_format: E2E_FORMAT,
+    p_source: 'phone',
+    p_contact_name: E2E_STAFF_BOOKING.contactName,
+    p_contact_phone: E2E_STAFF_BOOKING.phone,
+    p_pitch_id: staff.pitchId,
+  };
+}
+
 export type SeedOutput = { slot_day: string; ios_start: string; android_start: string; venue_id: string };
 
 export type SeedDeps = {
@@ -213,7 +265,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
   }
   const found = new Map(selectE2eUsers(existing).map((u) => [u.email!.trim().toLowerCase(), u.id]));
   const ids = new Map<string, string>();
-  for (const user of E2E_USERS) {
+  for (const user of [...E2E_USERS, ...E2E_STAFF]) {
     const attributes = {
       password: env.password,
       email_confirm: true,
@@ -254,7 +306,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     );
   }
   const e2eUserIds = new Set(ids.values());
-  log(`logins: ${E2E_USERS.map((u) => u.email).join(', ')}`);
+  log(`logins: ${[...E2E_USERS, ...E2E_STAFF].map((u) => u.email).join(', ')}`);
 
   // ---- 2. Bookings a run left behind --------------------------------------
   const venueRow = check(
@@ -357,6 +409,50 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     check(await admin.from('match_players').insert(rows.players), `writing the ${platform} game's players`);
   }
   log(`games to log: ${Object.values(E2E_LOG_MATCHES).map((m) => m.matchId).join(', ')}`);
+
+  // ---- 7. Each staff login's venue, with a phone booking to clash with ----------
+  for (const staff of E2E_STAFF) {
+    const staffId = ids.get(staff.email)!;
+    const existingVenue = check(
+      await admin.from('venues').select('name').eq('id', staff.venue.id).maybeSingle(),
+      `reading ${staff.venue.name}`,
+    ) as { name: string } | null;
+    if (existingVenue && existingVenue.name !== staff.venue.name) {
+      throw new Error(`e2e seed: venue ${staff.venue.id} is "${existingVenue.name}", not "${staff.venue.name}". Stopping.`);
+    }
+    check(await admin.from('profiles').update({ role: 'venue_owner' }).eq('id', staffId), `making ${staff.email} venue staff`);
+    const rows = e2eStaffVenue(staff, staffId);
+    check(await admin.from('venues').upsert(rows.venue), `writing ${staff.venue.name}`);
+    check(await admin.from('pitches').upsert(rows.pitch), `writing ${staff.venue.name}'s pitch`);
+    check(await admin.from('opening_hours').upsert(rows.hours), `writing ${staff.venue.name}'s hours`);
+    check(await admin.from('price_rules').upsert(rows.price), `writing ${staff.venue.name}'s price`);
+    check(await admin.from('venue_blocks').delete().eq('venue_id', staff.venue.id), `clearing ${staff.venue.name}'s blocks`);
+
+    // A walk-in a run left open (the flow stopped before confirming the
+    // block): cancelled as the dashboard's own cancel does it. Never paid, so
+    // no money row. One that has started is past the slot and left alone.
+    const asStaff = await deps.signInAs(staff.email);
+    const leftover = check(
+      await admin
+        .from('venue_bookings')
+        .select('id')
+        .eq('venue_id', staff.venue.id)
+        .eq('booking_type', 'counter')
+        .neq('status', 'cancelled'),
+      `reading ${staff.venue.name}'s walk-ins`,
+    ) as { id: string }[];
+    for (const { id } of leftover) {
+      const { error } = await asStaff.rpc('cancel_counter_booking', { p_booking_id: id });
+      if (error && error.message !== 'game_started') {
+        throw new Error(`e2e seed: cancelling walk-in ${id} failed: ${error.message}`);
+      }
+    }
+    check(
+      await asStaff.rpc('add_counter_booking', e2eStaffBooking(staff, now)),
+      `adding ${staff.venue.name}'s phone booking`,
+    );
+  }
+  log(`staff venues: ${E2E_STAFF.map((s) => `${s.venue.name} (${s.venue.id})`).join(', ')}`);
 
   // ---- The slots, which must be free now -----------------------------------
   const slots = { ios: e2eSlot('ios', now), android: e2eSlot('android', now) };

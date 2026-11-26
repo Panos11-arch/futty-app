@@ -4,7 +4,15 @@ import { Modal } from 'react-native';
 import VenueDashboardScreen from '@/app/venue-dashboard';
 import { loadWithFile } from '@/components/ui/test-utils';
 import { cyprusToday } from '@/lib/venue-today';
-import { appRoster, counterRoster, dayBoard, venueQuote, walkIn } from '@/lib/venue-today.fixtures';
+import {
+  appRoster,
+  blockClashes,
+  blockSaved,
+  counterRoster,
+  dayBoard,
+  venueQuote,
+  walkIn,
+} from '@/lib/venue-today.fixtures';
 import { ATTRIBUTION, CALM_FORECAST } from '@/lib/weather.fixtures';
 
 // The venue dashboard's Today screen (app/venue-dashboard.tsx, P6c): the day
@@ -258,36 +266,96 @@ describe('Venue dashboard: Today', () => {
     ]);
   });
 
-  it('blocks every pitch for the day in two taps', async () => {
+  it('blocks every pitch for the day in two taps: nothing clashes, so it saves with the list’s quote', async () => {
+    mockRpcData.venue_block_clashes = { clashes: [], venue_stripe_fee_cents: 0, quote: 'bq-empty' };
+    mockRpcData.venue_add_block = { block_id: 'blk-new', cancelled: 0, call_them: [] };
     await open();
-    await act(() => fireEvent.press(screen.getByText('Block')));
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
-    const inserts = mockCalls.filter((c) => c.table === 'venue_blocks' && c.method === 'insert');
-    expect(inserts.map((c) => c.args[0])).toEqual([
+    await act(() => fireEvent.press(screen.getByTestId('venue-dashboard-block')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
+    expect(rpcCalls('venue_block_clashes')).toEqual([
+      { p_venue_id: 'v1', p_pitch_id: null, p_day: cyprusToday(), p_start: null, p_end: null },
+    ]);
+    expect(rpcCalls('venue_add_block')).toEqual([
       {
-        venue_id: 'v1',
-        pitch_id: null,
-        block_day: cyprusToday(),
-        starts_at: null,
-        ends_at: null,
-        reason: null,
-        created_by: 'staff1',
+        p_venue_id: 'v1',
+        p_pitch_id: null,
+        p_day: cyprusToday(),
+        p_start: null,
+        p_end: null,
+        p_reason: null,
+        p_expected_quote: 'bq-empty',
       },
     ]);
+    // Doc 28: never a direct insert any more.
+    expect(mockCalls.filter((c) => c.table === 'venue_blocks' && c.method === 'insert')).toEqual([]);
+    expect(screen.queryByTestId('clash-sheet')).toBeNull();
   });
 
   it('blocks one pitch for a time range, with that pitch and those times', async () => {
+    mockRpcData.venue_block_clashes = { clashes: [], venue_stripe_fee_cents: 0, quote: 'bq-empty' };
+    mockRpcData.venue_add_block = { block_id: 'blk-new', cancelled: 0, call_them: [] };
     await open();
     await act(() => fireEvent.press(screen.getByText('Block')));
-    await act(() => fireEvent.press(screen.getAllByText('Pitch 1').at(-1)!));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-pitch-p1')));
     await act(() => fireEvent.press(screen.getByText('Time range')));
     await act(() => fireEvent.press(screen.getByTestId('from-19:30')));
     await act(() => fireEvent.press(screen.getByTestId('to-21:00')));
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
-    const inserts = mockCalls.filter((c) => c.table === 'venue_blocks' && c.method === 'insert');
-    expect(inserts.map((c) => c.args[0])).toEqual([
-      expect.objectContaining({ pitch_id: 'p1', block_day: cyprusToday(), starts_at: '19:30', ends_at: '21:00' }),
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
+    expect(rpcCalls('venue_add_block')).toEqual([
+      expect.objectContaining({ p_pitch_id: 'p1', p_day: cyprusToday(), p_start: '19:30', p_end: '21:00' }),
     ]);
+  });
+
+  it('a clash: the clash sheet lists it before anything is saved; move, confirm, then who to phone', async () => {
+    const clashes = blockClashes();
+    mockRpcData.venue_block_clashes = clashes;
+    mockRpcData.venue_add_block = blockSaved();
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('venue-dashboard-block')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-pitch-p1')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
+    expect(await screen.findByTestId('clash-sheet')).toBeTruthy();
+    expect(screen.getByText('Pitch 1 · All day')).toBeTruthy();
+    expect(rpcCalls('venue_add_block')).toEqual([]);
+
+    // Move the app booking: its id and the server's pitch ids, then the list again.
+    const boardLoads = rpcCalls('venue_day_board').length;
+    await act(() => fireEvent.press(screen.getByTestId('clash-sheet-move-b-app')));
+    await act(() => fireEvent.press(screen.getByTestId('clash-sheet-move-b-app-0')));
+    expect(rpcCalls('venue_move_booking')).toEqual([{ p_booking_id: 'b-app', p_pitch_ids: ['p3'] }]);
+    expect(rpcCalls('venue_block_clashes')).toHaveLength(2);
+    expect(rpcCalls('venue_day_board').length).toBeGreaterThan(boardLoads);
+
+    // Confirm: saved with the quote shown, then the walk-in to phone.
+    await act(() => fireEvent.press(screen.getByTestId('clash-sheet-confirm')));
+    expect(rpcCalls('venue_add_block')).toEqual([
+      expect.objectContaining({ p_pitch_id: 'p1', p_start: null, p_end: null, p_expected_quote: clashes.quote }),
+    ]);
+    expect(screen.getByText('Call them')).toBeTruthy();
+    expect(screen.getByText('They paid €45.00 at the counter — refund it.')).toBeTruthy();
+    await act(() => fireEvent.press(screen.getByTestId('clash-sheet-done')));
+    expect(screen.queryByTestId('clash-sheet-call')).toBeNull();
+  });
+
+  it('the list changed before confirming: the new list shows, nothing saved', async () => {
+    mockRpcData.venue_block_clashes = blockClashes();
+    mockRpcHandlers.venue_add_block = async () => ({ data: null, error: { message: 'clashes_changed' } });
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('venue-dashboard-block')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
+    await screen.findByTestId('clash-sheet');
+    await act(() => fireEvent.press(screen.getByTestId('clash-sheet-confirm')));
+    expect(screen.getByText('The games changed. Check the list again.')).toBeTruthy();
+    expect(screen.getByTestId('clash-sheet')).toBeTruthy();
+  });
+
+  it('a refused clash list shows on the Block sheet, which stays open', async () => {
+    mockRpcHandlers.venue_block_clashes = async () => ({ data: null, error: { message: 'invalid_block_time' } });
+    await open();
+    await act(() => fireEvent.press(screen.getByTestId('venue-dashboard-block')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
+    expect(screen.getByText('Pick an end time after the start time.')).toBeTruthy();
+    expect(rpcCalls('venue_add_block')).toEqual([]);
   });
 
   it('tapping a flagged slot opens Flag with that pitch and half hour filled in', async () => {

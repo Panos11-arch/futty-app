@@ -2,13 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
-import { E2E_DATE_OF_BIRTH, E2E_LOG_MATCHES, E2E_VENUE } from './config';
+import { E2E_DATE_OF_BIRTH, E2E_LOG_MATCHES, E2E_PITCHES, E2E_STAFF, E2E_STAFF_BOOKING, E2E_VENUE } from './config';
 import { startingLevelOffered } from '../../lib/match/levels';
 import {
   connectAccountKey,
   connectAccountParams,
   E2E_UNTOUCHED_LEVEL,
   e2eLogScoreMatch,
+  e2eStaffBooking,
+  e2eStaffVenue,
   e2eStartingLevel,
   readSeedEnv,
   seedMain,
@@ -224,5 +226,48 @@ describe('the e2e logins’ date of birth', () => {
     const eighteenYearsAgo = new Date();
     eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18);
     expect(new Date(`${E2E_DATE_OF_BIRTH}T00:00:00Z`).getTime()).toBeLessThan(eighteenYearsAgo.getTime());
+  });
+});
+
+// Doc 28 prompt 1 (block-clashes.yaml): each platform's venue-staff login owns
+// its own test venue, which holds a phone booking tomorrow for the block to
+// clash with.
+describe('the venue staff’s test venue and its phone booking', () => {
+  it('one per platform, apart from each other and from the E2E Arena', () => {
+    expect(E2E_STAFF.map((s) => s.platform)).toEqual(['ios', 'android']);
+    const ids = [E2E_VENUE.id, ...E2E_PITCHES.map((p) => p.id), ...E2E_STAFF.flatMap((s) => [s.venue.id, s.pitchId])];
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const s of E2E_STAFF) expect(s.email).toMatch(/^e2e-(ios|android)-staff@e2e\.futty\.app$/);
+  });
+
+  it('the staff login owns it; not live, so players never see it in Book; one 5-a-side pitch with a price', () => {
+    const rows = e2eStaffVenue(E2E_STAFF[0], 'staff-id');
+    expect(rows.venue).toMatchObject({
+      id: E2E_STAFF[0].venue.id,
+      name: 'E2E Staff Arena iOS',
+      owner_profile_id: 'staff-id',
+      is_live: false,
+    });
+    expect(rows.pitch).toMatchObject({ id: E2E_STAFF[0].pitchId, venue_id: E2E_STAFF[0].venue.id, size: '5-a-side', is_open: true });
+    expect(rows.hours).toHaveLength(7);
+    expect(rows.price).toEqual({ venue_id: E2E_STAFF[0].venue.id, format: '5-a-side', price_cents: 6000 });
+  });
+
+  it('the phone booking: tomorrow in Cyprus, on that pitch, not paid (no money row)', () => {
+    // 23:30 on 24 November in Cyprus is already the 24th; tomorrow is the 25th.
+    const args = e2eStaffBooking(E2E_STAFF[1], new Date('2026-11-24T21:30:00Z'));
+    expect(args).toEqual({
+      p_venue_id: E2E_STAFF[1].venue.id,
+      p_day: '2026-11-25',
+      p_start: E2E_STAFF_BOOKING.start,
+      p_end: E2E_STAFF_BOOKING.end,
+      p_format: '5-a-side',
+      p_source: 'phone',
+      p_contact_name: 'E2E Caller',
+      p_contact_phone: '+35799000000',
+      p_pitch_id: E2E_STAFF[1].pitchId,
+    });
+    // 00:30 on 25 November in Cyprus (22:30 UTC on the 24th): tomorrow is the 26th.
+    expect(e2eStaffBooking(E2E_STAFF[1], new Date('2026-11-24T22:30:00Z')).p_day).toBe('2026-11-26');
   });
 });

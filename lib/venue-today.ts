@@ -287,18 +287,205 @@ export function setAllows6v6(venueId: string, allowed: boolean) {
   return supabase.rpc('set_venue_allows_6v6', { p_venue_id: venueId, p_allowed: allowed });
 }
 
-/** Closes pitches to new bookings (games already booked stay on). The
- *  venue owner's own row, through RLS ("Venue owners manage their blocks"). */
-export function addBlock(input: MarkInput & { reason: string | null }, staffId: string) {
-  return supabase.from('venue_blocks').insert({
-    venue_id: input.venueId,
-    pitch_id: input.pitchId,
-    block_day: input.day,
-    starts_at: input.start,
-    ends_at: input.end,
-    reason: blankToNull(input.reason),
-    created_by: staffId,
+// ---- Blocking, with its clashes (doc 28 prompt 1; spec 13 "Blocking
+// pitches", decided 18 November) -------------------------------------------
+// Before a block is saved, staff see every booking it clashes with
+// (venue_block_clashes), may move an app booking to a free pitch
+// (venue_move_booking), and confirm: venue_add_block cancels whatever still
+// clashes (the venue cancel; walk-ins as the dashboard's own cancel) and
+// saves the block, in one transaction, refusing if the list changed since
+// staff saw it. Every list, amount and quote is the server's.
+
+/** A free pitch, or combination, of the same size an app booking can move to. */
+export type BlockMove = { pitch_ids: string[]; pitch_names: string[] };
+
+type ClashBase = {
+  id: string;
+  start_time: string;
+  end_time: string;
+  format: string | null;
+  /** Kicked off: it stays on, and saving the block doesn't touch it. */
+  started: boolean;
+  pitch_ids: string[];
+  pitch_names: string[];
+};
+
+export type AppClash = ClashBase & {
+  kind: 'app';
+  booker_name: string | null;
+  status: string;
+  payment_mode: string | null;
+  capacity: number | null;
+  /** Still in, as everywhere on the dashboard. */
+  joined: number;
+  unpaid: number;
+  /** Made before P4a: no venue cancel, so staff move or cancel it first. */
+  legacy: boolean;
+  quote: string | null;
+  venue_stripe_fee_cents: number;
+  moves: BlockMove[];
+};
+
+export type CounterClash = ClashBase & {
+  kind: 'counter';
+  source: 'walk_in' | 'phone';
+  contact_name: string | null;
+  phone: string | null;
+  paid: boolean;
+  /** What they paid at the counter (0 unless paid). */
+  refund_cents: number;
+};
+
+export type BlockClash = AppClash | CounterClash;
+
+export type BlockClashes = {
+  clashes: BlockClash[];
+  /** Stripe's fees the venue would owe for every app booking cancelled. */
+  venue_stripe_fee_cents: number;
+  /** One hash over the whole list: venue_add_block refuses another. */
+  quote: string;
+};
+
+/** A walk-in or phone booking saving the block cancelled: staff phone them. */
+export type CallContact = {
+  booking_id: string;
+  source: 'walk_in' | 'phone';
+  contact_name: string | null;
+  phone: string | null;
+  start_time: string;
+  refund_cents: number;
+};
+
+export type BlockSaved = { block_id: string; cancelled: number; call_them: CallContact[] };
+
+export type BlockInput = MarkInput & { reason: string | null };
+
+/** What blocking this range would clash with. Nothing changes. */
+export function fetchBlockClashes(input: MarkInput) {
+  return supabase.rpc('venue_block_clashes', {
+    p_venue_id: input.venueId,
+    p_pitch_id: input.pitchId,
+    p_day: input.day,
+    p_start: input.start,
+    p_end: input.end,
   });
+}
+
+/** Moves an app booking to one of the server's moves, at the same time. */
+export function moveBooking(bookingId: string, pitchIds: string[]) {
+  return supabase.rpc('venue_move_booking', { p_booking_id: bookingId, p_pitch_ids: pitchIds });
+}
+
+/** Saves the block, cancelling what still clashes, only if the list is still
+ *  the one whose quote staff saw. Removing a block stays removeBlock. */
+export function addBlock(input: BlockInput, expectedQuote: string) {
+  return supabase.rpc('venue_add_block', {
+    p_venue_id: input.venueId,
+    p_pitch_id: input.pitchId,
+    p_day: input.day,
+    p_start: input.start,
+    p_end: input.end,
+    p_reason: blankToNull(input.reason),
+    p_expected_quote: expectedQuote,
+  });
+}
+
+type Rpc = PromiseLike<{ data: unknown; error: { message: string } | null }>;
+
+export type BlockStart =
+  | { status: 'saved'; saved: BlockSaved }
+  | { status: 'clashes'; clashes: BlockClashes }
+  | { status: 'error'; message: string };
+
+/** The Block button: lists the clashes. With none, the block is saved
+ *  straight away (staff already confirmed on the Block sheet); otherwise the
+ *  list comes back for the clash sheet. */
+export async function startBlock(input: BlockInput): Promise<BlockStart> {
+  const list = await (fetchBlockClashes(input) as Rpc);
+  if (list.error || !list.data) return { status: 'error', message: describeVenueError(list.error?.message ?? '') };
+  const clashes = list.data as BlockClashes;
+  if (clashes.clashes.length > 0) return { status: 'clashes', clashes };
+  const result = await confirmBlock(input, clashes.quote);
+  // Something landed in the slot meanwhile: show it.
+  return result.status === 'changed' ? { status: 'clashes', clashes: result.clashes } : result;
+}
+
+export type BlockConfirm =
+  | { status: 'saved'; saved: BlockSaved }
+  | { status: 'changed'; clashes: BlockClashes; message: string }
+  | { status: 'error'; message: string };
+
+/** Confirm on the clash sheet: saves with the quote shown. If the list
+ *  changed meanwhile, the new one comes back to be shown and confirmed again. */
+export async function confirmBlock(input: BlockInput, quote: string): Promise<BlockConfirm> {
+  const { data, error } = await (addBlock(input, quote) as Rpc);
+  if (!error && data) return { status: 'saved', saved: data as BlockSaved };
+  const code = error?.message ?? '';
+  if (code !== 'clashes_changed') return { status: 'error', message: describeVenueError(code) };
+  const again = await (fetchBlockClashes(input) as Rpc);
+  if (again.error || !again.data) return { status: 'error', message: describeVenueError(again.error?.message ?? '') };
+  return { status: 'changed', clashes: again.data as BlockClashes, message: describeVenueError(code) };
+}
+
+const PAYMENT_MODE_WORDS: Record<string, string> = {
+  pay_all: 'Booker pays all',
+  each_pays_own_spot: 'Each pays',
+  each_pays_responsible: 'Each pays',
+  gipedo_pano: 'Gipedo Pano',
+};
+
+/** '7 of 10 in · 1 unpaid · Each pays', with the server's counts. */
+export function appClashSummary(clash: AppClash): string {
+  const parts = [`${clash.joined} of ${clash.capacity ?? 0} in`];
+  if (clash.unpaid > 0) parts.push(`${clash.unpaid} unpaid`);
+  const mode = clash.payment_mode ? PAYMENT_MODE_WORDS[clash.payment_mode] : null;
+  if (mode) parts.push(mode);
+  return parts.join(' · ');
+}
+
+/** 'Phone · +35799000002 · Paid €45.00', with the server's amount. */
+export function counterClashSummary(clash: CounterClash): string {
+  const parts = [clash.source === 'phone' ? 'Phone' : 'Walk-in'];
+  if (clash.phone) parts.push(clash.phone);
+  if (!clash.paid) parts.push('Not paid');
+  else parts.push(clash.refund_cents > 0 ? `Paid ${formatEuros(clash.refund_cents)}` : 'Free');
+  return parts.join(' · ');
+}
+
+export function clashTime(clash: BlockClash): string {
+  return `${hhmm(clash.start_time)}–${hhmm(clash.end_time)}`;
+}
+
+export function clashTitle(clash: BlockClash): string {
+  if (clash.kind === 'app') return clash.booker_name ?? 'App booking';
+  return clash.contact_name ?? (clash.source === 'phone' ? 'Phone' : 'Walk-in');
+}
+
+/** 'Pitch 4 + Pitch 5', as the move notice names it. */
+export function moveLabel(move: BlockMove): string {
+  return move.pitch_names.join(' + ');
+}
+
+/** Spec 13's line before confirming, with the server's total; none at €0. */
+export function blockFeeLine(list: BlockClashes): string | null {
+  return list.venue_stripe_fee_cents > 0
+    ? `Stripe's fees on these payments: ${formatEuros(list.venue_stripe_fee_cents)}`
+    : null;
+}
+
+/** Spec 13's line for a cancelled walk-in paid at the counter. */
+export function counterRefundLine(refundCents: number): string | null {
+  return refundCents > 0 ? `They paid ${formatEuros(refundCents)} at the counter — refund it.` : null;
+}
+
+/** How many bookings saving would cancel: every clash not yet started. */
+export function clashesToCancel(list: BlockClashes): number {
+  return list.clashes.filter((c) => !c.started).length;
+}
+
+/** An older app booking still clashing: venue_add_block refuses it. */
+export function blocksOnLegacy(list: BlockClashes): boolean {
+  return list.clashes.some((c) => c.kind === 'app' && c.legacy && !c.started);
 }
 
 /** Reopens the slot to new bookings; existing bookings are never touched
@@ -754,6 +941,19 @@ export function describeVenueError(code: string): string {
       return 'That day has passed.';
     case 'flag_not_found':
       return 'That flag is already gone.';
+    // Blocking with clashes (doc 28 prompt 1).
+    case 'clashes_changed':
+      return 'The games changed. Check the list again.';
+    case 'legacy_booking':
+      return 'Move or cancel the older booking first.';
+    case 'pitch_blocked':
+      return 'That pitch is blocked then. Pick another.';
+    case 'invalid_pitches':
+      return "That pitch can't take this game. Pick another.";
+    case 'invalid_block_time':
+      return 'Pick an end time after the start time.';
+    case 'not_found':
+      return 'This booking is no longer there.';
     default:
       return 'Something went wrong. Try again.';
   }

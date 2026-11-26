@@ -21,4 +21,5 @@ executionOrder:
     - venue-book-and-pay
     - log-score
     - edit-avatar
+    - block-clashes
     - profile
