@@ -34,6 +34,7 @@ jest.mock('@/lib/community', () => ({ listTeams: () => new Promise(() => {}) }))
 const routes = () => ({
   _layout: () => <Stack screenOptions={{ headerShown: false }} />,
   play: require('@/app/(tabs)/play'),
+  'leagues/index': () => <Text>Leagues screen</Text>,
 });
 
 async function settle() {
@@ -46,7 +47,7 @@ async function openPlay(url: string) {
   const result = renderRouter(routes(), { initialUrl: url });
   await result;
   await settle();
-  return { getSearchParams: result.getSearchParams };
+  return { getSearchParams: result.getSearchParams, getPathname: result.getPathname };
 }
 
 async function choose(label: string) {
@@ -81,21 +82,22 @@ function nestedScrollers(root: Node) {
 }
 
 describe('Play', () => {
-  it('shows the three segments (Community is its own tab since S2), Teams first', async () => {
+  it('shows two segments (Community is its own tab since S2, Leagues its own screen since S9), Teams first', async () => {
     await openPlay('/play');
-    expect(screen.getAllByRole('tab').map((t) => t.props.accessibilityLabel)).toEqual([
-      'Teams',
-      'Matches',
-      'Leagues',
-    ]);
+    expect(screen.getAllByRole('tab').map((t) => t.props.accessibilityLabel)).toEqual(['Teams', 'Matches']);
     expect(selectedTab()).toBe('Teams');
     expect(screen.getByText(/not on a team yet/)).toBeTruthy();
+  });
+
+  it('?segment=leagues (old links and notifications) opens the Leagues screen', async () => {
+    const r = await openPlay('/play?segment=leagues');
+    expect(r.getPathname()).toBe('/leagues');
+    expect(screen.getByText('Leagues screen')).toBeTruthy();
   });
 
   it.each([
     ['teams', 'Teams'],
     ['matches', 'Matches'],
-    ['leagues', 'Leagues'],
   ])('?segment=%s selects %s', async (segment, label) => {
     await openPlay(`/play?segment=${segment}`);
     expect(selectedTab()).toBe(label);
@@ -107,13 +109,12 @@ describe('Play', () => {
     expect(screen.getByText('Upcoming fixtures')).toBeTruthy();
     expect(screen.getByText('Previous games')).toBeTruthy();
     expect(screen.getByText(/No upcoming fixtures/)).toBeTruthy();
-    await choose('Leagues');
-    expect(screen.getByText('Matchmaking')).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Community' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Leagues' })).toBeNull();
   });
 
   it('keeps the URL in step when you switch, so a later link to the old segment still applies', async () => {
-    const r = await openPlay('/play?segment=leagues');
+    const r = await openPlay('/play?segment=matches');
     await choose('Teams');
     expect(r.getSearchParams().segment).toBe('teams');
     expect(selectedTab()).toBe('Teams');
@@ -121,7 +122,7 @@ describe('Play', () => {
 
   it('keeps an opened segment mounted but hidden', async () => {
     await openPlay('/play?segment=teams');
-    await choose('Leagues');
+    await choose('Matches');
     expect(screen.getByTestId('play-segment-teams', { includeHiddenElements: true })).toBeTruthy();
   });
 });
@@ -143,8 +144,8 @@ describe('Play scrolling', () => {
 
   it('has no outer ScrollView: the segments are fixed and each scrolls itself', async () => {
     await openPlay('/play');
-    for (const label of ['Matches', 'Leagues']) await choose(label);
-    for (const segment of ['teams', 'matches', 'leagues']) {
+    await choose('Matches');
+    for (const segment of ['teams', 'matches']) {
       const container = screen.getByTestId(`play-segment-${segment}`, { includeHiddenElements: true });
       let node = (container as unknown as Node).parent;
       while (node) {
@@ -160,7 +161,7 @@ describe('Play scrolling', () => {
   it('never nests a virtualized list in a ScrollView, in any segment', async () => {
     const errors = jest.spyOn(console, 'error').mockImplementation(() => {});
     await openPlay('/play');
-    for (const label of ['Matches', 'Leagues']) await choose(label);
+    await choose('Matches');
     expect(nestedScrollers(screen.container as unknown as Node)).toBe(0);
     expect(errors.mock.calls.flat().join('\n')).not.toMatch(/VirtualizedLists should never be nested/);
     errors.mockRestore();

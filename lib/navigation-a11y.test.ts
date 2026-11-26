@@ -31,7 +31,7 @@ describe('the back button names the tab it returns to, never "(tabs)"', () => {
     ['profile', 'Profile'],
     ['play', 'Play'],
     ['team', 'Play'],
-    ['leagues', 'Play'],
+    ['leagues', 'Leagues'],
     ['book', 'Home'],
   ])('%s → %s', (route, title) => {
     expect(tabsBackTitle(route)).toBe(title);

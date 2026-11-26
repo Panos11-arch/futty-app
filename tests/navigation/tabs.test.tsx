@@ -184,10 +184,13 @@ describe('nothing from Book or Play becomes unreachable', () => {
     expect(screen.getByRole('header', { name: 'Play' })).toBeTruthy();
   });
 
-  it.each([
-    ['/team', 'teams'],
-    ['/leagues', 'leagues'],
-  ])('%s still opens Play on %s', async (url, segment) => {
+  it('/leagues opens the Leagues screen (S9)', async () => {
+    const r = await open('/leagues');
+    expect(r.getPathname()).toBe('/leagues');
+    expect(screen.getByText('Leagues screen')).toBeTruthy();
+  });
+
+  it.each([['/team', 'teams']])('%s still opens Play on %s', async (url, segment) => {
     const r = await open(url);
     expect(r.getPathname()).toBe('/play');
     expect(r.getSearchParams().segment).toBe(segment);
@@ -207,10 +210,14 @@ describe('nothing from Book or Play becomes unreachable', () => {
     expect(screen.getByText('Play segment teams team t1')).toBeTruthy();
   });
 
-  it.each([
-    ['Open leagues link', 'leagues'],
-    ['Open team link', 'teams'],
-  ])('"%s" pushed from Home lands on %s', async (link, segment) => {
+  it('"Open leagues link" pushed from Home lands on the Leagues screen (S9)', async () => {
+    const r = await open('/');
+    await press(screen.getByText('Open leagues link'));
+    expect(r.getPathname()).toBe('/leagues');
+    expect(screen.getByText('Leagues screen')).toBeTruthy();
+  });
+
+  it.each([['Open team link', 'teams']])('"%s" pushed from Home lands on %s', async (link, segment) => {
     const r = await open('/');
     await press(screen.getByText(link));
     expect(r.getPathname()).toBe('/play');
