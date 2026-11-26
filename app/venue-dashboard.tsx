@@ -39,6 +39,7 @@ import {
   Text,
 } from '@/components/ui';
 import { BlockSheet } from '@/components/venue/block-sheet';
+import { ClashSheet } from '@/components/venue/clash-sheet';
 import { BookingSheet, type BookingSheetActions, type RosterLoad } from '@/components/venue/booking-sheet';
 import { DayCalendar } from '@/components/venue/day-calendar';
 import { DayMarks } from '@/components/venue/day-marks';
@@ -60,7 +61,6 @@ import { isVenueStaff } from '@/lib/venue-staff';
 import { useWeatherNudges } from '@/lib/use-weather';
 import type { WeatherNudge } from '@/lib/weather';
 import {
-  addBlock,
   addCounterBooking,
   addDays,
   bookingSummary,
@@ -68,6 +68,7 @@ import {
   cancelCounterBooking,
   canStartGame,
   clearConditions,
+  confirmBlock,
   confirmVenueCancel,
   cyprusNow,
   cyprusToday,
@@ -75,6 +76,7 @@ import {
   describeAttendanceError,
   describeVenueError,
   describeVenuePlayerError,
+  fetchBlockClashes,
   fetchDayBoard,
   fetchRoster,
   fetchSlotPrice,
@@ -87,14 +89,18 @@ import {
   markCashReceived,
   markCounterPaid,
   markLabel,
+  moveBooking,
   offerVenuePlayer,
   removeBlock,
   requestCollection,
   setAllows6v6,
   slotIsPast,
+  startBlock,
   unassignedBookings,
   unmarkArrived,
   withdrawVenuePlayer,
+  type BlockClashes,
+  type BlockInput,
   type BoardBlock,
   type BoardBooking,
   type BoardFlag,
@@ -191,6 +197,8 @@ export default function VenueDashboardScreen() {
     /** Opened from a slot: that pitch and half hour. */
     slot?: { pitch: BoardPitch; start: string };
   } | null>(null);
+  /** Doc 28: what a block would clash with, before it's saved. */
+  const [clash, setClash] = useState<{ key: number; input: BlockInput; clashes: BlockClashes } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -324,6 +332,22 @@ export default function VenueDashboardScreen() {
     return refusal;
   }
 
+  /** Block on the Block sheet (doc 28 prompt 1): the server lists the clashes
+   *  first. With none it's saved straight away; otherwise the clash sheet
+   *  opens and nothing is saved until staff confirm there. */
+  async function block(input: BlockInput): Promise<string | null> {
+    const result = await startBlock(input);
+    if (result.status === 'error') return result.message;
+    if (result.status === 'saved') reloadBoard();
+    else setClash({ key: Date.now(), input, clashes: result.clashes });
+    return null;
+  }
+
+  async function reloadClashes(input: BlockInput): Promise<{ clashes: BlockClashes } | { error: string }> {
+    const { data, error } = await fetchBlockClashes(input);
+    return error || !data ? { error: describeVenueError(error?.message ?? '') } : { clashes: data as BlockClashes };
+  }
+
   async function change6v6(allowed: boolean) {
     if (!venue || venue.allows_6v6_on_5s === allowed) return;
     setBusy('6v6');
@@ -398,7 +422,12 @@ export default function VenueDashboardScreen() {
                   {day}
                 </Text>
               </View>
-              <IconButton icon="chevron.right" accessibilityLabel="Next day" onPress={() => setDay((d) => addDays(d, 1))} />
+              <IconButton
+                icon="chevron.right"
+                accessibilityLabel="Next day"
+                testID="venue-dashboard-next-day"
+                onPress={() => setDay((d) => addDays(d, 1))}
+              />
             </View>
             {day !== today ? (
               <View style={styles.wrapRow}>
@@ -407,7 +436,12 @@ export default function VenueDashboardScreen() {
             ) : null}
 
             <View style={styles.actions}>
-              <Button label="Block" variant="secondary" onPress={() => setMark({ mode: 'block', key: Date.now() })} />
+              <Button
+                label="Block"
+                variant="secondary"
+                testID="venue-dashboard-block"
+                onPress={() => setMark({ mode: 'block', key: Date.now() })}
+              />
               <Button
                 label="Flag conditions"
                 variant="secondary"
@@ -541,6 +575,23 @@ export default function VenueDashboardScreen() {
           onRemove={(b) => sheetWrite(removeBlock(b.id))}
         />
       ) : null}
+      {clash ? (
+        <ClashSheet
+          key={clash.key}
+          visible
+          label={
+            ready
+              ? markLabel(ready, { pitch_id: clash.input.pitchId, starts_at: clash.input.start, ends_at: clash.input.end })
+              : ''
+          }
+          clashes={clash.clashes}
+          onReload={() => reloadClashes(clash.input)}
+          onMove={(bookingId, pitchIds) => refusalOf(moveBooking(bookingId, pitchIds))}
+          onConfirm={(quote) => confirmBlock(clash.input, quote)}
+          onChanged={reloadBoard}
+          onClose={() => setClash(null)}
+        />
+      ) : null}
       {venue && user && mark ? (
         <MarkSheet
           key={mark.key}
@@ -566,7 +617,7 @@ export default function VenueDashboardScreen() {
               : undefined
           }
           onClose={() => setMark(null)}
-          onBlock={(input) => sheetWrite(addBlock({ venueId: venue.id, day, ...input }, user.id))}
+          onBlock={(input) => block({ venueId: venue.id, day, ...input })}
           onFlag={async (input) => {
             const refusal = await sheetWrite(flagConditions({ venueId: venue.id, day, ...input }));
             if (!refusal) reloadNudges();

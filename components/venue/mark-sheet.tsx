@@ -1,8 +1,8 @@
 // Blocking pitches and flagging conditions for the chosen day (spec 13
 // "Weather, condition warnings and blocking pitches"; spec 05 section 12,
 // items 4 and 6): a day or a time range, on one pitch or every pitch.
-// - Block: closes the pitches to new bookings. Games already booked stay on,
-//   and their players are told the venue has closed new bookings.
+// - Block: closes the pitches. Before it's saved, the clash sheet lists the
+//   games booked then (doc 28 prompt 1); the dashboard opens it.
 // - Flag: "conditions may be unsuitable". Every player booked then is told,
 //   and normal cancellation rules apply.
 // The default, every pitch for the whole day, is one tap once open. Opened
@@ -83,22 +83,31 @@ export function MarkSheet({
           value={mode}
           onChange={setMode}
         />
-        <Text tone="inkMuted">
-          {mode === 'block'
-            ? "Games already booked stay on. Their players are told you've closed new bookings."
-            : 'Every player booked then is told. Normal cancellation rules apply.'}
-        </Text>
+        {mode === 'flag' ? (
+          <Text tone="inkMuted">Every player booked then is told. Normal cancellation rules apply.</Text>
+        ) : null}
         <View style={styles.chips}>
-          <Chip label="All pitches" selected={pitchId === null} onPress={() => setPitchId(null)} />
+          <Chip
+            label="All pitches"
+            testID="mark-sheet-pitch-all"
+            selected={pitchId === null}
+            onPress={() => setPitchId(null)}
+          />
           {pitches.map((p) => (
-            <Chip key={p.id} label={p.name} selected={pitchId === p.id} onPress={() => setPitchId(p.id)} />
+            <Chip
+              key={p.id}
+              label={p.name}
+              testID={`mark-sheet-pitch-${p.id}`}
+              selected={pitchId === p.id}
+              onPress={() => setPitchId(p.id)}
+            />
           ))}
         </View>
         <SegmentedControl
           accessibilityLabel="Whole day or a time range"
           options={[
-            { value: 'day', label: 'Whole day' },
-            { value: 'range', label: 'Time range' },
+            { value: 'day', label: 'Whole day', testID: 'mark-sheet-whole-day' },
+            { value: 'range', label: 'Time range', testID: 'mark-sheet-time-range' },
           ]}
           value={span}
           onChange={setSpan}
@@ -131,7 +140,8 @@ export function MarkSheet({
           </Text>
         ) : null}
         <Button
-          label={mode === 'block' ? 'Close to new bookings' : 'Flag and tell players'}
+          label={mode === 'block' ? 'Block pitches' : 'Flag and tell players'}
+          testID="mark-sheet-submit"
           loading={busy}
           onPress={submit}
         />

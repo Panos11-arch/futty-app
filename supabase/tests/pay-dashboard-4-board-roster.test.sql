@@ -42,8 +42,11 @@ begin
                                      booking_type, created_by, amount_cents, note)
   values (v_venue, v_day, '08:00', '10:00', 1, 0, '5-a-side', 'owner_block', v_owner, 0, 'Academy')
   returning id into v_block_booking;
+  -- Set up directly: staff save blocks only through venue_add_block now.
+  perform tests.act_as_postgres();
   insert into public.venue_blocks (venue_id, block_day, starts_at, ends_at, reason, created_by)
   values (v_venue, v_day, '21:00', '23:00', 'Maintenance', v_owner);
+  perform tests.act_as(v_owner);
   v_flag := public.flag_conditions(v_venue, v_day, null, null, null, 'Rain');
 
   v_board := public.venue_day_board(v_venue, v_day);

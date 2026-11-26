@@ -34,8 +34,10 @@ begin
   select count(*) into v_count from public.venue_free_slots(v_venue, v_day, '5-a-side') where start_time = '19:00';
   assert v_count = 1, '19:00 should be free before the block';
 
-  -- The owner blocks the venue 17:00-21:00.
-  perform tests.act_as(v_owner);
+  -- The venue is blocked 17:00-21:00 by a raw row (as postgres): staff save
+  -- blocks only through venue_add_block now, which cancels the games it
+  -- covers (doc 28). A raw block row, as here, never cancels one.
+  perform tests.act_as_postgres();
   insert into public.venue_blocks (venue_id, block_day, starts_at, ends_at, reason, created_by)
   values (v_venue, v_day, '17:00', '21:00', 'Pitch maintenance', v_owner);
 

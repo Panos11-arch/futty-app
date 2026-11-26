@@ -6,6 +6,9 @@
 --    covers are told. That holds when staff widen a block later (longer
 --    hours, one pitch -> the whole venue), not only when it's created.
 --    Nobody is told twice about the same block.
+--    Staff save blocks only through venue_add_block now (doc 28 prompt 1)
+--    and can't write venue_blocks directly, so these raw writes run as
+--    postgres: they check the notify_venue_block trigger itself.
 begin;
 
 do $$
@@ -49,8 +52,7 @@ begin
   assert (select pitch_id from public.booking_pitches where booking_id = v_late_booking.id) = v_p1, 'late game on pitch 1';
   assert (select pitch_id from public.booking_pitches where booking_id = v_other_booking.id) = v_p2, 'other game on pitch 2';
 
-  -- The owner blocks pitch 1, 17:00-19:00: only the early game is told.
-  perform tests.act_as(v_owner);
+  -- Pitch 1 is blocked 17:00-19:00: only the early game is told.
   insert into public.venue_blocks (venue_id, pitch_id, block_day, starts_at, ends_at, created_by)
   values (v_venue, v_p1, v_day, '17:00', '19:00', v_owner)
   returning id into v_block;
@@ -62,8 +64,7 @@ begin
   where type = 'venue_closed_new_bookings' and profile_id in (v_late, v_other);
   assert v_count = 0, format('games outside the block are not told yet, got %s', v_count);
 
-  -- The owner widens it to 17:00-22:00: the late game is now covered and told.
-  perform tests.act_as(v_owner);
+  -- Widened to 17:00-22:00: the late game is now covered and told.
   update public.venue_blocks set ends_at = '22:00' where id = v_block;
 
   perform tests.act_as_postgres();
@@ -76,7 +77,6 @@ begin
   assert v_count = 0, format('pitch 2 is not blocked, got %s', v_count);
 
   -- From one pitch to the whole venue: the game on pitch 2 is told.
-  perform tests.act_as(v_owner);
   update public.venue_blocks set pitch_id = null where id = v_block;
 
   perform tests.act_as_postgres();
@@ -84,7 +84,6 @@ begin
   assert v_count = 1, format('a venue-wide block tells the pitch 2 game, got %s', v_count);
 
   -- Editing only the reason tells nobody again.
-  perform tests.act_as(v_owner);
   update public.venue_blocks set reason = 'Floodlights' where id = v_block;
 
   perform tests.act_as_postgres();

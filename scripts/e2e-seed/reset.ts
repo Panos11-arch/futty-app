@@ -2,7 +2,7 @@
 // the reset only ever selects the e2e logins (by their exact email domain)
 // and their own bookings at the E2E venue. The database queries filter the
 // same way first; these run on the rows that come back as a second check.
-import { E2E_EMAIL_DOMAIN, E2E_USERS, E2E_VENUE } from './config';
+import { E2E_EMAIL_DOMAIN, E2E_STAFF, E2E_USERS, E2E_VENUE } from './config';
 import { cyprusWallTime } from './slot';
 
 /** Only <something>@e2e.futty.app, nothing that merely contains it. */
@@ -16,7 +16,7 @@ export function isE2eEmail(email: string | null | undefined): boolean {
 /** The configured e2e logins among `users`. An e2e-domain login that
  *  isn't configured is left alone too: the seed only manages its own. */
 export function selectE2eUsers<T extends { id: string; email?: string | null }>(users: readonly T[]): T[] {
-  const wanted = new Set(E2E_USERS.map((u) => u.email));
+  const wanted = new Set([...E2E_USERS, ...E2E_STAFF].map((u) => u.email));
   return users.filter((u) => isE2eEmail(u.email) && wanted.has(u.email!.trim().toLowerCase()));
 }
 

@@ -163,6 +163,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   debt_settled: 'A debt is settled',
   cash_unpaid_prompt: 'Cash not yet paid',
   booking_cancelled_by_venue: 'The venue cancels a booking',
+  booking_pitch_moved: 'Your game moves pitch',
   venue_condition_warning: 'Pitch condition warnings',
   gipedo_result_needed: 'A result is needed for a payout',
   guarantee_charged: 'Money taken from your hold',
