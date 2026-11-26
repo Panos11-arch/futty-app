@@ -66,8 +66,9 @@ jest.mock('@/components/match/player-level', () => ({ PlayerLevelSummary: () => 
 jest.mock('@/components/navigation/my-card-sheet', () => ({ MyCardSheet: () => null }));
 jest.mock('@/lib/match/use-profile-summary', () => {
   const loading = () => ({ status: 'loading', reload: jest.fn() });
-  return { useMyProfileSummary: loading, useMyProfileSeason: loading, useMyProfileRecent: loading };
+  return { useMyProfileSummary: loading, useMyProfileSeason: loading, useMyProfileRecent: loading, useMyVenues: loading };
 });
+jest.mock('@/lib/match/use-profile-matches', () => ({ useMyTeammates: () => ({ status: 'loading', reload: jest.fn() }) }));
 jest.mock('@/lib/match/use-levels', () => ({
   STARTING_LEVEL_ROUTE: '/starting-level',
   usePlayerLevel: () => ({ status: 'loading', reload: jest.fn() }),

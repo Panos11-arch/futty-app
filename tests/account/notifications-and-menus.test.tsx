@@ -207,7 +207,6 @@ describe('Account menu (S2: the header menu opens it)', () => {
       ['account-leaderboards', 'Leaderboards', '/match/leaderboards'],
       // S8: moved off the Profile tab (image 19).
       ['account-streak', 'Streak', '/account/activity/streak'],
-      ['account-teammates', 'Teammates', '/account/activity/teammates'],
       ['account-activity', 'Your activity', '/account/activity'],
       ['account-edit-profile', 'Edit profile', '/edit-profile'],
     ]) {
@@ -215,6 +214,9 @@ describe('Account menu (S2: the header menu opens it)', () => {
       await fireEvent.press(screen.getByTestId(testID));
       expect(router.push).toHaveBeenLastCalledWith(target);
     }
+    // Teammates moved back to Profile (Panos, 26 November): not shown twice.
+    expect(screen.queryByTestId('account-teammates')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Teammates' })).toBeNull();
     await fireEvent.press(screen.getByTestId('account-log-out'));
     expect(mockSignOut).toHaveBeenCalled();
   });

@@ -62,15 +62,33 @@ export async function getHeadToHead(teamId: string, opponentTeamId: string) {
 
 export type Teammate = Pick<TeammateRow, 'teammate_profile_id' | 'matches_together' | 'last_played_at'>;
 
-/** "Players you play with most": the view returns the caller's own list only. */
+/** A teammate with the name and avatar the server allows the caller to see. */
+export type NamedTeammate = Omit<Teammate, 'last_played_at'> & {
+  last_played_at: string | null;
+  name: string;
+  kit?: AvatarLook | null;
+};
+
+type MyTeammateRow = {
+  id: string;
+  display_name: string | null;
+  matches_together: number;
+  last_played_at: string | null;
+} & Partial<AvatarFields>;
+
+/** "People you play with most": the caller's own list from my_teammates,
+ *  most games first, with Community's rules applied on the server (no
+ *  blocked pair, no adult/minor pair, a minor's first name only). */
 export async function getMyTeammates(limit = 5) {
-  const { data, error } = await supabase
-    .from('player_teammates')
-    .select('teammate_profile_id, matches_together, last_played_at')
-    .order('matches_together', { ascending: false })
-    .order('last_played_at', { ascending: false })
-    .limit(limit);
-  return { rows: (data as Teammate[] | null) ?? [], error };
+  const { data, error } = await supabase.rpc('my_teammates', { p_limit: limit });
+  const rows: NamedTeammate[] = ((data as MyTeammateRow[] | null) ?? []).map((r) => ({
+    teammate_profile_id: r.id,
+    matches_together: Number(r.matches_together),
+    last_played_at: r.last_played_at,
+    name: r.display_name || 'Player',
+    kit: avatarLook(r),
+  }));
+  return { rows: error ? [] : rows, error };
 }
 
 /** Display names and avatars for other players, from the public profile

@@ -1,6 +1,7 @@
 // S8 Profile tab (docs/specs/15-design.md, image 19). Reads the caller's own
 // summary, season tiles and recent games from the server
-// (20261126125309_match_profile_summary.sql) and formats them for display.
+// (20261126125309_match_profile_summary.sql), and Showed up and Your venues
+// (20261126180000_match_profile_more.sql), and formats them for display.
 // Every number comes from the server; nothing here counts or computes stats.
 import type { FormBadgeResult } from '@/components/ui/form-badge';
 import { formatLevel } from '@/lib/match/levels';
@@ -24,6 +25,17 @@ export type ProfileSeason = {
   motm: number;
   avgRating: number | null;
   totw: number;
+  /** Showed up, whole %; null until 3 games count (match-record.md "Showed up"). */
+  showedUpPct: number | null;
+};
+
+/** A venue the caller played at (my_venues), most games first. */
+export type MyVenue = {
+  venue_id: string;
+  name: string;
+  city: string | null;
+  games: number;
+  last_played_at: string | null;
 };
 
 export type ProfileRecentGame = {
@@ -64,9 +76,14 @@ export async function getMyProfileSummary(): Promise<Read<ProfileSummary>> {
 }
 
 export async function getMyProfileSeason(format: string | null): Promise<Read<ProfileSeason>> {
-  const { data, error } = await supabase.rpc('my_profile_season', { p_format: format });
+  const [season, showed] = await Promise.all([
+    supabase.rpc('my_profile_season', { p_format: format }),
+    supabase.rpc('my_profile_showed_up', { p_format: format }),
+  ]);
+  const error = season.error ?? showed.error;
   if (error) return { error: error.message };
-  const d = (data ?? {}) as Record<string, unknown>;
+  const d = (season.data ?? {}) as Record<string, unknown>;
+  const s = (showed.data ?? {}) as Record<string, unknown>;
   return {
     value: {
       formats: Array.isArray(d.formats) ? (d.formats as string[]) : [],
@@ -77,8 +94,22 @@ export async function getMyProfileSeason(format: string | null): Promise<Read<Pr
       motm: Number(d.motm ?? 0),
       avgRating: toNumber(d.avgRating),
       totw: Number(d.totw ?? 0),
+      showedUpPct: toNumber(s.pct),
     },
   };
+}
+
+export async function getMyVenues(limit = 20): Promise<Read<MyVenue[]>> {
+  const { data, error } = await supabase.rpc('my_venues', { p_limit: limit });
+  if (error) return { error: error.message };
+  return {
+    value: ((data as MyVenue[] | null) ?? []).map((v) => ({ ...v, games: Number(v.games) })),
+  };
+}
+
+/** "9 games" under a venue. */
+export function venueGamesLabel(games: number): string {
+  return games === 1 ? '1 game' : `${games} games`;
 }
 
 export async function getMyProfileRecent(limit = 3): Promise<Read<ProfileRecentGame[]>> {
@@ -144,7 +175,7 @@ export function teamSubtitle(role: string, city: string | null): string {
   return [roleLabel, city].filter(Boolean).join(' · ');
 }
 
-/** The season tiles in image 19's order. "Showed up" waits for a rule. */
+/** The season tiles in image 19's order. Showed up is "–" until 3 games count. */
 export function seasonTiles(s: ProfileSeason): { key: string; label: string; value: string }[] {
   return [
     { key: 'games', label: 'Games', value: String(s.games) },
@@ -154,5 +185,6 @@ export function seasonTiles(s: ProfileSeason): { key: string; label: string; val
     { key: 'wins', label: 'Wins', value: String(s.wins) },
     { key: 'motm', label: 'MOTM', value: String(s.motm) },
     { key: 'totw', label: 'TOTW', value: String(s.totw) },
+    { key: 'showedUp', label: 'Showed up', value: s.showedUpPct === null ? '–' : `${s.showedUpPct}%` },
   ];
 }

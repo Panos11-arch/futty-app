@@ -4,6 +4,7 @@ import { Pressable, RefreshControl, ScrollView, Share, View } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PlayerLevelSummary } from '@/components/match/player-level';
+import { ProfilePeoplePlaces } from '@/components/match/profile-people-places';
 import { ProfileMyTeams } from '@/components/match/profile-my-teams';
 import { ProfileRecentGames } from '@/components/match/profile-recent-games';
 import { ProfileSeasonCard } from '@/components/match/profile-season-card';
@@ -20,13 +21,16 @@ import { makeStyles } from '@/lib/theme';
 import { useAuth } from '@/lib/auth';
 import { avatarLook } from '@/lib/avatar';
 import { usePlayerLevel } from '@/lib/match/use-levels';
-import { useMyProfileRecent, useMyProfileSeason, useMyProfileSummary } from '@/lib/match/use-profile-summary';
+import { useMyTeammates } from '@/lib/match/use-profile-matches';
+import { useMyProfileRecent, useMyProfileSeason, useMyProfileSummary, useMyVenues } from '@/lib/match/use-profile-summary';
 import { cardLink, fetchMyPlayerCard } from '@/lib/player-card';
 import { type Profile, useProfile } from '@/lib/use-profile';
 import { useMyTeams } from '@/lib/use-my-teams';
 
 /** Recent games shown on Profile (image 19); "All games" opens the rest. */
 const RECENT_GAMES = 3;
+/** The rows under This season name only the top teammate and venue. */
+const TOP_ONE = 1;
 
 // A5b (docs/specs/match-record.md decision 1f.6): the skill level from
 // player_levels replaces the XP bar and tier. Games, wins and goals below are
@@ -117,10 +121,12 @@ function ProfileSkeleton({ topInset }: { topInset: number }) {
 
 /**
  * S8 (docs/specs/15-design.md, image 19): the dark top with level, My card
- * and Edit profile, then This season, Recent games and My teams. The banner
- * ad and the Dream team row (S21) are not built yet. What the old Profile
- * held lives in the Account menu (bookings, payments, settings, help,
- * Premium, venue dashboard, sign out, streak, teammates, leaderboards).
+ * and Edit profile, then This season (with Showed up), People you play with
+ * most and Your venues (Panos, 26 November), Recent games and My teams.
+ * There is no banner ad on your own profile (Panos, 26 November); the Dream
+ * team row is S21. What the old Profile held lives in the Account menu
+ * (bookings, payments, settings, help, Premium, venue dashboard, sign out,
+ * streak, leaderboards).
  */
 export default function ProfileScreen() {
   const styles = useStyles();
@@ -140,6 +146,8 @@ export default function ProfileScreen() {
   const season = useMyProfileSeason(userId, format);
   const recent = useMyProfileRecent(userId, RECENT_GAMES);
   const teams = useMyTeams();
+  const teammates = useMyTeammates(TOP_ONE);
+  const venues = useMyVenues(userId, TOP_ONE);
 
   // The dark top replaces the shared header on this tab only.
   useLayoutEffect(() => {
@@ -168,6 +176,8 @@ export default function ProfileScreen() {
       season.reload(),
       recent.reload(),
       teams.reload(),
+      teammates.reload(),
+      venues.reload(),
       loadShare(),
     ]);
     // Each reload is stable; the objects around them are new every render.
@@ -226,6 +236,7 @@ export default function ProfileScreen() {
             onFormat={setFormat}
             onRetry={season.reload}
           />
+          <ProfilePeoplePlaces teammates={teammates} venues={venues} />
           <ProfileRecentGames state={recent} onRetry={recent.reload} />
           <ProfileMyTeams state={teams} onRetry={teams.reload} />
         </View>
