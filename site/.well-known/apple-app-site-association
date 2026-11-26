@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.panosalepis.futtyapp"],
+        "appIDs": ["5Y987W9KDK.com.panosalepis.futtyapp"],
         "components": [{ "/": "/p/*", "comment": "A player card: futty.app/p/<username>" }]
       }
     ]

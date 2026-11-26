@@ -23,12 +23,11 @@ import {
   type PreferredDay,
   type PreferredTime,
 } from '@/lib/use-profile';
+import { FAVOURITE_PLAYER_MAX, FEET, normaliseFavouritePlayer, POSITIONS } from '@/lib/player-card';
 import { USERNAME_PATTERN, USERNAME_RULES_MESSAGE } from '@/lib/username';
 
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 const CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'];
-const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Striker'];
-const FEET = ['Left', 'Right', 'Both'];
 const DAY_LABELS: Record<PreferredDay, string> = {
   mon: 'Mon',
   tue: 'Tue',
@@ -50,6 +49,7 @@ type FormState = {
   city: string;
   position: string;
   preferredFoot: string;
+  favouritePlayer: string;
   preferredDays: PreferredDay[];
   preferredTimes: PreferredTime[];
   showPhonePublicly: boolean;
@@ -72,7 +72,7 @@ function PickerRow({
   value,
   onChange,
 }: {
-  options: string[];
+  options: readonly string[];
   value: string;
   onChange: (next: string) => void;
 }) {
@@ -160,6 +160,7 @@ export default function EditProfileScreen() {
       city: p.city ?? '',
       position: p.position ?? '',
       preferredFoot: p.preferred_foot ?? '',
+      favouritePlayer: p.favourite_player ?? '',
       preferredDays: p.preferred_days ?? [],
       preferredTimes: p.preferred_times ?? [],
       showPhonePublicly: p.show_phone_publicly,
@@ -225,6 +226,7 @@ export default function EditProfileScreen() {
       city: form.city || null,
       position: form.position || null,
       preferred_foot: form.preferredFoot || null,
+      favourite_player: normaliseFavouritePlayer(form.favouritePlayer),
       preferred_days: form.preferredDays,
       preferred_times: form.preferredTimes,
       show_phone_publicly: form.showPhonePublicly,
@@ -324,8 +326,19 @@ export default function EditProfileScreen() {
           <PickerRow options={POSITIONS} value={form.position} onChange={(v) => set('position', v)} />
         </Field>
 
-        <Field label="Preferred foot">
+        <Field label="Strong foot">
           <PickerRow options={FEET} value={form.preferredFoot} onChange={(v) => set('preferredFoot', v)} />
+        </Field>
+
+        <Field label="Favourite player">
+          <AuthField
+            testID="edit-profile-favourite-player"
+            value={form.favouritePlayer}
+            onChangeText={(v) => set('favouritePlayer', v)}
+            maxLength={FAVOURITE_PLAYER_MAX}
+            autoCapitalize="words"
+            accessibilityLabel="Favourite player"
+          />
         </Field>
 
         <Field label="Days you like to play">
@@ -352,7 +365,7 @@ export default function EditProfileScreen() {
           </Text>
         ) : null}
 
-        <Button label="Save changes" fullWidth onPress={save} loading={busy} />
+        <Button testID="edit-profile-save" label="Save changes" fullWidth onPress={save} loading={busy} />
       </ScrollView>
     </SafeAreaView>
   );

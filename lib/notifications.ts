@@ -86,7 +86,7 @@ export async function markAllNotificationsRead(ids: string[]) {
 // straight to notification_settings and notification_quiet_hours, whose RLS
 // allows a player their own rows only and refuses an always-sent type.
 
-export type NotificationGroupKey = 'games' | 'follows' | 'community' | 'venue';
+export type NotificationGroupKey = 'games' | 'follows' | 'community' | 'premium' | 'venue';
 
 /** Decision 1d.1: the switchable types, grouped. A type the server adds later lands in "Other". */
 export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; types: string[] }[] = [
@@ -118,6 +118,8 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
     types: ['followed_team_match', 'followed_team_result', 'followed_team_opponent_wanted'],
   },
   { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match', 'message_new'] },
+  // S14: off until the player switches it on (Apple guideline 4.5.4).
+  { key: 'premium', title: 'Premium', types: ['premium_offers'] },
   { key: 'venue', title: 'Venue', types: [...VENUE_NOTIFICATION_TYPES] },
 ];
 
@@ -136,6 +138,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   match_score_rejected: 'Your score was rejected',
   motm_vote_open: 'Man of the match voting',
   team_of_the_week: 'You’re in the team of the week',
+  premium_offers: 'Premium and offers',
   streak_badge: 'Streak badges',
   fixture_agreed: 'A fixture is agreed',
   fixture_message: 'Fixture messages',
@@ -160,6 +163,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   debt_settled: 'A debt is settled',
   cash_unpaid_prompt: 'Cash not yet paid',
   booking_cancelled_by_venue: 'The venue cancels a booking',
+  booking_pitch_moved: 'Your game moves pitch',
   venue_condition_warning: 'Pitch condition warnings',
   gipedo_result_needed: 'A result is needed for a payout',
   guarantee_charged: 'Money taken from your hold',
@@ -182,7 +186,8 @@ export function notificationLabel(type: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-export type NotificationTypeRow = { type: string; always_sent: boolean };
+/** default_enabled false: off until the player switches it on (S14 premium_offers). */
+export type NotificationTypeRow = { type: string; always_sent: boolean; default_enabled?: boolean };
 
 export type NotificationSection = { key: NotificationGroupKey | 'other'; title: string; types: string[] };
 
@@ -211,11 +216,18 @@ export function alwaysSentForViewer(types: string[], isVenueStaff: boolean): str
 }
 
 export async function getNotificationTypes() {
-  const { data, error } = await supabase.from('notification_types').select('type, always_sent').order('type');
+  const { data, error } = await supabase.from('notification_types').select('type, always_sent, default_enabled').order('type');
   return { rows: (data as NotificationTypeRow[] | null) ?? [], error };
 }
 
-/** The player's own opt-outs: type → enabled. No row means on. */
+/** The player's settings with each type's default filled in: a type that is off by default and has no row is off. */
+export function withDefaults(types: NotificationTypeRow[], settings: Record<string, boolean>): Record<string, boolean> {
+  const filled: Record<string, boolean> = {};
+  for (const t of types) if (t.default_enabled === false) filled[t.type] = false;
+  return { ...filled, ...settings };
+}
+
+/** The player's own rows: type → enabled. No row means the type's default (see withDefaults). */
 export async function getMyNotificationSettings() {
   const { data, error } = await supabase.from('notification_settings').select('type, enabled');
   const settings: Record<string, boolean> = {};

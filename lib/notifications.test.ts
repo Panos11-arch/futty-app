@@ -9,6 +9,7 @@ import {
   sectionsForViewer,
   setNotificationEnabled,
   setQuietHours,
+  withDefaults,
 } from '@/lib/notifications';
 
 let mockCalls: unknown[][] = [];
@@ -223,5 +224,42 @@ describe('streak badge notification type', () => {
     ]);
     expect(sections).toEqual([{ key: 'games', title: 'Your games', types: ['team_of_the_week', 'streak_badge'] }]);
     expect(notificationLabel('streak_badge')).toBe('Streak badges');
+  });
+});
+
+// S14: "Premium and offers" (match-record.md decision 1k item 7), off by
+// default (Apple guideline 4.5.4).
+describe('Premium and offers notification type', () => {
+  it('has its own Premium group and words', () => {
+    const sections = groupSwitchableTypes([
+      { type: 'team_of_the_week', always_sent: false },
+      { type: 'premium_offers', always_sent: false, default_enabled: false },
+    ]);
+    expect(sections).toEqual([
+      { key: 'games', title: 'Your games', types: ['team_of_the_week'] },
+      { key: 'premium', title: 'Premium', types: ['premium_offers'] },
+    ]);
+    expect(notificationLabel('premium_offers')).toBe('Premium and offers');
+  });
+
+  it('withDefaults: a type that is off by default and has no row is off; a row wins', () => {
+    const types = [
+      { type: 'team_of_the_week', always_sent: false },
+      { type: 'premium_offers', always_sent: false, default_enabled: false },
+    ];
+    expect(withDefaults(types, {})).toEqual({ premium_offers: false });
+    expect(withDefaults(types, { premium_offers: true, team_of_the_week: false })).toEqual({
+      premium_offers: true,
+      team_of_the_week: false,
+    });
+    expect(withDefaults([], { squad_post: false })).toEqual({ squad_post: false });
+  });
+});
+
+// Doc 28 prompt 1 (block clashes): staff moved a game to another pitch. Always
+// sent, so it shows in the always-sent list with a label, not as its type.
+describe('booking_pitch_moved', () => {
+  it('has a plain-word label', () => {
+    expect(notificationLabel('booking_pitch_moved')).toBe('Your game moves pitch');
   });
 });

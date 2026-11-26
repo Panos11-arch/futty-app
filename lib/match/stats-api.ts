@@ -56,30 +56,49 @@ export type LeaderboardRow = {
   kit?: AvatarLook | null;
 };
 
-/** One team of the week for all of Futty (decision 1g.4). */
+/**
+ * A team of the week (match-record.md decision 1k): one per week, kind
+ * (league or general), area and format. area_key is '' for All Cyprus, the
+ * city key, the venue id or the league id.
+ */
 export type TeamOfTheWeek = {
   id: string;
   week_start: string;
+  kind: 'general' | 'league';
+  area: 'all' | 'city' | 'venue' | 'league';
+  area_key: string;
+  area_name: string;
+  league_id: string | null;
+  format: string;
   matches: number;
 };
 
-export type PositionGroup = 'gk' | 'def' | 'mid' | 'fwd';
+/** Where the server placed a player (no positions: from goals and assists). */
+export type TeamSlot = 'gk' | 'def' | 'mid' | 'fwd';
 
 export type TeamOfTheWeekPlayer = {
   profile_id: string;
   name: string;
   /** A12: the player's kit avatar; null shows initials. */
   kit?: AvatarLook | null;
-  position_group: PositionGroup;
+  slot: TeamSlot;
   sort: number;
-  /** Average points per game that week, from the server. */
-  average_points: number;
   games: number;
   goals: number;
   assists: number;
   clean_sheets: number;
-  motm: number;
-  average_rating: number | null;
+  /** Average match rating that week, from the server. */
+  average_rating: number;
+  player_of_the_week: boolean;
+};
+
+/** A format's shape (team_of_the_week_shapes). */
+export type TeamShape = {
+  format: string;
+  keepers: number;
+  defenders: number;
+  midfielders: number;
+  strikers: number;
 };
 
 const yearFormat = new Intl.DateTimeFormat('en-GB', { timeZone: CYPRUS_TIME_ZONE, year: 'numeric' });
@@ -220,22 +239,47 @@ export async function getLeaderboard(scope: LeaderboardScope, year: number, boar
   return { rows, error: namesError };
 }
 
-/** The latest team of the week, or null when there's none yet. */
+const TEAM_COLUMNS = 'id, week_start, kind, area, area_key, area_name, league_id, format, matches';
+
+/** The formats in the order the app offers them. */
+export const TEAM_FORMATS = ['5-a-side', '6-a-side', '7-a-side', '9-a-side', '11-a-side'] as const;
+
+/** The team shown first: the latest week's General · All Cyprus team, smallest format first; null if none. */
+export function defaultTeam(teams: TeamOfTheWeek[]): TeamOfTheWeek | null {
+  const general = teams.filter((t) => t.kind === 'general' && t.area === 'all');
+  if (general.length === 0) return null;
+  const latest = general.reduce((week, t) => (t.week_start > week ? t.week_start : week), general[0].week_start);
+  const rank = (format: string) => {
+    const i = (TEAM_FORMATS as readonly string[]).indexOf(format);
+    return i === -1 ? TEAM_FORMATS.length : i;
+  };
+  return general.filter((t) => t.week_start === latest).sort((x, y) => rank(x.format) - rank(y.format))[0];
+}
+
+/** The latest General · All Cyprus team of the week, or null when there's none yet. */
 export async function getLatestTeamOfTheWeek() {
   const { data, error } = await supabase
     .from('team_of_the_week')
-    .select('id, week_start, matches')
+    .select(TEAM_COLUMNS)
+    .eq('kind', 'general')
+    .eq('area', 'all')
     .order('week_start', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(TEAM_FORMATS.length);
+  if (error) return { team: null, error };
+  return { team: defaultTeam((data as TeamOfTheWeek[] | null) ?? []), error: null };
+}
+
+/** One team of the week by id (a notification names it); null once it no longer exists. */
+export async function getTeamOfTheWeek(id: string) {
+  const { data, error } = await supabase.from('team_of_the_week').select(TEAM_COLUMNS).eq('id', id).maybeSingle();
   return { team: (data as TeamOfTheWeek | null) ?? null, error };
 }
 
-/** A team of the week's five players, in their slots, with names. */
+/** A team of the week's players, in the server's order, with names. */
 export async function getTeamOfTheWeekPlayers(teamOfTheWeekId: string) {
   const { data, error } = await supabase
     .from('team_of_the_week_players')
-    .select('profile_id, position_group, sort, average_points, games, goals, assists, clean_sheets, motm, average_rating')
+    .select('profile_id, slot, sort, games, goals, assists, clean_sheets, average_rating, player_of_the_week')
     .eq('team_of_the_week_id', teamOfTheWeekId)
     .order('sort', { ascending: true });
   if (error) return { players: [] as TeamOfTheWeekPlayer[], error };
@@ -245,6 +289,53 @@ export async function getTeamOfTheWeekPlayers(teamOfTheWeekId: string) {
     players: raw.map((r) => ({ ...r, name: names[r.profile_id] ?? 'Player', kit: kits[r.profile_id] ?? null })),
     error: namesError,
   };
+}
+
+/** A format's shape from the server; null for an unknown format. */
+export async function getTeamShape(format: string) {
+  const { data, error } = await supabase
+    .from('team_of_the_week_shapes')
+    .select('format, keepers, defenders, midfielders, strikers')
+    .eq('format', format)
+    .maybeSingle();
+  return { shape: (data as TeamShape | null) ?? null, error };
+}
+
+export type LineupSlot = { slot: TeamSlot; player: TeamOfTheWeekPlayer | null };
+
+/** Every slot of the shape, keeper first, then defence, midfield and strikers; null where no one was eligible. */
+export function lineup(players: TeamOfTheWeekPlayer[], shape: TeamShape): LineupSlot[] {
+  const counts: [TeamSlot, number][] = [
+    ['gk', shape.keepers],
+    ['def', shape.defenders],
+    ['mid', shape.midfielders],
+    ['fwd', shape.strikers],
+  ];
+  const sorted = [...players].sort((a, b) => a.sort - b.sort);
+  return counts.flatMap(([slot, n]) => {
+    const inSlot = sorted.filter((p) => p.slot === slot);
+    return Array.from({ length: n }, (_, i) => ({ slot, player: inSlot[i] ?? null }));
+  });
+}
+
+export const SLOT_LABELS: Record<TeamSlot, string> = {
+  gk: 'Keeper',
+  def: 'Defence',
+  mid: 'Midfield',
+  fwd: 'Striker',
+};
+
+/** "2 G · 3 A"; a player with neither shows clean sheets ("1 clean sheet"), else nothing. */
+export function statLine(p: Pick<TeamOfTheWeekPlayer, 'goals' | 'assists' | 'clean_sheets'>): string {
+  const parts = [p.goals > 0 ? `${p.goals} G` : null, p.assists > 0 ? `${p.assists} A` : null].filter(Boolean);
+  if (parts.length > 0) return parts.join(' · ');
+  if (p.clean_sheets > 0) return `${p.clean_sheets} ${p.clean_sheets === 1 ? 'clean sheet' : 'clean sheets'}`;
+  return '';
+}
+
+/** "Week of 9 Nov · 5-a-side · All Cyprus". */
+export function teamCaption(team: Pick<TeamOfTheWeek, 'week_start' | 'format' | 'area_name'>): string {
+  return `${formatWeekOf(team.week_start)} · ${team.format} · ${team.area_name}`;
 }
 
 /** "8.4": a rating with one decimal, as the match page shows it. */
@@ -261,30 +352,4 @@ export function formatWeekOf(weekStart: string): string {
     timeZone: 'UTC',
   });
   return `Week of ${label}`;
-}
-
-export const POSITION_LABELS: Record<PositionGroup, string> = {
-  gk: 'Keeper',
-  def: 'Defender',
-  mid: 'Midfielder',
-  fwd: 'Forward',
-};
-
-/** "8.5 pts": average points per game, one decimal. */
-export function formatPoints(points: number): string {
-  return `${Number(points).toFixed(1)} pts`;
-}
-
-/** The numbers behind a pick, for its position: "2 goals · 1 assist", "1 clean sheet". */
-export function pickLine(p: Pick<TeamOfTheWeekPlayer, 'position_group' | 'goals' | 'assists' | 'clean_sheets' | 'games' | 'motm'>): string {
-  const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
-  const parts =
-    p.position_group === 'gk' || p.position_group === 'def'
-      ? [n(p.clean_sheets, 'clean sheet', 'clean sheets')]
-      : p.position_group === 'mid'
-        ? [n(p.assists, 'assist', 'assists'), n(p.goals, 'goal', 'goals')]
-        : [n(p.goals, 'goal', 'goals'), n(p.assists, 'assist', 'assists')];
-  if (p.motm > 0) parts.push(n(p.motm, 'man of the match', 'men of the match'));
-  parts.push(n(p.games, 'game', 'games'));
-  return parts.join(' · ');
 }

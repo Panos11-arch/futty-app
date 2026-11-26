@@ -1,5 +1,5 @@
-// Home's team of the week (A7, match-record.md decision 1g.4): Futty's one
-// team, the latest week. Shows nothing while loading, on an error, or before
+// Home's team of the week (match-record.md decision 1k): the latest week's
+// General · All Cyprus team, smallest format first. Shows nothing while loading, on an error, or before
 // the first team, so Home never waits on it.
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
@@ -18,13 +18,13 @@ export function TeamOfTheWeekHome() {
 }
 
 function LatestTeam({ team }: { team: TeamOfTheWeek }) {
-  const players = useTeamOfTheWeekPlayers(team.id);
+  const players = useTeamOfTheWeekPlayers(team);
   return (
     <View style={styles.section} testID="home-team-of-the-week">
-      <SectionHeader title="Team of the week" action={{ label: 'See how', onPress: () => router.push('/match/team-of-the-week') }} />
+      <SectionHeader title="Team of the week" action={{ label: 'See team', onPress: () => router.push('/match/team-of-the-week') }} />
       <TeamOfTheWeekCard
         team={team}
-        state={players.status === 'ready' ? { status: 'ready', players: players.players } : players}
+        state={players.status === 'ready' ? { status: 'ready', players: players.players, shape: players.shape } : players}
         onRetry={players.reload}
       />
     </View>

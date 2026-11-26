@@ -44,7 +44,7 @@ describe('MarkSheet: opened from a slot on the calendar', () => {
         onFlag={jest.fn()}
       />,
     );
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
     expect(onBlock).toHaveBeenCalledWith({ pitchId: 'p2', start: '09:00', end: '09:30', reason: '' });
   });
 
@@ -70,8 +70,11 @@ describe('MarkSheet: opened from a slot on the calendar', () => {
 describe('MarkSheet', () => {
   it('blocks every pitch for the day in one tap', async () => {
     const { onBlock, onFlag, onClose } = await open('block');
-    expect(screen.getByText("Games already booked stay on. Their players are told you've closed new bookings.")).toBeTruthy();
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
+    // Doc 28: a block can now cancel the games it clashes with (the clash sheet
+    // lists them first), so the old "games stay on" line is gone.
+    expect(screen.queryByText(/stay on/)).toBeNull();
+    expect(screen.getByTestId('mark-sheet-submit')).toHaveTextContent('Block pitches');
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
     expect(onBlock).toHaveBeenCalledWith({ pitchId: null, start: null, end: null, reason: '' });
     expect(onFlag).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
@@ -84,7 +87,7 @@ describe('MarkSheet', () => {
     await fireEvent.press(screen.getByTestId('from-19:00'));
     await fireEvent.press(screen.getByTestId('to-21:00'));
     await fireEvent.changeText(screen.getByLabelText('Reason (optional)'), 'Resurfacing');
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
     expect(onBlock).toHaveBeenCalledWith({ pitchId: 'p2', start: '19:00', end: '21:00', reason: 'Resurfacing' });
   });
 
@@ -111,7 +114,7 @@ describe('MarkSheet', () => {
     await fireEvent.press(screen.getByText('Time range'));
     await fireEvent.press(screen.getByTestId('from-20:00'));
     await fireEvent.press(screen.getByTestId('to-19:00'));
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
     expect(onBlock).not.toHaveBeenCalled();
     expect(screen.getByText('Pick an end time after the start time.')).toBeTruthy();
   });
@@ -121,7 +124,7 @@ describe('MarkSheet', () => {
     await render(
       <MarkSheet visible mode="block" pitches={[PITCH_1]} onClose={jest.fn()} onBlock={onBlock} onFlag={jest.fn()} />,
     );
-    await act(() => fireEvent.press(screen.getByText('Close to new bookings')));
+    await act(() => fireEvent.press(screen.getByTestId('mark-sheet-submit')));
     expect(screen.getByText('That day has passed.')).toBeTruthy();
   });
 });

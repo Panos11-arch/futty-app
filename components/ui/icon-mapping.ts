@@ -62,6 +62,8 @@ export const MAPPING = {
   'circle.lefthalf.filled': 'contrast',
   accessibility: 'accessibility',
   'square.and.arrow.up': 'ios-share',
+  // S19: the player card's Scan button (from S20).
+  'qrcode.viewfinder': 'qr-code-scanner',
   'crown.fill': 'workspace-premium',
   'checkmark': 'check',
   'plus': 'add',

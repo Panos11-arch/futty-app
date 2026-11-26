@@ -1,5 +1,5 @@
 # Journey e (S2): the fixed tab bar and header. Each tab opens with its name
-# in the header, the Card button opens the My card sheet, the bell opens
+# in the header, the Card button opens the player card (S19), the bell opens
 # notifications, and the menu opens Account, from which Play and Help (with
 # Futty AI) are reachable. The seeded e2e login is a Basic player, not venue
 # staff, so Account has no Venue dashboard row.

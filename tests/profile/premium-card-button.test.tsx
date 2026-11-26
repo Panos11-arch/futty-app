@@ -1,6 +1,6 @@
 // U9, since S2 on the tab bar's Card button: it turns Premium right after a
 // Premium purchase, when the player comes back to the tab, not on the next
-// mount; Profile's Premium row follows. Uses the real
+// mount (S8 moved Profile's Premium row to the Account menu). Uses the real
 // useProfile against a fake profiles table: the purchase is the server
 // setting profiles.is_premium (the app never sets it).
 import { act, render, screen, waitFor } from '@testing-library/react-native';
@@ -43,6 +43,7 @@ jest.mock('expo-router', () => {
   const { useEffect } = jest.requireActual<typeof import('react')>('react');
   return {
     router: { push: jest.fn() },
+    useNavigation: () => ({ setOptions: jest.fn() }),
     // Runs on mount like the real one, and again whenever the test focuses the tab.
     useFocusEffect: (effect: () => void) =>
       useEffect(() => {
@@ -56,14 +57,26 @@ jest.mock('expo-router', () => {
 });
 jest.mock('react-native-safe-area-context', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  return { SafeAreaView: View };
+  return { SafeAreaView: View, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) };
 });
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
-jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
 jest.mock('@/components/match/player-level', () => ({ PlayerLevelSummary: () => null }));
-jest.mock('@/components/stats/streak-card', () => ({ StreakCard: () => null }));
+jest.mock('@/components/navigation/my-card-sheet', () => ({ MyCardSheet: () => null }));
+jest.mock('@/lib/match/use-profile-summary', () => {
+  const loading = () => ({ status: 'loading', reload: jest.fn() });
+  return { useMyProfileSummary: loading, useMyProfileSeason: loading, useMyProfileRecent: loading };
+});
+jest.mock('@/lib/match/use-levels', () => ({
+  STARTING_LEVEL_ROUTE: '/starting-level',
+  usePlayerLevel: () => ({ status: 'loading', reload: jest.fn() }),
+}));
+jest.mock('@/lib/use-my-teams', () => ({ useMyTeams: () => ({ status: 'loading', reload: jest.fn() }) }));
+jest.mock('@/lib/player-card', () => ({
+  cardLink: (u: string) => `https://futty.app/p/${u}`,
+  fetchMyPlayerCard: () => Promise.resolve({ status: 'error' }),
+}));
 
 loadWithFile(Image);
 
@@ -78,7 +91,6 @@ it('a Premium purchase, then focusing the tab, turns the Card button Premium', a
   );
   expect(await screen.findByText('Ann Lee')).toBeTruthy();
   expect(circle()).toBe(lightPalette.cardBasicBg);
-  expect(screen.getByRole('button', { name: /Go Premium/ })).toBeTruthy();
 
   // The purchase: the server sets is_premium (verified store receipt).
   mockRow.is_premium = true;
@@ -87,5 +99,4 @@ it('a Premium purchase, then focusing the tab, turns the Card button Premium', a
   await act(async () => mockFocusEffects.forEach((effect) => effect()));
 
   await waitFor(() => expect(circle()).toBe(lightPalette.cardPremiumBg));
-  expect(screen.getByRole('button', { name: /Manage Premium/ })).toBeTruthy();
 });
