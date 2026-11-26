@@ -65,6 +65,8 @@ jest.mock('@/lib/match/use-profile-matches', () => ({
   },
 }));
 const mockSeasonCalls: unknown[][] = [];
+const mockPowerCalls: string[] = [];
+let mockPower: Record<string, unknown> = { status: 'ready', rows: [], reload: jest.fn() };
 jest.mock('@/lib/match/use-stats', () => ({
   useTeamSeasonStats: (...args: unknown[]) => {
     mockSeasonCalls.push(args);
@@ -87,6 +89,10 @@ jest.mock('@/lib/match/use-stats', () => ({
     };
   },
   useTeamRecentMatches: () => ({ status: 'ready', rows: [], reload: jest.fn() }),
+  useTeamPowerRanking: (teamId: string) => {
+    mockPowerCalls.push(teamId);
+    return mockPower;
+  },
 }));
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
@@ -94,6 +100,8 @@ jest.mock('@/components/ui/icon-symbol', () =>
 
 beforeEach(() => {
   mockHeadToHeadCalls.length = 0;
+  mockPowerCalls.length = 0;
+  mockPower = { status: 'ready', rows: [], reload: jest.fn() };
   mockToggle.mockReset().mockResolvedValue({ error: null });
 });
 
@@ -165,5 +173,42 @@ describe('Team profile', () => {
     await renderReady();
     await fireEvent.press(screen.getByText('Pumas'));
     expect(mockHeadToHeadCalls.at(-1)).toEqual(['pumas', 'tigers']);
+  });
+
+  it('S15: its power ranking position in each format where it is listed; a row opens that ranking', async () => {
+    const { router } = jest.requireMock<{ router: { push: jest.Mock } }>('expo-router');
+    router.push.mockClear();
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockPower = {
+      status: 'ready',
+      rows: [
+        { format: '5-a-side', rank: 3, points: 1012.4, matches: 5 },
+        { format: '9-a-side', rank: 1, points: 1046.6, matches: 4 },
+      ],
+      reload: jest.fn(),
+    };
+    await renderReady();
+    expect(mockPowerCalls).toContain('tigers');
+    expect(screen.getByText('Power ranking')).toBeTruthy();
+    expect(screen.getByText('#3 · 1012')).toBeTruthy();
+    expect(screen.getByText('#1 · 1047')).toBeTruthy();
+    expect(screen.getByLabelText('5-a-side: number 3, 1012 points')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('team-power-ranking-9'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/rankings', params: { view: 'power', format: '9-a-side' } });
+  });
+
+  it('S15: no power ranking section when the team is listed nowhere', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    await renderReady();
+    expect(screen.queryByTestId('team-power-ranking')).toBeNull();
+  });
+
+  it('S15: the power ranking can fail on its own, with Try again', async () => {
+    const reload = jest.fn();
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockPower = { status: 'error', message: 'boom', reload };
+    await renderReady();
+    await fireEvent.press(screen.getByText('Try again'));
+    expect(reload).toHaveBeenCalled();
   });
 });

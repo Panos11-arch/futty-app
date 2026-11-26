@@ -244,29 +244,75 @@ const TEAM_COLUMNS = 'id, week_start, kind, area, area_key, area_name, league_id
 /** The formats in the order the app offers them. */
 export const TEAM_FORMATS = ['5-a-side', '6-a-side', '7-a-side', '9-a-side', '11-a-side'] as const;
 
-/** The team shown first: the latest week's General · All Cyprus team, smallest format first; null if none. */
-export function defaultTeam(teams: TeamOfTheWeek[]): TeamOfTheWeek | null {
-  const general = teams.filter((t) => t.kind === 'general' && t.area === 'all');
-  if (general.length === 0) return null;
-  const latest = general.reduce((week, t) => (t.week_start > week ? t.week_start : week), general[0].week_start);
-  const rank = (format: string) => {
-    const i = (TEAM_FORMATS as readonly string[]).indexOf(format);
-    return i === -1 ? TEAM_FORMATS.length : i;
-  };
-  return general.filter((t) => t.week_start === latest).sort((x, y) => rank(x.format) - rank(y.format))[0];
+export type TeamFormat = (typeof TEAM_FORMATS)[number];
+
+/** True for one of the five formats. */
+export function isTeamFormat(format: unknown): format is TeamFormat {
+  return typeof format === 'string' && (TEAM_FORMATS as readonly string[]).includes(format);
 }
 
-/** The latest General · All Cyprus team of the week, or null when there's none yet. */
-export async function getLatestTeamOfTheWeek() {
+/** How many weeks back the week picker reaches (rows read to find them). */
+const WEEK_ROWS = 500;
+
+/** The weeks with a team of the week in `format`, newest first. */
+export async function listTeamOfTheWeekWeeks(format: string) {
+  const { data, error } = await supabase
+    .from('team_of_the_week')
+    .select('week_start')
+    .eq('format', format)
+    .order('week_start', { ascending: false })
+    .limit(WEEK_ROWS);
+  if (error) return { weeks: [] as string[], error };
+  const weeks = [...new Set(((data as { week_start: string }[] | null) ?? []).map((r) => r.week_start))];
+  return { weeks, error: null };
+}
+
+/** Every General and League team of the week for one week and format. */
+export async function listTeamsOfTheWeek(weekStart: string, format: string) {
   const { data, error } = await supabase
     .from('team_of_the_week')
     .select(TEAM_COLUMNS)
-    .eq('kind', 'general')
-    .eq('area', 'all')
-    .order('week_start', { ascending: false })
-    .limit(TEAM_FORMATS.length);
-  if (error) return { team: null, error };
-  return { team: defaultTeam((data as TeamOfTheWeek[] | null) ?? []), error: null };
+    .eq('week_start', weekStart)
+    .eq('format', format);
+  if (error) return { teams: [] as TeamOfTheWeek[], error };
+  return { teams: (data as TeamOfTheWeek[] | null) ?? [], error: null };
+}
+
+const AREA_ORDER: Record<TeamOfTheWeek['area'], number> = { all: 0, city: 1, venue: 2, league: 3 };
+
+/** A kind's teams in picker order: All Cyprus, then cities, then busy venues (leagues by name). */
+export function areaOptions(teams: TeamOfTheWeek[], kind: TeamOfTheWeek['kind']): TeamOfTheWeek[] {
+  return teams
+    .filter((t) => t.kind === kind)
+    .sort((x, y) => AREA_ORDER[x.area] - AREA_ORDER[y.area] || x.area_name.localeCompare(y.area_name));
+}
+
+/** The team shown first: General · the viewer's city, else General · All Cyprus, else the first there is. */
+export function pickDefaultTeam(teams: TeamOfTheWeek[], myCityKey: string | null): TeamOfTheWeek | null {
+  const general = areaOptions(teams, 'general');
+  const mine = myCityKey ? general.find((t) => t.area === 'city' && t.area_key === myCityKey) : undefined;
+  return mine ?? general.find((t) => t.area === 'all') ?? general[0] ?? areaOptions(teams, 'league')[0] ?? null;
+}
+
+/** "General" or "League". */
+export function kindLabel(kind: TeamOfTheWeek['kind']): string {
+  return kind === 'league' ? 'League' : 'General';
+}
+
+/** "7-a-side · non-league games" or "7-a-side · league games". */
+export function scopeCaption(team: Pick<TeamOfTheWeek, 'kind' | 'format'>): string {
+  return `${team.format} · ${team.kind === 'league' ? 'league games' : 'non-league games'}`;
+}
+
+const dayMonth = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** "16–22 Nov", or "30 Nov – 6 Dec" across a month: Monday to Sunday of a week_start (YYYY-MM-DD). */
+export function weekRangeLabel(weekStart: string): string {
+  const [y, m, d] = weekStart.split('-').map(Number);
+  const start = new Date(Date.UTC(y, m - 1, d, 12));
+  const end = new Date(Date.UTC(y, m - 1, d + 6, 12));
+  if (start.getUTCMonth() === end.getUTCMonth()) return `${start.getUTCDate()}–${dayMonth(end)}`;
+  return `${dayMonth(start)} – ${dayMonth(end)}`;
 }
 
 /** One team of the week by id (a notification names it); null once it no longer exists. */
@@ -319,7 +365,7 @@ export function lineup(players: TeamOfTheWeekPlayer[], shape: TeamShape): Lineup
 }
 
 export const SLOT_LABELS: Record<TeamSlot, string> = {
-  gk: 'Keeper',
+  gk: 'Goalkeeper',
   def: 'Defence',
   mid: 'Midfield',
   fwd: 'Striker',
@@ -333,23 +379,19 @@ export function statLine(p: Pick<TeamOfTheWeekPlayer, 'goals' | 'assists' | 'cle
   return '';
 }
 
-/** "Week of 9 Nov · 5-a-side · All Cyprus". */
-export function teamCaption(team: Pick<TeamOfTheWeek, 'week_start' | 'format' | 'area_name'>): string {
-  return `${formatWeekOf(team.week_start)} · ${team.format} · ${team.area_name}`;
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** "2 games · 4 goals, 1 assist": the Player of the week card's line (goals and assists left out at 0). */
+export function playerOfTheWeekLine(p: Pick<TeamOfTheWeekPlayer, 'games' | 'goals' | 'assists'>): string {
+  const tallies = [
+    p.goals > 0 ? plural(p.goals, 'goal', 'goals') : null,
+    p.assists > 0 ? plural(p.assists, 'assist', 'assists') : null,
+  ].filter(Boolean);
+  const games = plural(p.games, 'game', 'games');
+  return tallies.length > 0 ? `${games} · ${tallies.join(', ')}` : games;
 }
 
 /** "8.4": a rating with one decimal, as the match page shows it. */
 export function formatRating(rating: number | null | undefined): string {
   return rating == null ? '–' : Number(rating).toFixed(1);
-}
-
-/** "Week of 9 Nov" for a week_start date (a Monday, YYYY-MM-DD). */
-export function formatWeekOf(weekStart: string): string {
-  const [y, m, d] = weekStart.split('-').map(Number);
-  const label = new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
-  return `Week of ${label}`;
 }
