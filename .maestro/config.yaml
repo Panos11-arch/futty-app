@@ -16,9 +16,13 @@ executionOrder:
     - navigation
     - home
     - messages
+    - community
     - futty-ai
     - book-missing-venue
     - find-match
     - venue-book-and-pay
     - log-score
     - edit-avatar
+    - block-clashes
+    - profile
+    - leagues

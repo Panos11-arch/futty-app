@@ -1,0 +1,127 @@
+# Journey (S8): the Profile tab (image 19). The dark top, This season (and
+# its format picker when the player has games), My card opens and closes,
+# Edit profile and back, Settings opens the Account menu with the rows that
+# moved off Profile, and Recent games' All games when there are games.
+appId: com.panosalepis.futtyapp
+name: profile
+tags:
+  - e2e
+  - profile
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: profile
+- assertVisible:
+    id: profile-screen
+- assertVisible:
+    id: profile-top
+- assertVisible:
+    id: profile-my-card
+- assertVisible:
+    id: profile-season
+- assertVisible:
+    id: profile-season-tile-games
+# Showed up (Panos, 26 November): "–" until 3 games count, so always there.
+- assertVisible:
+    id: profile-season-tile-showedUp
+- takeScreenshot: profile-${PLATFORM}
+
+# ---- People you play with most / Your venues (only once there are any) --------
+- runFlow:
+    when:
+      visible:
+        id: profile-teammates
+    commands:
+      - tapOn:
+          id: profile-teammates
+      - assertVisible:
+          id: teammates-screen
+      - back
+- runFlow:
+    when:
+      visible:
+        id: profile-venues
+    commands:
+      - tapOn:
+          id: profile-venues
+      - assertVisible:
+          id: venues-screen
+      - back
+
+# ---- This season's format picker (only once the player has played) -----------
+- runFlow:
+    when:
+      visible:
+        id: profile-season-format
+    commands:
+      - tapOn:
+          id: profile-season-format
+      - assertVisible:
+          id: profile-season-format-all
+      - tapOn:
+          id: profile-season-format-all
+      - assertVisible:
+          id: profile-season
+
+# ---- My card ------------------------------------------------------------------
+- tapOn:
+    id: profile-my-card
+- assertVisible:
+    id: my-card-sheet
+- tapOn:
+    id: my-card-backdrop
+- assertNotVisible:
+    id: my-card-sheet
+
+# ---- Edit profile and back --------------------------------------------------
+- tapOn:
+    id: profile-edit
+- assertVisible:
+    id: edit-profile-username-field
+- back
+- assertVisible:
+    id: profile-top
+
+# ---- Settings: the Account menu holds what moved off Profile -------------------
+- tapOn:
+    id: profile-settings
+- assertVisible:
+    id: account-menu
+- scrollUntilVisible:
+    element:
+      id: account-streak
+# Teammates moved back to Profile (Panos, 26 November): not in the menu.
+- assertNotVisible: Teammates
+- tapOn:
+    id: account-streak
+- assertVisible:
+    id: streak-screen
+- back
+- back
+- assertVisible:
+    id: profile-screen
+
+# ---- Recent games → All games (only once the player has a confirmed game) ------
+- scrollUntilVisible:
+    element:
+      id: profile-teams
+    direction: DOWN
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: profile-all-games
+    commands:
+      - tapOn:
+          id: profile-all-games
+      - back

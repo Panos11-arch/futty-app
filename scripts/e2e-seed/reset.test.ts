@@ -1,4 +1,4 @@
-import { E2E_USERS, E2E_VENUE } from './config';
+import { E2E_STAFF, E2E_USERS, E2E_VENUE } from './config';
 import { assertE2eVenue, isE2eEmail, selectBookingsToCancel, selectE2eUsers, type BookingRow } from './reset';
 
 describe('isE2eEmail: only the exact e2e domain', () => {
@@ -30,10 +30,11 @@ describe('selectE2eUsers: never a real login', () => {
     { id: 'real-3', email: null },
     { id: 'stray', email: 'someone-else@e2e.futty.app' },
     ...E2E_USERS.map((u, i) => ({ id: `e2e-${i}`, email: u.email })),
+    ...E2E_STAFF.map((u, i) => ({ id: `staff-${i}`, email: u.email })),
   ];
 
-  it('picks exactly the four configured e2e logins', () => {
-    expect(selectE2eUsers(users).map((u) => u.id)).toEqual(['e2e-0', 'e2e-1', 'e2e-2', 'e2e-3']);
+  it('picks exactly the configured e2e logins: four players and the two venue staff', () => {
+    expect(selectE2eUsers(users).map((u) => u.id)).toEqual(['e2e-0', 'e2e-1', 'e2e-2', 'e2e-3', 'staff-0', 'staff-1']);
   });
 
   it('picks nothing from a list of real logins', () => {

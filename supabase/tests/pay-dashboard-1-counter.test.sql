@@ -147,9 +147,12 @@ begin
   assert tests.error_of(format($q$ select public.add_counter_booking(%L, %L, '18:00', '19:00', '5-a-side', 'walk_in', 'A', null) $q$,
                                v_venue, tests.cyprus_today() - 1)) = 'slot_ended', 'not a game that has ended';
 
-  -- A block stops counter bookings too (staff lift it first).
+  -- A block stops counter bookings too (staff lift it first). Staff save
+  -- blocks only through venue_add_block now, so it's set up as postgres.
+  perform tests.act_as_postgres();
   insert into public.venue_blocks (venue_id, pitch_id, block_day, starts_at, ends_at, created_by)
   values (v_venue, null, v_day, '19:00', '21:00', v_owner);
+  perform tests.act_as(v_owner);
   assert tests.error_of(format($q$ select public.add_counter_booking(%L, %L, '19:00', '20:00', '5-a-side', 'walk_in', 'A', null) $q$,
                                v_venue, v_day)) = 'slot_full', 'blocked: no free pitch';
   assert tests.error_of(format($q$ select public.add_counter_booking(%L, %L, '20:00', '21:00', '5-a-side', 'walk_in', 'A', null, %L) $q$,

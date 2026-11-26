@@ -1,0 +1,73 @@
+# S9 journey: Home → Leagues (image 12). LEAGUES: open the Cyprus Open
+# League, open a format with no season (Coming soon, image 16) and come back,
+# pin it and unpin it (Pinned (1) shows, then goes). MATCHES: Filter and the
+# day stepper. Home's Leagues button is in S3, so the flow opens the same
+# route, /leagues, by its link. Pins are this login's own rows on staging;
+# the flow unpins what it pins.
+appId: com.panosalepis.futtyapp
+name: leagues
+tags:
+  - e2e
+  - leagues
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- openLink: futtyapp://leagues
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 30000
+- assertVisible:
+    id: tab-bar
+- takeScreenshot: leagues-${PLATFORM}
+
+# ---- LEAGUES -------------------------------------------------------------------
+- tapOn:
+    id: leagues-group-island-wide
+- assertVisible:
+    id: leagues-row-child-island-wide-11-a-side
+- tapOn:
+    id: leagues-row-child-island-wide-11-a-side
+- assertVisible:
+    id: coming-soon-screen
+- assertVisible: Coming soon
+- takeScreenshot: leagues-coming-soon-${PLATFORM}
+- tapOn:
+    id: coming-soon-back
+- assertVisible:
+    id: leagues-list
+
+- tapOn:
+    id: leagues-pin-child-island-wide-11-a-side
+- assertVisible: PINNED (1)
+- assertVisible:
+    id: leagues-row-pinned-island-wide-11-a-side
+- tapOn:
+    id: leagues-pin-pinned-island-wide-11-a-side
+- assertNotVisible: PINNED (1)
+
+# ---- MATCHES -------------------------------------------------------------------
+- tapOn:
+    id: leagues-tab-matches
+- assertVisible:
+    id: matches-filter
+- tapOn:
+    id: matches-day-next
+- tapOn:
+    id: matches-day-prev
+- assertVisible: Today
+- tapOn:
+    id: matches-filter
+- tapOn:
+    id: matches-filter-format-5-a-side
+- tapOn:
+    id: matches-filter-apply
+- assertVisible: Filter (1)
+- takeScreenshot: leagues-matches-${PLATFORM}

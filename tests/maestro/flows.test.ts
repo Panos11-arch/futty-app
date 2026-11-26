@@ -13,7 +13,8 @@ import { payLabel } from '@/components/booking/checkout-parts';
 import { cancelledMessage, describeQuote } from '@/lib/booking-detail';
 import type { CancellationQuote } from '@/lib/booking-actions';
 
-import { E2E_PRICE_CENTS, E2E_VENUE } from '../../scripts/e2e-seed/config';
+import { E2E_PRICE_CENTS, E2E_STAFF, E2E_STAFF_BOOKING, E2E_VENUE } from '../../scripts/e2e-seed/config';
+import { clashTime, clashTitle, counterClashSummary, type CounterClash } from '@/lib/venue-today';
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/calendar', () => ({ addBookingToCalendar: jest.fn(), syncBookingInCalendar: jest.fn() }));
@@ -46,6 +47,7 @@ function sample(id: string): string {
     .replace('${TODAY}', '2026-11-21')
     .replace('${START}', '1900')
     .replace('${VENUE_ID}', E2E_VENUE.id)
+    .replace('${PITCH}', E2E_STAFF[0].pitchId)
     .replace('${TAB}', 'profile')
     .replace('[0-9a-f-]{36}', 'b6c2c1b8-6f0d-4e8e-9a43-2a4d7c1f0b11')
     .replace('.*', 'confirmed');
@@ -71,21 +73,25 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the fourteen journeys and their subflows', () => {
+  it('has the eighteen journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
+      'flows/block-clashes.yaml',
       'flows/book-and-pay.yaml',
       'flows/book-missing-venue.yaml',
       'flows/cancel.yaml',
+      'flows/community.yaml',
       'flows/edit-avatar.yaml',
       'flows/find-match.yaml',
       'flows/futty-ai.yaml',
       'flows/home.yaml',
+      'flows/leagues.yaml',
       'flows/log-score.yaml',
       'flows/messages.yaml',
       'flows/navigation.yaml',
       'flows/player-card.yaml',
+      'flows/profile.yaml',
       'flows/sign-in.yaml',
       'flows/venue-book-and-pay.yaml',
       'subflows/open-my-booking.yaml',
@@ -105,7 +111,7 @@ describe('.maestro', () => {
   });
 
   it('each journey ends with a screenshot', () => {
-    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'home', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card']) {
+    for (const name of ['sign-in', 'book-and-pay', 'cancel', 'appearance', 'navigation', 'home', 'messages', 'book-missing-venue', 'find-match', 'log-score', 'edit-avatar', 'player-card', 'block-clashes', 'community']) {
       const steps = loadAll(read(path.join(maestroDir, 'flows', `${name}.yaml`)))[1] as unknown[];
       expect(steps[steps.length - 1]).toEqual({ takeScreenshot: `${name}-\${PLATFORM}` });
     }
@@ -352,5 +358,45 @@ describe('what the flows expect is what the app shows', () => {
     const notice = cancelledMessage('whole_team', { cancelled: true, fee: null });
     expect(notice).toBe('The booking is cancelled.');
     expect(expected('flows/cancel.yaml', /text: '(The booking is cancelled\\\.)'/g)).toEqual([notice]);
+  });
+});
+
+// Doc 28 prompt 1: block-clashes.yaml expects the clash sheet's words for the
+// phone booking the seed makes, on the staff venue's own pitch.
+describe('block-clashes', () => {
+  const text = () => read(path.join(maestroDir, 'flows', 'block-clashes.yaml')).replace(/\r\n/g, '\n');
+  const seeded: CounterClash = {
+    id: 'seeded',
+    kind: 'counter',
+    start_time: `${E2E_STAFF_BOOKING.start}:00`,
+    end_time: `${E2E_STAFF_BOOKING.end}:00`,
+    format: '5-a-side',
+    started: false,
+    pitch_ids: [E2E_STAFF[0].pitchId],
+    pitch_names: ['Pitch 1'],
+    source: 'phone',
+    contact_name: E2E_STAFF_BOOKING.contactName,
+    phone: E2E_STAFF_BOOKING.phone,
+    paid: false,
+    refund_cents: 0,
+  };
+  // Maestro reads assertVisible text as a regular expression.
+  const asPattern = (s: string) => s.replace(/[+]/g, '\\+');
+
+  it('looks for the seeded booking as the clash sheet words it', () => {
+    expect(text()).toContain(`assertVisible: '${clashTime(seeded)} · ${clashTitle(seeded)}'`);
+    expect(text()).toContain(`assertVisible: '${asPattern(counterClashSummary(seeded))}'`);
+    expect(text()).toContain(`assertVisible: '${asPattern(E2E_STAFF_BOOKING.phone)}'`);
+  });
+
+  it('signs in as the staff login and blocks its own venue’s pitch, per platform', () => {
+    expect(text()).toContain("EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-staff@e2e.futty.app'}");
+    const [ios, android] = E2E_STAFF;
+    expect(ios.email).toBe('e2e-ios-staff@e2e.futty.app');
+    expect(android.email).toBe('e2e-android-staff@e2e.futty.app');
+    expect(text()).toContain(`'ios' ? '${ios.pitchId}' : '${android.pitchId}'`);
+    // The seeded booking is tomorrow, so the flow moves one day on first.
+    expect(E2E_STAFF_BOOKING.daysAhead).toBe(1);
+    expect(text().match(/id: venue-dashboard-next-day\n/g)?.length).toBe(2);
   });
 });

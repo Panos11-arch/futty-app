@@ -29,9 +29,22 @@ const CARDS: Record<CardKind, { button: string; title: string }> = {
 
 export type MatchShareProps = { page: MatchPage };
 
+/** Share on the match page: the button and its sheet. */
 export function MatchShare({ page }: MatchShareProps) {
   const data = useMemo(() => shareCardData(page), [page]);
   const [open, setOpen] = useState(false);
+  if (!data) return null;
+  return (
+    <>
+      <Button label="Share" variant="secondary" onPress={() => setOpen(true)} testID="match-share" />
+      <MatchShareSheet page={page} visible={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+/** The sheet with the cards to share (S7: the feed's result card opens it too). */
+export function MatchShareSheet({ page, visible, onClose }: MatchShareProps & { visible: boolean; onClose: () => void }) {
+  const data = useMemo(() => shareCardData(page), [page]);
   const [busy, setBusy] = useState<CardKind | null>(null);
   const [error, setError] = useState<{ kind: CardKind; message: string } | null>(null);
   const refs = { result: useRef<Svg>(null), motm: useRef<Svg>(null) };
@@ -52,46 +65,43 @@ export function MatchShare({ page }: MatchShareProps) {
   };
 
   const close = () => {
-    setOpen(false);
     setError(null);
+    onClose();
   };
 
   const kinds: CardKind[] = canShareMotm(data) ? ['result', 'motm'] : ['result'];
 
   return (
-    <>
-      <Button label="Share" variant="secondary" onPress={() => setOpen(true)} testID="match-share" />
-      <Sheet visible={open} onClose={close} title="Share the match">
-        <View style={styles.cards}>
-          {kinds.map((kind) => (
-            <View key={kind} style={styles.card} accessible={false}>
-              <View accessible accessibilityRole="image" accessibilityLabel={CARDS[kind].title}>
-                {kind === 'result' ? (
-                  <ResultCard data={data} width={PREVIEW} ref={refs.result} />
-                ) : (
-                  <MotmCard data={data} width={PREVIEW} ref={refs.motm} />
-                )}
-              </View>
-              <Button
-                label={CARDS[kind].button}
-                variant="secondary"
-                onPress={() => share(kind)}
-                loading={busy === kind}
-                disabled={busy !== null && busy !== kind}
-                testID={`share-${kind}`}
-              />
+    <Sheet visible={visible} onClose={close} title="Share the match">
+      <View style={styles.cards}>
+        {kinds.map((kind) => (
+          <View key={kind} style={styles.card} accessible={false}>
+            <View accessible accessibilityRole="image" accessibilityLabel={CARDS[kind].title}>
+              {kind === 'result' ? (
+                <ResultCard data={data} width={PREVIEW} ref={refs.result} />
+              ) : (
+                <MotmCard data={data} width={PREVIEW} ref={refs.motm} />
+              )}
             </View>
-          ))}
-        </View>
-        {error ? (
-          <Banner
-            tone="danger"
-            message={error.message}
-            action={{ label: 'Try again', onPress: () => share(error.kind) }}
-          />
-        ) : null}
-      </Sheet>
-    </>
+            <Button
+              label={CARDS[kind].button}
+              variant="secondary"
+              onPress={() => share(kind)}
+              loading={busy === kind}
+              disabled={busy !== null && busy !== kind}
+              testID={`share-${kind}`}
+            />
+          </View>
+        ))}
+      </View>
+      {error ? (
+        <Banner
+          tone="danger"
+          message={error.message}
+          action={{ label: 'Try again', onPress: () => share(error.kind) }}
+        />
+      ) : null}
+    </Sheet>
   );
 }
 

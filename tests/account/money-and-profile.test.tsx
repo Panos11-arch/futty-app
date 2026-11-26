@@ -1,15 +1,13 @@
 import './mocks';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
-import ProfileScreen, { ProfileCard } from '@/app/(tabs)/profile';
+import { ProfileCard } from '@/app/(tabs)/profile';
 import TransactionsScreen from '@/app/account/payments/transactions';
 
 let mockRpcResult: { data: unknown; error: { message: string } | null } | null;
-let mockProfile: Record<string, unknown>;
 const mockRpc = jest.fn();
-const mockProfileReload = jest.fn();
 const mockSignOut = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
@@ -24,12 +22,7 @@ jest.mock('@/lib/use-venues', () => ({
   useVenues: () => ({ status: 'ready', venues: [{ id: 'v1', name: 'Arena' }], cities: [], reload: jest.fn() }),
 }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { email: 'ann@example.com' }, signOut: mockSignOut }) }));
-jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ ...mockProfile, reload: mockProfileReload }) }));
-jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
-jest.mock('@/components/stats/streak-card', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  return { StreakCard: () => <View testID="streak-card-stub" /> };
-});
+jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
 let mockLevel: Record<string, unknown> = { status: 'loading' };
 jest.mock('@/lib/match/use-levels', () => ({
   STARTING_LEVEL_ROUTE: '/starting-level',
@@ -117,83 +110,7 @@ const profile = {
   role: 'player',
 };
 
-describe('Profile', () => {
-  it('loading shows a skeleton', async () => {
-    mockProfile = { status: 'loading' };
-    await render(<ProfileScreen />);
-    expect(screen.getByTestId('profile-skeleton')).toBeTruthy();
-  });
-
-  it('error retries the same load', async () => {
-    mockProfile = { status: 'error', message: 'offline' };
-    await render(<ProfileScreen />);
-    mockProfileReload.mockClear();
-    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
-    expect(mockProfileReload).toHaveBeenCalledTimes(1);
-  });
-
-  // S2: the tab layout's header names the tab, and Premium shows on the tab
-  // bar's Card button (components/navigation/card-button.test.tsx) and the
-  // Premium screen's logo (U9), so Profile draws no title or logo of its own.
-  it('draws no title or logo of its own; the Premium row follows the server', async () => {
-    mockProfile = { status: 'ready', profile };
-    const view = await render(<ProfileScreen />);
-    expect(screen.queryByRole('header', { name: 'Profile' })).toBeNull();
-    expect(screen.queryByTestId('futty-logo-basic')).toBeNull();
-    expect(screen.getByRole('button', { name: /Go Premium/ })).toBeTruthy();
-    mockProfile = { status: 'ready', profile: { ...profile, is_premium: true } };
-    await view.rerender(<ProfileScreen />);
-    expect(screen.queryByTestId('futty-logo-premium')).toBeNull();
-    expect(screen.getByRole('button', { name: /Manage Premium/ })).toBeTruthy();
-  });
-
-  it('My bookings has a testID for the Maestro tests (.maestro)', async () => {
-    mockProfile = { status: 'ready', profile };
-    await render(<ProfileScreen />);
-    await fireEvent.press(screen.getByTestId('profile-my-bookings'));
-    expect(router.push).toHaveBeenCalledWith('/my-bookings');
-  });
-
-  it('missing profile says so', async () => {
-    mockProfile = { status: 'missing' };
-    await render(<ProfileScreen />);
-    expect(screen.getByText(/couldn’t find your profile/)).toBeTruthy();
-  });
-
-  it('avatar, name, level, stat tiles in tabular figures, then grouped rows', async () => {
-    mockProfile = { status: 'ready', profile };
-    mockLevel = {
-      status: 'ready',
-      level: { level: 3.45, provisional: true, reliabilityPct: 15, competitiveMatches: 3, source: 'questionnaire' },
-    };
-    const view = await render(<ProfileScreen />);
-    expect(view.toJSON()).toMatchSnapshot();
-    expect(screen.getByText('Ann Lee')).toBeTruthy();
-    expect(screen.getByText('@ann')).toBeTruthy();
-    expect(screen.getByTestId('player-level-value')).toHaveTextContent('3.5');
-    expect(screen.getByText('Provisional')).toBeTruthy();
-    expect(screen.getByText('Reliability 15%')).toBeTruthy();
-    expect(screen.getByLabelText('Games 10')).toBeTruthy();
-    expect(screen.getByLabelText('Win rate 40%')).toBeTruthy();
-    expect(screen.getByLabelText('Goals 7')).toBeTruthy();
-    // A11: the Streak card, under the profile card.
-    expect(screen.getByTestId('streak-card-stub')).toBeTruthy();
-    // A5b: the level replaces XP and the tier.
-    expect(screen.queryByText(/XP/)).toBeNull();
-    expect(screen.queryByText(/tier/)).toBeNull();
-    expect(screen.queryByLabelText(/XP/)).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Venue dashboard' })).toBeNull();
-  });
-
-  it('no level yet: says so and offers the starting questions', async () => {
-    mockProfile = { status: 'ready', profile };
-    mockLevel = { status: 'ready', level: null };
-    await render(<ProfileScreen />);
-    expect(screen.getByText('No level yet')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Set your starting level' }));
-    expect(router.push).toHaveBeenLastCalledWith('/starting-level');
-  });
-
+describe('ProfileCard (player profiles)', () => {
   it("another player's card (player profiles): the level, no XP, no offer to set it", async () => {
     mockLevel = {
       status: 'ready',
@@ -211,65 +128,11 @@ describe('Profile', () => {
     expect(screen.queryByRole('button', { name: 'Set your starting level' })).toBeNull();
   });
 
-  it('A12: the header shows the saved kit, and tapping the avatar opens Edit avatar', async () => {
-    mockProfile = {
-      status: 'ready',
-      profile: { ...profile, avatar_style: 'kit', avatar_kit_colour: 'kitSky', avatar_number: 11 },
-    };
-    await render(<ProfileScreen />);
-    expect(screen.getByLabelText('Ann Lee, shirt 11')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Edit avatar' }));
-    expect(router.push).toHaveBeenLastCalledWith('/edit-avatar');
-  });
-
-  it('S18: the header shows a saved illustration', async () => {
-    mockProfile = {
-      status: 'ready',
-      profile: { ...profile, avatar_style: 'illustration', avatar_illustration: 'avatar-11' },
-    };
-    await render(<ProfileScreen />);
-    expect(screen.getByTestId('avatar-illustration')).toBeTruthy();
-    expect(screen.getByTestId('profile-edit-avatar')).toBeTruthy();
-  });
-
   it("A12: another player's card shows their kit but can't be edited", async () => {
     mockLevel = { status: 'ready', level: null };
     const other = { ...profile, avatar_style: 'kit', avatar_kit_colour: 'kitBlack', avatar_number: 5 };
     await render(<ProfileCard profile={other as never} editable={false} />);
     expect(screen.getByLabelText('Ann Lee, shirt 5')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Edit avatar' })).toBeNull();
-  });
-
-  it('keeps the same navigation and sign out', async () => {
-    mockProfile = { status: 'ready', profile: { ...profile, role: 'venue_owner' } };
-    await render(<ProfileScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Edit profile' }));
-    expect(router.push).toHaveBeenLastCalledWith('/edit-profile');
-    await fireEvent.press(screen.getByRole('button', { name: 'Go Premium, Futty Premium' }));
-    expect(router.push).toHaveBeenLastCalledWith('/account/premium');
-    await fireEvent.press(screen.getByRole('button', { name: 'Venue dashboard' }));
-    expect(router.push).toHaveBeenLastCalledWith('/venue-dashboard');
-    await fireEvent.press(screen.getByRole('button', { name: 'Account & settings' }));
-    expect(router.push).toHaveBeenLastCalledWith('/account');
-    await fireEvent.press(screen.getByRole('button', { name: 'Sign out' }));
-    await waitFor(() => expect(mockSignOut).toHaveBeenCalled());
-  });
-
-  it.each([
-    ['My bookings', '/my-bookings'],
-    ['Payments', '/account/payments'],
-    ['Help', '/account/help'],
-  ])('the %s row opens %s', async (label, target) => {
-    mockProfile = { status: 'ready', profile };
-    await render(<ProfileScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: label }));
-    expect(router.push).toHaveBeenCalledTimes(1);
-    expect(router.push).toHaveBeenCalledWith(target);
-  });
-
-  it('shows no shortcut rows until the profile has loaded', async () => {
-    mockProfile = { status: 'error', message: 'offline' };
-    await render(<ProfileScreen />);
-    expect(screen.queryByRole('button', { name: 'My bookings' })).toBeNull();
   });
 });

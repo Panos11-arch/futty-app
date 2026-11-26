@@ -55,7 +55,7 @@ describe('Messages (inbox)', () => {
     await render(<InboxScreen />);
     expect(screen.getByText('No messages yet.')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Open leagues' }));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/play', params: { segment: 'leagues' } });
+    expect(router.push).toHaveBeenCalledWith('/leagues');
   });
 
   it('data: a row opens its chat; the avatar opens the profile', async () => {

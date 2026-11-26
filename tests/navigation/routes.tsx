@@ -68,6 +68,7 @@ const Community = () => <Text>Community screen</Text>;
 const Rankings = () => <Text>Rankings screen</Text>;
 const Profile = () => <Text>Profile screen</Text>;
 const Notifications = () => <Text>Notifications screen</Text>;
+const Leagues = () => <Text>Leagues screen</Text>;
 
 export function navigationRoutes() {
   return {
@@ -79,7 +80,8 @@ export function navigationRoutes() {
     '(tabs)/profile': Profile,
     '(tabs)/play': Play,
     '(tabs)/team': require('@/app/(tabs)/team'),
-    '(tabs)/leagues': require('@/app/(tabs)/leagues'),
+    '(tabs)/leagues/_layout': require('@/app/(tabs)/leagues/_layout'),
+    '(tabs)/leagues/index': Leagues,
     book: BookWizard,
     'account/index': Account,
     notifications: Notifications,

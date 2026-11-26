@@ -497,7 +497,7 @@ The forecast only reaches about 10 days ahead. Further out, the app shows "Forec
   - **Told once, the right thing:** a moved player gets only the move notice, and a cancelled player only the cancellation notice. Neither also gets "has closed new bookings".
   - **No "slot freed" alert:** a cancel made by saving a block doesn't send saved-search alerts, because the slot is now blocked.
   - **Changed meanwhile:** if anything in the list changes before staff confirm (a player pays, a game is added or kicks off), nothing is saved. The list is shown again.
-  - **How it's built:** `venue_block_clashes` (the list), `venue_move_booking` and `venue_add_block` (cancels and saves the block in one transaction). Blocks are created only through `venue_add_block`. The app's direct insert is withdrawn once the clash sheet ships.
+  - **How it's built:** `venue_block_clashes` (the list), `venue_move_booking` and `venue_add_block` (cancels and saves the block in one transaction). Blocks are created only through `venue_add_block`: since the clash sheet shipped, signed-in users can no longer insert or update `venue_blocks` (removing a block stays a delete of the venue's own row).
 - **Joining (decided 9 November):** players can still join a game that was booked before the block. The join screen shows the venue's notice that it has closed new bookings.
 - **Removing a block (decided 14 November, Dimitris; for Panos to confirm):** staff can remove a block their venue added. It only reopens the slot to new bookings and never touches existing bookings, their players or their money.
 

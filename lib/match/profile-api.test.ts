@@ -147,17 +147,32 @@ describe('getHeadToHead', () => {
 });
 
 describe('getMyTeammates', () => {
-  it('reads player_teammates (the caller’s own rows only, by the view), most games first', async () => {
-    mockResponse = { data: [{ teammate_profile_id: 'x', matches_together: 3 }], error: null };
-    const { rows } = await getMyTeammates(5);
-    expect(rows).toHaveLength(1);
-    expect(mockCalls).toEqual([
-      ['from', 'player_teammates'],
-      ['select', 'teammate_profile_id, matches_together, last_played_at'],
-      ['order', 'matches_together', { ascending: false }],
-      ['order', 'last_played_at', { ascending: false }],
-      ['limit', 5],
+  // S8 follow-up: my_teammates applies Community's rules on the server (no
+  // blocked pair, no adult/minor pair, a minor's first name only).
+  it('asks my_teammates and keeps the server’s names, order and avatars', async () => {
+    mockResponse = {
+      data: [
+        { id: 'x', display_name: 'Maria', matches_together: 3, last_played_at: '2026-11-20T18:00:00Z', avatar_style: 'kit', avatar_kit_colour: 'kitOrange', avatar_number: 9 },
+        { id: 'y', display_name: 'Nikos Mate', matches_together: 1, last_played_at: null, avatar_style: 'initials' },
+      ],
+      error: null,
+    };
+    const { rows, error } = await getMyTeammates(5);
+    expect(error).toBeNull();
+    expect(mockCalls).toEqual([['rpc', 'my_teammates', { p_limit: 5 }]]);
+    expect(rows.map((r) => [r.teammate_profile_id, r.name, r.matches_together])).toEqual([
+      ['x', 'Maria', 3],
+      ['y', 'Nikos Mate', 1],
     ]);
+    expect(rows[0].kit).not.toBeNull();
+    expect(rows[1].kit).toBeNull();
+  });
+
+  it('passes an error through with no rows', async () => {
+    mockResponse = { data: null, error: { message: 'offline' } };
+    const { rows, error } = await getMyTeammates(5);
+    expect(rows).toEqual([]);
+    expect(error).toEqual({ message: 'offline' });
   });
 });
 

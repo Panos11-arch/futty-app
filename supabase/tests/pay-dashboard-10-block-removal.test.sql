@@ -32,11 +32,14 @@ begin
     into v_shares_before from public.booking_payment_shares where booking_id = v_booking.id;
   select count(*) into v_ledger_before from public.money_ledger where booking_id = v_booking.id;
 
-  -- The owner blocks the pitch from 12:00 to 14:00: no new booking at 13:00.
-  perform tests.act_as(v_owner);
+  -- The pitch is blocked from 12:00 to 14:00 over the game: no new booking at
+  -- 13:00. Staff now save blocks only through venue_add_block, which would
+  -- cancel the game, so the block is set up directly (as postgres): what
+  -- this test checks is removing it.
   insert into public.venue_blocks (venue_id, pitch_id, block_day, starts_at, ends_at, reason, created_by)
   values (v_venue, v_pitch, v_day, '12:00', '14:00', 'Resurfacing', v_owner)
   returning id into v_block;
+  perform tests.act_as(v_owner);
   assert tests.error_of(format(
     $q$select public.add_counter_booking(%L, %L, '13:00', '14:00', '5-a-side', 'walk_in', 'Andreas', null, %L)$q$,
     v_venue, v_day, v_pitch)) = 'slot_blocked', 'blocked: no new booking';

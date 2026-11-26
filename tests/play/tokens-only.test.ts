@@ -7,7 +7,9 @@ import path from 'node:path';
 const root = path.join(__dirname, '..', '..');
 const files = [
   'app/(tabs)/team.tsx',
-  'app/(tabs)/leagues.tsx',
+  'app/(tabs)/leagues/index.tsx',
+  'app/(tabs)/leagues/coming-soon.tsx',
+  'app/(tabs)/leagues/[id].tsx',
   'app/(tabs)/community.tsx',
   'app/upcoming-fixtures.tsx',
   'app/previous-games.tsx',

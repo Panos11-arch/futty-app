@@ -1,0 +1,66 @@
+# Journey (S7): Community (image 18). The band's tabs For you | Following |
+# Find players, Search (opens Find players with the field), the Players |
+# Teams switch, "From your contacts", and the + button's New post and New
+# team. Nothing is created: the flow stops at the New team form.
+appId: com.panosalepis.futtyapp
+name: community
+tags:
+  - e2e
+  - community
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: community
+- assertVisible:
+    id: community-band
+
+# ---- For you and Following -----------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: community-feed-for-you
+    timeout: 30000
+- tapOn:
+    id: community-chip-your-posts
+- assertVisible:
+    id: community-feed-mine
+- tapOn:
+    id: community-tab-following
+- assertVisible:
+    id: community-feed-following
+
+# ---- Search → Find players ------------------------------------------------------
+- tapOn:
+    id: community-search
+- assertVisible:
+    id: community-search-input
+- assertVisible:
+    id: community-contacts
+- tapOn:
+    id: community-find-teams-tab
+- tapOn:
+    id: community-find-players-tab
+- takeScreenshot: community-find-players-${PLATFORM}
+
+# ---- + → New post, New team ----------------------------------------------------
+- hideKeyboard
+- tapOn:
+    id: community-fab
+- assertVisible:
+    id: community-new-post
+- tapOn:
+    id: community-new-team
+- assertVisible:
+    id: new-team-name
+- takeScreenshot: community-${PLATFORM}

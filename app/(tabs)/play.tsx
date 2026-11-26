@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
@@ -6,11 +6,10 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { SegmentedControl } from '@/components/ui/segmented-control';
 import { space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
-import { parsePlaySegment, PLAY_SEGMENTS, type PlaySegment } from '@/lib/play-segments';
+import { isLeaguesSegment, parsePlaySegment, PLAY_SEGMENTS, type PlaySegment } from '@/lib/play-segments';
 
 import { PreviousGamesList } from '../previous-games';
 import { UpcomingFixturesList } from '../upcoming-fixtures';
-import { LeaguesContent } from './leagues';
 import { TeamContent } from './team';
 
 const SEGMENT_OPTIONS = PLAY_SEGMENTS.map(({ value, label }) => ({ value, label }));
@@ -33,15 +32,22 @@ function MatchesContent() {
 }
 
 /**
- * Play: teams, matches and leagues (docs/specs/15-design.md
- * section 0.9). Not a tab since S2: Account → Play opens it, and the tab
- * layout's header shows its name. The segments stay fixed; each segment's content
- * scrolls itself, so a list inside one is never nested in another scroller.
- * Links to /team and /leagues redirect here with ?segment=.
+ * Play: teams and matches (docs/specs/15-design.md section 0.9). Not a tab
+ * since S2: Account → Play opens it, and the tab layout's header shows its
+ * name. The segments stay fixed; each segment's content scrolls itself, so a
+ * list inside one is never nested in another scroller. Links to /team
+ * redirect here with ?segment=; Leagues is its own screen since S9, so an old
+ * ?segment=leagues link opens /leagues.
  */
 export default function PlayScreen() {
-  const styles = useStyles();
   const params = useLocalSearchParams<{ segment?: string; teamId?: string }>();
+  if (isLeaguesSegment(params.segment)) return <Redirect href="/leagues" />;
+  return <PlaySegments segment={params.segment} teamId={params.teamId} />;
+}
+
+function PlaySegments({ segment: rawSegment, teamId }: { segment?: string; teamId?: string }) {
+  const styles = useStyles();
+  const params = { segment: rawSegment, teamId };
   const fromUrl = parsePlaySegment(params.segment);
   const [segment, setSegment] = useState<PlaySegment>(fromUrl);
   // Once opened, a segment stays mounted (hidden when not selected), so
@@ -82,7 +88,6 @@ export default function PlayScreen() {
             style={value === segment ? styles.flex : styles.hidden}>
             {value === 'teams' ? <TeamContent teamId={params.teamId} /> : null}
             {value === 'matches' ? <MatchesContent /> : null}
-            {value === 'leagues' ? <LeaguesContent /> : null}
           </View>
         ) : null
       )}

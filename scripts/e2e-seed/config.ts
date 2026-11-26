@@ -69,3 +69,38 @@ export const E2E_LOG_MATCHES: Record<Platform, { matchId: string; captainPlayerI
     otherPlayerId: 'e2e00000-0000-4000-8000-000000000034',
   },
 };
+
+/** Doc 28 prompt 1 (block clashes, block-clashes.yaml): one venue-staff login
+ *  per platform (profiles.role venue_owner), each the owner of its own test
+ *  venue with one pitch, so the platforms never block each other's games.
+ *  Not live: players never see these venues in Book. */
+export type E2eStaff = E2eUser & { venue: { id: string; name: string }; pitchId: string };
+
+export const E2E_STAFF: readonly E2eStaff[] = [
+  {
+    email: `e2e-ios-staff@${E2E_EMAIL_DOMAIN}`,
+    username: 'e2e_ios_staff',
+    fullName: 'E2E iOS Staff',
+    platform: 'ios',
+    venue: { id: 'e2e00000-0000-4000-8000-000000000041', name: 'E2E Staff Arena iOS' },
+    pitchId: 'e2e00000-0000-4000-8000-000000000051',
+  },
+  {
+    email: `e2e-android-staff@${E2E_EMAIL_DOMAIN}`,
+    username: 'e2e_android_staff',
+    fullName: 'E2E Android Staff',
+    platform: 'android',
+    venue: { id: 'e2e00000-0000-4000-8000-000000000042', name: 'E2E Staff Arena Android' },
+    pitchId: 'e2e00000-0000-4000-8000-000000000052',
+  },
+];
+
+/** The phone booking each staff venue holds tomorrow (Cyprus), so blocking
+ *  the pitch clashes with it. Not paid: no money row is ever written. */
+export const E2E_STAFF_BOOKING = {
+  daysAhead: 1,
+  start: '21:00',
+  end: '22:00',
+  contactName: 'E2E Caller',
+  phone: '+35799000000',
+} as const;

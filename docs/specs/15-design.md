@@ -161,7 +161,7 @@ Booking detail, debt and credit keep their section 5 rows, in the new look.
 
 ### 0.10 Open questions (not decided in S0)
 
-1. **Banner ads.** Images 01, 14, 15, 18 and 19 show "Banner ad · Basic and Premium only", and image 22 shows a Premium Plus plan with no ads. No spec has a rule on ads or Premium Plus, so S0 records neither. P1 or its owner decides.
+1. **Banner ads.** Images 01, 14, 15, 18 and 19 show "Banner ad · Basic and Premium only", and image 22 shows a Premium Plus plan with no ads. No spec has a rule on ads or Premium Plus, so S0 records neither. P1 or its owner decides. Decided by Panos, 26 November: no banner ad on your own Profile (image 19's placeholder is not built).
 2. ~~**Team of the Week**~~: answered by Panos on 24 November, in `match-record.md` decision 1k.
 
 ## 1. What Playtomic gets right (and what it doesn't)
