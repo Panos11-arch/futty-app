@@ -79,7 +79,6 @@ begin
   perform tests.s8_follow(fan2, 'player', me);
   perform tests.s8_follow(blocked_by_me, 'player', me);
   perform tests.s8_follow(blocker, 'player', me);
-  perform tests.s8_follow(minor, 'player', me);
   perform tests.s8_follow(fan1, 'player', other);
   insert into public.blocked_users (blocker_id, blocked_id) values (me, blocked_by_me), (blocker, me);
 
@@ -88,7 +87,12 @@ begin
   perform tests.s8_follow(me, 'team', team);
   perform tests.s8_follow(me, 'player', blocked_by_me);
   perform tests.s8_follow(me, 'player', blocker);
+  -- Adult/minor follows made before S7's age guard (user_follows_age_guard
+  -- refuses new ones): the counts still leave them out.
+  alter table public.user_follows disable trigger user_follows_age_guard;
+  perform tests.s8_follow(minor, 'player', me);
   perform tests.s8_follow(me, 'player', minor);
+  alter table public.user_follows enable trigger user_follows_age_guard;
 
   v := tests.s8_as(me, 'select public.my_profile_summary()');
   assert (v->>'followers')::int = 2, format('2 followers (blocked either way and adult/minor left out), got %s', v);

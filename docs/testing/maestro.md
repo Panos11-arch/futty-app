@@ -36,6 +36,7 @@ Each flow takes a screenshot at the end (`sign-in-ios.png`, `book-and-pay-androi
 4. **`log-score`** (S13B): Home shows "Log the score" for the seeded game (a pickup this login booked, played 2 hours ago). It taps **Log**, sets Bibs 1, Non-bibs 0, gives the goal to this login on the pitch, continues past Assists (optional) and confirms on Review. One captain, so the score is final: the match page shows "Bibs 1–0 Non-bibs".
 
 5. **`block-clashes`** (doc 28 prompt 1): signs in as the platform's venue-staff login, opens Account > Venue dashboard, moves to tomorrow and taps **Block**, picks the staff venue's pitch and taps **Block pitches** (whole day). The clash sheet (`clash-sheet`) lists the seeded phone booking before anything is saved: "21:00–22:00 · E2E Caller" and "Phone · +35799000000 · Not paid". **Block and cancel** saves the block and cancels the booking (`venue_add_block`); then "Call them" names the contact and phone, and **Done** closes it. Nothing was paid, so no money moves.
+6. **`community`** (S7): opens the Community tab (image 18), checks For you and Your posts, opens Following, taps Search (Find players with the search field and "From your contacts"), flips Players | Teams, and opens the + sheet's New team form. It creates nothing.
 
 `tests/maestro/flows.test.ts` checks these words and amounts against the app's own code (`describeQuote`, `cancelledMessage`, `payLabel`). The quote it checks is one `cancellation_quote` returned on a local database. The same test fails if a flow uses a testID the app doesn't have.
 
