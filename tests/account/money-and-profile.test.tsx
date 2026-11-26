@@ -1,15 +1,13 @@
 import './mocks';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
 import { ProfileCard } from '@/app/(tabs)/profile';
 import TransactionsScreen from '@/app/account/payments/transactions';
 
 let mockRpcResult: { data: unknown; error: { message: string } | null } | null;
-let mockProfile: Record<string, unknown>;
 const mockRpc = jest.fn();
-const mockProfileReload = jest.fn();
 const mockSignOut = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({
@@ -24,12 +22,7 @@ jest.mock('@/lib/use-venues', () => ({
   useVenues: () => ({ status: 'ready', venues: [{ id: 'v1', name: 'Arena' }], cities: [], reload: jest.fn() }),
 }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { email: 'ann@example.com' }, signOut: mockSignOut }) }));
-jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ ...mockProfile, reload: mockProfileReload }) }));
-jest.mock('@/components/match/player-match-sections', () => ({ PlayerMatchSections: () => null }));
-jest.mock('@/components/stats/streak-card', () => {
-  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
-  return { StreakCard: () => <View testID="streak-card-stub" /> };
-});
+jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
 let mockLevel: Record<string, unknown> = { status: 'loading' };
 jest.mock('@/lib/match/use-levels', () => ({
   STARTING_LEVEL_ROUTE: '/starting-level',
