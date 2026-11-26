@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView, Share, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
+import { fetchMyPlayerCard } from '@/lib/player-card';
 import { isPremiumPlayer } from '@/lib/premium';
 import { useUnreadMessages } from '@/lib/use-messages';
 import { useProfile } from '@/lib/use-profile';
@@ -27,6 +29,18 @@ export default function AccountMenuScreen() {
   const profile = useProfile();
   const premium = isPremiumPlayer(profile) === true;
   const unread = useUnreadMessages();
+  // Share follows the player card (S8): no Share for a minor or a player
+  // without a username (my_player_card's show_qr). Hidden until it's known.
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => {
+    let live = true;
+    fetchMyPlayerCard().then((card) => {
+      if (live) setCanShare(card.status === 'ready' && card.card.show_qr);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   async function shareProfile() {
     const name = profile.status === 'ready' ? profile.profile.username ?? profile.profile.full_name : null;
@@ -135,7 +149,9 @@ export default function AccountMenuScreen() {
             label="Edit profile"
             onPress={() => router.push('/edit-profile')}
           />
-          <MenuRow testID="account-share-profile" icon="square.and.arrow.up" label="Share profile" onPress={shareProfile} />
+          {canShare ? (
+            <MenuRow testID="account-share-profile" icon="square.and.arrow.up" label="Share profile" onPress={shareProfile} />
+          ) : null}
         </MenuSection>
 
         <View style={styles.logoutSection}>

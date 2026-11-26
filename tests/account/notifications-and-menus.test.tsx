@@ -1,6 +1,6 @@
 import './mocks';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { Modal, Share } from 'react-native';
 
@@ -50,6 +50,8 @@ jest.mock('@/lib/app-lock', () => ({
   useAppLock: () => ({ supported: true, enabled: false, label: 'Face ID', setEnabled: mockSetAppLock }),
 }));
 jest.mock('@/lib/futty-ai', () => ({ FUTTY_AI_HREF: '/futty-ai' }));
+let mockCard: unknown = { status: 'ready', card: { username: 'ann', show_qr: true } };
+jest.mock('@/lib/player-card', () => ({ fetchMyPlayerCard: () => Promise.resolve(mockCard) }));
 
 const note = (id: string, created_at: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -275,8 +277,23 @@ describe('Account menu (S2: the header menu opens it)', () => {
     mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player' } };
     const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
     await render(<AccountMenuScreen />);
-    await fireEvent.press(screen.getByRole('button', { name: 'Share profile' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Share profile' }));
     expect(share).toHaveBeenCalledWith({ message: 'Play with me on Futty — find me as @ann.' });
+  });
+
+  // S8: the same rule as Profile's Share button. A minor's card (or one
+  // without a username) has no QR, so there's no Share profile row either.
+  it.each([
+    ['the card hides its QR (an under-18)', { status: 'ready', card: { username: 'kid', show_qr: false } }],
+    ['the card fails to load', { status: 'error' }],
+  ])('no Share profile when %s', async (_, card) => {
+    mockCard = card;
+    mockProfile = { status: 'ready', profile: { username: 'kid', role: 'player' } };
+    await render(<AccountMenuScreen />);
+    await act(async () => {});
+    expect(screen.queryByTestId('account-share-profile')).toBeNull();
+    expect(screen.getByTestId('account-edit-profile')).toBeTruthy();
+    mockCard = { status: 'ready', card: { username: 'ann', show_qr: true } };
   });
 });
 
