@@ -1,6 +1,8 @@
-// "Players you play with most" (match-record decision 1c.6), the
-// signed-in player's own list, moved here from the old Profile tab by S8:
-// image 19 has no place for it.
+// "People you play with most" (match-record decision 1c.6): the signed-in
+// player's own list. Opened from Profile's row under This season (Panos,
+// 26 November); it was in the Account menu, so it isn't shown twice. The
+// server (my_teammates) leaves out blocked players and adult/minor pairs and
+// sends a minor's first name only.
 import { Stack, useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView } from 'react-native';
@@ -14,7 +16,7 @@ import { makeStyles } from '@/lib/theme';
 /** Up to 20 players. */
 const TEAMMATES = 20;
 
-export default function TeammatesScreen() {
+export default function MyTeammatesScreen() {
   const styles = useStyles();
   const teammates = useMyTeammates(TEAMMATES);
   const { reload } = teammates;

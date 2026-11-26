@@ -1,6 +1,8 @@
 import {
   followLine,
   getMyProfileRecent,
+  getMyVenues,
+  venueGamesLabel,
   getMyProfileSeason,
   getMyProfileSummary,
   goalsAssistsLabel,
@@ -27,6 +29,36 @@ jest.mock('@/lib/supabase', () => ({
 beforeEach(() => {
   mockCalls = [];
   mockResponse = { data: null, error: null };
+});
+
+describe('S8 follow-up reads', () => {
+  it('the season read adds Showed up from my_profile_showed_up, for the same format', async () => {
+    mockResponse = { data: { formats: ['5-a-side'], games: 4, wins: 2, goals: 1, assists: 0, motm: 0, avgRating: null, totw: 0, pct: 75 }, error: null };
+    const r = await getMyProfileSeason('5-a-side');
+    expect(mockCalls).toEqual([
+      ['my_profile_season', { p_format: '5-a-side' }],
+      ['my_profile_showed_up', { p_format: '5-a-side' }],
+    ]);
+    expect('value' in r && r.value.showedUpPct).toBe(75);
+  });
+
+  it('Showed up is null until the server has a figure', async () => {
+    mockResponse = { data: { formats: [], games: 0, pct: null }, error: null };
+    const r = await getMyProfileSeason(null);
+    expect('value' in r && r.value.showedUpPct).toBeNull();
+  });
+
+  it('reads my venues, most games first, as the server orders them', async () => {
+    mockResponse = { data: [{ venue_id: 'v1', name: 'Kamares', city: 'Larnaca', games: '9', last_played_at: '2026-11-20T18:00:00Z' }], error: null };
+    const r = await getMyVenues(20);
+    expect(mockCalls).toEqual([['my_venues', { p_limit: 20 }]]);
+    expect(r).toEqual({ value: [{ venue_id: 'v1', name: 'Kamares', city: 'Larnaca', games: 9, last_played_at: '2026-11-20T18:00:00Z' }] });
+  });
+
+  it('a failed venues read is an error', async () => {
+    mockResponse = { data: null, error: { message: 'offline' } };
+    expect(await getMyVenues(20)).toEqual({ error: 'offline' });
+  });
 });
 
 describe('reads', () => {
@@ -59,18 +91,18 @@ describe('reads', () => {
       error: null,
     };
     const r = await getMyProfileSeason('5-a-side');
-    expect(mockCalls).toEqual([['my_profile_season', { p_format: '5-a-side' }]]);
+    expect(mockCalls[0]).toEqual(['my_profile_season', { p_format: '5-a-side' }]);
     expect(r).toEqual({
-      value: { formats: ['5-a-side'], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.3, totw: 3 },
+      value: { formats: ['5-a-side'], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.3, totw: 3, showedUpPct: null },
     });
     await getMyProfileSeason(null);
-    expect(mockCalls[1]).toEqual(['my_profile_season', { p_format: null }]);
+    expect(mockCalls[2]).toEqual(['my_profile_season', { p_format: null }]);
   });
 
   it('treats an empty season answer as zeros', async () => {
     mockResponse = { data: null, error: null };
     expect(await getMyProfileSeason(null)).toEqual({
-      value: { formats: [], games: 0, wins: 0, goals: 0, assists: 0, motm: 0, avgRating: null, totw: 0 },
+      value: { formats: [], games: 0, wins: 0, goals: 0, assists: 0, motm: 0, avgRating: null, totw: 0, showedUpPct: null },
     });
   });
 
@@ -143,8 +175,8 @@ describe('formatters', () => {
     expect(teamSubtitle('', null)).toBe('');
   });
 
-  it('lists the season tiles in image 19 order', () => {
-    const tiles = seasonTiles({ formats: [], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.25, totw: 3 });
+  it('lists the season tiles in image 19 order, Showed up last', () => {
+    const tiles = seasonTiles({ formats: [], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.25, totw: 3, showedUpPct: 92 });
     expect(tiles.map((t) => `${t.label}:${t.value}`)).toEqual([
       'Games:24',
       'Goals:19',
@@ -153,9 +185,16 @@ describe('formatters', () => {
       'Wins:14',
       'MOTM:4',
       'TOTW:3',
+      'Showed up:92%',
     ]);
-    expect(seasonTiles({ formats: [], games: 0, wins: 0, goals: 0, assists: 0, motm: 0, avgRating: null, totw: 0 })[3].value).toBe(
-      '–',
-    );
+    const none = seasonTiles({ formats: [], games: 0, wins: 0, goals: 0, assists: 0, motm: 0, avgRating: null, totw: 0, showedUpPct: null });
+    expect(none[3].value).toBe('–');
+    // "–" until 3 games count (the server sends pct null).
+    expect(none[7]).toEqual({ key: 'showedUp', label: 'Showed up', value: '–' });
+  });
+
+  it('labels a venue row', () => {
+    expect(venueGamesLabel(1)).toBe('1 game');
+    expect(venueGamesLabel(9)).toBe('9 games');
   });
 });

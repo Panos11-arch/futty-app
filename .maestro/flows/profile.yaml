@@ -31,7 +31,32 @@ env:
     id: profile-season
 - assertVisible:
     id: profile-season-tile-games
+# Showed up (Panos, 26 November): "–" until 3 games count, so always there.
+- assertVisible:
+    id: profile-season-tile-showedUp
 - takeScreenshot: profile-${PLATFORM}
+
+# ---- People you play with most / Your venues (only once there are any) --------
+- runFlow:
+    when:
+      visible:
+        id: profile-teammates
+    commands:
+      - tapOn:
+          id: profile-teammates
+      - assertVisible:
+          id: teammates-screen
+      - back
+- runFlow:
+    when:
+      visible:
+        id: profile-venues
+    commands:
+      - tapOn:
+          id: profile-venues
+      - assertVisible:
+          id: venues-screen
+      - back
 
 # ---- This season's format picker (only once the player has played) -----------
 - runFlow:
@@ -75,8 +100,8 @@ env:
 - scrollUntilVisible:
     element:
       id: account-streak
-- assertVisible:
-    id: account-teammates
+# Teammates moved back to Profile (Panos, 26 November): not in the menu.
+- assertNotVisible: Teammates
 - tapOn:
     id: account-streak
 - assertVisible:

@@ -12,7 +12,17 @@ const mockProfileReload = jest.fn();
 const mockSetOptions = jest.fn();
 let mockCard: unknown;
 let mockSeasonFormats: (string | null)[] = [];
-const mockReloads = { summary: jest.fn(), level: jest.fn(), season: jest.fn(), recent: jest.fn(), teams: jest.fn() };
+const mockReloads = {
+  summary: jest.fn(),
+  level: jest.fn(),
+  season: jest.fn(),
+  recent: jest.fn(),
+  teams: jest.fn(),
+  teammates: jest.fn(),
+  venues: jest.fn(),
+};
+let mockTeammates: Record<string, unknown>;
+let mockVenues: Record<string, unknown>;
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me', email: 'ann@example.com' } }) }));
@@ -64,7 +74,7 @@ jest.mock('@/lib/match/use-profile-summary', () => ({
     mockSeasonFormats.push(format);
     return {
       status: 'ready',
-      season: { formats: ['5-a-side', '7-a-side'], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.3, totw: 3 },
+      season: { formats: ['5-a-side', '7-a-side'], games: 24, wins: 14, goals: 19, assists: 11, motm: 4, avgRating: 7.3, totw: 3, showedUpPct: 92 },
       reload: mockReloads.season,
     };
   },
@@ -91,6 +101,10 @@ jest.mock('@/lib/match/use-profile-summary', () => ({
     ],
     reload: mockReloads.recent,
   }),
+  useMyVenues: () => ({ ...mockVenues, reload: mockReloads.venues }),
+}));
+jest.mock('@/lib/match/use-profile-matches', () => ({
+  useMyTeammates: () => ({ ...mockTeammates, reload: mockReloads.teammates }),
 }));
 jest.mock('@/lib/use-my-teams', () => ({
   useMyTeams: () => ({
@@ -116,16 +130,32 @@ beforeEach(() => {
   mockProfile = { status: 'ready', profile };
   mockCard = { status: 'ready', card: { username: 'ann', show_qr: true } };
   mockSeasonFormats = [];
+  mockTeammates = {
+    status: 'ready',
+    teammates: [{ teammate_profile_id: 'p1', name: 'Nikos Mate', matches_together: 12, last_played_at: null, kit: null }],
+  };
+  mockVenues = {
+    status: 'ready',
+    venues: [{ venue_id: 'v1', name: 'Kamares Sports Centre', city: 'Larnaca', games: 9, last_played_at: null }],
+  };
 });
 
 describe('Profile tab', () => {
   it('hides the shared header and shows image 19’s sections in order', async () => {
     await render(<ProfileScreen />);
     expect(mockSetOptions).toHaveBeenCalledWith({ headerShown: false });
-    const order = ['profile-top', 'profile-season', 'profile-recent', 'profile-teams'].map(
+    const order = ['profile-top', 'profile-season', 'profile-people', 'profile-recent', 'profile-teams'].map(
       (id) => screen.getByTestId(id),
     );
-    expect(order).toHaveLength(4);
+    expect(order).toHaveLength(5);
+    // In tree order: the new rows sit under This season, above Recent games.
+    expect(screen.getAllByTestId(/^profile-(top|season|people|recent|teams)$/).map((n) => n.props.testID)).toEqual([
+      'profile-top',
+      'profile-season',
+      'profile-people',
+      'profile-recent',
+      'profile-teams',
+    ]);
     expect(screen.getByText('Ann Lee')).toBeTruthy();
     expect(screen.getByText('128 followers · 96 following')).toBeTruthy();
     expect(screen.getByText('This season')).toBeTruthy();
@@ -136,9 +166,44 @@ describe('Profile tab', () => {
       expect(screen.queryByText(gone)).toBeNull();
     }
     expect(screen.queryByText('ann@example.com')).toBeNull();
-    // Not built yet: banner ad and the Dream team row (S21).
+    // No banner ad on your own profile (Panos, 26 November); Dream team is S21.
     expect(screen.queryByText(/Dream team/)).toBeNull();
     expect(screen.queryByText(/Banner ad/)).toBeNull();
+    expect(screen.queryByTestId(/banner-ad|ad-banner/)).toBeNull();
+  });
+
+  it('People you play with most and Your venues sit under This season and open their lists', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getByText('People you play with most')).toBeTruthy();
+    expect(screen.getByText('Nikos Mate · 12 games')).toBeTruthy();
+    expect(screen.getByText('Your venues')).toBeTruthy();
+    expect(screen.getByText('Kamares Sports Centre · 9 games')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('profile-teammates'));
+    expect(router.push).toHaveBeenCalledWith('/my-teammates');
+    await fireEvent.press(screen.getByTestId('profile-venues'));
+    expect(router.push).toHaveBeenCalledWith('/my-venues');
+  });
+
+  it('Showed up shows on This season', async () => {
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-season-tile-showedUp')).toHaveTextContent('92%Showed up');
+  });
+
+  it('hides an empty row, and the card when both are empty or still loading', async () => {
+    mockTeammates = { status: 'ready', teammates: [] };
+    await render(<ProfileScreen />);
+    expect(screen.queryByTestId('profile-teammates')).toBeNull();
+    expect(screen.getByTestId('profile-venues')).toBeTruthy();
+    mockVenues = { status: 'loading' };
+    await render(<ProfileScreen />);
+    expect(screen.queryByTestId('profile-people')).toBeNull();
+  });
+
+  it('a row whose list failed still opens it (the list has Try again)', async () => {
+    mockVenues = { status: 'error', message: 'offline' };
+    await render(<ProfileScreen />);
+    expect(screen.getByTestId('profile-venues')).toBeTruthy();
+    expect(screen.queryByText(/· \d+ games/)).toBeTruthy();
   });
 
   it('My card opens the player card and closes it', async () => {

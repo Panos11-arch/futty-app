@@ -124,18 +124,12 @@ export default function AccountMenuScreen() {
             label="Leaderboards"
             onPress={() => router.push('/match/leaderboards')}
           />
-          {/* S8: the streak and "Players you play with most" left the Profile tab (image 19). */}
+          {/* S8: the streak left the Profile tab (image 19). Teammates moved back to Profile (Panos, 26 November). */}
           <MenuRow
             testID="account-streak"
             icon="calendar"
             label="Streak"
             onPress={() => router.push('/account/activity/streak')}
-          />
-          <MenuRow
-            testID="account-teammates"
-            icon="person.2.fill"
-            label="Teammates"
-            onPress={() => router.push('/account/activity/teammates')}
           />
           <MenuRow
             testID="account-activity"

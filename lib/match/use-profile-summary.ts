@@ -4,6 +4,8 @@ import {
   getMyProfileRecent,
   getMyProfileSeason,
   getMyProfileSummary,
+  getMyVenues,
+  type MyVenue,
   type ProfileRecentGame,
   type ProfileSeason,
   type ProfileSummary,
@@ -45,6 +47,20 @@ export function useMyProfileRecent(userId: string | null | undefined, limit = 3)
         }
       : null,
     `recent|${userId}|${limit}`,
+  );
+  return { ...state, reload };
+}
+
+/** Your venues (S8 follow-up): the caller's own, most games first. */
+export function useMyVenues(userId: string | null | undefined, limit = 20) {
+  const { state, reload } = useLoad<{ venues: MyVenue[] }>(
+    userId
+      ? async () => {
+          const r = await getMyVenues(limit);
+          return 'error' in r ? r : { value: { venues: r.value } };
+        }
+      : null,
+    `venues|${userId}|${limit}`,
   );
   return { ...state, reload };
 }

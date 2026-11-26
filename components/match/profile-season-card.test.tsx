@@ -21,10 +21,11 @@ const season: ProfileSeason = {
   motm: 4,
   avgRating: 7.3,
   totw: 3,
+  showedUpPct: 92,
 };
 
 describe('ProfileSeasonCard', () => {
-  it('shows the seven tiles in image 19 order', async () => {
+  it('shows the eight tiles in image 19 order, Showed up last', async () => {
     await render(
       <ProfileSeasonCard state={{ status: 'ready', season }} format={null} formats={season.formats} onFormat={jest.fn()} onRetry={jest.fn()} />,
     );
@@ -32,8 +33,17 @@ describe('ProfileSeasonCard', () => {
     expect(screen.getByTestId('profile-season-tile-games')).toHaveTextContent('24Games');
     expect(screen.getByTestId('profile-season-tile-rating')).toHaveTextContent('7.3Avg rating');
     expect(screen.getByTestId('profile-season-tile-totw')).toHaveTextContent('3TOTW');
-    expect(screen.queryByText('Showed up')).toBeNull();
+    expect(screen.getByTestId('profile-season-tile-showedUp')).toHaveTextContent('92%Showed up');
+    const keys = screen.getAllByTestId(/^profile-season-tile-/).map((t) => t.props.testID.replace('profile-season-tile-', ''));
+    expect(keys).toEqual(['games', 'goals', 'assists', 'rating', 'wins', 'motm', 'totw', 'showedUp']);
     expect(screen.getByTestId('profile-season-format')).toHaveTextContent('All formats');
+  });
+
+  it('Showed up is "–" until 3 games count', async () => {
+    await render(
+      <ProfileSeasonCard state={{ status: 'ready', season: { ...season, showedUpPct: null } }} format={null} formats={season.formats} onFormat={jest.fn()} onRetry={jest.fn()} />,
+    );
+    expect(screen.getByTestId('profile-season-tile-showedUp')).toHaveTextContent('–Showed up');
   });
 
   it('picks a format from the sheet, and back to all', async () => {
