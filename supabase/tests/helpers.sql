@@ -1334,3 +1334,117 @@ as $$
   select coalesce(array_agg(p.slot || ':' || p.profile_id order by p.sort), '{}')
   from public.team_of_the_week_players p where p.team_of_the_week_id = p_team;
 $$;
+
+-- S14b: power ranking.
+
+-- A confirmed, competitive match between teams p_a_team and p_b_team,
+-- p_a–p_b, kicking off at p_kickoff in p_format. form_match confirms it two
+-- hours after kickoff with the deadline at kickoff + 25 hours, so it is
+-- final (as levels) from kickoff + 26 hours.
+create or replace function tests.pr_match(
+  p_a_team uuid,
+  p_b_team uuid,
+  p_a integer,
+  p_b integer,
+  p_kickoff timestamptz,
+  p_format text default '5-a-side'
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_id uuid := tests.form_match(p_kickoff, 'confirmed', p_a, p_b, p_a_team, p_b_team);
+begin
+  update public.matches set format = p_format where id = v_id;
+  return v_id;
+end;
+$$;
+
+-- A league in p_format (a fresh scope each time, as (format, scope) is
+-- unique).
+create or replace function tests.pr_league(p_format text default '5-a-side')
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.leagues (name, format, scope, stage, capacity)
+  values ('PR league', p_format, 'pr-' || gen_random_uuid(), 'season', 8)
+  returning id;
+$$;
+
+-- A completed league fixture p_home–p_away on p_day at p_time (Cyprus
+-- time; either may be null).
+create or replace function tests.pr_fixture(
+  p_league uuid,
+  p_home_team uuid,
+  p_away_team uuid,
+  p_home integer,
+  p_away integer,
+  p_day date,
+  p_time time default '20:00',
+  p_forfeit text default null
+)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  insert into public.league_fixtures (league_id, home_team_id, away_team_id, scheduled_day, scheduled_time, status,
+                                      home_score, away_score, forfeit_result, score_locked)
+  values (p_league, p_home_team, p_away_team, p_day, p_time, 'completed', p_home, p_away, p_forfeit, true)
+  returning id;
+$$;
+
+-- Runs the power ranking job at p_now as the cron does.
+create or replace function tests.pr_tick(p_now timestamptz default now())
+returns integer
+language plpgsql
+as $$
+declare
+  v integer;
+begin
+  perform tests.act_as_service_role();
+  v := public.power_ranking_tick(p_now);
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- p_team's points in p_format (the start value before any counted game).
+create or replace function tests.pr_points(p_team uuid, p_format text default '5-a-side')
+returns numeric
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce((select h.points_after from public.power_ranking_history h
+                   where h.team_id = p_team and h.format = p_format
+                   order by h.kickoff_at desc, h.seq desc limit 1),
+                  (public.app_rules_now()).power_ranking_start);
+$$;
+
+-- How many history rows game p_game has (2 when it counted).
+create or replace function tests.pr_rows(p_game uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select count(*)::integer from public.power_ranking_history where game_id = p_game;
+$$;
+
+-- p_team's history row for p_game.
+create or replace function tests.pr_row(p_game uuid, p_team uuid)
+returns public.power_ranking_history
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select * from public.power_ranking_history where game_id = p_game and team_id = p_team;
+$$;
