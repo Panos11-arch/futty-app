@@ -71,7 +71,7 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the thirteen journeys and their subflows', () => {
+  it('has the fourteen journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
@@ -85,6 +85,7 @@ describe('.maestro', () => {
       'flows/messages.yaml',
       'flows/navigation.yaml',
       'flows/player-card.yaml',
+      'flows/profile.yaml',
       'flows/sign-in.yaml',
       'flows/venue-book-and-pay.yaml',
       'subflows/open-my-booking.yaml',

@@ -203,6 +203,9 @@ describe('Account menu (S2: the header menu opens it)', () => {
       ['account-venue-dashboard', 'Venue dashboard', '/venue-dashboard'],
       ['tab-play', 'Play', '/play'],
       ['account-leaderboards', 'Leaderboards', '/match/leaderboards'],
+      // S8: moved off the Profile tab (image 19).
+      ['account-streak', 'Streak', '/account/activity/streak'],
+      ['account-teammates', 'Teammates', '/account/activity/teammates'],
       ['account-activity', 'Your activity', '/account/activity'],
       ['account-edit-profile', 'Edit profile', '/edit-profile'],
     ]) {
