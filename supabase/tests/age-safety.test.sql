@@ -408,9 +408,10 @@ begin
     f_mixed, v_today + 1, '19:00', v_venue));
   assert v_error is null, format('adult captain proposes a date: %s', v_error);
 
-  -- Scores keep working.
+  -- Scores keep working (the old path, for a fixture made before S10; a
+  -- newer fixture's captains log the score on its match).
   update public.league_fixtures
-  set status = 'agreed', scheduled_day = v_today - 1, scheduled_time = '18:00'
+  set status = 'agreed', scheduled_day = v_today - 1, scheduled_time = '18:00', match_flow = false
   where id = f_mixed;
   v_error := tests.age_as(minor_cap, format('select public.submit_fixture_score(%L, 2, 1)', f_mixed));
   assert v_error is null, format('minor captain submits a score: %s', v_error);
