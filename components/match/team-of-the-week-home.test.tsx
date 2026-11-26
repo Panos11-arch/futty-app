@@ -11,17 +11,27 @@ jest.mock('@/components/ui/icon-symbol', () =>
 let mockLatest: unknown = { status: 'loading', reload: jest.fn() };
 jest.mock('@/lib/match/use-stats', () => ({
   useLatestTeamOfTheWeek: () => mockLatest,
-  useTeamOfTheWeekPlayers: () => ({ status: 'ready', players: [], reload: jest.fn() }),
+  useTeamOfTheWeekPlayers: () => ({ status: 'ready', players: [], shape: null, reload: jest.fn() }),
 }));
 
-const team = { id: 't', week_start: '2026-11-09', matches: 3 };
+const team = {
+  id: 't',
+  week_start: '2026-11-09',
+  kind: 'general',
+  area: 'all',
+  area_key: '',
+  area_name: 'All Cyprus',
+  league_id: null,
+  format: '5-a-side',
+  matches: 3,
+};
 
 describe('TeamOfTheWeekHome', () => {
   it('shows Futty’s latest team', async () => {
     mockLatest = { status: 'ready', team, reload: jest.fn() };
     await render(<TeamOfTheWeekHome />);
     expect(screen.getByTestId('home-team-of-the-week')).toBeTruthy();
-    expect(screen.getByText('See how')).toBeTruthy();
+    expect(screen.getByText('See team')).toBeTruthy();
   });
 
   it('nothing while loading, on an error, or before the first team', async () => {

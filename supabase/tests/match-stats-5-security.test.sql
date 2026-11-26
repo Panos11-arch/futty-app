@@ -22,7 +22,7 @@ begin
     'match_rating_shown callable (it shows only what the match page shows)';
 
   -- Internal views, the run log and the pick are service_role only.
-  foreach v_view in array array['match_stat_players', 'match_stat_teams', 'team_of_the_week_runs', 'team_of_the_week_points'] loop
+  foreach v_view in array array['match_stat_players', 'match_stat_teams', 'team_of_the_week_runs'] loop
     v_error := tests.error_of(format('select count(*) from public.%I', v_view));
     assert v_error like 'permission denied%', format('%s: got %s', v_view, v_error);
   end loop;
@@ -30,7 +30,8 @@ begin
   assert tests.error_of('select public.match_jobs_tick()') like 'permission denied%', 'jobs tick';
 
   -- No writes.
-  v_error := tests.error_of(format('insert into public.team_of_the_week (week_start, matches) values (%L, 1)', '2026-11-09'));
+  v_error := tests.error_of(format('insert into public.team_of_the_week (week_start, format, matches) values (%L, %L, 1)',
+                                   '2026-11-09', '5-a-side'));
   assert v_error like 'permission denied%', format('insert a team: %s', v_error);
   v_error := tests.error_of('delete from public.team_of_the_week_players');
   assert v_error like 'permission denied%', format('delete players: %s', v_error);

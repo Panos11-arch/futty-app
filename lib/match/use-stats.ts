@@ -2,11 +2,13 @@
 // gives loading, error (with reload) or ready.
 import {
   getLatestTeamOfTheWeek,
+  getTeamOfTheWeek,
   getLeaderboard,
   getLeaderboardScopes,
   getMinAppearances,
   getPlayerSeasonStats,
   getTeamOfTheWeekPlayers,
+  getTeamShape,
   getTeamRecentMatches,
   getTeamSeasonStats,
   type LeaderboardBoard,
@@ -16,6 +18,7 @@ import {
   type SeasonChoice,
   type TeamOfTheWeek,
   type TeamOfTheWeekPlayer,
+  type TeamShape,
   type TeamSeasonStats,
 } from '@/lib/match/stats-api';
 import type { PlayerRecentMatchRow } from '@/lib/match/types';
@@ -88,23 +91,31 @@ export function useLeaderboard(scope: LeaderboardScope | null, year: number, boa
   return { ...state, reload };
 }
 
-export function useLatestTeamOfTheWeek() {
+/** The team a notification names (teamId), or the latest default team; the latest too if that team is gone. */
+export function useLatestTeamOfTheWeek(teamId?: string) {
   const { state, reload } = useLoad<{ team: TeamOfTheWeek | null }>(async () => {
+    if (teamId) {
+      const named = await getTeamOfTheWeek(teamId);
+      if (named.error) return { error: named.error.message };
+      if (named.team) return { value: { team: named.team } };
+    }
     const { team, error } = await getLatestTeamOfTheWeek();
     return error ? { error: error.message } : { value: { team } };
-  }, 'latest');
+  }, teamId ?? 'latest');
   return { ...state, reload };
 }
 
-export function useTeamOfTheWeekPlayers(teamOfTheWeekId: string | null | undefined) {
-  const { state, reload } = useLoad<{ players: TeamOfTheWeekPlayer[] }>(
-    teamOfTheWeekId
+/** A team's players and its format's shape (to show the empty slots). */
+export function useTeamOfTheWeekPlayers(team: Pick<TeamOfTheWeek, 'id' | 'format'> | null | undefined) {
+  const { state, reload } = useLoad<{ players: TeamOfTheWeekPlayer[]; shape: TeamShape | null }>(
+    team
       ? async () => {
-          const { players, error } = await getTeamOfTheWeekPlayers(teamOfTheWeekId);
-          return error ? { error: error.message } : { value: { players } };
+          const [players, shape] = await Promise.all([getTeamOfTheWeekPlayers(team.id), getTeamShape(team.format)]);
+          const error = players.error ?? shape.error;
+          return error ? { error: error.message } : { value: { players: players.players, shape: shape.shape } };
         }
       : null,
-    teamOfTheWeekId ?? '',
+    team ? `${team.id}|${team.format}` : '',
   );
   return { ...state, reload };
 }
