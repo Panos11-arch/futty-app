@@ -38,7 +38,8 @@ before insert or update on public.user_follows
 for each row execute function public.user_follows_age_guard();
 
 -- ---- Contacts matching (re-created from the baseline definition) ---------------
--- Changes: drops the other age group (A4, A5) and hides a minor's username.
+-- Changes: drops the other age group (A4, A5), hides a minor's username, and
+-- leaves out blocked pairs, either way (blocked_between).
 
 create or replace function public.match_contacts_by_phone(p_phone_numbers text[])
 returns table (phone_number text, profile_id uuid, username text)
@@ -73,6 +74,7 @@ begin
     and length(contacts.digits) = 9
     and p.id <> auth.uid()
     and public.age_pair_allowed(auth.uid(), p.id)
+    and not public.blocked_between(auth.uid(), p.id)
   order by contacts.raw, p.username;
 end;
 $$;

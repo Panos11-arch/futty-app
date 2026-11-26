@@ -112,6 +112,42 @@ begin
 end;
 $$;
 
+-- ---- Contacts matching leaves out blocked pairs, either way ----------------------
+do $$
+declare
+  v_me uuid := tests.cm_user((tests.cyprus_today() - interval '30 years')::date, 'Costas Contacts', 'costas_c');
+  v_friend uuid := tests.cm_user((tests.cyprus_today() - interval '29 years')::date, 'Fotis Friend', 'fotis_c');
+  v_i_blocked uuid := tests.cm_user((tests.cyprus_today() - interval '28 years')::date, 'Ioanna Blocked', 'ioanna_c');
+  v_blocked_me uuid := tests.cm_user((tests.cyprus_today() - interval '27 years')::date, 'Babis Blocker', 'babis_c');
+  v_rows jsonb;
+begin
+  update public.profiles set phone = '+357 99 200001' where id = v_friend;
+  update public.profiles set phone = '+357 99 200002' where id = v_i_blocked;
+  update public.profiles set phone = '+357 99 200003' where id = v_blocked_me;
+  insert into public.blocked_users (blocker_id, blocked_id) values (v_me, v_i_blocked);
+  insert into public.blocked_users (blocker_id, blocked_id) values (v_blocked_me, v_me);
+
+  perform tests.act_as(v_me);
+  select jsonb_agg(c.profile_id) into v_rows
+  from public.match_contacts_by_phone(array['+35799200001', '+35799200002', '+35799200003']) c;
+  perform tests.act_as_postgres();
+  assert jsonb_array_length(v_rows) = 1, 'only the unblocked contact, got ' || v_rows::text;
+  assert v_rows ->> 0 = v_friend::text, 'the unblocked contact is returned';
+  assert not v_rows ? v_i_blocked::text, 'a player I blocked is not returned';
+  assert not v_rows ? v_blocked_me::text, 'a player who blocked me is not returned';
+
+  -- And the other way: the players in a block don't find me either.
+  update public.profiles set phone = '+357 99 200004' where id = v_me;
+  perform tests.act_as(v_i_blocked);
+  select jsonb_agg(c.profile_id) into v_rows from public.match_contacts_by_phone(array['+35799200004']) c;
+  perform tests.act_as(v_blocked_me);
+  assert v_rows is null, 'the player I blocked does not find me, got ' || coalesce(v_rows::text, '');
+  select jsonb_agg(c.profile_id) into v_rows from public.match_contacts_by_phone(array['+35799200004']) c;
+  perform tests.act_as_postgres();
+  assert v_rows is null, 'the player who blocked me does not find me, got ' || coalesce(v_rows::text, '');
+end;
+$$;
+
 -- ---- follow_suggestions: matches in common -------------------------------------
 do $$
 declare
