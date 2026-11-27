@@ -1,4 +1,5 @@
 import type { League } from '@/lib/leagues';
+import type { TournamentHeader } from '@/lib/match/tournament-api';
 import {
   buildLeagueDirectory,
   competitionBadge,
@@ -186,5 +187,73 @@ describe('buildLeagueDirectory', () => {
       { target_type: 'league', scope: 'x', format: '8-a-side' },
     ]);
     expect(dir.pinned).toEqual([]);
+  });
+
+  describe('tournaments (S10A)', () => {
+    const header = (over: Partial<TournamentHeader> = {}): TournamentHeader => ({
+      id: 't1',
+      name: 'Nuevo Campo Cup',
+      area: 'Limassol',
+      country: 'CY',
+      format: '5-a-side',
+      status: 'coming_soon',
+      comingSoon: true,
+      startDate: null,
+      endDate: null,
+      venueId: null,
+      venueName: null,
+      maxTeams: 16,
+      teamsCount: 0,
+      entryFeeCents: 1200,
+      championTeamId: null,
+      ...over,
+    });
+
+    it('no tournaments: no group and nothing pinned', () => {
+      const dir = buildLeagueDirectory([], []);
+      expect(dir.tournaments).toBeNull();
+      expect(dir.pinnedTournaments).toEqual([]);
+    });
+
+    it('a Tournaments group, "1 coming soon", each row "Tournament · <status>"', () => {
+      const dir = buildLeagueDirectory([], [], { tournaments: [header()] });
+      expect(dir.tournaments).toMatchObject({ label: 'Tournaments', subtitle: '1 coming soon' });
+      expect(dir.tournaments!.entries[0]).toMatchObject({
+        key: 'tournament:t1',
+        name: 'Nuevo Campo Cup',
+        subtitle: 'Tournament · Coming soon',
+        pinned: false,
+      });
+    });
+
+    it('counts tournaments once one is open', () => {
+      const dir = buildLeagueDirectory([], [], {
+        tournaments: [header(), header({ id: 't2', status: 'registration', comingSoon: false })],
+      });
+      expect(dir.tournaments!.subtitle).toBe('2 tournaments');
+      expect(dir.tournaments!.entries[1].subtitle).toBe('Tournament · Sign-up open');
+      const one = buildLeagueDirectory([], [], { tournaments: [header({ status: 'groups', comingSoon: false })] });
+      expect(one.tournaments!.subtitle).toBe('1 tournament');
+    });
+
+    it('a tournament pin shows under Pinned, marked, and leaves league pins alone', () => {
+      const dir = buildLeagueDirectory(
+        [league({ scope: 'Limassol', format: '5-a-side' })],
+        [
+          { target_type: 'tournament', tournament_id: 't1' },
+          { target_type: 'league', scope: 'limassol', format: '5-a-side' },
+          { target_type: 'tournament', tournament_id: 't1' },
+        ],
+        { tournaments: [header()] },
+      );
+      expect(dir.pinnedTournaments.map((e) => e.key)).toEqual(['tournament:t1']);
+      expect(dir.tournaments!.entries[0].pinned).toBe(true);
+      expect(dir.pinned.map((e) => e.key)).toEqual(['league:limassol:5-a-side']);
+    });
+
+    it('a pin for a tournament that is no longer listed is not shown', () => {
+      const dir = buildLeagueDirectory([], [{ target_type: 'tournament', tournament_id: 'gone' }], { tournaments: [header()] });
+      expect(dir.pinnedTournaments).toEqual([]);
+    });
   });
 });

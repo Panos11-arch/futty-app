@@ -2,7 +2,7 @@
 // the reset only ever selects the e2e logins (by their exact email domain)
 // and their own bookings at the E2E venue. The database queries filter the
 // same way first; these run on the rows that come back as a second check.
-import { E2E_EMAIL_DOMAIN, E2E_LEAGUE, E2E_STAFF, E2E_TEAMS, E2E_USERS, E2E_VENUE } from './config';
+import { E2E_EMAIL_DOMAIN, E2E_LEAGUE, E2E_STAFF, E2E_TEAMS, E2E_TOURNAMENTS, E2E_USERS, E2E_VENUE } from './config';
 import { cyprusWallTime } from './slot';
 
 /** Only <something>@e2e.futty.app, nothing that merely contains it. */
@@ -73,6 +73,18 @@ export function assertE2eTeams(existing: readonly { id: string; name: string }[]
     const team = E2E_TEAMS.find((t) => t.id === row.id);
     if (!team || team.name !== row.name) {
       throw new Error(`e2e seed: team ${row.id} is "${row.name}", not an e2e team. Stopping.`);
+    }
+  }
+}
+
+/** S10A: each e2e tournament id must hold that e2e tournament (by name and
+ *  the e2e area), or nothing yet; anything else is somebody else's row. */
+export function assertE2eTournaments(existing: readonly { id: string; name: string; area: string }[]): void {
+  const ours = Object.values(E2E_TOURNAMENTS);
+  for (const row of existing) {
+    const t = ours.find((o) => o.id === row.id);
+    if (!t || t.name !== row.name || row.area !== 'E2E') {
+      throw new Error(`e2e seed: tournament ${row.id} is "${row.name}" (${row.area}), not an e2e tournament. Stopping.`);
     }
   }
 }

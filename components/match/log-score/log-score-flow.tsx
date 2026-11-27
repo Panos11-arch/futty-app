@@ -6,7 +6,7 @@
 //
 // The progress bar stays fixed at the top and the buttons at the bottom;
 // only the step itself scrolls.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -15,6 +15,7 @@ import { ProgressHeader } from '@/components/match/log-score/progress-header';
 import { ReviewStep } from '@/components/match/log-score/review-step';
 import { ScoreStep } from '@/components/match/log-score/score-step';
 import { ScoreMismatch, ScoreWaiting } from '@/components/match/log-score/score-status';
+import { ShootoutStep } from '@/components/match/log-score/shootout-step';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { hairline, space } from '@/constants/futty-theme';
@@ -25,14 +26,17 @@ import {
   goalsComplete,
   needsStats,
   scoresDiffer,
+  shootoutValid,
   singleCaptain,
   stepsFor,
   toStatsPayload,
   waitingForOther,
   type Draft,
   type MatchLog,
+  type Score,
 } from '@/lib/match/log-score';
 import { logMatchResult, setMatchStats, type LogResult } from '@/lib/match/log-score-api';
+import { getMatchKnockout } from '@/lib/match/match-stage';
 import { describeMatchResultError, STALE_RESULT_ERRORS } from '@/lib/match/result-errors';
 import { makeStyles } from '@/lib/theme';
 
@@ -66,16 +70,38 @@ export function LogScoreFlow({ log, onLogged, onExit, onOpenMatch, onStale }: Lo
   const [index, setIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // S10A: a tournament knockout game asks for the shootout when level.
+  const [knockout, setKnockout] = useState(false);
+  const [pens, setPens] = useState<Score>({ a: 0, b: 0 });
+
+  useEffect(() => {
+    let live = true;
+    // A failed read leaves it off; the server still asks (shootout_required).
+    getMatchKnockout(log.matchId)
+      .then((r) => {
+        if (live) setKnockout(r.knockout);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [log.matchId]);
 
   if (phase === 'mismatch') return <ScoreMismatch log={log} onChange={() => setPhase('steps')} />;
   if (phase === 'waiting') return <ScoreWaiting log={log} onChange={() => setPhase('steps')} onOpenMatch={onOpenMatch} />;
 
-  const steps = stepsFor(log, draft);
+  const steps = stepsFor(log, draft, knockout);
   const step = steps[Math.min(index, steps.length - 1)];
   const last = index >= steps.length - 1;
   const sides = log.writableSides;
   const canContinue =
-    step === 'goals' ? goalsComplete(draft, sides) : step === 'assists' ? assistsValid(draft, sides) : true;
+    step === 'goals'
+      ? goalsComplete(draft, sides)
+      : step === 'assists'
+        ? assistsValid(draft, sides)
+        : step === 'shootout'
+          ? shootoutValid(pens)
+          : true;
 
   const back = () => {
     setError(null);
@@ -99,7 +125,10 @@ export function LogScoreFlow({ log, onLogged, onExit, onOpenMatch, onStale }: Lo
       onLogged('corrected');
       return;
     }
-    const { result, error: logError } = await logMatchResult(log.matchId, draft.score, stats);
+    const shootout = steps.includes('shootout') ? pens : null;
+    const { result, error: logError } = shootout
+      ? await logMatchResult(log.matchId, draft.score, stats, shootout)
+      : await logMatchResult(log.matchId, draft.score, stats);
     setSaving(false);
     if (logError || !result) return fail(logError ?? { message: 'unknown' });
     if (result.status === 'confirmed') haptic.success();
@@ -120,6 +149,7 @@ export function LogScoreFlow({ log, onLogged, onExit, onOpenMatch, onStale }: Lo
 
   let body: React.ReactNode;
   if (step === 'score') body = <ScoreStep log={log} draft={draft} onChange={setDraft} />;
+  else if (step === 'shootout') body = <ShootoutStep log={log} pens={pens} onChange={setPens} />;
   else if (step === 'goals') body = <PitchStep log={log} draft={draft} mode="goals" onChange={setDraft} />;
   else if (step === 'assists') body = <PitchStep log={log} draft={draft} mode="assists" onChange={setDraft} />;
   else body = <ReviewStep log={log} draft={draft} />;

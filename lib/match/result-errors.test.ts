@@ -18,6 +18,11 @@ describe('describeMatchResultError', () => {
     ['score_locked', 'This score is final.'],
     // Levels like Playtomic (25 November): "Check the score".
     ['cannot_check_score', "Only the other side's players can check this score."],
+    // S10A: penalties.
+    ['shootout_required', 'A drawn knockout game needs the penalty shootout score.'],
+    ['invalid_shootout', 'That shootout score isn’t possible. Check it.'],
+    ['shootout_not_allowed', 'Penalties only count in a drawn knockout game.'],
+    ['tournament_always_competitive', 'Tournament games are always Competitive.'],
   ])('%s', (code, words) => {
     expect(describeMatchResultError({ message: code })).toBe(words);
   });

@@ -1,0 +1,134 @@
+# S10A journey: Leagues → Tournaments (image 12) → a tournament before sign-up
+# opens (Coming soon, image 17) → a tournament with sign-up open (its page,
+# image 13). Uses the seed's two e2e tournaments (scripts/e2e-seed, step 9:
+# "E2E Coming Cup" and "E2E Cup" in the e2e area). Looks, never changes:
+# Register team opens with this login's own team (one player, so the squad
+# is short and Register stays off), then closes. Pin then unpin with the star.
+appId: com.panosalepis.futtyapp
+name: tournaments
+tags:
+  - e2e
+  - leagues
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  # scripts/e2e-seed/config.ts E2E_TOURNAMENTS.
+  SOON_ID: e2e00000-0000-4000-8000-000000000081
+  OPEN_ID: e2e00000-0000-4000-8000-000000000082
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- openLink: futtyapp://leagues
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 30000
+
+# ---- Tournaments, last on LEAGUES ---------------------------------------------------
+- scrollUntilVisible:
+    element:
+      id: leagues-group-tournaments
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: leagues-group-tournaments
+- scrollUntilVisible:
+    element:
+      id: leagues-row-child-tournament-${SOON_ID}
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: leagues-row-child-tournament-${SOON_ID}
+
+# ---- Before sign-up: Coming soon ----------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: coming-soon-screen
+    timeout: 20000
+- assertVisible: '.*E2E Coming Cup.*'
+- assertVisible: '.*16 teams.*'
+- takeScreenshot: tournaments-coming-soon-${PLATFORM}
+- tapOn:
+    id: coming-soon-back
+
+# ---- Sign-up open: the page ---------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: leagues-row-child-tournament-${OPEN_ID}
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: leagues-row-child-tournament-${OPEN_ID}
+- extendedWaitUntil:
+    visible:
+      id: tournament-page
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: tournament-registration
+    timeout: 20000
+- assertVisible:
+    id: tournament-entry-fee
+- assertVisible:
+    id: tournament-dates
+- takeScreenshot: tournaments-overview-${PLATFORM}
+
+# Register team: this login's own team and its one player; Register stays off.
+- tapOn:
+    id: tournament-register
+- extendedWaitUntil:
+    visible:
+      id: tournament-register-roster
+    timeout: 20000
+- assertVisible:
+    id: tournament-register-submit
+    enabled: false
+- takeScreenshot: tournaments-register-${PLATFORM}
+- tapOn: Close
+
+# Pin, then unpin.
+- tapOn:
+    id: competition-pin
+- tapOn:
+    id: competition-pin
+
+# ---- The other tabs, before the groups ----------------------------------------------
+- tapOn:
+    id: competition-tab-matches
+- extendedWaitUntil:
+    visible:
+      id: tournament-matches-group
+    timeout: 20000
+- tapOn:
+    id: competition-tab-standings
+- extendedWaitUntil:
+    visible:
+      id: tournament-standings
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: competition-tab-knockout
+    direction: RIGHT
+- tapOn:
+    id: competition-tab-knockout
+- extendedWaitUntil:
+    visible:
+      id: tournament-knockout-QF1
+    timeout: 20000
+- takeScreenshot: tournaments-knockout-${PLATFORM}
+
+- tapOn:
+    id: league-page-back
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 20000
+- takeScreenshot: tournaments-${PLATFORM}

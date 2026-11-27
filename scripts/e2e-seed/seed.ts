@@ -32,6 +32,11 @@
 //      results up on staging's next match_jobs_tick (every 15 minutes):
 //      power_ranking_tick can't run through the API (pg_safeupdate refuses
 //      its unqualified DELETE).
+//   9. S10A (tournaments.yaml, tournament-admin.yaml): two e2e tournaments in
+//      the e2e area, one Coming soon and one with sign-up open, set back to
+//      that state on every run, with no teams; and, STAGING ONLY, the
+//      platform-1 logins as app admins (seedMain has refused production
+//      before this runs).
 // Money rows (ledger, payments, cancellations) are never deleted.
 //
 // With E2E_SEED_OUTPUT set it writes { slot_day, ios_start, android_start,
@@ -49,6 +54,7 @@ import {
   assertStagingTarget,
 } from '../../lib/e2e-guard';
 import {
+  E2E_ADMIN_EMAILS,
   E2E_DATE_OF_BIRTH,
   E2E_EMAIL_DOMAIN,
   E2E_FORMAT,
@@ -62,6 +68,8 @@ import {
   E2E_STAFF,
   E2E_STAFF_BOOKING,
   E2E_TEAMS,
+  E2E_TOURNAMENT_FIELDS,
+  E2E_TOURNAMENTS,
   E2E_UPCOMING,
   E2E_USERS,
   E2E_VENUE,
@@ -71,6 +79,7 @@ import {
 import {
   assertE2eLeague,
   assertE2eTeams,
+  assertE2eTournaments,
   assertE2eVenue,
   selectBookingsToCancel,
   selectE2eUsers,
@@ -622,6 +631,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
 
   // ---- 8. The e2e league (S10, competition.yaml) --------------------------------
   await seedLeague(admin, ids, now);
+  await seedTournaments(admin, ids);
   // Its matches' triggers may notify the logins; other flows start clean.
   check(await admin.from('notifications').delete().in('profile_id', [...e2eUserIds]), 'clearing e2e notifications');
   log(`league: ${E2E_LEAGUE.name} (${E2E_LEAGUE.id}), ${E2E_TEAMS.length} teams, ${E2E_LEAGUE_RESULTS.length} results, 1 upcoming`);
@@ -763,6 +773,56 @@ export async function seedLeague(admin: SupabaseClient, ids: ReadonlyMap<string,
   check(
     await admin.from('league_fixtures').upsert(upcoming, { onConflict: 'league_id,home_team_id,away_team_id' }),
     'writing the upcoming fixture',
+  );
+}
+
+/** The e2e tournament rows (written as service_role, like the dashboard). */
+export function e2eTournamentRows(createdBy: string) {
+  return Object.values(E2E_TOURNAMENTS).map((t) => ({
+    id: t.id,
+    name: t.name,
+    area: E2E_TOURNAMENT_FIELDS.area,
+    format: E2E_TOURNAMENT_FIELDS.format,
+    max_teams: E2E_TOURNAMENT_FIELDS.maxTeams,
+    squad_subs: E2E_TOURNAMENT_FIELDS.squadSubs,
+    entry_fee_cents: E2E_TOURNAMENT_FIELDS.entryFeeCents,
+    match_minutes: E2E_TOURNAMENT_FIELDS.matchMinutes,
+    start_date: null,
+    end_date: null,
+    registration_deadline: null,
+    status: t.status,
+    champion_team_id: null,
+    created_by: createdBy,
+  }));
+}
+
+/** Step 9 (S10A). Every row is checked to be ours first; no team is ever
+ *  registered, so a re-run only puts the two tournaments back as they were.
+ *  The admins are e2e logins only (E2E_ADMIN_EMAILS), on staging only. */
+export async function seedTournaments(admin: SupabaseClient, ids: ReadonlyMap<string, string>) {
+  const tournamentIds = Object.values(E2E_TOURNAMENTS).map((t) => t.id);
+  assertE2eTournaments(
+    check(
+      await admin.from('tournaments').select('id, name, area').in('id', tournamentIds),
+      'reading the e2e tournaments',
+    ) as { id: string; name: string; area: string }[],
+  );
+  const adminIds = E2E_ADMIN_EMAILS.map((email) => {
+    const id = ids.get(email);
+    if (!id) throw new Error(`e2e seed: no login for admin ${email}. Stopping.`);
+    return id;
+  });
+  check(
+    await admin.from('tournament_pins').delete().in('tournament_id', tournamentIds),
+    'clearing e2e tournament pins',
+  );
+  check(await admin.from('tournaments').upsert(e2eTournamentRows(adminIds[0])), 'writing the e2e tournaments');
+  check(
+    await admin.from('app_admins').upsert(
+      adminIds.map((profile_id) => ({ profile_id })),
+      { onConflict: 'profile_id', ignoreDuplicates: true },
+    ),
+    'making the e2e admins (staging)',
   );
 }
 

@@ -1,0 +1,54 @@
+# S10A journey: Account → Tournaments (the admin screen; Futty admins only).
+# The seed makes this platform's first login an admin ON STAGING ONLY
+# (scripts/e2e-seed, step 9). Opens the e2e tournament with sign-up open and
+# checks its stage's actions are there; looks, never changes.
+appId: com.panosalepis.futtyapp
+name: tournament-admin
+tags:
+  - e2e
+  - leagues
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  # scripts/e2e-seed/config.ts E2E_TOURNAMENTS.open.
+  OPEN_ID: e2e00000-0000-4000-8000-000000000082
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- tapOn:
+    id: header-menu
+- scrollUntilVisible:
+    element:
+      id: account-tournaments-admin
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: account-tournaments-admin
+- extendedWaitUntil:
+    visible:
+      id: admin-tournaments-list
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: admin-tournament-${OPEN_ID}
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: admin-tournament-${OPEN_ID}
+- extendedWaitUntil:
+    visible:
+      id: admin-tournament-summary
+    timeout: 20000
+- assertVisible:
+    id: admin-draw-groups
+- assertVisible:
+    id: admin-set-groups
+- assertVisible:
+    id: admin-edit-details
+- takeScreenshot: tournament-admin-${PLATFORM}

@@ -106,14 +106,25 @@ function SeasonCard({
   );
 }
 
-function PlayerOfTheSeason({ awards, onSeeMore }: { awards: ReturnType<typeof useCompetitionAwards>; onSeeMore: () => void }) {
+/** What the awards are named after: a league's season, or a tournament (S10A). */
+export type AwardsNoun = 'season' | 'tournament';
+
+export function PlayerOfTheSeason({
+  awards,
+  onSeeMore,
+  noun = 'season',
+}: {
+  awards: ReturnType<typeof useCompetitionAwards>;
+  onSeeMore: () => void;
+  noun?: AwardsNoun;
+}) {
   const styles = useStyles();
   if (awards.status === 'loading') return <SkeletonBlock width="100%" height={120} />;
   if (awards.status === 'error') return null;
   const player = awards.awards?.player ?? null;
   return (
     <Card testID="competition-player-of-season">
-      <Text variant="title">Player of the season</Text>
+      <Text variant="title">{`Player of the ${noun}`}</Text>
       {player ? (
         <>
           <View style={styles.playerRow}>
@@ -148,7 +159,7 @@ function PlayerOfTheSeason({ awards, onSeeMore }: { awards: ReturnType<typeof us
   );
 }
 
-function PowerTop({ seasonId, onGo }: { seasonId: string; onGo: () => void }) {
+export function PowerTop({ seasonId, onGo }: { seasonId: string; onGo: () => void }) {
   const styles = useStyles();
   const power = useCompetitionPowerRanking(seasonId);
   if (power.status === 'loading') return <SkeletonBlock width="100%" height={200} />;
@@ -180,28 +191,31 @@ function PowerTop({ seasonId, onGo }: { seasonId: string; onGo: () => void }) {
   );
 }
 
-function TeamOfTheSeason({
+export function TeamOfTheSeason({
   awards,
   matchday,
   onMatchday,
+  noun = 'season',
 }: {
   awards: ReturnType<typeof useCompetitionAwards>;
   matchday: number | null;
   onMatchday: (m: number | null) => void;
+  noun?: AwardsNoun;
 }) {
   const styles = useStyles();
   const [picking, setPicking] = useState(false);
   if (awards.status !== 'ready' || !awards.awards) return null;
   const { team, matchdays } = awards.awards;
   if (matchday == null && (!team || team.players.length === 0)) return null;
-  const label = matchday == null ? 'Whole season' : roundLabel(matchday);
-  const options = [{ key: 'season', label: 'Whole season' }, ...matchdays.map((m) => ({ key: String(m), label: roundLabel(m) }))];
+  const whole = `Whole ${noun}`;
+  const label = matchday == null ? whole : roundLabel(matchday);
+  const options = [{ key: 'season', label: whole }, ...matchdays.map((m) => ({ key: String(m), label: roundLabel(m) }))];
   const pitch = team ? toTotwPlayers(team) : null;
   return (
     <Card testID="competition-team-of-season">
       <View style={styles.cardHead}>
         <Text variant="title" style={styles.flex}>
-          Team of the season
+          {`Team of the ${noun}`}
         </Text>
         <DropdownButton
           label={label}

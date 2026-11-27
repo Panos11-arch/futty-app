@@ -16,6 +16,10 @@ const PLACEMENTS: Record<string, string> = {
   'components/competition/matches-tab.tsx': 'competition page: Matches',
   'components/competition/standings-tab.tsx': 'competition page: Standings',
   'components/competition/stats-tab.tsx': 'competition page: Stats',
+  // S10A: a tournament on the same competition page (image 13).
+  'components/competition/tournament/tournament-overview.tsx': 'competition page (a tournament): Overview, after Power rankings',
+  'components/competition/tournament/tournament-matches-tab.tsx': 'competition page (a tournament): Matches',
+  'components/competition/tournament/group-standings.tsx': 'competition page (a tournament): Standings',
   'components/match/team-of-the-week-view.tsx': 'Rankings: Team of the Week (image 15)',
   'components/match/power-ranking-list.tsx': 'Rankings: Power ranking (image 14)',
   'components/community/feed-list.tsx': 'Community feed, one every 8 posts (image 18)',
