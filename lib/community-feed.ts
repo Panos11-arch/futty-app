@@ -1,5 +1,8 @@
 // S7: what the Community feed cards say, from the server's rows
 // (lib/community.ts). Times in Cyprus time. No amounts here.
+import type { Href } from 'expo-router';
+
+import { bookingDetailHref } from '@/lib/booking-navigation';
 import { cyprusDayTime, dayTitle, levelText } from '@/lib/find-match';
 import type { FeedCursor, FeedItem, MatchResultItem, SquadPostItem } from '@/lib/community';
 
@@ -91,4 +94,17 @@ export function nextCursor(items: Pick<FeedItem, 'sort_at' | 'item_id'>[]): Feed
 export function mergePages<T extends Pick<FeedItem, 'kind' | 'item_id'>>(current: T[], incoming: T[]): T[] {
   const seen = new Set(current.map(feedKey));
   return [...current, ...incoming.filter((item) => !seen.has(feedKey(item)))];
+}
+
+/** Where "Open post" on my own post goes: its booking (the screen My bookings
+ *  opens); a matched opposition post with no booking, its fixture; any other
+ *  post with no booking, nowhere (the posts list never shows my own post). */
+export function ownPostHref(
+  item: Pick<SquadPostItem, 'item_id' | 'post_type' | 'post_status' | 'booking_id'>,
+): Href | null {
+  if (item.booking_id) return bookingDetailHref(item.booking_id);
+  if (item.post_type === 'opposition' && item.post_status === 'matched') {
+    return { pathname: '/fixture-confirmed', params: { kind: 'squad', id: item.item_id } };
+  }
+  return null;
 }

@@ -81,11 +81,40 @@ describe('SquadPostCard', () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: '/opposition-invite', params: { postId: 'p1' } });
   });
 
-  it('my own post opens the posts list', async () => {
-    await render(<SquadPostCard item={post({ mine: true, can_message: true })} />);
+  it('my own post with a booking opens that game (bug 27 Nov)', async () => {
+    await render(<SquadPostCard item={post({ mine: true, can_message: true, booking_id: 'b1' })} />);
     await fireEvent.press(screen.getByRole('button', { name: 'Open post' }));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/squad-posts', params: { view: 'players' } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b1' } });
+    expect(router.push).not.toHaveBeenCalledWith(expect.objectContaining({ pathname: '/squad-posts' }));
     expect(screen.queryByRole('button', { name: 'Message' })).toBeNull();
+  });
+
+  it('my own v2 opposition post with a booking opens that game', async () => {
+    await render(
+      <SquadPostCard item={post({ mine: true, post_type: 'opposition', spots: null, v2: true, booking_id: 'b2' })} />,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Open post' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/booking/[id]', params: { id: 'b2' } });
+  });
+
+  it('my own matched opposition post with no booking opens its fixture', async () => {
+    await render(
+      <SquadPostCard item={post({ mine: true, post_type: 'opposition', post_status: 'matched', spots: null })} />,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Open post' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/fixture-confirmed', params: { kind: 'squad', id: 'p1' } });
+  });
+
+  it('my own open post with no booking has no Open post', async () => {
+    await render(<SquadPostCard item={post({ mine: true })} />);
+    expect(screen.queryByRole('button', { name: 'Open post' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join squad' })).toBeNull();
+  });
+
+  it("someone else's post is unchanged: v1 opposition still goes to the posts list", async () => {
+    await render(<SquadPostCard item={post({ post_type: 'opposition', spots: null, booking_id: null })} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Accept as opponent' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/squad-posts', params: { view: 'opposition' } });
   });
 
   it('a closed post that is not mine has no buttons', async () => {
