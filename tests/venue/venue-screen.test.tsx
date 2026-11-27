@@ -144,6 +144,23 @@ describe('the venue page screen', () => {
     expect(mockCheckout).toMatchObject({ variant: 'sheet', pitchKey: 'p2', venueName: 'Nuevo Campo' });
   });
 
+  // S20, Team vs team (a friend chat → Book a pitch): the payment sheet starts on half pitch.
+  it('Team vs team: the payment sheet starts on half pitch; otherwise its own default', async () => {
+    const { armBookingPreselect } = jest.requireActual<typeof import('@/lib/booking-preselect')>('@/lib/booking-preselect');
+    mockParams = { id: 'v1', day: '2026-11-26', start: '20:00', end: '21:00' };
+    armBookingPreselect({ oppositionTeamId: 't-ben' });
+    const team = await render(<VenueScreen />);
+    await act(async () => view().book.onContinue('p2'));
+    expect(mockCheckout).toMatchObject({ initialKind: 'half' });
+    await team.unmount();
+
+    armBookingPreselect({ inviteProfileId: 'p-ben' });
+    await render(<VenueScreen />);
+    await act(async () => view().book.onContinue('p2'));
+    expect(mockCheckout?.initialKind).toBeUndefined();
+    armBookingPreselect(null);
+  });
+
   it('Back, Share, Website and Call, a player and a team', async () => {
     const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' });
     const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);

@@ -150,6 +150,28 @@ describe('Notifications', () => {
     }
   );
 
+  // S20: a friend request opens Friends; an accepted one opens the friend chat.
+  it('a friend_request row opens Friends', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('f1', '2026-11-17T09:00:00Z', { type: 'friend_request', data: { profileId: 'p1', requestId: 'r1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title f1. Body f1' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/friends'));
+    expect(mockMarkRead).toHaveBeenCalledWith('f1');
+  });
+
+  it('a friend_accepted row opens the chat', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('f2', '2026-11-17T09:00:00Z', { type: 'friend_accepted', data: { profileId: 'p1', conversationId: 'c1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title f2. Body f2' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: '/messages/[id]', params: { id: 'c1' } }));
+  });
+
   it.each(['venue_player_offered', 'venue_player_withdrawn'])('a %s row opens the booking', async (type) => {
     mockNotifications = {
       status: 'ready',

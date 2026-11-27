@@ -141,3 +141,15 @@ describe('B1d: Losers pay, in words', () => {
     expect(describeBookingErrorMessage('losers_pay_too_far_ahead')).toMatch(/^Losers pay can (be booked at most 5 days ahead|only be booked a few days ahead)\.$/);
   });
 });
+
+// S20, Book together: inviting a preselected friend the server no longer allows.
+describe('Book together refusals', () => {
+  it.each([
+    ['not_friends', "You're no longer friends. Invite by username."],
+    ['blocked', "You can't invite this player."],
+    ['age_pair_refused', "You can't invite this player."],
+  ])('%s: one line, at most 10 words', (code, line) => {
+    expect(describeBookingErrorMessage(code)).toBe(line);
+    expect(line.split(' ').length).toBeLessThanOrEqual(10);
+  });
+});

@@ -1,5 +1,6 @@
 // S7 (image 18): the dark band under the tab header: Search, Messages (S13's
-// inbox, with the unread count) and the tabs For you | Following | Find players.
+// inbox, with the unread count), Friends (S20, with the requests waiting)
+// and the tabs For you | Following | Find players.
 import { Pressable, View } from 'react-native';
 
 import { UnreadBadge, unreadLabel } from '@/components/messages/unread-badge';
@@ -23,16 +24,22 @@ export function CommunityBand({
   onSearch,
   onMessages,
   unread,
+  onFriends,
+  requests,
 }: {
   tab: CommunityTab;
   onTab: (tab: CommunityTab) => void;
   onSearch: () => void;
   onMessages: () => void;
   unread: number;
+  /** S20: Friends, and the friend requests waiting for me. */
+  onFriends: () => void;
+  requests: number;
 }) {
   const styles = useStyles();
   const { colors } = useTheme();
   const unreadText = unreadLabel(unread);
+  const requestsText = requests > 0 ? `${requests} friend ${requests === 1 ? 'request' : 'requests'}` : null;
 
   return (
     <View testID="community-band" style={styles.band}>
@@ -57,6 +64,17 @@ export function CommunityBand({
           <IconSymbol name="bubble.left.fill" size={ICON.regular} color={colors.onNight} />
           <View style={styles.badge} pointerEvents="none">
             <UnreadBadge count={unread} testID="community-messages-badge" />
+          </View>
+        </Pressable>
+        <Pressable
+          testID="community-friends"
+          accessibilityRole="button"
+          accessibilityLabel={requestsText ? `Friends, ${requestsText}` : 'Friends'}
+          onPress={onFriends}
+          style={({ pressed }) => [styles.messages, pressed && styles.pressed]}>
+          <IconSymbol name="person.2.fill" size={ICON.regular} color={colors.onNight} />
+          <View style={styles.badge} pointerEvents="none">
+            <UnreadBadge count={requests} testID="community-friends-badge" />
           </View>
         </Pressable>
       </View>

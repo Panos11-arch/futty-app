@@ -93,6 +93,9 @@ export type CheckoutViewProps = {
   pitchKey?: string | null;
   /** The "?" beside the booking line (S13A, the payment sheet): opens a new Futty AI chat. */
   onHelp?: () => void;
+  /** S20, Team vs team: the choice the checkout starts on ('whole' by
+   *  default). Half applies only while the server offers it. */
+  initialKind?: BookingKind;
 };
 
 /** "Thu 26 Nov · 20:00" (a Cyprus calendar day, read as such). */
@@ -164,6 +167,7 @@ function CheckoutReady({
   variant = 'screen',
   pitchKey: chosenKey = null,
   onHelp,
+  initialKind = 'whole',
 }: Omit<CheckoutViewProps, 'quote'> & { data: CheckoutData }) {
   const inSheet = variant === 'sheet';
   const styles = useStyles();
@@ -173,7 +177,7 @@ function CheckoutReady({
   const now = nowOverride ?? clock;
 
   const [pitchKey, setPitchKey] = useState<string | null>(null);
-  const [kindChoice, setKind] = useState<BookingKind>('whole');
+  const [kindChoice, setKind] = useState<BookingKind>(initialKind);
   const [way, setWay] = useState<WayToPay | null>(null);
   const [losersChoice, setLosers] = useState(false);
   const [credit, setCredit] = useState(false);
