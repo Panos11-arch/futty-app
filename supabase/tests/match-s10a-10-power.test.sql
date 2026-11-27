@@ -74,7 +74,14 @@ begin
   update public.app_rules set power_ranking_shootouts = true;
 
   -- A tournament match counts once, through its fixture.
-  v_match := tests.s10a_time(v_admin, tests.s10a_slot(v_t, 'QF4'), now() - interval '2 hours');
+  -- QF4 kicks off after every other game here. The group games and QF3 have
+  -- no kick-off time, so they count at completed_at, which is the same now()
+  -- for all of them in this transaction; the replay then orders them by their
+  -- random fixture ids. A QF4 before them (as it once was, at now() - 2 hours)
+  -- gave its winner +25 first, and that team's later group draws moved points
+  -- to its group-mates in a random order, so QF3's opponent was sometimes not
+  -- on 1000 and the corrected win below wasn't exactly +25.
+  v_match := tests.s10a_time(v_admin, tests.s10a_slot(v_t, 'QF4'), now() + interval '1 hour');
   perform tests.s10a_result(v_admin, tests.s10a_slot(v_t, 'QF4'), 2, 0);
   perform tests.pr_tick(now() + interval '3 days');
   assert tests.pr_rows(v_match) = 0, 'not as a match';
