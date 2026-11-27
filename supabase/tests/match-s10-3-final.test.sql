@@ -55,8 +55,7 @@ begin
   assert v_f.score_locked, 'and it is locked';
   perform tests.pr_tick(v_final);
   assert tests.pr_rows(v_fixture) = 2, 'the power ranking counts it at the same moment';
-  assert (select won from public.league_teams where league_id = v_season and team_id = v_f.home_team_id) = 1,
-    'the old counters follow';
+  assert (tests.s10_row(v_season, v_f.home_team_id) ->> 'won')::integer = 1, 'the standings follow';
 
   -- Disputed: the fixture stays open (the organiser decides).
   v_match := tests.s10_schedule(v_disputed, date_trunc('minute', now()) - interval '3 hours');

@@ -1,7 +1,6 @@
 -- S10: standings computed from fixtures (match-record.md decision 1n):
 -- points, goal difference, goals for, head-to-head points, then team name.
--- Each tiebreak has its own case; forfeits, adjustments, form and zones;
--- the old counters always agree.
+-- Each tiebreak has its own case; forfeits, adjustments, form and zones.
 begin;
 
 -- 1. Points first (the lower name would win the last tiebreak).
@@ -104,7 +103,7 @@ begin
   assert tests.s10_order(v_season) = array[t_a, t_b], 'all level: the team name';
 end $$;
 
--- 6. Forfeits, adjustments, void, form, zones and the old counters.
+-- 6. Forfeits, adjustments, void, form and zones.
 do $$
 declare
   t_a uuid := tests.s10_team('S10-7 A', tests.create_user('s10-7-6a@futty.test'));
@@ -115,7 +114,6 @@ declare
   v_ac uuid := tests.s10_fixture(v_season, t_a, t_c);
   v_bc uuid := tests.s10_fixture(v_season, t_b, t_c);
   v_row jsonb;
-  v_c record;
 begin
   -- A–B: A forfeits. A–C: 2-2. B–C: void.
   update public.league_fixtures
@@ -135,61 +133,6 @@ begin
 
   update public.league_teams set pts_adjustment = -6 where league_id = v_season and team_id = t_b;
   assert (tests.s10_row(v_season, t_b) ->> 'points')::integer = -3, 'the adjustment counts';
-
-  -- The counters agree with the computed table.
-  perform tests.act_as_service_role();
-  perform public.league_refresh_counters(v_season);
-  perform tests.act_as_postgres();
-  for v_c in
-    select lt.*, s.played as s_played, s.won as s_won, s.drawn as s_drawn, s.lost as s_lost,
-           s.goals_for as s_gf, s.goals_against as s_ga
-    from public.league_teams lt join public.league_standings(v_season) s on s.team_id = lt.team_id
-    where lt.league_id = v_season
-  loop
-    assert (v_c.played, v_c.won, v_c.drawn, v_c.lost, v_c.goals_for, v_c.goals_against)
-           = (v_c.s_played, v_c.s_won, v_c.s_drawn, v_c.s_lost, v_c.s_gf, v_c.s_ga), 'counters agree';
-  end loop;
-end $$;
-
--- 7. The counters follow a league match's result, a correction and a void.
-do $$
-declare
-  cap_h uuid := tests.create_user('s10-7-7h@futty.test');
-  cap_a uuid := tests.create_user('s10-7-7a@futty.test');
-  t_h uuid := tests.s10_team('S10-7 Home', cap_h);
-  t_a uuid := tests.s10_team('S10-7 Away', cap_a);
-  v_season uuid := tests.s10_season(tests.s10_league(), array[t_h, t_a]);
-  v_fixture uuid := tests.s10_fixture(v_season, t_h, t_a);
-  v_match uuid := tests.s10_schedule(v_fixture, date_trunc('minute', now()) - interval '3 hours');
-  v_home uuid := (select home_team_id from public.league_fixtures where id = v_fixture);
-  v_step text;
-  v_c record;
-begin
-  foreach v_step in array array['result', 'correction', 'void'] loop
-    if v_step = 'result' then
-      perform tests.s10_result(v_fixture, 3, 1);
-      perform tests.s10_final(v_match);
-    elsif v_step = 'correction' then
-      update public.league_fixtures set home_score = 1, away_score = 1 where id = v_fixture;
-      assert (select drawn from public.league_teams where league_id = v_season and team_id = v_home) = 1,
-        'a corrected score moves the counters';
-    else
-      update public.league_fixtures set forfeit_result = 'void' where id = v_fixture;
-    end if;
-    for v_c in
-      select lt.played, lt.won, lt.drawn, lt.lost, lt.goals_for, lt.goals_against,
-             s.played as s_played, s.won as s_won, s.drawn as s_drawn, s.lost as s_lost,
-             s.goals_for as s_gf, s.goals_against as s_ga
-      from public.league_teams lt join public.league_standings(v_season) s on s.team_id = lt.team_id
-      where lt.league_id = v_season
-    loop
-      assert (v_c.played, v_c.won, v_c.drawn, v_c.lost, v_c.goals_for, v_c.goals_against)
-             = (v_c.s_played, v_c.s_won, v_c.s_drawn, v_c.s_lost, v_c.s_gf, v_c.s_ga),
-        'counters agree after the ' || v_step;
-    end loop;
-  end loop;
-  assert (select played from public.league_teams where league_id = v_season and team_id = v_home) = 0,
-    'nothing left after the void';
 end $$;
 
 rollback;

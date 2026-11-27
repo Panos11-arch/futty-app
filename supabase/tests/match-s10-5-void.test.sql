@@ -32,8 +32,6 @@ begin
   update public.league_fixtures set forfeit_result = 'home_forfeited' where id = v_forfeit;
   assert (select status from public.matches where id = v_match) = 'void', 'a forfeited fixture''s match is void';
   assert (tests.s10_row(v_season, v_f.away_team_id) ->> 'points')::integer = 3, 'the other team gets the win';
-  assert (select won from public.league_teams where league_id = v_season and team_id = v_f.away_team_id) = 1,
-    'the old counters agree';
 
   -- Counted, then voided: it leaves the power ranking and the stats.
   v_match := tests.s10_schedule(v_counted, date_trunc('minute', now()) - interval '3 hours');
@@ -52,8 +50,6 @@ begin
   assert tests.pr_rows(v_counted) = 0, 'it leaves the power ranking';
   assert not exists (select 1 from public.match_stat_players where match_id = v_match), 'and the stats';
   assert (tests.s10_row(v_season, t_h) ->> 'played')::integer = 0, 'and the standings';
-  assert (select played from public.league_teams where league_id = v_season and team_id = t_h) = 0,
-    'and the old counters';
 end $$;
 
 rollback;

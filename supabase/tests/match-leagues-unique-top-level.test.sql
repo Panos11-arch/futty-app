@@ -20,8 +20,7 @@ begin
   -- children of the next season.
   insert into public.leagues (format, scope, name, stage, capacity)
   values ('7-a-side', 'UT City', 'UT City 7s', 'signup', 8) returning id into v_hub;
-  insert into public.league_teams (league_id, team_id, played, won, drawn, lost, goals_for, goals_against, pts_adjustment)
-  values (v_hub, v_team1, 0, 0, 0, 0, 0, 0, 0), (v_hub, v_team2, 0, 0, 0, 0, 0, 0, 0);
+  insert into public.league_teams (league_id, team_id) values (v_hub, v_team1), (v_hub, v_team2);
   v_error := tests.error_as(v_cap1, format('select public.start_league_season(%L)', v_hub));
   assert v_error is null, 'the season starts, got ' || coalesce(v_error, '');
 

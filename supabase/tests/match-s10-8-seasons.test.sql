@@ -105,8 +105,6 @@ begin
   assert (select count(*) from public.league_teams where league_id = v_div2) = 2, 'the rest in Division 2';
   assert exists (select 1 from public.league_teams where league_id = v_div1 and team_id = teams[5]),
     'the champion is in Division 1';
-  assert not exists (select 1 from public.league_teams lt where lt.league_id in (v_div1, v_div2) and lt.played <> 0),
-    'the new season starts empty';
   assert not exists (select 1 from public.league_standings(v_div1) s where s.played <> 0), 'its standings are empty';
   assert (select stage from public.leagues where id = v_hub) = 'divisions', 'the city league moves to divisions';
 

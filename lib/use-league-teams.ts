@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { sortStandings, type LeagueTeamRow } from '@/lib/leagues';
 import { useRealtimeChannelName } from '@/lib/realtime';
 import { supabase } from '@/lib/supabase';
 
-export type StandingsRow = LeagueTeamRow & { team_name: string; team_city: string | null };
+/** A team registered in one league row (e.g. a city league's waiting pool). */
+export type LeagueTeam = { team_id: string; team_name: string; team_city: string | null };
 
-type StandingsState =
+type LeagueTeamsState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; rows: StandingsRow[] };
+  | { status: 'ready'; rows: LeagueTeam[] };
 
-export function useLeagueStandings(leagueId: string) {
-  const [state, setState] = useState<StandingsState>({ status: 'loading' });
+/**
+ * The teams in one league row, in the order they joined. Names only:
+ * standings are computed from fixtures on the server (league_standings),
+ * and the old league_teams counters are gone.
+ */
+export function useLeagueTeams(leagueId: string) {
+  const [state, setState] = useState<LeagueTeamsState>({ status: 'loading' });
   const requestIdRef = useRef(0);
   const channelName = useRealtimeChannelName(`league-teams-${leagueId}`);
 
@@ -22,10 +27,9 @@ export function useLeagueStandings(leagueId: string) {
 
     const { data, error } = await supabase
       .from('league_teams')
-      .select(
-        'id, league_id, team_id, played, won, drawn, lost, goals_for, goals_against, pts_adjustment, teams(name, city)'
-      )
-      .eq('league_id', leagueId);
+      .select('team_id, teams(name, city)')
+      .eq('league_id', leagueId)
+      .order('joined_at', { ascending: true });
 
     if (requestIdRef.current !== requestId) return;
 
@@ -34,16 +38,12 @@ export function useLeagueStandings(leagueId: string) {
       return;
     }
 
-    const rows: StandingsRow[] = (data ?? []).map((row) => {
+    const rows: LeagueTeam[] = (data ?? []).map((row) => {
       const team = row.teams as unknown as { name: string; city: string | null } | null;
-      return {
-        ...row,
-        team_name: team?.name ?? 'Unknown team',
-        team_city: team?.city ?? null,
-      };
+      return { team_id: row.team_id, team_name: team?.name ?? 'Unknown team', team_city: team?.city ?? null };
     });
 
-    setState({ status: 'ready', rows: sortStandings(rows) });
+    setState({ status: 'ready', rows });
   }, [leagueId]);
 
   useEffect(() => {
@@ -53,10 +53,8 @@ export function useLeagueStandings(leagueId: string) {
     };
   }, [reload]);
 
-  // played/won/drawn/lost/goals/pts_adjustment all change the instant a
-  // score is confirmed (or a dispute locks) via check_fixture_score_match —
-  // scoped to this leagueId so switching Format/city chips on the Leagues
-  // screen doesn't wake up every division's standings for every update.
+  // A team joining or leaving this row. Scoped to this leagueId so other
+  // leagues' changes don't wake it up.
   useEffect(() => {
     const channel = supabase
       .channel(channelName)
