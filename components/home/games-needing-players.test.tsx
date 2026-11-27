@@ -30,6 +30,7 @@ const card = (over: Partial<MatchCard> = {}): MatchCard => ({
   level_min: null,
   level_max: null,
   people: [],
+  booking_id: null,
   day: '2026-11-27',
   time: '19:00',
   priceCents: 680,

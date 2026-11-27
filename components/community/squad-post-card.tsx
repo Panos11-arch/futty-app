@@ -28,7 +28,7 @@ export function SquadPostCard({ item, now }: { item: SquadPostItem; now?: Date }
   const href = item.mine
     ? ownPostHref(item)
     : open
-      ? cardHref({ post_id: item.item_id, kind: item.post_type, v2: item.v2, mine: false })
+      ? cardHref({ post_id: item.item_id, kind: item.post_type, v2: item.v2, mine: false, booking_id: null })
       : null;
 
   function join() {

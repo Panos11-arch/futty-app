@@ -289,4 +289,36 @@ begin
          = array['search_path=""'], 'search_path is empty';
 end $$;
 
+-- 7. Bug 27 Nov (Panos): my own card opens its booking. booking_id comes
+--    back only on the caller's own post; everyone else gets null, and a post
+--    with no booking gives null to its poster too.
+do $$
+declare
+  v_venue uuid := tests.fm_venue('Larnaca');
+  v_booker uuid := tests.fm_user();
+  v_viewer uuid := tests.fm_user();
+  v_booking uuid := tests.fm_book(v_venue, v_booker, 'whole');
+  v_post uuid := tests.fm_publish(v_booking, v_booker, 'players');
+  v_old uuid;
+  v_got uuid;
+begin
+  perform tests.act_as(v_booker);
+  select f.booking_id into v_got from public.find_matches() f where f.post_id = v_post;
+  perform tests.act_as_postgres();
+  assert v_got = v_booking, format('my own post carries my booking (%s)', v_got);
+
+  perform tests.act_as(v_viewer);
+  assert exists (select 1 from public.find_matches() f where f.post_id = v_post and f.booking_id is null),
+    'someone else''s post: no booking id';
+  perform tests.act_as_postgres();
+
+  insert into public.squad_posts (type, venue_id, scheduled_at, format, status, posted_by, players_needed)
+  values ('players', v_venue, now() + interval '2 days', '5-a-side', 'open', v_viewer, 4)
+  returning id into v_old;
+  perform tests.act_as(v_viewer);
+  assert exists (select 1 from public.find_matches() f where f.post_id = v_old and f.booking_id is null),
+    'my own older post without a booking: null';
+  perform tests.act_as_postgres();
+end $$;
+
 rollback;
