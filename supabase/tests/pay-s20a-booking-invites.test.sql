@@ -213,6 +213,62 @@ begin
   assert v.status = 'paid' and v.pay_by is null, format('card saved: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
 end $$;
 
+-- A cash player who finishes his step within the 15 minutes is never lapsed,
+-- even at 16 minutes: the €0.80 held (authorized), the €0.80 taken at once
+-- less than 6 hours before kickoff (paid), or a Premium card saved (paid).
+-- The step moves his share out of pending, so pay_by clears
+-- (booking_shares_clear_pay_by); then pay_by is forced into the past, as if 16
+-- minutes had gone by, and the job still leaves him alone (it only picks
+-- pending shares).
+do $$
+declare
+  b record := tests.s20b_book();
+  soon record := tests.s20b_book();
+  held uuid := tests.s20b_user('cash-16-held');
+  taken uuid := tests.s20b_user('cash-16-taken');
+  premium uuid := tests.s20b_user('cash-16-premium');
+  v public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  -- 1. The €0.80 held.
+  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, held), held, 'cash');
+  v := tests.share_of(b.booking, held);
+  assert v.pay_by is not null, 'held: 15 minutes to start with';
+  perform tests.hold_share(v.id, 'pi_s20b_c16h_' || gen_random_uuid(), 'pm_c16h', 'cash');
+  v := tests.share_of(b.booking, held);
+  assert v.status = 'authorized' and v.pay_by is null, format('held: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
+  assert tests.s20b_lapse_now(v.id) = 0, 'held: not lapsed at 16 minutes';
+  v := tests.share_of(b.booking, held);
+  assert v.status = 'authorized', 'held: still in, got ' || v.status;
+
+  -- 2. The €0.80 taken at once (kickoff in 5 hours).
+  perform tests.set_kickoff(soon.booking, now() + interval '5 hours');
+  perform tests.s20b_accept(tests.s20b_invite(soon.booking, soon.booker, taken), taken, 'cash');
+  v := tests.share_of(soon.booking, taken);
+  assert v.pay_by is not null, 'taken: 15 minutes to start with';
+  v_plan := tests.pay_share(v.id, 'pi_s20b_c16t_' || v.id, 'cash', true);
+  assert v_plan ->> 'capture_method' = 'immediate' and (v_plan ->> 'amount_cents')::integer = 80,
+    'taken at once: the €0.80, got ' || v_plan::text;
+  perform public.share_payment_captured(v.id, 'pi_s20b_c16t_' || v.id, 80, 'pm_c16t', 80, 26, now());
+  v := tests.share_of(soon.booking, taken);
+  assert v.status = 'paid' and v.pay_by is null, format('taken: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
+  assert tests.s20b_lapse_now(v.id) = 0, 'taken: not lapsed at 16 minutes';
+  assert (tests.share_of(soon.booking, taken)).status = 'paid', 'taken: still in';
+
+  -- 3. Premium: his card saved, €0.
+  perform tests.make_premium(premium);
+  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, premium), premium, 'cash');
+  v := tests.share_of(b.booking, premium);
+  assert v.amount_cents = 0 and v.pay_by is not null, 'Premium: 15 minutes to save his card';
+  perform public.attach_share_setup(v.id, premium, 'cash', 'seti_s20b_c16p_' || v.id, null);
+  perform public.share_card_saved(v.id, 'seti_s20b_c16p_' || v.id, 'pm_c16p', now());
+  v := tests.share_of(b.booking, premium);
+  assert v.status = 'paid' and v.pay_by is null, format('Premium: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
+  assert tests.s20b_lapse_now(v.id) = 0, 'Premium: not lapsed at 16 minutes';
+  assert (tests.share_of(b.booking, premium)).status = 'paid', 'Premium: still in';
+
+end $$;
+
 -- A player in debt isn't offered cash, and can't choose it.
 do $$
 declare
