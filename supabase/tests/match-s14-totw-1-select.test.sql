@@ -109,8 +109,11 @@ begin
     'not the league player, not P6 (6.5), not the 7-a-side player';
   assert (select (average_rating, games, player_of_the_week) from public.team_of_the_week_players
           where team_of_the_week_id = v_all5.id and profile_id = p1) = (9.00, 1, true), 'P1: 9.0, 1 game, player of the week';
-  assert (select count(*) from public.team_of_the_week_players where player_of_the_week) = 7,
-    'one player of the week in each of the seven teams';
+  -- One general team per format a week (Panos, 26 November): P1-P5 and S7
+  -- are in All Cyprus only, so Limassol 5, V1 5 and Nicosia 7 have no one
+  -- left. A player of the week in each of the four teams with players.
+  assert (select count(*) from public.team_of_the_week_players where player_of_the_week) = 4,
+    'one player of the week in each of the four teams with players (All Cyprus 5 and 7, Nicosia 5, the league)';
 
   -- 4. Each format from its own games only: 7-a-side has S7 alone (too few
   --    eligible: the team is still made).
@@ -122,7 +125,10 @@ begin
   --    names are trimmed and lower-cased for the key).
   v_team := tests.totw_team(v_week, 'general', 'city', 'limassol', '5-a-side');
   assert v_team.area_name = 'Limassol' and v_team.matches = 4, 'Limassol 5-a-side: four games';
-  assert (select count(*) from public.team_of_the_week_players where team_of_the_week_id = v_team.id) = 5, 'Limassol: five';
+  -- P1-P5 are already in All Cyprus 5 and NP isn't Premium: no one left, and
+  -- the team is still made (decision 1k items 4.4 and 8).
+  assert (select count(*) from public.team_of_the_week_players where team_of_the_week_id = v_team.id) = 0,
+    'Limassol: no one left (P1-P5 are in All Cyprus)';
   v_team := tests.totw_team(v_week, 'general', 'city', 'nicosia', '5-a-side');
   assert (select array_agg(profile_id) from public.team_of_the_week_players where team_of_the_week_id = v_team.id) = array[p6],
     'Nicosia 5-a-side: P6 alone';
