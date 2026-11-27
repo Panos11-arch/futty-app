@@ -5,6 +5,10 @@
 // sheet over the page: the same checkout, its rules and its server amounts
 // (useSlotCheckout). A venue that isn't live is hidden from players
 // (spec 13): the server answers not found to everyone but its owner.
+//
+// S17: Home shows the venue on a map (a tap: Directions) and the weather
+// there this hour; Book, the forecast for the chosen time. Both come from
+// venue-weather, at the venue's own coordinates.
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
@@ -26,6 +30,8 @@ import { useVenueFormats, useVenueSlots } from '@/lib/use-venue-slots';
 import { useGameWeather } from '@/lib/use-weather';
 import { venueSlot, type BookSelection } from '@/lib/venue-book';
 import { fetchVenueHighlights } from '@/lib/venue-highlights';
+import { useVenueCoordinates } from '@/lib/venue-location';
+import { nowWindow } from '@/lib/weather';
 import { appleMapsUrl, googleMapsUrl, venueShareMessage, venueStartTab, type VenueTab } from '@/lib/venue-page';
 
 type Params = {
@@ -60,6 +66,12 @@ export default function VenueScreen() {
   // Home: top players and recent results.
   const loadHighlights = useCallback(() => fetchVenueHighlights(id), [id]);
   const highlights = useLoad(id ? `highlights:${id}` : null, loadHighlights);
+
+  // Home (S17): the venue on a map, and the weather there this hour. Asked
+  // only while Home is open, for the hour the page was opened in.
+  const coordinates = useVenueCoordinates(id);
+  const [thisHour] = useState(() => nowWindow(new Date()));
+  const todayWeather = useGameWeather(id, tab === 'home' ? thisHour : null);
 
   // Book: the account's window, the venue's formats, the day's free times.
   const options = useLoad('options', fetchSearchOptions);
@@ -126,6 +138,9 @@ export default function VenueScreen() {
           onRetry: highlights.reload,
           onPlayer: (profileId) => router.push({ pathname: '/player-profile', params: { profileId } }),
           onTeam: (teamId) => router.push({ pathname: '/team-profile', params: { teamId } }),
+          coordinates,
+          weather: todayWeather,
+          onMap: openDirections,
         }}
         book={{
           options: options.state,

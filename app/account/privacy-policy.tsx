@@ -52,6 +52,10 @@ function PrivacyPolicyEn() {
         Futty AI chats: your questions, any photos you attach and the answers (see &quot;Futty
         AI&quot; below).
       </DocBullet>
+      <DocBullet>
+        Location (optional): only when you tap &quot;Around me&quot;, rounded to about 1 km, to sort
+        venues by distance on your phone. It is never sent to us or kept.
+      </DocBullet>
 
       <DocHeading>Match records</DocHeading>
       <DocParagraph>When you play a match booked or arranged in Futty, we keep:</DocParagraph>
@@ -315,6 +319,11 @@ function PrivacyPolicyEl() {
       <DocBullet>
         Futty AI: οι ερωτήσεις σας, οι φωτογραφίες που επισυνάπτετε και οι απαντήσεις (δείτε
         «Futty AI» παρακάτω).
+      </DocBullet>
+      <DocBullet>
+        Τοποθεσία (προαιρετικά): μόνο όταν πατάτε «Around me», στρογγυλεμένη σε περίπου 1 χλμ., για
+        να ταξινομηθούν τα γήπεδα κατά απόσταση στο κινητό σας. Δεν αποστέλλεται ποτέ σε εμάς ούτε
+        αποθηκεύεται.
       </DocBullet>
 
       <DocHeading>Στοιχεία αγώνων</DocHeading>

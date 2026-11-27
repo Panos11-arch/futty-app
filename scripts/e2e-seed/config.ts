@@ -26,6 +26,10 @@ export const E2E_VENUE = {
   name: 'E2E Arena',
   city: 'Nicosia',
   address: 'Automated test venue (not a real place)',
+  // S17: a point in Nicosia, so the map has a pin and Around me a distance
+  // (.maestro/flows/around-me.yaml). Staging's e2e seed only, never a migration.
+  latitude: 35.165,
+  longitude: 33.36,
 } as const;
 
 /** One pitch per platform. book_slot picks the pitch, so the platforms are

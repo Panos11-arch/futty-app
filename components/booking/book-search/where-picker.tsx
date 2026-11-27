@@ -1,6 +1,7 @@
 // "Where do you want to play?" (Playtomic 05): a full-screen picker. Type a
 // venue or town (towns of live venues from the server), or pick a recent
-// place, or browse every venue. "Around me" comes with S17.
+// place, or browse every venue. On Book a pitch, "Around me" first (S17):
+// the location is asked for only when it's tapped.
 import { useEffect, useState } from 'react';
 import { FlatList, Modal, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,8 @@ export type WherePickerProps = {
   onMissingVenue: () => void;
   /** iOS: the picker has finished closing (another modal may open now). */
   onDismissed?: () => void;
+  /** S17, Book a pitch only: "Around me". Find a match has none. */
+  onAroundMe?: () => void;
 };
 
 type Row = { key: string; testID: string; title: string; icon: 'mappin.and.ellipse' | 'sportscourt.fill'; place: BookPlace };
@@ -34,6 +37,7 @@ export function WherePicker({
   onPick,
   onMissingVenue,
   onDismissed,
+  onAroundMe,
 }: WherePickerProps) {
   const styles = useStyles();
   const { colors, maxFontSizeMultiplier } = useTheme();
@@ -118,6 +122,15 @@ export function WherePicker({
           )
         ) : (
           <View>
+            {onAroundMe ? (
+              <ListRow
+                testID="book-where-around-me"
+                title="Around me"
+                leading={{ icon: 'mappin.and.ellipse' }}
+                chevron
+                onPress={onAroundMe}
+              />
+            ) : null}
             <ListRow
               testID="book-where-all"
               title="Browse all venues"

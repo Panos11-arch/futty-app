@@ -19,6 +19,7 @@ executionOrder:
     - community
     - futty-ai
     - book-missing-venue
+    - around-me
     - find-match
     - venue-book-and-pay
     - log-score

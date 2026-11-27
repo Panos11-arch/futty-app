@@ -102,7 +102,37 @@ Deno.test('just below every threshold: no warning', async () => {
     thunderstorm: false,
     heavy_rain: false,
     warnings: [],
+    condition: 'Rain',
   });
+});
+
+// ---- The condition (S17: "22° · Clear at 20:00", image 03) -----------------
+
+Deno.test('condition: Apple\'s condition for the game\'s first hour', async () => {
+  // 18:00 to 20:00 in Cyprus: the 18:00 hour (16:00 UTC) is cloudy, the 19:00 hour rainy.
+  const w = await windowFor(
+    {
+      hours: hourly(NOW, 240, (s) =>
+        s.toISOString() === GAME_HOUR
+          ? { conditionCode: 'MostlyCloudy' }
+          : s.toISOString() === '2026-11-20T17:00:00.000Z'
+          ? { conditionCode: 'Rain' }
+          : {}),
+    },
+    { day: '2026-11-20', start: '18:00', end: '20:00' },
+  );
+  strictEqual((w.forecast as { condition: string }).condition, 'MostlyCloudy');
+});
+
+Deno.test('condition: a game already under way reads the hour it is in now', async () => {
+  const { deps } = setup({
+    hours: hourly(NOW, 240, (s) =>
+      s.toISOString() === '2026-11-20T06:00:00.000Z' ? { conditionCode: 'Foggy' } : { conditionCode: 'Clear' }),
+  });
+  // 07:30 to 09:30 in Cyprus; it is 08:00 (06:00 UTC).
+  const result = await handleWeather(deps, { venue_id: VENUE, windows: [{ day: '2026-11-20', start: '07:30', end: '09:30' }] });
+  const w = (result.body as { windows: { forecast: { condition: string } }[] }).windows[0];
+  strictEqual(w.forecast.condition, 'Foggy');
 });
 
 Deno.test('the thresholds are read from app_rules: changing them changes the warning, with no code change', async () => {
@@ -197,6 +227,7 @@ Deno.test('the summary is the worst of the match hours', async () => {
     thunderstorm: false,
     heavy_rain: false,
     warnings: [],
+    condition: 'Clear',
   });
 });
 
@@ -350,6 +381,7 @@ Deno.test('nudge: a booked slot 12h+ ahead with a bad forecast is listed; a good
         thunderstorm: false,
         heavy_rain: true,
         warnings: ['heavy_rain'],
+        condition: 'HeavyRain',
       },
     }],
   });

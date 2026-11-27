@@ -48,11 +48,23 @@ describe('WeatherStrip', () => {
   });
 
   it('below every threshold: the forecast, no banner', async () => {
-    await render(<WeatherStrip weather={forecast()} />);
+    await render(<WeatherStrip weather={forecast({ ...CALM_FORECAST, condition: 'Clear' })} />);
     expect(screen.queryByText(BANNER)).toBeNull();
-    expect(screen.getByText('Rain 10%')).toBeTruthy();
-    expect(screen.getByText('Wind 12 km/h')).toBeTruthy();
-    expect(screen.getByText('19°C')).toBeTruthy();
+    // S17, image 03: one card, "19° · Clear at 18:00", then rain and wind (spec 13).
+    expect(screen.getByText('19° · Clear at 18:00')).toBeTruthy();
+    expect(screen.getByText('Rain 10% · Wind 12 km/h')).toBeTruthy();
+  });
+
+  it('the Book tab has no heading (image 03); the venue Home tab says "Weather"', async () => {
+    await render(<WeatherStrip weather={forecast()} />);
+    expect(screen.queryByText('Weather')).toBeNull();
+    await render(<WeatherStrip weather={forecast()} title="Weather" />);
+    expect(screen.getByText('Weather')).toBeTruthy();
+  });
+
+  it('the screen reader reads the card as one line', async () => {
+    await render(<WeatherStrip weather={forecast({ ...CALM_FORECAST, condition: 'Clear' })} />);
+    expect(screen.getByLabelText('19° · Clear at 18:00. Rain 10% · Wind 12 km/h')).toBeTruthy();
   });
 
   it('with a forecast, Apple\'s Weather mark and the data-sources link', async () => {
@@ -60,7 +72,7 @@ describe('WeatherStrip', () => {
     await render(<WeatherStrip weather={forecast()} />);
     const mark = screen.getByLabelText('Apple Weather');
     expect([mark.props.source].flat()).toEqual([{ uri: ATTRIBUTION.logoLight }]);
-    fireEvent.press(screen.getByText('Data sources'));
+    await fireEvent.press(screen.getByText('Data sources'));
     expect(open).toHaveBeenCalledWith(ATTRIBUTION.legalPageUrl);
   });
 

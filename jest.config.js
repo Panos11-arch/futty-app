@@ -23,6 +23,8 @@ module.exports = {
     '^expo-modules-core/(.*)$': `${expoModulesCore}/$1`,
     // No native module under Jest: the package's own in-memory mock, for every test.
     '^@react-native-async-storage/async-storage$': '@react-native-async-storage/async-storage/jest/async-storage-mock',
+    // S17: nor do maps: plain Views that tests can find and press (components/venue/maps.mock.ts).
+    '^react-native-maps$': '<rootDir>/components/venue/maps.mock.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '<rootDir>/supabase/'],
   // Counting every money file means one no test imports shows as 0%, not as

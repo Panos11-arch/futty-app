@@ -49,6 +49,18 @@ describe('Privacy policy screen', () => {
     expect(screen.getByText(/stay in league tables under "Deleted player" so other teams' records stay accurate/)).toBeTruthy();
   });
 
+  it('S17: one line on location: only for Around me, rounded, never sent or kept', async () => {
+    await render(<PrivacyPolicyScreen />);
+    expect(
+      screen.getByText(
+        'Location (optional): only when you tap "Around me", rounded to about 1 km, to sort venues by distance on your phone. It is never sent to us or kept.',
+      ),
+    ).toBeTruthy();
+    mockLanguage = 'el';
+    await render(<PrivacyPolicyScreen />);
+    expect(screen.getByText(/^Τοποθεσία \(προαιρετικά\): μόνο όταν πατάτε «Around me»/)).toBeTruthy();
+  });
+
   it('is in Greek on a phone set to Greek, with the same sections', async () => {
     mockLanguage = 'el';
     await render(<PrivacyPolicyScreen />);

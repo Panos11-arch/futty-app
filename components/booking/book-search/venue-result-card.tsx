@@ -25,13 +25,15 @@ export type VenueResultCardProps = {
   onOpen: () => void;
   onTime: (slot: BookSlot) => void;
   onFavourite: (on: boolean) => void;
+  /** S17, Around me: "3 km", shown first on the place line. */
+  distance?: string;
 };
 
-export function VenueResultCard({ result, severalDays, timesDisabled, onOpen, onTime, onFavourite }: VenueResultCardProps) {
+export function VenueResultCard({ result, severalDays, timesDisabled, onOpen, onTime, onFavourite, distance }: VenueResultCardProps) {
   const styles = useStyles();
   const { colors } = useTheme();
   const id = result.venue_id;
-  const place = [result.area, result.town].filter(Boolean).join(' · ');
+  const place = [distance, result.area, result.town].filter(Boolean).join(' · ');
   const price = result.from_player_cents === null ? null : `from ${formatEuros(result.from_player_cents)} per player`;
 
   return (

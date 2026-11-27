@@ -80,6 +80,11 @@ jest.mock('@/lib/use-owed', () => ({ useDebtBlock: () => ({ message: null, block
 jest.mock('@/lib/use-weather', () => ({ useGameWeather: (...a: unknown[]) => (mockWeather(...a), { weather: null, loading: false }) }));
 jest.mock('@/lib/use-rules', () => ({ useRules: () => undefined }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+const mockCoordinates = jest.fn((_id: string) => ({ latitude: 34.69, longitude: 33.09 }));
+jest.mock('@/lib/venue-location', () => ({
+  ...jest.requireActual('@/lib/venue-location'),
+  useVenueCoordinates: (id: string) => mockCoordinates(id),
+}));
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -164,5 +169,36 @@ describe('the venue page screen', () => {
     await render(<VenueScreen />);
     await act(async () => view().onTabChange('facilities'));
     expect(view().tab).toBe('facilities');
+  });
+});
+
+describe('S17: the Home tab\'s map and today\'s weather', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('Home: the venue\'s coordinates, and the weather at the venue this hour (Cyprus time)', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-27T12:40:00Z'), doNotFake: ['nextTick', 'setImmediate'] });
+    await render(<VenueScreen />);
+    expect(mockCoordinates).toHaveBeenCalledWith('v1');
+    expect(view().home.coordinates).toEqual({ latitude: 34.69, longitude: 33.09 });
+    expect(mockWeather).toHaveBeenCalledWith('v1', { day: '2026-11-27', start: '14:00', end: '15:00' });
+    expect(view().home.weather).toEqual({ weather: null, loading: false });
+  });
+
+  it('other tabs don\'t ask for today\'s weather (only Book\'s chosen time)', async () => {
+    jest.useFakeTimers({ now: new Date('2026-11-27T12:40:00Z'), doNotFake: ['nextTick', 'setImmediate'] });
+    mockParams = { id: 'v1', tab: 'book' };
+    await render(<VenueScreen />);
+    expect(mockWeather).not.toHaveBeenCalledWith('v1', { day: '2026-11-27', start: '14:00', end: '15:00' });
+  });
+
+  it('a tap on the map opens Directions: on Android straight to Google Maps', async () => {
+    const { Platform } = jest.requireActual<typeof import('react-native')>('react-native');
+    const os = Platform.OS;
+    Platform.OS = 'android';
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    await render(<VenueScreen />);
+    await act(async () => view().home.onMap?.());
+    expect(open).toHaveBeenCalledWith(expect.stringContaining('google.com/maps'));
+    Platform.OS = os;
   });
 });

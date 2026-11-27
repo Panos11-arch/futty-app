@@ -1,6 +1,6 @@
-// The venue page's Home tab (S5): opening hours, offers, top players and
-// recent results, each hidden when empty. The map and the weather are S17:
-// their places stay empty until then.
+// The venue page's Home tab (S5): the venue on a map and today's weather
+// there (S17), then opening hours, offers, top players and recent results,
+// each hidden when empty (spec 15 section 0.6).
 import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
 
@@ -9,6 +9,10 @@ import { MIN_TOUCH } from '@/components/ui/foundation';
 import { radius, space } from '@/constants/futty-theme';
 import { makeStyles } from '@/lib/theme';
 import type { LoadState } from '@/lib/booking-search';
+import { VenueMiniMap } from '@/components/venue/venue-mini-map';
+import { WeatherStrip } from '@/components/venue/weather-strip';
+import type { Coordinates } from '@/lib/venue-location';
+import type { GameWeather } from '@/lib/weather';
 import { formatEuros } from '@/lib/money/format';
 import type { VenueHighlights, VenueResult } from '@/lib/venue-highlights';
 import { offerWhen, openingHours, type VenuePageData } from '@/lib/venue-page';
@@ -18,6 +22,12 @@ export type VenueHomeProps = {
   onRetry: () => void;
   onPlayer: (profileId: string) => void;
   onTeam: (teamId: string) => void;
+  /** S17: the venue's coordinates; no map without them. */
+  coordinates?: Coordinates | null;
+  /** S17: the weather at the venue this hour (venue-weather). */
+  weather?: { weather: GameWeather | null; loading: boolean };
+  /** S17: a tap on the map: Directions. */
+  onMap?: () => void;
 };
 
 export function VenueHomeTab({
@@ -35,7 +45,14 @@ export function VenueHomeTab({
   const hours = openingHours(data.hours);
   const { highlights } = home;
   const h = highlights.status === 'ready' ? highlights.data : null;
+  const at = home.coordinates ?? null;
+  const status = home.weather?.weather?.window.status;
+  // The weather shows when it's loading or there's something to show (WeatherStrip).
+  const weatherShown =
+    home.weather?.loading === true || (status !== undefined && status !== 'unavailable' && status !== 'past');
   const empty =
+    !at &&
+    !weatherShown &&
     hours.length === 0 && data.offers.length === 0 && h !== null && h.topPlayers.length === 0 && h.results.length === 0;
 
   if (empty) {
@@ -44,6 +61,9 @@ export function VenueHomeTab({
 
   return (
     <View style={styles.tab}>
+      {at ? <VenueMiniMap name={data.venue.name} at={at} onPress={() => home.onMap?.()} /> : null}
+      {home.weather ? <WeatherStrip weather={home.weather.weather} loading={home.weather.loading} title="Weather" /> : null}
+
       {hours.length > 0 ? (
         <View style={styles.section}>
           <SectionHeader title="Opening hours" />

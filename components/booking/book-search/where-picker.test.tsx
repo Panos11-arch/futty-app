@@ -75,3 +75,25 @@ describe('WherePicker', () => {
     expect(props.onClose).toHaveBeenCalled();
   });
 });
+
+describe('WherePicker: Around me (S17, Playtomic 05)', () => {
+  it('Book offers Around me first; a tap hands it on (location is asked for only then)', async () => {
+    const onAroundMe = jest.fn();
+    const props = await renderPicker({ onAroundMe });
+    expect(screen.getByText('Around me')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('book-where-around-me'));
+    expect(onAroundMe).toHaveBeenCalledTimes(1);
+    expect(props.onPick).not.toHaveBeenCalled();
+  });
+
+  it('without it (Find a match), no Around me', async () => {
+    await renderPicker();
+    expect(screen.queryByTestId('book-where-around-me')).toBeNull();
+  });
+
+  it('while typing, the matches replace it', async () => {
+    await renderPicker({ onAroundMe: jest.fn() });
+    await fireEvent.changeText(screen.getByTestId('book-where-input'), 'Nuevo');
+    expect(screen.queryByTestId('book-where-around-me')).toBeNull();
+  });
+});
