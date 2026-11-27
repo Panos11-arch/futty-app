@@ -9,7 +9,7 @@ export function leagueHref(entry: Pick<CompetitionEntry, 'state' | 'scope' | 'fo
   if (entry.state === 'coming_soon' || !entry.league) {
     return { pathname: '/leagues/coming-soon' as const, params: { name: entry.name, scope: entry.scope, format: entry.format } };
   }
-  // S10 replaces this with the competition page.
+  // S10's competition page.
   return { pathname: '/leagues/[id]' as const, params: { id: entry.league.id } };
 }
 

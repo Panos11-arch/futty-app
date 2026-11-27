@@ -125,19 +125,30 @@ function Row({ row, format, open, onToggle, first, last }: { row: PowerRankingRo
   );
 }
 
-export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: string; onSeeTeamOfTheWeek: () => void }) {
+export type PowerRankingRowsProps = {
+  /** The rows in the server's order, or loading / error. */
+  state: { status: 'loading' } | { status: 'error' } | { status: 'ready'; rows: PowerRankingRow[] };
+  reload: () => Promise<void> | void;
+  /** The breakdown's format. */
+  format: string;
+  /** The empty state's one line and one button. */
+  empty: { message: string; action: { label: string; onPress: () => void } };
+};
+
+/** The ranked rows with their breakdowns: the Rankings tab and S10's
+ *  competition page (which lists that competition's teams in app-wide order). */
+export function PowerRankingRows({ state, reload, format, empty }: PowerRankingRowsProps) {
   const styles = useStyles();
-  const ranking = usePowerRanking(format);
   const [openId, setOpenId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = async () => {
     setRefreshing(true);
-    await ranking.reload();
+    await reload();
     setRefreshing(false);
   };
 
-  if (ranking.status === 'loading') {
+  if (state.status === 'loading') {
     return (
       <View testID="power-ranking-skeleton" style={styles.content}>
         {[0, 1, 2, 3, 4].map((i) => (
@@ -146,14 +157,14 @@ export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: strin
       </View>
     );
   }
-  if (ranking.status === 'error') {
+  if (state.status === 'error') {
     return (
       <View style={styles.content}>
-        <Banner tone="danger" message="Couldn’t load the ranking." action={{ label: 'Try again', onPress: ranking.reload }} />
+        <Banner tone="danger" message="Couldn’t load the ranking." action={{ label: 'Try again', onPress: () => void reload() }} />
       </View>
     );
   }
-  const rows = ranking.rows;
+  const rows = state.rows;
   return (
     <FlatList
       testID="power-ranking-list"
@@ -161,9 +172,7 @@ export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: strin
       keyExtractor={(r) => r.team_id}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
-      ListEmptyComponent={
-        <EmptyState icon="trophy.fill" message="No ranked teams yet" action={{ label: 'See Team of the Week', onPress: onSeeTeamOfTheWeek }} />
-      }
+      ListEmptyComponent={<EmptyState icon="trophy.fill" message={empty.message} action={empty.action} />}
       renderItem={({ item, index }) => (
         <Row
           row={item}
@@ -174,6 +183,18 @@ export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: strin
           last={index === rows.length - 1}
         />
       )}
+    />
+  );
+}
+
+export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: string; onSeeTeamOfTheWeek: () => void }) {
+  const ranking = usePowerRanking(format);
+  return (
+    <PowerRankingRows
+      state={ranking}
+      reload={ranking.reload}
+      format={format}
+      empty={{ message: 'No ranked teams yet', action: { label: 'See Team of the Week', onPress: onSeeTeamOfTheWeek } }}
     />
   );
 }

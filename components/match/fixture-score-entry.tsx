@@ -1,8 +1,9 @@
-// A league fixture's score entry. A fixture with a match (made since A2) is
-// scored in the match screen with submit_match_result and
-// respond_to_match_result; a fixture recorded before A2 keeps the old form.
-// No fixture is linked to a match yet (docs/specs/match-record.md 1a.8), so
-// today this always shows the old form once the check has loaded.
+// A league fixture's score entry. Since S10 (match-record.md 1n item 1) a
+// fixture gets a match once it has a day and time, and its captains log the
+// score in that match's "Log the score" flow; this sends them straight
+// there. A fixture made since S10 with no match yet has nothing to score
+// (the server would refuse the old form with use_match_flow). Fixtures made
+// before S10 keep the old form.
 import { router } from 'expo-router';
 
 import { FixtureScoreForm } from '@/components/fixture-score-form';
@@ -18,11 +19,13 @@ export function FixtureScoreEntry({ fixture, onSubmitted }: { fixture: Fixture; 
   if (matchId) {
     return (
       <Button
-        label="Enter or check the result"
+        label="Log the score"
         variant="secondary"
-        onPress={() => router.push({ pathname: '/match/[id]', params: { id: matchId } })}
+        testID={`fixture-log-score-${fixture.id}`}
+        onPress={() => router.push({ pathname: '/match/after-game', params: { id: matchId } })}
       />
     );
   }
+  if (fixture.match_flow) return null;
   return <FixtureScoreForm fixture={fixture} onSubmitted={onSubmitted} />;
 }

@@ -74,10 +74,11 @@ describe('getFeaturedEvent (S3; events are leagues in sign-up until S10B)', () =
   });
 });
 
-describe('featuredEventRoute (S10 swaps this one line for its competition page)', () => {
-  it('opens Leagues for now', () => {
-    expect(featuredEventRoute({ id: 'l1', kind: 'league', name: 'x', format: '5-a-side', startDate: '2026-12-05' })).toBe(
-      '/leagues',
-    );
+describe('featuredEventRoute (S10)', () => {
+  it('opens the league’s competition page', () => {
+    expect(featuredEventRoute({ id: 'l1', kind: 'league', name: 'x', format: '5-a-side', startDate: '2026-12-05' })).toEqual({
+      pathname: '/leagues/[id]',
+      params: { id: 'l1' },
+    });
   });
 });

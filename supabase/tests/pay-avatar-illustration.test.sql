@@ -262,8 +262,9 @@ declare
 begin
   for v_fn in
     select * from (values
+      -- S10 (20261127090000_match_s10_captain_contacts) added can_message.
       ('public.league_captain_contacts(uuid)',
-       'TABLE(my_team_id uuid, team_id uuid, team_name text, captain_id uuid, captain_name text, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)',
+       'TABLE(my_team_id uuid, team_id uuid, team_name text, captain_id uuid, captain_name text, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text, can_message boolean)',
        '{authenticated=X/postgres,postgres=X/postgres,service_role=X/postgres}'),
       ('public.conversation_other_side(uuid, uuid)',
        'TABLE(title text, subtitle text, other_profile_id uuid, other_team_id uuid, avatar_style text, avatar_kit_colour text, avatar_number smallint, avatar_illustration text)',

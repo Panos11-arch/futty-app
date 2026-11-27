@@ -1,0 +1,105 @@
+# S10 journey: Leagues → a league's competition page (image 13). Opens the
+# Cyprus 5-a-side league from the Leagues list. When it is live (in sign-up
+# or running) the page opens: every tab, the standings appearance, the
+# player stats card or table, and pin then unpin with the star (this login's
+# own pin row; the flow unpins what it pins). While the league is Coming
+# soon the row opens that page instead, and the flow checks it and stops.
+appId: com.panosalepis.futtyapp
+name: competition
+tags:
+  - e2e
+  - leagues
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- openLink: futtyapp://leagues
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 30000
+- tapOn:
+    id: leagues-group-island-wide
+- tapOn:
+    id: leagues-row-child-island-wide-5-a-side
+
+# ---- Coming soon: nothing more to check ------------------------------------------
+- runFlow:
+    when:
+      visible:
+        id: coming-soon-screen
+    commands:
+      - assertVisible: Coming soon
+      - tapOn:
+          id: coming-soon-back
+
+# ---- The competition page ----------------------------------------------------------
+- runFlow:
+    when:
+      visible:
+        id: league-page
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: competition-tab-overview
+          timeout: 30000
+      - assertVisible:
+          id: competition-season-card
+      - takeScreenshot: competition-overview-${PLATFORM}
+
+      # Pin, then unpin: the star is S9's pin.
+      - tapOn:
+          id: competition-pin
+      - tapOn:
+          id: competition-pin
+
+      - tapOn:
+          id: competition-tab-matches
+      - assertVisible:
+          id: competition-matches-date
+      - assertVisible:
+          id: league-page-fixtures
+      - takeScreenshot: competition-matches-${PLATFORM}
+
+      - tapOn:
+          id: competition-tab-standings
+      - assertVisible:
+          id: standings-view-short
+      - tapOn:
+          id: standings-view-full
+      - tapOn:
+          id: standings-view-form
+      - takeScreenshot: competition-standings-${PLATFORM}
+
+      - scrollUntilVisible:
+          element:
+            id: competition-tab-player-stats
+          direction: RIGHT
+      - tapOn:
+          id: competition-tab-player-stats
+      - takeScreenshot: competition-player-stats-${PLATFORM}
+
+      - scrollUntilVisible:
+          element:
+            id: competition-tab-power
+          direction: RIGHT
+      - tapOn:
+          id: competition-tab-stats
+      - assertVisible:
+          id: competition-stats-players
+      - takeScreenshot: competition-stats-${PLATFORM}
+
+      - tapOn:
+          id: competition-tab-power
+      - takeScreenshot: competition-power-${PLATFORM}
+
+      - tapOn:
+          id: league-page-back
+      - assertVisible:
+          id: leagues-list

@@ -83,6 +83,13 @@ export function describeLeagueError(error: PostgrestError) {
       return `Wait until ${FIXTURE_SCHEDULING_WINDOW_DAYS} days have passed since this fixture appeared.`;
     case 'already_scheduled':
       return 'This fixture already has an agreed (or completed) schedule.';
+    // S10.
+    case 'competition_not_found':
+      return 'That league no longer exists.';
+    case 'premium_required':
+      return 'Player stats need Premium. Get Premium to see them.';
+    case 'use_match_flow':
+      return 'Log this score from the match. Open it from Home.';
     default:
       return error.message;
   }
