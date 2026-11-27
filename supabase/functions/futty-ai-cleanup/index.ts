@@ -3,9 +3,14 @@
 // November; public.ai_chat_keep_days). The logic is in
 // _shared/ai-chats.ts. Authenticated by the cron secret, like
 // run-payment-jobs.
+//
+// Also (S7b): removes post photos uploaded but never posted, 24 hours on
+// (public.post_photos_pending_expired, _shared/post-photos.ts). A failure
+// there is logged and doesn't stop the chats' cleanup.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { deleteExpiredAiChats } from '../_shared/ai-chats.ts';
+import { deleteExpiredPendingPhotos } from '../_shared/post-photos.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -33,7 +38,21 @@ Deno.serve(async (req) => {
       },
     });
     if (result.photoError) console.error('futty-ai-cleanup: photos not removed, tried again tomorrow:', result.photoError);
-    return new Response(JSON.stringify(result), { headers: { 'Content-Type': 'application/json' } });
+    const pendingPostPhotos = await deleteExpiredPendingPhotos({
+      async expired(limit) {
+        const { data, error } = await admin.rpc('post_photos_pending_expired', { p_limit: limit });
+        if (error) throw new Error(`post_photos_pending_expired: ${error.message}`);
+        return (data ?? []).map((row: { name: string }) => row.name);
+      },
+      async remove(paths) {
+        const { error } = await admin.storage.from('post-photos').remove(paths);
+        if (error) throw new Error(error.message);
+      },
+    }).catch((err) => {
+      console.error('futty-ai-cleanup: unposted post photos not removed, tried again tomorrow:', err);
+      return null;
+    });
+    return new Response(JSON.stringify({ ...result, pendingPostPhotos }), { headers: { 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('futty-ai-cleanup failed:', err);
     return new Response('failed', { status: 500 });
