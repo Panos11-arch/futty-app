@@ -28,6 +28,7 @@ import {
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer, inviteFriendToBooking } from '@/lib/booking-shares';
 import { startMatchPublishKind, takeStartMatch, waitUntilConfirmed, type PublishKind } from '@/lib/start-match';
+import { useInviteMany } from '@/lib/use-invite-many';
 import { useRules } from '@/lib/use-rules';
 import { fetchVenueExtras } from '@/lib/venue-extras';
 
@@ -41,6 +42,7 @@ export default function BookingAfterPayScreen() {
   const { bookingId = '', from } = useLocalSearchParams<{ bookingId: string; from?: string }>();
   const { user } = useAuth();
   const load = useCallback(() => fetchBookingDetail(bookingId), [bookingId]);
+  const inviteMany = useInviteMany(bookingId);
   const { state, reload } = useLoad(bookingId || null, load);
   const detail = state.status === 'ready' ? state.data : null;
   // S5A: the venue's food, drink and amenities ("At the venue").
@@ -148,6 +150,7 @@ export default function BookingAfterPayScreen() {
           return error ? describeBookingErrorMessage(error.message) : null;
         }}
         preselectTeam={picked.team}
+        inviteMany={inviteMany}
         onShare={() => {
           if (detail) void Share.share({ message: shareText(detail) }).catch(() => {});
         }}

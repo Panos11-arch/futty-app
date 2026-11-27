@@ -32,6 +32,20 @@ export async function inviteFriendToBooking(bookingId: string, profileId: string
   return supabase.rpc('invite_friend_to_booking', { p_booking_id: bookingId, p_profile_id: profileId });
 }
 
+/** S20A (b): invites every other member of one of my teams. The server
+ *  skips blocked, adult-minor, already in and already invited players.
+ *  Returns how many were invited. */
+export async function inviteTeamToBooking(bookingId: string, teamId: string) {
+  const { data, error } = await supabase.rpc('invite_team_to_booking', { p_booking_id: bookingId, p_team_id: teamId });
+  return { count: error ? 0 : ((data as number | null) ?? 0), error: error ?? null };
+}
+
+/** S20A (b): invites every friend I may play with who isn't in or invited. */
+export async function inviteAllFriendsToBooking(bookingId: string) {
+  const { data, error } = await supabase.rpc('invite_all_friends_to_booking', { p_booking_id: bookingId });
+  return { count: error ? 0 : ((data as number | null) ?? 0), error: error ?? null };
+}
+
 /** How the player pays their share. Only choices: the amounts are the
  *  server's (create-share-payment prices the share itself). */
 export type SharePaymentOptions = {

@@ -292,3 +292,8 @@ describe('team notifications', () => {
     expect(notificationLabel('team_member_removed')).toBe('Removed from a team');
   });
 });
+
+// S20A (b): an invited card player's spot lapsed (always sent).
+it('names the lapsed-spot notification', () => {
+  expect(notificationLabel('booking_spot_lapsed')).toBe('Your game spot lapses');
+});

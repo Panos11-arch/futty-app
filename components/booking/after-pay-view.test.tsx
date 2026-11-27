@@ -271,8 +271,32 @@ describe('AfterPayView: preselected from a friend chat (S20)', () => {
   it('no team allowed (null), or a whole pitch: no preselection', async () => {
     await render(<AfterPayView {...props(bookerDetail({ v2: openHalf }), { preselectTeam: null })} />);
     expect(screen.queryByTestId('after-pay-team-chip-t-ben')).toBeNull();
-    screen.unmount();
+    await screen.unmount();
     await render(<AfterPayView {...props(whole(), { preselectTeam: benFc })} />);
     expect(screen.queryByTestId('after-pay-opposition')).toBeNull();
+  });
+});
+
+describe('AfterPayView: S20A (b) quick invites', () => {
+  it('Invite all friends and Invite a team, in Invite friends', async () => {
+    const inviteMany = {
+      teams: [{ id: 't1', name: 'Kato United' }],
+      onInviteAllFriends: jest.fn().mockResolvedValue({ count: 3, error: null }),
+      onInviteTeam: jest.fn().mockResolvedValue({ count: 1, error: null }),
+    };
+    const whole = bookerDetail({ v2: v2Fixture({ kind: 'whole', sides: [], opposition: null }) });
+    await render(<AfterPayView {...props(whole, { inviteMany })} />);
+    const section = within(screen.getByTestId('after-pay-invite-friends'));
+    await fireEvent.press(section.getByTestId('after-pay-invite-all-friends'));
+    await waitFor(() => expect(inviteMany.onInviteAllFriends).toHaveBeenCalledTimes(1));
+    await fireEvent.press(section.getByTestId('after-pay-invite-team'));
+    await fireEvent.press(section.getByTestId('after-pay-invite-team-t1'));
+    await waitFor(() => expect(inviteMany.onInviteTeam).toHaveBeenCalledWith('t1'));
+  });
+
+  it('left out: not shown', async () => {
+    await render(<AfterPayView {...props(bookerDetail({ v2: v2Fixture({ kind: 'whole', sides: [], opposition: null }) }))} />);
+    expect(screen.getByTestId('after-pay-invite-friends')).toBeTruthy();
+    expect(screen.queryByTestId('after-pay-invite-all-friends')).toBeNull();
   });
 });

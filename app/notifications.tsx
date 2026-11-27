@@ -56,6 +56,8 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   friend_accepted: 'person.2.fill',
   team_captain: 'shield.fill',
   team_member_removed: 'person.2.fill',
+  // S20A (b): an invited card player's spot lapsed.
+  booking_spot_lapsed: 'exclamationmark.triangle.fill',
 };
 
 /** B3 (Booking v2): opened where routeForPushData says. */
@@ -173,6 +175,15 @@ async function openNotification(notification: AppNotification) {
   // Invites are answered with the buttons on the row, not by opening them.
 }
 
+const ANSWERED: Record<Exclude<InviteStatus, 'pending'>, string> = {
+  accepted: 'Accepted',
+  declined: 'Declined',
+  cancelled: 'Cancelled',
+  // S20A (b): the side filled or the game started; or he didn't pay in time.
+  expired: 'Expired',
+  lapsed: 'Lapsed',
+};
+
 /** Accept / Decline on a team or booking invite, or what was decided. */
 function InviteActions({
   notification,
@@ -192,16 +203,23 @@ function InviteActions({
   if (status !== 'pending') {
     return (
       <Text variant="callout" tone="inkMuted">
-        {status === 'accepted' ? 'Accepted' : status === 'cancelled' ? 'Cancelled' : 'Declined'}
+        {ANSWERED[status]}
       </Text>
     );
   }
+  // S20A (b), section 1 (waiting on Panos): where cash is allowed, he says how he pays.
+  const cashOk = notification.type === 'booking_invite' && (notification.data as Record<string, unknown>).cashOk === true;
 
-  async function answer(choice: 'accept' | 'decline') {
+  async function answer(choice: 'accept' | 'decline', method?: 'card' | 'cash') {
     if (!inviteId || busy) return;
     setBusy(choice);
     setError(null);
-    const { error: answerError } = choice === 'accept' ? await acceptInvite(inviteId) : await declineInvite(inviteId);
+    const { error: answerError } =
+      choice === 'accept'
+        ? method
+          ? await acceptInvite(inviteId, method)
+          : await acceptInvite(inviteId)
+        : await declineInvite(inviteId);
     setBusy(null);
     if (answerError) {
       setError(describeInviteError(answerError));
@@ -219,12 +237,14 @@ function InviteActions({
   return (
     <View style={styles.inviteActions}>
       <View style={styles.inviteButtons}>
-        <Button
-          label="Accept"
-          loading={busy === 'accept'}
-          disabled={!!busy}
-          onPress={() => answer('accept')}
-        />
+        {cashOk ? (
+          <>
+            <Button label="Pay by card" loading={busy === 'accept'} disabled={!!busy} onPress={() => answer('accept', 'card')} />
+            <Button label="Pay in cash" variant="secondary" disabled={!!busy} onPress={() => answer('accept', 'cash')} />
+          </>
+        ) : (
+          <Button label="Accept" loading={busy === 'accept'} disabled={!!busy} onPress={() => answer('accept')} />
+        )}
         <Button
           label="Decline"
           variant="secondary"

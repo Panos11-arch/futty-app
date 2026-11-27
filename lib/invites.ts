@@ -1,14 +1,37 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
+import { CYPRUS_TIME_ZONE } from '@/lib/calendar/cyprus-time';
 import { supabase } from '@/lib/supabase';
 
 /** Team and booking invites (supabase/migrations/*_pay_guards_invites.sql).
  *  Each one arrives as a team_invite / booking_invite notification whose
  *  data.inviteId points here; only the invited player can answer it. */
-export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired' | 'lapsed';
 
-export async function acceptInvite(inviteId: string) {
-  return supabase.rpc('accept_invite', { p_invite_id: inviteId });
+/** S20A (b): a game invite can say how the player pays: 'cash' keeps his
+ *  spot (a whole pitch where each pays; waiting on Panos), 'card' gives him
+ *  15 minutes to pay or hold. */
+export async function acceptInvite(inviteId: string, method?: 'card' | 'cash') {
+  return supabase.rpc('accept_invite', method ? { p_invite_id: inviteId, p_method: method } : { p_invite_id: inviteId });
+}
+
+/** S20A (b): the card player's one line while his spot waits for payment. */
+export function payByLine(payBy: string | null): string | null {
+  if (!payBy) return null;
+  const time = new Date(payBy).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CYPRUS_TIME_ZONE });
+  return `Pay by ${time} or your spot is released.`;
+}
+
+/** S20A (b): when my card spot lapses (null: no deadline). RLS lets a
+ *  player read his own share. A failed read shows no line. */
+export async function myPayBy(shareId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.from('booking_payment_shares').select('pay_by').eq('id', shareId).maybeSingle();
+    if (error || !data) return null;
+    return (data as { pay_by: string | null }).pay_by ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function declineInvite(inviteId: string) {
@@ -50,6 +73,15 @@ export function describeInviteError(error: PostgrestError) {
       return "You can't join this team.";
     case 'team_deleted':
       return 'This team was deleted.';
+    // S20A (b): player invites close when the side is full or at kickoff.
+    case 'booking_full':
+      return 'This game is full.';
+    case 'invite_expired':
+      return 'This invite expired. The game has started.';
+    case 'cash_whole_pitch_only':
+      return 'Cash is for a whole pitch only. Pay by card.';
+    case 'player_in_debt':
+      return 'Settle what you owe first, or pay by card.';
     default:
       return error.message;
   }

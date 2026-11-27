@@ -1,8 +1,8 @@
 -- S20A (b): player invites (spec 13 "Player invites (S20A, decided 27
 -- November)", with #245; migration pay_s20a_booking_invites).
---   - Invites close when the side is full or at kickoff, whichever comes
---     first; filling the side expires the others, and a spot that reopens
---     doesn't revive them.
+--   - Invites stay open until kickoff (Panos, 27 November): while the side is
+--     full, accepting says "This game is full" and the invite stays pending,
+--     so a lapse reopens the spot to everyone already invited.
 --   - The spot is taken at accept (booking_full once the side is full).
 --   - A card player has 15 minutes to pay or hold (kickoff if sooner), or his
 --     acceptance lapses; Losers pay too. A cash player never lapses.
@@ -125,6 +125,8 @@ declare
 begin
   v_invite := tests.s20b_invite(b.booking, b.booker, p);
   assert tests.s20b_notified(p, 'booking_invite') = 1, 'the invite is a notification (push)';
+  assert (select (data ->> 'cashOk')::boolean from public.notifications where profile_id = p and type = 'booking_invite'),
+    'a whole pitch where each pays: he may choose cash';
   perform tests.s20b_accept(v_invite, p);
   v := tests.share_of(b.booking, p);
   assert v.status = 'pending' and v.payment_method = 'card', 'his share is taken at accept: ' || v.status;
@@ -159,22 +161,88 @@ begin
     'pay for everyone: covered, no pay_by';
 end $$;
 
--- ---- 2. Cash (section 1, waiting on Panos): keeps the spot, never lapses ---------------------
+-- ---- 2. Cash (section 1, decided by Panos 27 November) --------------------------------------
+-- A whole pitch, Pay for myself: accepting asks Card or Cash. Both have the 15
+-- minutes: cash pays the €0.80 by card and saves the card (Premium: saves
+-- the card, €0). Once that's done the spot never lapses; until then it does.
 do $$
 declare
   b record := tests.s20b_book();
   p uuid := tests.s20b_user('cash');
+  q uuid := tests.s20b_user('cash-slow');
   v public.booking_payment_shares;
 begin
   perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, p), p, 'cash');
   v := tests.share_of(b.booking, p);
-  assert v.payment_method = 'cash' and v.pay_by is null and v.status = 'pending', 'cash: saved, no pay_by';
+  assert v.payment_method = 'cash' and v.status = 'pending', 'cash: saved on his share';
+  assert v.pay_by between now() + interval '14 minutes 59 seconds' and now() + interval '15 minutes 1 second',
+    'cash: 15 minutes to do his €0.80 step too, got ' || coalesce(v.pay_by::text, 'none');
   -- €0.80 in the app, €4.00 in cash at the venue (spec 13 example 3).
   assert v.amount_cents = 80 and v.cash_cents = 400, format('cash amounts 80 / 400, got %s / %s', v.amount_cents, v.cash_cents);
+
+  -- He pays the €0.80 (held): the step is done, pay_by clears, he never lapses.
+  perform tests.hold_share(v.id, 'pi_s20b_cash_' || gen_random_uuid(), 'pm_cash', 'cash');
+  v := tests.share_of(b.booking, p);
+  assert v.status = 'authorized' and v.pay_by is null, format('done: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
   perform tests.act_as_service_role();
-  assert public.booking_player_lapse_due() = 0, 'cash never lapses';
+  assert public.booking_player_lapse_due() = 0, 'a cash spot whose step is done never lapses';
   perform tests.act_as_postgres();
-  assert (tests.share_of(b.booking, p)).status = 'pending', 'still in';
+
+  -- Another cash player who doesn't do his step lapses, like a card player.
+  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, q), q, 'cash');
+  assert tests.s20b_lapse_now((tests.share_of(b.booking, q)).id) = 1, 'cash without the €0.80 step lapses';
+  assert (tests.share_of(b.booking, q)).status = 'cancelled', 'his spot reopens';
+end $$;
+
+-- Premium: nothing to charge, his card is saved; that completes the step.
+do $$
+declare
+  b record := tests.s20b_book();
+  p uuid := tests.s20b_user('cash-premium');
+  v public.booking_payment_shares;
+  v_plan jsonb;
+begin
+  perform tests.make_premium(p);
+  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, p), p, 'cash');
+  v := tests.share_of(b.booking, p);
+  assert v.amount_cents = 0 and v.pay_by is not null, 'Premium cash: €0 in the app, 15 minutes to save his card';
+  v_plan := public.plan_share_payment(v.id, p, 'cash', false);
+  perform public.attach_share_setup(v.id, p, 'cash', 'seti_s20b_' || v.id, null);
+  perform public.share_card_saved(v.id, 'seti_s20b_' || v.id, 'pm_premium', now());
+  v := tests.share_of(b.booking, p);
+  assert v.status = 'paid' and v.pay_by is null, format('card saved: %s, pay_by %s', v.status, coalesce(v.pay_by::text, 'cleared'));
+end $$;
+
+-- A player in debt isn't offered cash, and can't choose it.
+do $$
+declare
+  b record := tests.s20b_book();
+  p uuid := tests.s20b_user('debtor');
+  q uuid := tests.s20b_user('clean');
+  v_invite uuid;
+begin
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (p, 'venue', (select venue_id from public.venue_bookings where id = b.booking), gen_random_uuid(), 680, 600, 80,
+          'unpaid_share');
+  v_invite := tests.s20b_invite(b.booking, b.booker, p);
+  perform tests.s20b_invite(b.booking, b.booker, q);
+  assert not (select (data ->> 'cashOk')::boolean from public.notifications where profile_id = p and type = 'booking_invite'),
+    'a debtor isn''t offered cash';
+  assert (select (data ->> 'cashOk')::boolean from public.notifications where profile_id = q and type = 'booking_invite'),
+    'a player without debt is';
+  assert tests.error_as(p, format('select public.accept_invite(%L, ''cash'')', v_invite)) = 'player_in_debt',
+    'and the server refuses cash for him';
+end $$;
+
+-- Pay for everyone: nothing to pay, accepting is joining.
+do $$
+declare
+  b record := tests.s20b_book('pay_all');
+  p uuid := tests.s20b_user('all');
+begin
+  assert tests.s20b_invite(b.booking, b.booker, p) is not null, 'invited';
+  assert not (select (data ->> 'cashOk')::boolean from public.notifications where profile_id = p and type = 'booking_invite'),
+    'pay for everyone: no cash choice';
 end $$;
 
 do $$
@@ -184,6 +252,8 @@ declare
   v_invite uuid;
 begin
   v_invite := tests.s20b_invite(b.booking, b.booker, p);
+  assert not (select (data ->> 'cashOk')::boolean from public.notifications where profile_id = p and type = 'booking_invite'),
+    'a half pitch: no cash offered';
   assert tests.error_as(p, format('select public.accept_invite(%L, ''cash'')', v_invite)) = 'cash_whole_pitch_only',
     'no cash on a half pitch';
   assert tests.error_as(p, format('select public.accept_invite(%L, ''bitcoin'')', v_invite)) = 'invalid_method',
@@ -216,18 +286,19 @@ begin
   assert tests.s20b_invite_status(v_invite) = 'expired', 'expired';
 end $$;
 
--- Filling the side expires every other pending invite for it, at once; a
--- spot that reopens doesn't revive them: a new invite does.
+-- While the side is full, accepting says "This game is full" and the invite
+-- stays pending (Panos, 27 November): a lapse reopens the spot to everyone
+-- already invited, and the first of them to accept takes it.
 do $$
 declare
   b record := tests.s20b_book();
   a uuid := tests.s20b_user('first');
   c uuid := tests.s20b_user('second');
   d uuid := tests.s20b_user('third');
+  e uuid := tests.s20b_user('late');
   v_a uuid;
   v_c uuid;
   v_d uuid;
-  v_error text;
 begin
   perform tests.s20b_fill(b.booking, 9);
   v_a := tests.s20b_invite(b.booking, b.booker, a);
@@ -235,43 +306,23 @@ begin
   v_d := tests.s20b_invite(b.booking, b.booker, d);
   perform tests.s20b_accept(v_a, a);
   assert tests.s20b_invite_status(v_a) = 'accepted', 'the first to accept takes the last spot';
-  assert tests.s20b_invite_status(v_c) = 'expired' and tests.s20b_invite_status(v_d) = 'expired',
-    'filling the side expires the others in the same transaction';
-  assert tests.error_as(c, format('select public.accept_invite(%L)', v_c)) = 'invite_expired', 'expired: refused';
-  assert tests.share_of(b.booking, c) is null or (tests.share_of(b.booking, c)).id is null, 'and no share';
-  perform tests.act_as(b.booker);
-  v_error := tests.error_of(format('select public.add_booking_player(%L, %L)', b.booking,
-                                   (select username from public.profiles where id = c)));
-  perform tests.act_as_postgres();
-  assert v_error = 'booking_full', 'no invite while full, got ' || coalesce(v_error, 'no error');
+  assert tests.s20b_invite_status(v_c) = 'pending' and tests.s20b_invite_status(v_d) = 'pending',
+    'filling the side doesn''t expire the others';
+  assert tests.error_as(c, format('select public.accept_invite(%L)', v_c)) = 'booking_full', 'full: This game is full';
+  assert tests.s20b_invite_status(v_c) = 'pending', 'and his invite stays pending';
+  assert (tests.share_of(b.booking, c)).id is null, 'no share';
+  -- A new invite while full is sent and waits like the others.
+  assert tests.s20b_invite(b.booking, b.booker, e) is not null, 'an invite while full waits';
 
-  -- The first player's acceptance lapses: a spot reopens, the old invites stay expired.
+  -- The first player's acceptance lapses: the spot reopens to everyone already invited.
   assert tests.s20b_lapse_now((tests.share_of(b.booking, a)).id) = 1, 'a lapse';
-  assert tests.s20b_invite_status(v_c) = 'expired', 'a reopened spot doesn''t revive them';
-  assert tests.error_as(c, format('select public.accept_invite(%L)', v_c)) = 'invite_expired', 'still refused';
-  v_c := tests.s20b_invite(b.booking, b.booker, c);
-  perform tests.s20b_accept(v_c, c);
-  assert (tests.share_of(b.booking, c)).status = 'pending', 'the captain invites again, and that one works';
+  perform tests.s20b_accept(v_d, d);
+  assert (tests.share_of(b.booking, d)).status = 'pending', 'an invite that waited takes the reopened spot';
+  assert tests.error_as(c, format('select public.accept_invite(%L)', v_c)) = 'booking_full', 'and it''s full again';
+  assert tests.s20b_invite_status(v_c) = 'pending', 'still pending, until kickoff';
 end $$;
 
--- A full side at accept (a race the expiry didn't see): booking_full, no share.
-do $$
-declare
-  b record := tests.s20b_book();
-  p uuid := tests.s20b_user('full');
-  v_invite uuid;
-begin
-  perform tests.s20b_fill(b.booking, 9);
-  v_invite := tests.s20b_invite(b.booking, b.booker, p);
-  -- Taken by someone else without the trigger seeing it (a venue player).
-  perform tests.join_booking(b.booking, tests.s20b_user('other'));
-  update public.invites set status = 'pending' where id = v_invite;
-  assert tests.error_as(p, format('select public.accept_invite(%L)', v_invite)) = 'booking_full', 'booking_full';
-  assert (tests.share_of(b.booking, p)).id is null, 'no share';
-  assert tests.s20b_invite_status(v_invite) = 'pending', 'the refusal changed nothing';
-end $$;
-
--- On a half pitch only the side that filled expires.
+-- On a half pitch, only the side's own spots count.
 do $$
 declare
   b record := tests.s20b_book('each_pays_responsible', 'half');
@@ -288,7 +339,8 @@ begin
   v_c := tests.s20b_invite(b.booking, b.booker, c);
   perform tests.s20b_accept(v_a, a);
   assert (tests.share_of(b.booking, a)).side = 'a', 'joins side A';
-  assert tests.s20b_invite_status(v_c) = 'expired', 'side A full: its other invite expires';
+  assert tests.error_as(c, format('select public.accept_invite(%L)', v_c)) = 'booking_full', 'side A full: booking_full';
+  assert tests.s20b_invite_status(v_c) = 'pending', 'his invite stays pending';
 end $$;
 
 -- ---- 4. The lapse job ------------------------------------------------------------------------
@@ -439,35 +491,159 @@ begin
 end $$;
 
 -- ---- 7. A lapsed player invited again: his share comes back as a new attempt -----------------
+-- Late money on his OLD intent gives back only itself, with its ledger row,
+-- whether his new payment is still waiting or already paid; the new payment
+-- is never charged twice.
+create function tests.s20b_reinvited(p_label text, out booking uuid, out player uuid, out share uuid,
+                                     out old_intent text, out old_amount integer)
+language plpgsql
+as $$
+declare
+  b record := tests.s20b_book();
+  v_plan jsonb;
+begin
+  booking := b.booking;
+  player := tests.s20b_user(p_label);
+  perform tests.set_kickoff(booking, now() + interval '5 hours');  -- money is taken at once (spec 13 step 2)
+  perform tests.s20b_accept(tests.s20b_invite(booking, b.booker, player), player);
+  share := (tests.share_of(booking, player)).id;
+  old_intent := 'pi_s20b_old_' || gen_random_uuid();
+  v_plan := tests.pay_share(share, old_intent, 'card', true);
+  old_amount := (v_plan ->> 'amount_cents')::integer;
+  assert tests.s20b_lapse_now(share) = 1, 'lapsed';
+  perform tests.s20b_accept(tests.s20b_invite(booking, b.booker, player), player);
+end;
+$$;
+
+do $$
+declare
+  r record := tests.s20b_reinvited('again');
+  v public.booking_payment_shares := (select s from public.booking_payment_shares s where s.id = r.share);
+begin
+  assert v.id = r.share and v.status = 'pending' and v.offer_attempt = 2,
+    format('the same row, attempt 2, got %s %s', v.status, v.offer_attempt);
+  assert v.replaced_intent_ids @> array[r.old_intent], 'the old intent is kept as replaced';
+  assert v.stripe_payment_intent_id is null and v.pay_by > now(), 'no payment yet, a new 15 minutes';
+  assert (public.plan_share_payment(v.id, r.player, 'card', true) ->> 'offer_attempt')::integer = 2,
+    'the new payment is keyed on attempt 2 (a new Stripe request)';
+end $$;
+
+-- Late success on the old intent WHILE the new offer is pending.
+do $$
+declare
+  r record := tests.s20b_reinvited('late-pending');
+  x jsonb;
+  v public.booking_payment_shares;
+begin
+  x := public.share_payment_held(r.share, r.old_intent, r.old_amount, 'pm_old', now());
+  assert x ->> 'result' = 'release' and x ->> 'reason' = 'replaced_intent', 'old hold: released alone, got ' || x::text;
+  assert exists (select 1 from public.money_ledger where stripe_id = r.old_intent and reason = 'replaced_intent_held'),
+    'the old hold has its ledger row';
+  x := public.share_payment_captured(r.share, r.old_intent, r.old_amount, 'pm_old', 80, 30, now());
+  assert x ->> 'result' = 'refund' and x ->> 'reason' = 'replaced_intent', 'old charge: refunded alone, got ' || x::text;
+  assert exists (select 1 from public.money_ledger where stripe_id = r.old_intent and kind = 'capture'
+                   and reason = 'replaced_intent_taken'), 'the old charge has its ledger row';
+  v := (select s from public.booking_payment_shares s where s.id = r.share);
+  assert v.status = 'pending' and v.stripe_payment_intent_id is null, 'his new offer is untouched';
+end $$;
+
+-- Late success on the old intent AFTER the new one is paid.
+do $$
+declare
+  r record := tests.s20b_reinvited('late-paid');
+  v_new text := 'pi_s20b_new_' || gen_random_uuid();
+  v_plan jsonb;
+  x jsonb;
+  v public.booking_payment_shares;
+begin
+  v_plan := tests.pay_share(r.share, v_new, 'card', true);
+  x := public.share_payment_captured(r.share, v_new, (v_plan ->> 'amount_cents')::integer, 'pm_new',
+                                     (v_plan ->> 'fee_cents')::integer, 30, now());
+  assert (select status from public.booking_payment_shares where id = r.share) = 'paid', 'the new payment is taken';
+
+  x := public.share_payment_captured(r.share, r.old_intent, r.old_amount, 'pm_old', 80, 30, now());
+  assert x ->> 'result' = 'refund' and x ->> 'reason' = 'replaced_intent', 'old charge after: refunded, got ' || x::text;
+  x := public.share_payment_held(r.share, r.old_intent, r.old_amount, 'pm_old', now());
+  assert x ->> 'result' = 'release' and x ->> 'reason' = 'replaced_intent', 'old hold after: released, got ' || x::text;
+  assert exists (select 1 from public.money_ledger where stripe_id = r.old_intent and reason = 'replaced_intent_taken'),
+    'with its ledger row';
+  v := (select s from public.booking_payment_shares s where s.id = r.share);
+  assert v.status = 'paid' and v.stripe_payment_intent_id = v_new, 'the new payment stands';
+  -- The new payment arriving again (a replayed webhook) isn't taken twice.
+  x := public.share_payment_captured(r.share, v_new, (v_plan ->> 'amount_cents')::integer, 'pm_new',
+                                     (v_plan ->> 'fee_cents')::integer, 30, now());
+  assert x ->> 'result' = 'duplicate', 'a replayed charge is a duplicate, got ' || x::text;
+  assert (select count(*) from public.money_ledger where stripe_id = v_new and kind = 'capture' and reason <> 'duplicate') <= 2
+     and (select status from public.booking_payment_shares where id = r.share) = 'paid', 'never charged twice';
+end $$;
+
+-- ---- 7b. Every caller of add_booking_player / add_booking_share_internal /
+-- add_booking_side_share_internal (live schema, 27 November). booking_full is
+-- raised by accept_invite and add_booking_player; the two internal helpers
+-- are unchanged (still make nothing when full).
+-- add_booking_player, and invite_friend_to_booking (which calls it), on a
+-- full side: the invite is sent and waits; accepting it says booking_full.
 do $$
 declare
   b record := tests.s20b_book();
-  p uuid := tests.s20b_user('again');
-  v public.booking_payment_shares;
-  v_old text := 'pi_s20b_old_' || gen_random_uuid();
-  v_plan jsonb;
-  r jsonb;
+  f uuid := tests.s20b_user('friend-full');
+  g uuid := tests.s20b_user('name-full');
+  v_invite uuid;
 begin
-  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, p), p);
-  v := tests.share_of(b.booking, p);
-  v_plan := tests.pay_share(v.id, v_old);
-  assert tests.s20b_lapse_now(v.id) = 1, 'lapsed';
+  perform tests.s20b_fill(b.booking, 10);
+  insert into public.friendships (requester_id, addressee_id, status, accepted_at) values (b.booker, f, 'accepted', now());
+  perform tests.act_as(b.booker);
+  perform public.invite_friend_to_booking(b.booking, f);
+  perform tests.act_as_postgres();
+  v_invite := (select id from public.invites where booking_id = b.booking and invited_profile_id = f);
+  assert tests.s20b_invite_status(v_invite) = 'pending', 'invite_friend_to_booking: sent while full';
+  assert tests.error_as(f, format('select public.accept_invite(%L)', v_invite)) = 'booking_full', 'its accept: booking_full';
+  v_invite := tests.s20b_invite(b.booking, b.booker, g);
+  assert tests.s20b_invite_status(v_invite) = 'pending', 'add_booking_player: sent while full';
+  assert tests.error_as(g, format('select public.accept_invite(%L)', v_invite)) = 'booking_full', 'its accept: booking_full';
+end $$;
 
-  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, p), p);
-  v := tests.share_of(b.booking, p);
-  assert v.status = 'pending' and v.offer_attempt = 2, format('the same row, attempt 2, got %s %s', v.status, v.offer_attempt);
-  assert v.replaced_intent_ids @> array[v_old], 'the old intent is kept as replaced';
-  assert v.stripe_payment_intent_id is null and v.pay_by > now(), 'no payment yet, a new 15 minutes';
-  assert (public.plan_share_payment(v.id, p, 'card', false) ->> 'offer_attempt')::integer = 2,
-    'the new payment is keyed on attempt 2 (a new Stripe request)';
+-- add_booking_share_internal / add_booking_side_share_internal called
+-- directly on a full booking or side (the half pitch goes to side A): still
+-- nothing made, no error, as before.
+do $$
+declare
+  w record := tests.s20b_book();
+  h record := tests.s20b_book('each_pays_responsible', 'half');
+  p uuid := tests.s20b_user('internal');
+  i integer;
+begin
+  perform tests.s20b_fill(w.booking, 10);
+  perform public.add_booking_share_internal(w.booking, p);
+  assert (tests.share_of(w.booking, p)).id is null, 'whole pitch full: nothing made';
+  for i in 1 .. 4 loop
+    perform public.add_booking_side_share_internal(h.booking, tests.s20b_user('side-fill'), 'a');
+  end loop;
+  perform public.add_booking_share_internal(h.booking, p);
+  assert (tests.share_of(h.booking, p)).id is null, 'half pitch, side A full: nothing made';
+  perform public.add_booking_side_share_internal(h.booking, p, 'a');
+  assert (tests.share_of(h.booking, p)).id is null, 'side A full: nothing made';
+end $$;
 
-  -- Late money on the OLD intent gives back only itself; the new share is untouched.
-  r := public.share_payment_held(v.id, v_old, (v_plan ->> 'amount_cents')::integer, 'pm_old', now());
-  assert r ->> 'result' = 'release' and r ->> 'reason' = 'replaced_intent', 'old hold: released, got ' || r::text;
-  r := public.share_payment_captured(v.id, v_old, (v_plan ->> 'amount_cents')::integer, 'pm_old', 80, 30, now());
-  assert r ->> 'result' = 'refund' and r ->> 'reason' = 'replaced_intent', 'old charge: refunded, got ' || r::text;
-  v := tests.share_of(b.booking, p);
-  assert v.status = 'pending' and v.stripe_payment_intent_id is null, 'his new share is untouched';
+-- auto_add_booking_share_on_join (squad-post and publish joins) on a full
+-- side: squad_full as before, and pending invites stay pending.
+do $$
+declare
+  b record := tests.s20b_book();
+  waiting uuid := tests.s20b_user('waiting');
+  joiner uuid := tests.s20b_user('joiner');
+  v_invite uuid;
+  v_post public.squad_posts;
+begin
+  perform tests.s20b_fill(b.booking, 9);
+  v_invite := tests.s20b_invite(b.booking, b.booker, waiting);
+  perform tests.act_as(b.booker);
+  v_post := public.publish_booking(b.booking, 'players');
+  perform tests.act_as_postgres();
+  perform tests.join_booking(b.booking, tests.s20b_user('last'));  -- the last spot goes
+  assert tests.error_of(format('insert into public.squad_post_joiners (post_id, profile_id) values (%L, %L)',
+                               v_post.id, joiner)) = 'squad_full', 'a publish join on a full side: squad_full';
+  assert tests.s20b_invite_status(v_invite) = 'pending', 'the invite still waits';
 end $$;
 
 -- ---- 8. Invite a team, invite all friends ----------------------------------------------------

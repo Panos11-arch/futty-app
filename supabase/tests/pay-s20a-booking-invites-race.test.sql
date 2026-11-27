@@ -1,8 +1,8 @@
 -- S20A (b) race: two invited players accept the last spot at the same moment
 -- (spec 13 "Player invites": the spot is taken at accept, under a row lock).
--- Exactly one gets the spot; the other is told his invite expired (filling
--- the side expired it), and no deadlock: accept_invite locks the booking
--- before the invite, as the expiry does.
+-- Exactly one gets the spot; the other is told the game is full and his
+-- invite stays pending (Panos, 27 November). No deadlock: accept_invite locks
+-- the booking before the invite.
 --
 -- A race needs two real connections, so this file uses dblink, and its setup
 -- is committed (another connection can't see an open transaction). Every row
@@ -85,12 +85,9 @@ begin
     perform extensions.dblink_connect('s20b_c1', tests.s20b_conninfo());
     perform extensions.dblink_connect('s20b_c2', tests.s20b_conninfo());
 
-    -- The worst order: the first player's acceptance holds the booking when
-    -- the second's starts, and only then fills the last spot. With the
-    -- invite locked before the booking, the second would hold his invite
-    -- while the first's expiry waits for it: a deadlock. The booking is
-    -- locked first, so the second waits on it and then finds his invite
-    -- expired.
+    -- The first player's acceptance holds the booking when the second's
+    -- starts, and only then takes the last spot. The second waits on the
+    -- booking's lock, then finds the game full.
     -- c1 locks the booking as postgres (RLS would hide it from the player),
     -- then goes on as the player.
     perform extensions.dblink_exec('s20b_c1', 'begin');
@@ -114,7 +111,9 @@ begin
     perform extensions.dblink_exec('s20b_c2', 'rollback');
 
     assert v_won = 'accepted', 'the first player accepted, got ' || coalesce(v_won, 'nothing');
-    assert v_lost like '%invite_expired%', format('the second is told his invite expired, got %s', v_lost);
+    assert v_lost like '%booking_full%', format('the second is told the game is full, got %s', v_lost);
+    assert (select status from public.invites where id = tests.s20b_id('invite_two')) = 'pending',
+      'his invite stays pending';
     assert v_lost not like '%deadlock%', 'no deadlock';
     assert (select count(*) from public.booking_payment_shares where booking_id = tests.s20b_id('booking')
               and status not in ('cancelled', 'refunded', 'credited', 'forfeited', 'refund_due')) = 10,

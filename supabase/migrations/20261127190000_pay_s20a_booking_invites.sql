@@ -1,25 +1,33 @@
 -- S20A (b): player invites (docs/specs/13-payments-bookings.md, "Player
 -- invites (S20A, decided 27 November)", with #245's Losers pay line).
 --
---   1. Invites close when the side is full or at kickoff, whichever comes
---      first. When a share fills a side, every other pending invite for that
---      side is expired in the same transaction (booking_expire_side_invites,
---      the one place this rule lives, run by a trigger on the shares). A spot
---      that reopens later doesn't revive them: the captain invites again. At
---      kickoff booking_invites_expire_due expires the rest.
+--   1. Player invites stay open until kickoff (Panos, 27 November; his spec 13
+--      change is coming): while the side is full, accepting says "This game
+--      is full" (booking_full) and the invite stays pending, so a lapse
+--      reopens the spot to everyone already invited. At kickoff
+--      booking_invites_expire_due expires what's left
+--      (booking_invite_closes_at, the one place the time lives).
 --   2. The spot is taken when the player accepts (under the booking's lock).
---      A full side refuses with booking_full; before, accept_invite marked the
---      invite accepted and made no share.
+--      Before, accept_invite marked the invite accepted and made no share
+--      when the side was full. add_booking_share_internal and
+--      add_booking_side_share_internal are unchanged.
 --   3. A card player who accepts has 15 minutes (app_rules.payment_window_minutes)
 --      to pay or hold his share, ending at kickoff if that comes first
 --      (pay_by). Otherwise booking_player_lapse_due cancels the share, queues
 --      any started payment for release ('player_lapsed') and the spot reopens.
 --      Losers pay too: every player there is a card player (#245).
---   4. A cash player keeps the spot from accepting. PROPOSAL, WAITING ON
---      PANOS: on a whole pitch where each pays, accept_invite takes
---      p_method 'cash', saves it on the share and sets no pay_by. A cash
---      player who never pays his fee is collected after the match like any
---      unpaid share (start_collection, 20261123210000_pay_b1c_collection_odd_cent.sql:135-143).
+--   4. Cash (decided by Panos, 27 November; his spec 13 text isn't on master
+--      yet): on a whole pitch in Pay for myself, accepting asks Card or Cash
+--      (accept_invite's p_method). Cash is hidden for a player in debt
+--      (cashOk) and refused (player_in_debt); it's never combined with credit
+--      (share_payment_plan: credit_needs_card). Both have the 15 minutes:
+--      card pays or holds his share, cash pays the €0.80 by card and saves
+--      his card (Premium: saves the card, €0). pay_by clears once the share
+--      leaves pending (the €0.80 held: authorized; a Premium card saved:
+--      paid), and a cash spot never lapses after that; unticked cash is
+--      covered by the booker's guarantee (start_collection,
+--      20261123210000_pay_b1c_collection_odd_cent.sql:135-143). Pay for
+--      everyone: nothing to pay, accepting is joining.
 --   5. A lapsed player can be invited again. His share row is reused, as a
 --      Gipedo Pano re-offer (20261113130016_pay_gipedo_review_fixes.sql:234-250):
 --      offer_attempt + 1 and the old intent kept in replaced_intent_ids, so
@@ -112,54 +120,29 @@ as $$
   select least(public.money_payment_window_ends_at(p_at), public.booking_invite_closes_at(p_booking));
 $$;
 
--- Rule 1, "whichever comes first": once p_side (null: a whole pitch) has no
--- free spot, every other pending player invite for it expires. Not revived
--- when a spot reopens: the captain invites again. Returns how many expired.
-create function public.booking_expire_side_invites(p_booking_id uuid, p_side text)
-returns integer
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  v_booking public.venue_bookings;
-  v_count integer;
-begin
-  select * into v_booking from public.venue_bookings where id = p_booking_id;
-  if v_booking.id is null or v_booking.booking_kind is null or public.booking_side_room(p_booking_id, p_side) > 0 then
-    return 0;
-  end if;
-  update public.invites i set status = 'expired', responded_at = now()
-  where i.kind = 'booking' and i.booking_id = p_booking_id and i.status = 'pending'
-    and public.booking_invite_side_of(v_booking, i.invited_by) is not distinct from p_side;
-  get diagnostics v_count = row_count;
-  return v_count;
-end;
-$$;
-
--- Whatever fills the side (an accepted invite, a post join), in the same
--- transaction.
-create function public.booking_shares_expire_invites()
+-- pay_by is only for a share still waiting: once it's held, paid or saved
+-- (cash: the €0.80 held, or a Premium card saved), or cancelled, it clears.
+create function public.booking_shares_clear_pay_by()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
 begin
-  if new.status not in ('cancelled', 'refunded', 'credited', 'forfeited', 'refund_due') then
-    perform public.booking_expire_side_invites(new.booking_id, new.side);
+  if new.status <> 'pending' and new.pay_by is not null then
+    new.pay_by := null;
   end if;
   return new;
 end;
 $$;
 
-create trigger booking_shares_expire_invites
-after insert or update of status on public.booking_payment_shares
-for each row execute function public.booking_shares_expire_invites();
+create trigger booking_shares_clear_pay_by
+before update of status on public.booking_payment_shares
+for each row execute function public.booking_shares_clear_pay_by();
 
 -- Why p_inviter can't invite players to p_booking now, or null. As
 -- add_booking_player checked (20261123180000_pay_b1c_opposition.sql:558), plus
--- rule 1 (closed at kickoff; full side).
+-- rule 1 (closed at kickoff). A full side still takes invites: they wait.
 create function public.booking_invite_refusal(p_booking public.venue_bookings, p_inviter uuid)
 returns text
 language plpgsql
@@ -194,10 +177,6 @@ begin
   if now() >= public.booking_invite_closes_at(p_booking) then
     return 'invites_closed';
   end if;
-  if p_booking.booking_kind is not null
-     and public.booking_side_room(p_booking.id, public.booking_invite_side_of(p_booking, p_inviter)) <= 0 then
-    return 'booking_full';
-  end if;
   return null;
 end;
 $$;
@@ -224,7 +203,21 @@ as $$
   end;
 $$;
 
--- One invite, checked by the callers, with its push.
+-- Section 1 (Panos, 27 November): a whole pitch in Pay for myself, not
+-- Losers pay, is where an invited player may choose cash.
+create function public.booking_cash_allowed(p_booking public.venue_bookings)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p_booking.booking_kind = 'whole' and not coalesce(p_booking.losers_pay, false)
+         and coalesce(p_booking.payment_mode in ('each_pays_responsible', 'each_pays_own_spot'), false);
+$$;
+
+-- One invite, checked by the callers, with its push (cashOk: the accept
+-- offers cash).
 create function public.booking_invite_send(p_booking public.venue_bookings, p_inviter uuid, p_profile uuid)
 returns public.invites
 language plpgsql
@@ -245,7 +238,9 @@ begin
     'title', 'Game invite',
     'body', format('%s invited you to play at %s on %s at %s.', v_inviter, v_venue_name,
                    to_char(p_booking.booking_day, 'Dy DD Mon'), to_char(p_booking.start_time, 'HH24:MI')),
-    'inviteId', v_invite.id, 'bookingId', p_booking.id));
+    'inviteId', v_invite.id, 'bookingId', p_booking.id,
+    -- Cash is hidden for a player in debt.
+    'cashOk', public.booking_cash_allowed(p_booking) and not public.profile_has_debt(p_profile)));
   return v_invite;
 end;
 $$;
@@ -321,8 +316,8 @@ $$;
 -- ---- 2. Inviting ------------------------------------------------------------------------------
 
 -- As in 20261123180000_pay_b1c_opposition.sql, plus S20A (b): invites close
--- at kickoff or when the side is full; only an active share counts as
--- already in (a lapsed player can be invited again); the invite is a push.
+-- at kickoff; only an active share counts as already in (a lapsed player can
+-- be invited again); the invite is a push.
 CREATE OR REPLACE FUNCTION public.add_booking_player(p_booking_id uuid, p_username text)
  RETURNS void
  LANGUAGE plpgsql
@@ -486,10 +481,8 @@ begin
     raise exception 'not_authenticated';
   end if;
 
-  -- S20A (b): a booking invite locks its booking FIRST. Filling a side
-  -- expires the side's other invites (the share trigger) while holding the
-  -- booking, so taking an invite's lock before the booking's would deadlock
-  -- two players accepting the last spot at once.
+  -- S20A (b): a booking invite locks its booking first, so two players
+  -- accepting the last spot at once queue on the booking.
   select * into v_invite from public.invites where id = p_invite_id;
   if v_invite.kind = 'booking' then
     perform 1 from public.venue_bookings where id = v_invite.booking_id for update;
@@ -498,7 +491,7 @@ begin
   if v_invite.id is null or v_invite.invited_profile_id <> auth.uid() then
     raise exception 'not_your_invite';
   end if;
-  -- S20A (b): an invite that expired (side full, or kickoff).
+  -- S20A (b): an invite that expired at kickoff.
   if v_invite.status = 'expired' then
     raise exception 'invite_expired';
   end if;
@@ -551,7 +544,8 @@ begin
     -- B1c: on a half pitch a player joins the side of the captain who
     -- invited him (a captain of both sides fills side A first).
     v_side := public.booking_invite_side_of(v_booking, v_invite.invited_by);
-    -- S20A (b): the spot is taken now, or the side is full.
+    -- S20A (b): the spot is taken now, or "This game is full" and the
+    -- invite stays pending (nothing here is saved).
     if v_booking.booking_kind is not null and public.booking_side_room(v_booking.id, v_side) <= 0 then
       raise exception 'booking_full';
     end if;
@@ -573,10 +567,9 @@ begin
 
     if v_booking.booking_kind is not null and v_share.status = 'pending' then
       if p_method = 'cash' then
-        -- Section 1 (waiting on Panos): cash on a whole pitch where each pays.
-        -- He keeps the spot; no pay_by.
-        if v_booking.booking_kind <> 'whole' or v_booking.losers_pay
-           or v_booking.payment_mode not in ('each_pays_responsible', 'each_pays_own_spot') then
+        -- Section 1 (Panos, 27 November): cash on a whole pitch in Pay for
+        -- myself, with the same 15 minutes for his €0.80 step.
+        if not public.booking_cash_allowed(v_booking) then
           raise exception 'cash_whole_pitch_only';
         end if;
         if public.profile_has_debt(auth.uid()) then
@@ -586,18 +579,15 @@ begin
           false, exists (select 1 from public.profiles where id = auth.uid() and is_premium), 'cash');
         update public.booking_payment_shares
         set payment_method = 'cash', amount_cents = v_cash.card_cents, pitch_cents = v_cash.pitch_cents,
-            fee_cents = v_cash.fee_cents, cash_cents = v_cash.cash_cents, pay_by = null
-        where id = v_share.id;
-      else
-        -- A card player: 15 minutes, or kickoff if that comes first.
-        update public.booking_payment_shares set pay_by = public.booking_player_pay_by(v_booking, now())
+            fee_cents = v_cash.fee_cents, cash_cents = v_cash.cash_cents
         where id = v_share.id;
       end if;
+      -- Card or cash: 15 minutes, or kickoff if that comes first.
+      update public.booking_payment_shares set pay_by = public.booking_player_pay_by(v_booking, now())
+      where id = v_share.id;
     end if;
   end if;
 
-  -- When his share took the last spot, the trigger expired every pending
-  -- invite for the side, this one too: it's the one accepted.
   update public.invites set status = 'accepted', responded_at = now()
   where id = p_invite_id
   returning * into v_invite;
@@ -694,11 +684,11 @@ revoke all on function public.booking_invite_closes_at(public.venue_bookings) fr
 revoke all on function public.booking_side_room(uuid, text) from public, anon, authenticated;
 revoke all on function public.booking_invite_side_of(public.venue_bookings, uuid) from public, anon, authenticated;
 revoke all on function public.booking_player_pay_by(public.venue_bookings, timestamptz) from public, anon, authenticated;
-revoke all on function public.booking_expire_side_invites(uuid, text) from public, anon, authenticated;
-revoke all on function public.booking_shares_expire_invites() from public, anon, authenticated;
+revoke all on function public.booking_shares_clear_pay_by() from public, anon, authenticated;
 revoke all on function public.booking_invite_refusal(public.venue_bookings, uuid) from public, anon, authenticated;
 revoke all on function public.booking_invitee_refusal(uuid, uuid, uuid) from public, anon, authenticated;
 revoke all on function public.booking_invite_send(public.venue_bookings, uuid, uuid) from public, anon, authenticated;
+revoke all on function public.booking_cash_allowed(public.venue_bookings) from public, anon, authenticated;
 revoke all on function public.booking_invite_revive_share(uuid, uuid, text) from public, anon, authenticated;
 revoke all on function public.booking_player_lapse_due() from public, anon, authenticated;
 revoke all on function public.booking_invites_expire_due() from public, anon, authenticated;
@@ -706,11 +696,11 @@ grant execute on function public.booking_invite_closes_at(public.venue_bookings)
 grant execute on function public.booking_side_room(uuid, text) to service_role;
 grant execute on function public.booking_invite_side_of(public.venue_bookings, uuid) to service_role;
 grant execute on function public.booking_player_pay_by(public.venue_bookings, timestamptz) to service_role;
-grant execute on function public.booking_expire_side_invites(uuid, text) to service_role;
-grant execute on function public.booking_shares_expire_invites() to service_role;
+grant execute on function public.booking_shares_clear_pay_by() to service_role;
 grant execute on function public.booking_invite_refusal(public.venue_bookings, uuid) to service_role;
 grant execute on function public.booking_invitee_refusal(uuid, uuid, uuid) to service_role;
 grant execute on function public.booking_invite_send(public.venue_bookings, uuid, uuid) to service_role;
+grant execute on function public.booking_cash_allowed(public.venue_bookings) to service_role;
 grant execute on function public.booking_invite_revive_share(uuid, uuid, text) to service_role;
 grant execute on function public.booking_player_lapse_due() to service_role;
 grant execute on function public.booking_invites_expire_due() to service_role;
