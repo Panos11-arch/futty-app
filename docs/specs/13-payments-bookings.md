@@ -96,10 +96,11 @@ Invites to join a side: "Invite friends", "Invite a team", "Invite all friends",
 - **Player invites stay open until the side is full or kickoff, whichever comes first.** Invites nobody answered expire then. Opposition invites still close 24 hours before kickoff.
 - **The spot is taken when the player accepts.** The server decides with a row lock, as for side B's captain; once the side is full, everyone else sees "This game is full" before paying. There is no "first to pay takes the spot".
 - **A card player who accepts has 15 minutes to pay or hold his share,** the same window as the booker's and side B's captain's. Otherwise his acceptance lapses, his share is cancelled and the spot reopens for the others.
-  - **Accepting less than 15 minutes before kickoff:** the acceptance lapses at kickoff instead (Dimitris).
+  - **Accepting less than 15 minutes before kickoff:** the acceptance lapses at kickoff instead (Anghelo).
+  - **Losers pay too:** a card player who accepts a Losers pay game has the same 15 minutes to place his hold (twice his share, see "Losers pay"); otherwise his acceptance lapses and the spot reopens. Losers pay has no cash, so every player is a card player here.
 - **A cash player keeps the spot from the moment he accepts,** as today; an unticked cash spot is covered as in "Cash at the venue".
 - **The money rules don't change for late joiners:** a share paid less than 6 hours before kickoff is taken straight away after the "This booking is non-refundable" notice (step 2 of "When money is held and taken"), and in Losers pay a late joiner is held at once.
-- **futty.app/i links:** opening a link sends a friend request to its owner; nobody becomes a friend until the owner accepts. **A game invite carried in the link only appears after the owner accepts** (Dimitris). Blocks and the adult↔minor rules apply as for any friend request.
+- **futty.app/i links:** opening a link sends a friend request to its owner; nobody becomes a friend until the owner accepts. **A game invite carried in the link only appears after the owner accepts** (Anghelo). Blocks and the adult↔minor rules apply as for any friend request.
 
 ### Publish game
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.
