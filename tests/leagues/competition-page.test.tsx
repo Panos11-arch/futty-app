@@ -699,6 +699,75 @@ describe('Player stats', () => {
   });
 });
 
+// ---- S11: every kind of league page -----------------------------------------
+// Every league opens this one page, so each kind gets the same lock: Player
+// stats is Premium only (the server's premium_required), Stats is free.
+
+const LEAGUE_KINDS: [string, Partial<Competition>][] = [
+  [
+    'a standard league (its own season)',
+    {
+      id: 'STD',
+      name: 'Nicosia Open',
+      area: 'Nicosia',
+      stage: 'season',
+      seasons: [],
+      season: { id: 'STD', name: 'Nicosia Open', number: null, stage: 'season', startDate: null, endDate: null, finished: false, tables: [] },
+    },
+  ],
+  ['a city league season', {}],
+  [
+    'a season split into divisions',
+    {
+      stage: 'divisions',
+      season: {
+        id: 'S2',
+        name: 'Season 2',
+        number: 2,
+        stage: 'divisions',
+        startDate: '2027-03-01',
+        endDate: '2027-05-10',
+        finished: false,
+        tables: [
+          { id: 'D1', name: 'Division 1' },
+          { id: 'D2', name: 'Division 2' },
+        ],
+      },
+    },
+  ],
+];
+
+describe.each(LEAGUE_KINDS)('%s', (_kind, over) => {
+  const seasonId = (over.season ?? competition().season).id;
+
+  it.each([
+    ['without Premium', true],
+    ['with Premium', false],
+  ])('%s: Player stats follows the server; Stats is free', async (_who, refused) => {
+    mockState.competition = { status: 'ready', competition: competition(over) };
+    mockState.playerStats = { status: 'ready', premium: refused, rows: refused ? [] : [statRow('p1', 'Ana')] };
+    await render(<CompetitionPage />);
+    expect(screen.getByRole('tab', { name: 'Player stats, Premium' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Stats' })).toBeTruthy();
+
+    await openTab('player-stats');
+    expect(mockArgs.playerStats.at(-1)).toEqual([seasonId, null]);
+    if (refused) {
+      expect(screen.getByTestId('competition-player-stats-premium')).toBeTruthy();
+      expect(screen.getByTestId('competition-get-premium')).toBeTruthy();
+      expect(screen.queryByTestId(/competition-player-stats-row-/)).toBeNull();
+    } else {
+      expect(screen.queryByTestId('competition-player-stats-premium')).toBeNull();
+      expect(screen.getByTestId('competition-player-stats-row-p1')).toBeTruthy();
+    }
+
+    await openTab('stats');
+    expect(mockArgs.stats.at(-1)).toEqual([seasonId, 'players']);
+    expect(screen.getByTestId('competition-stats-card-rating')).toHaveTextContent(/Ana/);
+    expect(screen.queryByText('Rank players by any stat')).toBeNull();
+  });
+});
+
 // ---- Stats ------------------------------------------------------------------
 
 describe('Stats', () => {
