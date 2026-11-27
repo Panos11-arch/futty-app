@@ -22,6 +22,7 @@ import {
   type BookSearchQuery,
   type LoadState,
 } from '@/lib/booking-search';
+import { armBookingPreselect } from '@/lib/booking-preselect';
 import { haptic } from '@/lib/haptics';
 import { armStartMatch } from '@/lib/start-match';
 import { fetchSearchPlaces } from '@/lib/saved-searches';
@@ -42,7 +43,12 @@ function searchKey(q: BookSearchQuery): string {
 export default function BookScreen() {
   // Spec 13's rules for the numbers in this screen's text (P10).
   useRules();
-  const { venueId, startMatch } = useLocalSearchParams<{ venueId?: string; startMatch?: string }>();
+  const { venueId, startMatch, inviteProfileId, oppositionTeamId } = useLocalSearchParams<{
+    venueId?: string;
+    startMatch?: string;
+    inviteProfileId?: string;
+    oppositionTeamId?: string;
+  }>();
   // S6: opened from Find a match's "Start a match": once paid, Publish starts
   // on. Armed while this screen is open, whichever way the player goes to pay.
   const fromStartMatch = startMatch === '1';
@@ -51,6 +57,14 @@ export default function BookScreen() {
     armStartMatch(true);
     return () => armStartMatch(false);
   }, [fromStartMatch]);
+  // S20: opened from a friend chat ("Book together", "Team vs team"): the
+  // friend or the friend's team is preselected after paying. Armed while
+  // this screen is open, like Start a match.
+  useEffect(() => {
+    if (!inviteProfileId && !oppositionTeamId) return;
+    armBookingPreselect({ inviteProfileId, oppositionTeamId });
+    return () => armBookingPreselect(null);
+  }, [inviteProfileId, oppositionTeamId]);
   const options = useLoad('options', fetchSearchOptions);
   const places = useLoad('places', fetchSearchPlaces);
   const live = useVenues({ liveOnly: true });

@@ -147,7 +147,7 @@ describe('the values the server accepts', () => {
 });
 
 describe('scanRoute', () => {
-  it('is null until S20 builds scanning, so Scan stays hidden', () => {
-    expect(scanRoute()).toBeNull();
+  it('S20: Scan opens the scanner, so the card shows the button', () => {
+    expect(scanRoute()).toBe('/scan');
   });
 });

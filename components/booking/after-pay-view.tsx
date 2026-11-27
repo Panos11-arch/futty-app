@@ -1,8 +1,9 @@
 // The screen after paying (B3; spec 13 "Invites, after payment", "Publish
 // game"): the pitch name, the day and time; "Invite friends" (by username,
-// and the share menu; the friends list comes with S20); on a half pitch,
-// side A's captain's "Invite opposition" (players and teams, plus a
-// "Publish" switch); and "Publish game". Nothing here has an amount.
+// and the share menu; S20's Book together preselects the friend); on a
+// half pitch, side A's captain's "Invite opposition" (players and teams,
+// plus a "Publish" switch; S20's Team vs team preselects the friend's team);
+// and "Publish game". Nothing here has an amount.
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Switch, View } from 'react-native';
 
@@ -25,6 +26,7 @@ import { space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
 import type { BookingDetailData } from '@/lib/booking-detail';
 import type { TeamResult } from '@/lib/booking-opposition';
+import type { PreselectFriend, PreselectTeam } from '@/lib/booking-preselect';
 import { slotLabel, type LoadState } from '@/lib/booking-search';
 import type { VenueExtras } from '@/lib/venue-extras';
 
@@ -44,6 +46,13 @@ export type AfterPayViewProps = {
   preselect?: 'players' | 'opposition' | null;
   /** S5A: the venue's food, drink and amenities; null until loaded, or if they can't be. */
   atVenue?: VenueExtras | null;
+  /** S20, Book together: the friend picked in Invite friends (the player can
+   *  remove it). Null when there is none, or the server no longer allows it. */
+  preselectFriend?: PreselectFriend | null;
+  /** S20, Book together: invites the preselected friend by id; an error line or null. */
+  onInviteFriendById?: (profileId: string) => Promise<string | null>;
+  /** S20, Team vs team: the team already picked in the opposition invite. */
+  preselectTeam?: PreselectTeam | null;
 };
 
 export function AfterPayView(props: AfterPayViewProps) {
@@ -146,6 +155,9 @@ function AfterPayReady({
   onDone,
   preselect = null,
   atVenue = null,
+  preselectFriend = null,
+  onInviteFriendById,
+  preselectTeam = null,
 }: Omit<AfterPayViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const styles = useStyles();
   const { booking, venue } = detail;
@@ -160,6 +172,29 @@ function AfterPayReady({
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [invited, setInvited] = useState<string | null>(null);
+
+  // S20, Book together: the friend, picked once it arrives; removable.
+  const [friend, setFriend] = useState<PreselectFriend | null>(null);
+  const friendPicked = useRef(false);
+  useEffect(() => {
+    if (!preselectFriend || friendPicked.current) return;
+    friendPicked.current = true;
+    setFriend(preselectFriend);
+  }, [preselectFriend]);
+
+  async function inviteFriend() {
+    if (!friend || !onInviteFriendById || inviting) return;
+    setInviting(true);
+    setInviteError(null);
+    setInvited(null);
+    const error = await onInviteFriendById(friend.profile_id);
+    setInviting(false);
+    if (error) setInviteError(error);
+    else {
+      setInvited(friend.name);
+      setFriend(null);
+    }
+  }
 
   async function invite() {
     const name = username.trim();
@@ -182,6 +217,13 @@ function AfterPayReady({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<TeamResult[]>([]);
   const [teams, setTeams] = useState<TeamResult[]>([]);
+  // S20, Team vs team: the friend's team starts picked, once it arrives.
+  const teamPicked = useRef(false);
+  useEffect(() => {
+    if (!preselectTeam || teamPicked.current) return;
+    teamPicked.current = true;
+    setTeams((list) => (list.some((t) => t.id === preselectTeam.id) ? list : [...list, preselectTeam]));
+  }, [preselectTeam]);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -249,6 +291,17 @@ function AfterPayReady({
         {captain ? (
           <View style={styles.section} testID="after-pay-invite-friends">
             <SectionHeader title="Invite friends" />
+            {friend && onInviteFriendById ? (
+              <View style={styles.inline}>
+                <Chip
+                  testID={`after-pay-friend-${friend.profile_id}`}
+                  label={friend.name}
+                  selected
+                  onPress={() => setFriend(null)}
+                />
+                <Button testID="after-pay-invite-friend" label="Invite" onPress={inviteFriend} loading={inviting} />
+              </View>
+            ) : null}
             <TextField
               label="Username"
               value={username}
@@ -318,7 +371,13 @@ function AfterPayReady({
                   />
                 ))}
                 {teams.map((team) => (
-                  <Chip key={`t-${team.id}`} label={team.name} selected onPress={() => toggleTeam(team)} />
+                  <Chip
+                    key={`t-${team.id}`}
+                    testID={`after-pay-team-chip-${team.id}`}
+                    label={team.name}
+                    selected
+                    onPress={() => toggleTeam(team)}
+                  />
                 ))}
               </View>
             ) : null}

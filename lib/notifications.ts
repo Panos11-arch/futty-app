@@ -24,7 +24,9 @@ export type NotificationType =
   | 'venue_player_accepted'
   | 'venue_player_declined'
   | 'venue_player_removed'
-  | 'saved_search_match';
+  | 'saved_search_match'
+  | 'friend_request'
+  | 'friend_accepted';
 
 /** Sent to venue staff only (venue_notifications_tick, PR #99). They open the
  *  venue dashboard, never My Bookings, and only staff see them in settings. */
@@ -117,7 +119,7 @@ export const NOTIFICATION_GROUPS: { key: NotificationGroupKey; title: string; ty
     title: 'Teams you follow',
     types: ['followed_team_match', 'followed_team_result', 'followed_team_opponent_wanted'],
   },
-  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match', 'message_new'] },
+  { key: 'community', title: 'Community', types: ['squad_post', 'booking_slot', 'team_invite', 'saved_search_match', 'message_new', 'friend_request', 'friend_accepted'] },
   // S14: off until the player switches it on (Apple guideline 4.5.4).
   { key: 'premium', title: 'Premium', types: ['premium_offers'] },
   { key: 'venue', title: 'Venue', types: [...VENUE_NOTIFICATION_TYPES] },
@@ -151,6 +153,8 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   saved_search_match: 'Your saved searches',
   team_invite: 'Invites to a team',
   message_new: 'New messages',
+  friend_request: 'Friend requests',
+  friend_accepted: 'Accepted friend requests',
   booking_cancelled: 'A booking is cancelled',
   match_payment_due: 'Payment due for a game',
   venue_closed_new_bookings: 'A venue stops taking bookings',

@@ -240,7 +240,7 @@ describe('a minor, or no username (show_qr false)', () => {
 });
 
 describe('the buttons', () => {
-  it('shows Share and Edit, round with labels, and no Scan until S20', async () => {
+  it('shows Share and Edit, round with labels, and no Scan without a scanner route', async () => {
     await open();
     await screen.findByTestId('my-card');
     expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
@@ -272,13 +272,13 @@ describe('the buttons', () => {
     expect(mockPush).toHaveBeenCalledWith('/edit-profile');
   });
 
-  it('Scan appears once S20 gives it a route, and opens it', async () => {
-    mockScanRoute.mockReturnValue('/scan-card');
+  it('Scan appears with its route (S20: the scanner), and opens it', async () => {
+    mockScanRoute.mockReturnValue('/scan');
     const { onClose } = await open();
     await fireEvent.press(await screen.findByTestId('my-card-scan'));
     expect(screen.getByTestId('icon-qrcode.viewfinder')).toBeTruthy();
     expect(onClose).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith('/scan-card');
+    expect(mockPush).toHaveBeenCalledWith('/scan');
   });
 
   it('every button is at least 44 points', async () => {

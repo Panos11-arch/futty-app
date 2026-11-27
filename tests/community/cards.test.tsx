@@ -23,7 +23,14 @@ beforeEach(() => {
 });
 
 describe('CommunityBand', () => {
-  const props = { tab: 'for_you' as const, onTab: jest.fn(), onSearch: jest.fn(), onMessages: jest.fn() };
+  const props = {
+    tab: 'for_you' as const,
+    onTab: jest.fn(),
+    onSearch: jest.fn(),
+    onMessages: jest.fn(),
+    onFriends: jest.fn(),
+    requests: 0,
+  };
 
   it('three tabs, the current one selected', async () => {
     await render(<CommunityBand {...props} unread={0} />);
@@ -40,6 +47,13 @@ describe('CommunityBand', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Messages, 3 unread' }));
     expect(props.onMessages).toHaveBeenCalled();
     expect(screen.getByTestId('community-messages-badge', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('S20: Friends, with the requests waiting', async () => {
+    await render(<CommunityBand {...props} unread={0} requests={2} />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Friends, 2 friend requests' }));
+    expect(props.onFriends).toHaveBeenCalled();
+    expect(screen.getByTestId('community-friends-badge', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it('no badge at 0', async () => {

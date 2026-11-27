@@ -120,6 +120,25 @@ describe('CheckoutView (Booking v2)', () => {
       expect(screen.queryByText('Half pitch')).toBeNull();
       expect(screen.getByTestId('checkout-kind-whole')).toBeTruthy();
     });
+
+    // S20, Team vs team: the checkout starts on half pitch; the player can
+    // still pick whole. The prices are the server's, as always.
+    it('starts on half pitch for Team vs team', async () => {
+      const p = props(checkoutDataFixture(), { initialKind: 'half' });
+      await render(<CheckoutView {...p} />);
+      expect(selected('checkout-kind-half')).toBe(true);
+      expect(within(screen.getByTestId('checkout-who-pay-all')).getByText('€22.75')).toBeTruthy();
+      await fireEvent.press(screen.getByTestId('checkout-kind-whole'));
+      expect(selected('checkout-kind-whole')).toBe(true);
+    });
+
+    it('starts on whole pitch when half isn’t available, even for Team vs team', async () => {
+      const quote = quoteV2Fixture({ half: { ...quoteV2Fixture().half, available: false } });
+      const p = props(checkoutDataFixture(quote), { initialKind: 'half' });
+      await render(<CheckoutView {...p} />);
+      expect(screen.queryByTestId('checkout-kind-half')).toBeNull();
+      expect(selected('checkout-kind-whole')).toBe(true);
+    });
   });
 
   describe('the ways to pay, each with its server price', () => {

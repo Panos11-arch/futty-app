@@ -197,3 +197,82 @@ describe('AfterPayView (B3: the screen after paying)', () => {
     expect(screen.queryByTestId('after-pay-opposition')).toBeNull();
   });
 });
+
+// S20: Book together and Team vs team (from a friend chat) preselect the
+// friend and the friend's team; the player can remove them; none when the
+// server no longer allows them. Nothing about money changes.
+describe('AfterPayView: preselected from a friend chat (S20)', () => {
+  const whole = () => bookerDetail({ v2: v2Fixture({ kind: 'whole', sides: [], opposition: null }) });
+  const ben = { profile_id: 'p-ben', name: 'Ben Friend' };
+  const benFc = { id: 't-ben', name: 'Ben FC', city: 'Limassol' };
+
+  it('Book together: the friend is picked; Invite invites them by id', async () => {
+    const onInviteFriendById = jest.fn(async () => null);
+    const p = props(whole(), { preselectFriend: ben, onInviteFriendById });
+    await render(<AfterPayView {...p} />);
+    expect(screen.getByTestId('after-pay-friend-p-ben')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('after-pay-invite-friend'));
+    expect(onInviteFriendById).toHaveBeenCalledWith('p-ben');
+    await waitFor(() =>
+      expect(screen.getByText("Invite sent to Ben Friend. They'll show up in the booking once they accept.")).toBeTruthy(),
+    );
+    expect(screen.queryByTestId('after-pay-friend-p-ben')).toBeNull();
+    expect(p.onInviteFriend).not.toHaveBeenCalled();
+    // Invite by username is still there.
+    expect(within(screen.getByTestId('after-pay-invite-friends')).getByLabelText('Username')).toBeTruthy();
+  });
+
+  it('the friend arrives after the screen opens', async () => {
+    const onInviteFriendById = jest.fn(async () => null);
+    const view = await render(<AfterPayView {...props(whole(), { onInviteFriendById })} />);
+    expect(screen.queryByTestId('after-pay-friend-p-ben')).toBeNull();
+    await view.rerender(<AfterPayView {...props(whole(), { onInviteFriendById, preselectFriend: ben })} />);
+    expect(screen.getByTestId('after-pay-friend-p-ben')).toBeTruthy();
+  });
+
+  it('the server refuses: one line, the friend stays picked', async () => {
+    const onInviteFriendById = jest.fn(async () => "You can't invite this player.");
+    await render(<AfterPayView {...props(whole(), { preselectFriend: ben, onInviteFriendById })} />);
+    await fireEvent.press(screen.getByTestId('after-pay-invite-friend'));
+    expect(await screen.findByText("You can't invite this player.")).toBeTruthy();
+    expect(screen.getByTestId('after-pay-friend-p-ben')).toBeTruthy();
+  });
+
+  it('tapping the friend removes them', async () => {
+    await render(<AfterPayView {...props(whole(), { preselectFriend: ben, onInviteFriendById: jest.fn() })} />);
+    await fireEvent.press(screen.getByTestId('after-pay-friend-p-ben'));
+    expect(screen.queryByTestId('after-pay-friend-p-ben')).toBeNull();
+    expect(screen.queryByTestId('after-pay-invite-friend')).toBeNull();
+  });
+
+  it('no friend allowed (null): Invite friends as before', async () => {
+    await render(<AfterPayView {...props(whole(), { preselectFriend: null, onInviteFriendById: jest.fn() })} />);
+    expect(screen.queryByTestId('after-pay-invite-friend')).toBeNull();
+    expect(screen.getByTestId('after-pay-invite')).toBeTruthy();
+  });
+
+  it('Team vs team: the team starts picked and goes with Send invites', async () => {
+    const p = props(bookerDetail({ v2: openHalf }), { preselectTeam: benFc });
+    await render(<AfterPayView {...p} />);
+    expect(screen.getByTestId('after-pay-team-chip-t-ben')).toBeTruthy();
+    expect(screen.getByTestId('after-pay-send-opposition').props.accessibilityState?.disabled).toBe(false);
+    await fireEvent.press(screen.getByTestId('after-pay-send-opposition'));
+    expect(p.onInviteOpposition).toHaveBeenCalledWith({ usernames: [], teamIds: ['t-ben'] });
+  });
+
+  it('Team vs team: the player can remove the team', async () => {
+    const p = props(bookerDetail({ v2: openHalf }), { preselectTeam: benFc });
+    await render(<AfterPayView {...p} />);
+    await fireEvent.press(screen.getByTestId('after-pay-team-chip-t-ben'));
+    expect(screen.queryByTestId('after-pay-team-chip-t-ben')).toBeNull();
+    expect(screen.getByTestId('after-pay-send-opposition').props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('no team allowed (null), or a whole pitch: no preselection', async () => {
+    await render(<AfterPayView {...props(bookerDetail({ v2: openHalf }), { preselectTeam: null })} />);
+    expect(screen.queryByTestId('after-pay-team-chip-t-ben')).toBeNull();
+    screen.unmount();
+    await render(<AfterPayView {...props(whole(), { preselectTeam: benFc })} />);
+    expect(screen.queryByTestId('after-pay-opposition')).toBeNull();
+  });
+});

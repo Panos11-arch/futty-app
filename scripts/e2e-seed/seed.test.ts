@@ -21,6 +21,7 @@ import {
   connectAccountKey,
   connectAccountParams,
   E2E_UNTOUCHED_LEVEL,
+  e2eFriendship,
   e2eLeagueHub,
   e2eMatchResult,
   e2eResultPlan,
@@ -403,5 +404,17 @@ describe('the e2e league (S10, competition.yaml)', () => {
       { match_id: 'm1', player_id: 'pb', profile_id: 'ub', rating: 6 },
     ]);
     expect(e2eMatchResult({ id: 'm2', kickoff_at: kickoff }, players, 0, 0).ratings.map((r) => r.rating)).toEqual([7, 7]);
+  });
+});
+
+// S20 (friends.yaml): the two logins of a platform are friends.
+describe('the e2e friendship', () => {
+  it('the first asked, the second accepted', () => {
+    expect(e2eFriendship('first', 'second')).toEqual({
+      requester_id: 'first',
+      addressee_id: 'second',
+      status: 'accepted',
+      accepted_at: '1970-01-01T00:00:00.000Z',
+    });
   });
 });
