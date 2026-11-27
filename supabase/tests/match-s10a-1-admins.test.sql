@@ -32,6 +32,7 @@ begin
     format('select public.admin_set_result(%L, 1, 0, null, null)', v_any),
     format('select public.admin_set_draw_order(%L, ''A'', ''{}'')', v_any),
     format('select public.admin_set_squad(%L, %L, ''{}'')', v_any, v_any),
+    format('select public.admin_get_tournament_squads(%L)', v_any),
     format('select public.admin_close_tournament(%L)', v_any)
   ] loop
     v_error := tests.error_as(v_user, v_sql);

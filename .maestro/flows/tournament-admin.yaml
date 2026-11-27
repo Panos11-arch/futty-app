@@ -1,7 +1,8 @@
 # S10A journey: Account → Tournaments (the admin screen; Futty admins only).
 # The seed makes this platform's first login an admin ON STAGING ONLY
 # (scripts/e2e-seed, step 9). Opens the e2e tournament with sign-up open and
-# checks its stage's actions are there; looks, never changes.
+# checks its stage's actions are there, then its Squads section (no team has
+# signed up in the seed, so it shows the empty line); looks, never changes.
 appId: com.panosalepis.futtyapp
 name: tournament-admin
 tags:
@@ -51,4 +52,11 @@ env:
     id: admin-set-groups
 - assertVisible:
     id: admin-edit-details
+- scrollUntilVisible:
+    element:
+      id: admin-squads
+    direction: DOWN
+    timeout: 10000
+- assertVisible:
+    id: admin-squads-empty
 - takeScreenshot: tournament-admin-${PLATFORM}

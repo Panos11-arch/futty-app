@@ -3,6 +3,7 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 
 import {
+  useAdminTournamentSquads,
   useIsAppAdmin,
   useTournament,
   useTournamentKnockout,
@@ -18,6 +19,7 @@ const mockApi = {
   getTournamentMatches: jest.fn(),
   getTournamentKnockout: jest.fn(),
   isAppAdmin: jest.fn(),
+  adminGetTournamentSquads: jest.fn(),
 };
 jest.mock('@/lib/match/tournament-api', () => ({
   ...jest.requireActual('@/lib/match/tournament-api'),
@@ -27,6 +29,7 @@ jest.mock('@/lib/match/tournament-api', () => ({
   getTournamentMatches: (...a: unknown[]) => mockApi.getTournamentMatches(...a),
   getTournamentKnockout: (...a: unknown[]) => mockApi.getTournamentKnockout(...a),
   isAppAdmin: (...a: unknown[]) => mockApi.isAppAdmin(...a),
+  adminGetTournamentSquads: (...a: unknown[]) => mockApi.adminGetTournamentSquads(...a),
 }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: null }) }));
@@ -90,5 +93,17 @@ describe('tournament hooks', () => {
     const no = await renderHook(() => useIsAppAdmin());
     await waitFor(() => expect(mockApi.isAppAdmin).toHaveBeenCalledTimes(2));
     expect(no.result.current.admin).toBe(false);
+  });
+
+  it('useAdminTournamentSquads: reads by id; a refusal keeps its code', async () => {
+    const squads = { squadMin: 5, squadMax: 7, teams: [] };
+    mockApi.adminGetTournamentSquads.mockResolvedValueOnce({ squads, error: null });
+    const { result } = await renderHook(() => useAdminTournamentSquads('t1'));
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(mockApi.adminGetTournamentSquads).toHaveBeenCalledWith('t1');
+    expect((result.current as { squads: unknown }).squads).toEqual(squads);
+    mockApi.adminGetTournamentSquads.mockResolvedValueOnce({ squads: null, error: { message: 'not_admin' } });
+    const refused = await renderHook(() => useAdminTournamentSquads('t2'));
+    await waitFor(() => expect(refused.result.current).toMatchObject({ status: 'error', message: 'not_admin' }));
   });
 });
