@@ -1,5 +1,6 @@
 // S7: what the Community feed cards say, from the server's rows
 // (lib/community.ts). Times in Cyprus time. No amounts here.
+
 import { cyprusDayTime, dayTitle, levelText } from '@/lib/find-match';
 import type { FeedCursor, FeedItem, MatchResultItem, SquadPostItem } from '@/lib/community';
 
@@ -92,3 +93,7 @@ export function mergePages<T extends Pick<FeedItem, 'kind' | 'item_id'>>(current
   const seen = new Set(current.map(feedKey));
   return [...current, ...incoming.filter((item) => !seen.has(feedKey(item)))];
 }
+
+/** Where "Open post" on my own post goes. Lives in find-match (Find a match
+ *  cards use it too), which this file already imports from. */
+export { ownPostHref } from '@/lib/find-match';

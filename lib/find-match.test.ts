@@ -55,6 +55,7 @@ function row(over: Partial<MatchRow> = {}): MatchRow {
     level_min: '4.00',
     level_max: '6.00',
     people: [{ id: 'u1', name: 'Andreas' }],
+    booking_id: null,
     ...over,
   };
 }
@@ -239,7 +240,7 @@ describe('groupByDay', () => {
 });
 
 describe('cardHref', () => {
-  const card = { post_id: 'p1', kind: 'players' as const, v2: true, mine: false };
+  const card = { post_id: 'p1', kind: 'players' as const, v2: true, mine: false, booking_id: null };
   it('opens the B4 join screen for a players game', () => {
     expect(cardHref(card)).toEqual({ pathname: '/join-squad-post', params: { postId: 'p1' } });
     expect(cardHref({ ...card, v2: false })).toEqual({ pathname: '/join-squad-post', params: { postId: 'p1' } });
@@ -250,6 +251,10 @@ describe('cardHref', () => {
   it('opens the posts list for an older opposition post and the caller\'s own', () => {
     expect(cardHref({ ...card, kind: 'opposition', v2: false })).toEqual({ pathname: '/squad-posts', params: { view: 'opposition' } });
     expect(cardHref({ ...card, mine: true })).toEqual({ pathname: '/squad-posts', params: { view: 'players' } });
+  });
+  // Bug 27 Nov (Panos): the posts list never shows my own post.
+  it.each(['players', 'opposition'] as const)('opens my own %s post’s booking when it has one', (kind) => {
+    expect(cardHref({ ...card, kind, mine: true, booking_id: 'b1' })).toEqual({ pathname: '/booking/[id]', params: { id: 'b1' } });
   });
 });
 

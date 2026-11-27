@@ -82,6 +82,8 @@ export type CaptainContact = AvatarColumns & {
   team_name: string;
   captain_id: string;
   captain_name: string;
+  /** S10: false when the chat would be refused (a block either way, or an adult and a minor). */
+  can_message?: boolean;
 };
 
 type RpcError = { message: string } | null;

@@ -78,6 +78,9 @@ export type SquadPostItem = FeedRowBase & {
   v2: boolean;
   mine: boolean;
   can_message: boolean;
+  /** My own post's booking, the game "Open post" opens; null on anyone
+   *  else's post and on a post with no booking. */
+  booking_id: string | null;
 };
 
 export type MatchResultItem = FeedRowBase & {

@@ -1,7 +1,15 @@
 // Hooks for A7's screens: each loads one read from lib/match/stats-api.ts and
 // gives loading, error (with reload) or ready.
 import {
-  getLatestTeamOfTheWeek,
+  getMyMostPlayedFormat,
+  getPowerRanking,
+  getPowerRankingHistory,
+  getTeamPowerRanking,
+  type PowerRankingGame,
+  type PowerRankingRow,
+  type TeamFormatRanking,
+} from '@/lib/match/power-ranking-api';
+import {
   getTeamOfTheWeek,
   getLeaderboard,
   getLeaderboardScopes,
@@ -11,6 +19,8 @@ import {
   getTeamShape,
   getTeamRecentMatches,
   getTeamSeasonStats,
+  listTeamOfTheWeekWeeks,
+  listTeamsOfTheWeek,
   type LeaderboardBoard,
   type LeaderboardRow,
   type LeaderboardScope,
@@ -91,18 +101,87 @@ export function useLeaderboard(scope: LeaderboardScope | null, year: number, boa
   return { ...state, reload };
 }
 
-/** The team a notification names (teamId), or the latest default team; the latest too if that team is gone. */
-export function useLatestTeamOfTheWeek(teamId?: string) {
-  const { state, reload } = useLoad<{ team: TeamOfTheWeek | null }>(async () => {
-    if (teamId) {
-      const named = await getTeamOfTheWeek(teamId);
-      if (named.error) return { error: named.error.message };
-      if (named.team) return { value: { team: named.team } };
-    }
-    const { team, error } = await getLatestTeamOfTheWeek();
-    return error ? { error: error.message } : { value: { team } };
-  }, teamId ?? 'latest');
+/** One team of the week by id (a notification or the Home card names it); null once it is gone. */
+export function useTeamOfTheWeekById(teamId: string | null | undefined) {
+  const { state, reload } = useLoad<{ team: TeamOfTheWeek | null }>(
+    teamId
+      ? async () => {
+          const { team, error } = await getTeamOfTheWeek(teamId);
+          return error ? { error: error.message } : { value: { team } };
+        }
+      : null,
+    teamId ?? '',
+  );
   return { ...state, reload };
+}
+
+/** The weeks with a team of the week in `format`, newest first. */
+export function useTeamOfTheWeekWeeks(format: string) {
+  const { state, reload } = useLoad<{ weeks: string[] }>(async () => {
+    const { weeks, error } = await listTeamOfTheWeekWeeks(format);
+    return error ? { error: error.message } : { value: { weeks } };
+  }, format);
+  return { ...state, reload };
+}
+
+/** Every team of one week and format (the area picker's choices). */
+export function useTeamsOfTheWeek(weekStart: string | null, format: string) {
+  const { state, reload } = useLoad<{ teams: TeamOfTheWeek[] }>(
+    weekStart
+      ? async () => {
+          const { teams, error } = await listTeamsOfTheWeek(weekStart, format);
+          return error ? { error: error.message } : { value: { teams } };
+        }
+      : null,
+    weekStart ? `${weekStart}|${format}` : '',
+  );
+  return { ...state, reload };
+}
+
+/** The power ranking in `format`. */
+export function usePowerRanking(format: string) {
+  const { state, reload } = useLoad<{ rows: PowerRankingRow[] }>(async () => {
+    const { rows, error } = await getPowerRanking(format);
+    return error ? { error: error.message } : { value: { rows } };
+  }, format);
+  return { ...state, reload };
+}
+
+/** A team's counted games in `format`, latest first (the breakdown). */
+export function usePowerRankingHistory(teamId: string | null, format: string) {
+  const { state, reload } = useLoad<{ games: PowerRankingGame[] }>(
+    teamId
+      ? async () => {
+          const { games, error } = await getPowerRankingHistory(teamId, format);
+          return error ? { error: error.message } : { value: { games } };
+        }
+      : null,
+    teamId ? `${teamId}|${format}` : '',
+  );
+  return { ...state, reload };
+}
+
+/** A team's place in each format where it is listed. */
+export function useTeamPowerRanking(teamId: string | null | undefined) {
+  const { state, reload } = useLoad<{ rows: TeamFormatRanking[] }>(
+    teamId
+      ? async () => {
+          const { rows, error } = await getTeamPowerRanking(teamId);
+          return error ? { error: error.message } : { value: { rows } };
+        }
+      : null,
+    teamId ?? '',
+  );
+  return { ...state, reload };
+}
+
+/** The viewer's most played format (null with none, or when it can't be read). */
+export function useMyMostPlayedFormat() {
+  const { state } = useLoad<{ format: string | null }>(async () => {
+    const { format } = await getMyMostPlayedFormat();
+    return { value: { format } };
+  }, 'me');
+  return state;
 }
 
 /** A team's players and its format's shape (to show the empty slots). */

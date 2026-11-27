@@ -1,0 +1,64 @@
+# Journey (S15): the Rankings tab (images 14, 15). Team of the Week opens
+# first with its "How it's picked" sheet; the switch opens Power ranking,
+# a format chip changes the format, and "How it works" opens its sheet.
+# Read only: the seeded data may have no team or ranking yet, so the flow
+# checks the screens and controls, not names or numbers.
+appId: com.panosalepis.futtyapp
+name: rankings
+tags:
+  - e2e
+  - rankings
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: rankings
+- assertVisible:
+    id: rankings-screen
+- assertVisible:
+    id: totw-view
+- takeScreenshot: rankings-totw-${PLATFORM}
+
+# How it's picked.
+- tapOn:
+    id: rankings-how
+- assertVisible:
+    id: how-its-picked-sheet
+- assertVisible: Only Futty Premium players can be picked
+- tapOn: Close
+
+# Power ranking, then another format.
+- tapOn:
+    id: rankings-power
+- assertVisible:
+    id: power-ranking-list
+- tapOn:
+    id: rankings-format-7
+- assertVisible:
+    id: power-ranking-list
+- takeScreenshot: rankings-power-${PLATFORM}
+
+# How it works.
+- tapOn:
+    id: rankings-how
+- assertVisible:
+    id: how-it-works-sheet
+- assertVisible: Everyone starts at 1000
+- tapOn: Close
+
+# Back to Team of the Week.
+- tapOn:
+    id: rankings-totw
+- assertVisible:
+    id: totw-view

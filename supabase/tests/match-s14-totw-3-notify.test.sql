@@ -65,7 +65,8 @@ begin
     (np, 'ExponentPushToken[s14np]', 'ios'), (p1, 'ExponentPushToken[s14p1]', 'ios');
 
   -- V1 (Paphos, busy: five games). NP (non-Premium) would top 5-a-side
-  -- (9.5) and 7-a-side (9.0); LOW (non-Premium, 5.0) would not be picked anyway.
+  -- (9.5) and 7-a-side (9.0); LOW (non-Premium, 5.0) would make only the
+  -- Paphos team, once P1-P5 are in All Cyprus.
   m := tests.totw_match('2026-03-02 18:00+00', '5-a-side', v1);
   perform tests.totw_play(m, np, 9.5);
   perform tests.totw_play(m, p1, 9.0, 0, 0, 'b');
@@ -148,7 +149,14 @@ begin
   assert v_note.data ->> 'kind' = 'team_of_the_week_skipped' and v_note.data ->> 'teamOfTheWeekId' = v_all5::text,
     'the data';
   assert (select count(*) from public.team_of_the_week_skips where profile_id = np) = 1, 'one skip row';
-  assert tests.notified(low, 'premium_offers') = 0, 'LOW would not have been picked: not skipped';
+  -- One general team per format a week (Panos, 26 November): P1-P5 are in
+  -- All Cyprus, so LOW (not Premium) would have made the Paphos team: one
+  -- nudge, naming it. (A non-Premium player below the last pick is still
+  -- never skipped: match-s14-totw-5-one-team.test.sql.)
+  assert tests.notified(low, 'premium_offers') = 1, format('LOW: one nudge, got %s', tests.notified(low, 'premium_offers'));
+  assert (tests.note14(low, 'premium_offers', v_week)).body
+         = 'You''d have made the Paphos 5-a-side Team of the Week (5.0). Get Futty Premium to be eligible.',
+    format('LOW: the Paphos team, got %s', (tests.note14(low, 'premium_offers', v_week)).body);
   assert tests.pushes14(np, 'premium_offers') = 0, 'no push: Premium and offers is off';
 
   -- 5. Running the pick again sends nothing new.
