@@ -40,10 +40,16 @@ describe('leagueHref', () => {
 });
 
 describe('tournamentHref', () => {
-  it('opens the Coming soon screen until S10A builds the tournament page', () => {
-    expect(tournamentHref({ name: 'Cup', scope: 'Limassol', format: '5-a-side' })).toEqual({
+  const cup = { id: 't1', name: 'Cup', area: 'Limassol', format: '5-a-side', maxTeams: 16 };
+
+  it('opens the Coming soon screen until sign-up opens', () => {
+    expect(tournamentHref({ ...cup, comingSoon: true })).toEqual({
       pathname: '/leagues/coming-soon',
-      params: { kind: 'tournament', name: 'Cup', scope: 'limassol', format: '5-a-side' },
+      params: { kind: 'tournament', name: 'Cup', scope: 'limassol', format: '5-a-side', teams: '16' },
     });
+  });
+
+  it('opens the tournament page once sign-up opens', () => {
+    expect(tournamentHref({ ...cup, comingSoon: false })).toEqual({ pathname: '/leagues/tournament/[id]', params: { id: 't1' } });
   });
 });

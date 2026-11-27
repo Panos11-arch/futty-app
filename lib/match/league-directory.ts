@@ -4,6 +4,7 @@
 // top-level one (parent_league_id null); divisions sit under it and seasons
 // replace it, so pins and keys never name a row id.
 import type { League } from '@/lib/leagues';
+import { tournamentStatusLabel, type TournamentHeader } from '@/lib/match/tournament-api';
 import { leagueFormatOpen } from '@/lib/premium';
 
 /** Every format a league is listed in (decided 22 November). */
@@ -18,8 +19,12 @@ const CITY_ORDER = ['nicosia', 'limassol', 'larnaca', 'paphos'];
 
 export type CompetitionState = 'coming_soon' | 'signup' | 'running';
 
-/** One server pin (competition_pins). */
-export type CompetitionPin = { target_type: 'league'; scope: string; format: string };
+/** A league pin (competition_pins), by scope and format. */
+export type LeaguePin = { target_type: 'league'; scope: string; format: string };
+/** A tournament pin (tournament_pins, S10A). */
+export type TournamentPin = { target_type: 'tournament'; tournament_id: string };
+/** One server pin, of either kind. */
+export type CompetitionPin = LeaguePin | TournamentPin;
 
 export type CompetitionEntry = {
   /** Stable across seasons: league:<scope>:<format>. */
@@ -45,10 +50,27 @@ export type CompetitionGroup = {
   entries: CompetitionEntry[];
 };
 
+/** S10A: one tournament on the Leagues screen. */
+export type TournamentEntry = {
+  /** tournament:<id> */
+  key: string;
+  tournament: TournamentHeader;
+  name: string;
+  /** "Tournament · Coming soon" */
+  subtitle: string;
+  pinned: boolean;
+};
+
+export type TournamentGroup = { label: string; subtitle: string; entries: TournamentEntry[] };
+
 export type LeagueDirectory = {
   pinned: CompetitionEntry[];
+  /** S10A: pinned tournaments, after the pinned leagues. */
+  pinnedTournaments: TournamentEntry[];
   open: CompetitionGroup;
   cities: CompetitionGroup[];
+  /** S10A: the Tournaments group, last; null with none. */
+  tournaments: TournamentGroup | null;
 };
 
 export function normaliseScope(scope: string): string {
@@ -140,8 +162,9 @@ function cityRank(scope: string) {
 export function buildLeagueDirectory(
   leagues: League[],
   pins: CompetitionPin[],
-  /** Team Premium's flag; lib/premium.ts's TEAM_PREMIUM_ENABLED when left out. */
-  { teamPremiumEnabled }: { teamPremiumEnabled?: boolean } = {},
+  /** Team Premium's flag; lib/premium.ts's TEAM_PREMIUM_ENABLED when left out.
+   *  S10A: the tournaments (list_tournaments). */
+  { teamPremiumEnabled, tournaments = [] }: { teamPremiumEnabled?: boolean; tournaments?: TournamentHeader[] } = {},
 ): LeagueDirectory {
   const pinnedKeys = new Set(
     pins.filter((p) => p.target_type === 'league' && isLeagueFormat(p.format)).map((p) => competitionKey(p.scope, p.format)),
@@ -189,5 +212,35 @@ export function buildLeagueDirectory(
     pinned.push(all.get(key) ?? entryFor(normaliseScope(pin.scope), pin.format, null, pinnedKeys, teamPremiumEnabled));
   }
 
-  return { pinned, open, cities };
+  const pinnedIds = pins.flatMap((p) => (p.target_type === 'tournament' ? [p.tournament_id] : []));
+  const tournamentEntries = tournaments.map((t) => tournamentEntry(t, pinnedIds.includes(t.id)));
+  const byId = new Map(tournamentEntries.map((e) => [e.tournament.id, e]));
+  const pinnedTournaments = [...new Set(pinnedIds)].flatMap((id) => {
+    const entry = byId.get(id);
+    return entry ? [entry] : [];
+  });
+  const soon = tournamentEntries.filter((e) => e.tournament.comingSoon).length;
+  const tournamentGroup: TournamentGroup | null =
+    tournamentEntries.length === 0
+      ? null
+      : {
+          label: 'Tournaments',
+          subtitle:
+            soon === tournamentEntries.length
+              ? `${soon} coming soon`
+              : `${tournamentEntries.length} ${tournamentEntries.length === 1 ? 'tournament' : 'tournaments'}`,
+          entries: tournamentEntries,
+        };
+
+  return { pinned, pinnedTournaments, open, cities, tournaments: tournamentGroup };
+}
+
+function tournamentEntry(t: TournamentHeader, pinned: boolean): TournamentEntry {
+  return {
+    key: `tournament:${t.id}`,
+    tournament: t,
+    name: t.name,
+    subtitle: `Tournament · ${tournamentStatusLabel(t.status)}`,
+    pinned,
+  };
 }

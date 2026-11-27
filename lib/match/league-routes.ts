@@ -13,13 +13,22 @@ export function leagueHref(entry: Pick<CompetitionEntry, 'state' | 'scope' | 'fo
   return { pathname: '/leagues/[id]' as const, params: { id: entry.league.id } };
 }
 
-export type TournamentRef = { name: string; scope: string; format: string };
+export type TournamentRef = { id: string; name: string; area: string; format: string; maxTeams: number; comingSoon: boolean };
 
-/** Tournaments show "Coming soon" until their sign-up opens; S10A adds the
- *  tournament page and its data. */
+/** S10A: a tournament shows "Coming soon" (image 17) until its sign-up
+ *  opens; then its page. */
 export function tournamentHref(tournament: TournamentRef) {
-  return {
-    pathname: '/leagues/coming-soon' as const,
-    params: { kind: 'tournament', name: tournament.name, scope: normaliseScope(tournament.scope), format: tournament.format },
-  };
+  if (tournament.comingSoon) {
+    return {
+      pathname: '/leagues/coming-soon' as const,
+      params: {
+        kind: 'tournament',
+        name: tournament.name,
+        scope: normaliseScope(tournament.area),
+        format: tournament.format,
+        teams: String(tournament.maxTeams),
+      },
+    };
+  }
+  return { pathname: '/leagues/tournament/[id]' as const, params: { id: tournament.id } };
 }

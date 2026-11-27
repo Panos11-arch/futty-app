@@ -42,6 +42,13 @@ describe('Coming soon', () => {
     expect(screen.getByText('Nuevo Campo Cup')).toBeTruthy();
     expect(screen.getByText('Limassol · 5-a-side tournament')).toBeTruthy();
     expect(screen.getByText('Sign-up hasn’t opened yet. Check back here for dates and sign-up.')).toBeTruthy();
+    expect(screen.getByText('NC', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('a tournament with its size shows "16 teams" (image 17)', async () => {
+    g.mockSearchParams = { kind: 'tournament', name: 'Nuevo Campo Cup', scope: 'limassol', format: '5-a-side', teams: '16' };
+    await render(<ComingSoonScreen />);
+    expect(screen.getByText('Limassol · 5-a-side tournament · 16 teams')).toBeTruthy();
   });
 
   it('the header back link goes back too; opened first, Back opens the Leagues screen', async () => {

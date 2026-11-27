@@ -24,6 +24,11 @@ const WORDS: Record<string, string> = {
   score_locked: 'This score is final.',
   // Levels like Playtomic (25 November): "Check the score".
   cannot_check_score: "Only the other side's players can check this score.",
+  // S10A (decision 1o): penalties in a drawn knockout game.
+  shootout_required: 'A drawn knockout game needs the penalty shootout score.',
+  invalid_shootout: 'That shootout score isn’t possible. Check it.',
+  shootout_not_allowed: 'Penalties only count in a drawn knockout game.',
+  tournament_always_competitive: 'Tournament games are always Competitive.',
 };
 
 export const MATCH_RESULT_ERROR_CODES = Object.keys(WORDS);

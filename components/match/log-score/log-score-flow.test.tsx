@@ -20,6 +20,10 @@ jest.mock('@/lib/messages', () => ({
   openMatchCaptainConversation: jest.fn(),
 }));
 
+// S10A: whether the match is a tournament knockout game (off unless a test says so).
+const mockKnockout = jest.fn();
+jest.mock('@/lib/match/match-stage', () => ({ getMatchKnockout: (id: string) => mockKnockout(id) }));
+
 const logResult = logMatchResult as jest.Mock;
 const correct = setMatchStats as jest.Mock;
 
@@ -27,6 +31,7 @@ beforeEach(() => {
   mockContact.mockReset().mockResolvedValue({ my_team_id: 't1', team_id: 't2', team_name: 'Paphos 5', captain_id: 'p2', captain_name: 'Marios' });
   logResult.mockReset().mockResolvedValue({ result: { status: 'confirmed', tries: 1, maxTries: 3 }, error: null });
   correct.mockReset().mockResolvedValue({ error: null });
+  mockKnockout.mockReset().mockResolvedValue({ knockout: false, error: null });
 });
 
 async function show(log: MatchLog = mockMatchLog()) {
@@ -361,5 +366,75 @@ describe("LogScoreFlow: Didn't play", () => {
     expect(screen.queryByTestId('log-score-didnt-play-a1')).toBeNull();
     expect(screen.getByTestId('log-score-didnt-play-a2')).toBeTruthy();
     expect(screen.queryByTestId('log-score-didnt-play-b1')).toBeNull();
+  });
+});
+
+describe('LogScoreFlow: S10A tournament penalties', () => {
+  /** A named game (his side only) logged level at 1–1. */
+  async function levelScore(knockout: boolean) {
+    mockKnockout.mockResolvedValue({ knockout, error: null });
+    const props = await show(mockNamedLog());
+    await press('add-goal');
+    await press('log-score-b-plus');
+    await press('post-match-next');
+    return props;
+  }
+
+  it('a drawn knockout game asks for the shootout after Score, under the Score label, and sends it', async () => {
+    await levelScore(true);
+    expect(mockKnockout).toHaveBeenCalledWith('m1');
+    expect(screen.getByTestId('post-match-step-shootout')).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Penalties' })).toBeTruthy();
+    expect(width()).toBe('0%');
+    // No winner yet: Continue waits.
+    expect(disabled('post-match-next')).toBe(true);
+    await press('log-shootout-a-plus');
+    await press('log-shootout-a-plus');
+    await press('log-shootout-b-plus');
+    expect(screen.getByTestId('log-shootout-a-value')).toHaveTextContent('2');
+    await press('log-shootout-b-minus');
+    await press('log-shootout-b-plus');
+    expect(disabled('post-match-next')).toBe(false);
+    await press('post-match-next');
+    expect(screen.getByTestId('post-match-step-goals')).toBeTruthy();
+    await press('log-score-goal-plus-a2');
+    await press('post-match-next');
+    await press('post-match-next');
+    await press('post-match-done');
+    const call = logResult.mock.calls[0];
+    expect(call[1]).toEqual({ a: 1, b: 1 });
+    expect(call[3]).toEqual({ a: 2, b: 1 });
+  });
+
+  it('a drawn group game has no shootout and sends none', async () => {
+    await levelScore(false);
+    expect(screen.queryByTestId('post-match-step-shootout')).toBeNull();
+    expect(screen.getByTestId('post-match-step-goals')).toBeTruthy();
+    await press('log-score-goal-plus-a2');
+    await press('post-match-next');
+    await press('post-match-next');
+    await press('post-match-done');
+    expect(logResult.mock.calls[0]).toHaveLength(3);
+  });
+
+  it('a knockout game that is not level has no shootout', async () => {
+    mockKnockout.mockResolvedValue({ knockout: true, error: null });
+    await show(mockNamedLog());
+    await press('add-goal');
+    await press('post-match-next');
+    expect(screen.queryByTestId('post-match-step-shootout')).toBeNull();
+  });
+
+  it.each([
+    ['shootout_required', 'A drawn knockout game needs the penalty shootout score.'],
+    ['invalid_shootout', 'That shootout score isn’t possible. Check it.'],
+  ])('the server refusing with %s shows its one line', async (code, words) => {
+    logResult.mockResolvedValue({ result: null, error: { message: code } });
+    await levelScore(false);
+    await press('log-score-goal-plus-a2');
+    await press('post-match-next');
+    await press('post-match-next');
+    await press('post-match-done');
+    expect(screen.getByText(words)).toBeTruthy();
   });
 });

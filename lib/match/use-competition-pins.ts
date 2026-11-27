@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { haptic } from '@/lib/haptics';
 import { competitionKey, normaliseScope, type CompetitionPin } from '@/lib/match/league-directory';
-import { listPins, pinCompetition, unpinCompetition } from '@/lib/match/pins';
+import { listPins, pinCompetition, pinTournament, unpinCompetition, unpinTournament } from '@/lib/match/pins';
+
+/** A league pin's key; null for a tournament pin. */
+function leagueKeyOf(p: CompetitionPin): string | null {
+  return p.target_type === 'league' ? competitionKey(p.scope, p.format) : null;
+}
 
 type PinsState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready' };
 
@@ -32,8 +37,13 @@ export function useCompetitionPins() {
   const isPinned = useCallback(
     (scope: string, format: string) => {
       const key = competitionKey(scope, format);
-      return pins.some((p) => competitionKey(p.scope, p.format) === key);
+      return pins.some((p) => leagueKeyOf(p) === key);
     },
+    [pins],
+  );
+
+  const isTournamentPinned = useCallback(
+    (tournamentId: string) => pins.some((p) => p.target_type === 'tournament' && p.tournament_id === tournamentId),
     [pins],
   );
 
@@ -41,15 +51,30 @@ export function useCompetitionPins() {
     const scope = normaliseScope(rawScope);
     const key = competitionKey(scope, format);
     const before = latest.current;
-    const wasPinned = before.some((p) => competitionKey(p.scope, p.format) === key);
+    const wasPinned = before.some((p) => leagueKeyOf(p) === key);
     haptic.tap();
     setToggleError(null);
     setPins(
       wasPinned
-        ? before.filter((p) => competitionKey(p.scope, p.format) !== key)
+        ? before.filter((p) => leagueKeyOf(p) !== key)
         : [...before, { target_type: 'league', scope, format }],
     );
     const { error } = wasPinned ? await unpinCompetition(scope, format) : await pinCompetition(scope, format);
+    if (error) {
+      setPins(before);
+      setToggleError('Could not save your pin. Try again.');
+    }
+  }, []);
+
+  /** S10A: the same, for a tournament (tournament_pins). */
+  const toggleTournament = useCallback(async (tournamentId: string) => {
+    const before = latest.current;
+    const mine = (p: CompetitionPin) => p.target_type === 'tournament' && p.tournament_id === tournamentId;
+    const wasPinned = before.some(mine);
+    haptic.tap();
+    setToggleError(null);
+    setPins(wasPinned ? before.filter((p) => !mine(p)) : [...before, { target_type: 'tournament', tournament_id: tournamentId }]);
+    const { error } = wasPinned ? await unpinTournament(tournamentId) : await pinTournament(tournamentId);
     if (error) {
       setPins(before);
       setToggleError('Could not save your pin. Try again.');
@@ -62,6 +87,8 @@ export function useCompetitionPins() {
     pins,
     isPinned,
     toggle,
+    isTournamentPinned,
+    toggleTournament,
     toggleError,
     reload,
   };
