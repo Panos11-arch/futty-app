@@ -17,7 +17,8 @@
 //      revoke, and that is logged (decided 13 November, for Panos to confirm).
 //   2. Deletes their saved cards (the Stripe customer), push tokens,
 //      follows/blocks and saved searches (links.ts).
-//      Also their Futty AI chats and the photos in them (S13A).
+//      Also their Futty AI chats and the photos in them (S13A), and their
+//      posts, comments, likes and post photos (S7b).
 //   3. Clears every personal field on their profile. Match stats stay, under
 //      "Deleted player", so league tables and opponents' records don't
 //      change retroactively.
@@ -40,6 +41,7 @@ import { getCallerId } from '../_shared/caller.ts';
 import { cyprusToday } from '../_shared/cyprus-time.ts';
 import { type Body, deleteAccount } from './handler.ts';
 import { deleteAccountLinks } from './links.ts';
+import { deleteAccountPostsAndPhotos } from '../_shared/post-photos.ts';
 import { SCRUBBED_PROFILE } from './scrub.ts';
 import { type Db as OwedDb, owedCents } from './owed.ts';
 import { type Db, hasUpcomingGames } from './upcoming.ts';
@@ -130,6 +132,24 @@ Deno.serve(async (req) => {
           { keepChatsIfPhotosFail: false },
         ).catch((err) => ({ deleted: 0, photoError: err instanceof Error ? err.message : String(err) }));
         if (ai.photoError) console.error(`delete-account: Futty AI chats or photos not deleted for ${id}:`, ai.photoError);
+
+        // S7b: their posts (with the likes and comments on them), their own
+        // likes and comments, then the photos and unposted uploads.
+        const posts = await deleteAccountPostsAndPhotos(
+          {
+            async deleteRows(userId) {
+              const { data, error } = await admin.rpc('delete_account_posts', { p_profile_id: userId });
+              if (error) throw new Error(`delete_account_posts: ${error.message}`);
+              return (data ?? []) as string[];
+            },
+            async remove(paths) {
+              const { error } = await admin.storage.from('post-photos').remove(paths);
+              if (error) throw new Error(error.message);
+            },
+          },
+          id,
+        ).catch((err) => ({ photos: 0, photoError: err instanceof Error ? err.message : String(err) }));
+        if (posts.photoError) console.error(`delete-account: posts or post photos not deleted for ${id}:`, posts.photoError);
 
         const failed = await deleteAccountLinks(admin, id);
         if (failed.length > 0) console.error(`delete-account: links not deleted for ${id}: ${failed.join('; ')}`);
