@@ -19,6 +19,7 @@ export function post(over: Partial<SquadPostItem> = {}): SquadPostItem {
     v2: false,
     mine: false,
     can_message: false,
+    booking_id: null,
     ...over,
   };
 }

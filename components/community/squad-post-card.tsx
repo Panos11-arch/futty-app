@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import type { SquadPostItem } from '@/lib/community';
-import { postLine, postSubtitle, spotsLabel } from '@/lib/community-feed';
+import { ownPostHref, postLine, postSubtitle, spotsLabel } from '@/lib/community-feed';
 import { cardHref } from '@/lib/find-match';
 import { haptic } from '@/lib/haptics';
 import { chatHref, describeMessageError, openFriendConversation } from '@/lib/messages';
@@ -24,10 +24,17 @@ export function SquadPostCard({ item, now }: { item: SquadPostItem; now?: Date }
   const [error, setError] = useState<string | null>(null);
   const spots = spotsLabel(item.spots);
   const open = item.post_status === 'open';
+  // My own post opens its game; someone else's opens Join or Accept.
+  const href = item.mine
+    ? ownPostHref(item)
+    : open
+      ? cardHref({ post_id: item.item_id, kind: item.post_type, v2: item.v2, mine: false })
+      : null;
 
   function join() {
+    if (!href) return;
     haptic.tap();
-    router.push(cardHref({ post_id: item.item_id, kind: item.post_type, v2: item.v2, mine: item.mine }));
+    router.push(href);
   }
 
   async function message() {
@@ -51,7 +58,7 @@ export function SquadPostCard({ item, now }: { item: SquadPostItem; now?: Date }
         pill={spots ? <Pill label={spots} testID={`feed-post-spots-${item.item_id}`} /> : null}
       />
       <Text variant="body">{postLine(item, now)}</Text>
-      {item.mine || open ? (
+      {href ? (
         <View style={styles.actions}>
           <View style={styles.flex}>
             <Button

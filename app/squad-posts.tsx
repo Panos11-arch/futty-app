@@ -596,7 +596,11 @@ export default function SquadPostsScreen() {
           />
         ) : null}
         {posts.status === 'ready' && shown.length === 0 ? (
-          <EmptyState icon="person.2.fill" message="Nothing open right now — check back soon." />
+          <EmptyState
+            icon="person.2.fill"
+            message="No open games"
+            action={{ label: 'Find a match', onPress: () => router.push({ pathname: '/squads', params: { view } }) }}
+          />
         ) : null}
 
         {shown.map((post) =>
