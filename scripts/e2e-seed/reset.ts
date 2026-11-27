@@ -2,7 +2,7 @@
 // the reset only ever selects the e2e logins (by their exact email domain)
 // and their own bookings at the E2E venue. The database queries filter the
 // same way first; these run on the rows that come back as a second check.
-import { E2E_EMAIL_DOMAIN, E2E_STAFF, E2E_USERS, E2E_VENUE } from './config';
+import { E2E_EMAIL_DOMAIN, E2E_LEAGUE, E2E_STAFF, E2E_TEAMS, E2E_USERS, E2E_VENUE } from './config';
 import { cyprusWallTime } from './slot';
 
 /** Only <something>@e2e.futty.app, nothing that merely contains it. */
@@ -52,5 +52,27 @@ export function selectBookingsToCancel(
 export function assertE2eVenue(existing: { name: string } | null): void {
   if (existing && existing.name !== E2E_VENUE.name) {
     throw new Error(`e2e seed: venue ${E2E_VENUE.id} is "${existing.name}", not "${E2E_VENUE.name}". Stopping.`);
+  }
+}
+
+/** The league row at E2E_LEAGUE.id must be our top-level e2e league: a
+ *  different name, scope or a parent means it is somebody else's row, and
+ *  the seed stops before changing it. */
+export function assertE2eLeague(existing: { name: string; scope: string; parent_league_id: string | null } | null): void {
+  if (!existing) return;
+  if (existing.name !== E2E_LEAGUE.name || existing.scope !== E2E_LEAGUE.scope || existing.parent_league_id !== null) {
+    throw new Error(
+      `e2e seed: league ${E2E_LEAGUE.id} is "${existing.name}" (${existing.scope}), not the e2e league "${E2E_LEAGUE.name}". Stopping.`,
+    );
+  }
+}
+
+/** Each e2e team id must hold that e2e team (by name), or nothing yet. */
+export function assertE2eTeams(existing: readonly { id: string; name: string }[]): void {
+  for (const row of existing) {
+    const team = E2E_TEAMS.find((t) => t.id === row.id);
+    if (!team || team.name !== row.name) {
+      throw new Error(`e2e seed: team ${row.id} is "${row.name}", not an e2e team. Stopping.`);
+    }
   }
 }

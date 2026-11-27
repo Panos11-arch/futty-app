@@ -2,12 +2,30 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { PRODUCTION_PROJECT_REF } from '../../lib/e2e-guard';
-import { E2E_DATE_OF_BIRTH, E2E_LOG_MATCHES, E2E_PITCHES, E2E_STAFF, E2E_STAFF_BOOKING, E2E_VENUE } from './config';
+import {
+  E2E_DATE_OF_BIRTH,
+  E2E_LEAGUE,
+  E2E_LEAGUE_RESULTS,
+  E2E_LOG_MATCHES,
+  E2E_PITCHES,
+  E2E_STAFF,
+  E2E_STAFF_BOOKING,
+  E2E_TEAMS,
+  E2E_UPCOMING,
+  E2E_USERS,
+  E2E_VENUE,
+} from './config';
 import { startingLevelOffered } from '../../lib/match/levels';
+import { addDays, cyprusToday, cyprusWallTime } from './slot';
 import {
   connectAccountKey,
   connectAccountParams,
   E2E_UNTOUCHED_LEVEL,
+  e2eLeagueHub,
+  e2eMatchResult,
+  e2eResultPlan,
+  e2eTeamRows,
+  e2eUpcomingFixture,
   e2eLogScoreMatch,
   e2eStaffBooking,
   e2eStaffVenue,
@@ -269,5 +287,121 @@ describe('the venue staff’s test venue and its phone booking', () => {
     });
     // 00:30 on 25 November in Cyprus (22:30 UTC on the 24th): tomorrow is the 26th.
     expect(e2eStaffBooking(E2E_STAFF[1], new Date('2026-11-24T22:30:00Z')).p_day).toBe('2026-11-26');
+  });
+});
+
+describe('the e2e league (S10, competition.yaml)', () => {
+  const now = new Date('2026-11-27T10:00:00Z');
+  const captainIds = new Map(E2E_USERS.map((u, i) => [u.email, `profile-${i}`]));
+
+  it('a top-level city league in its own e2e city, in sign-up, starting 21 days ago', () => {
+    expect(e2eLeagueHub(now)).toEqual({
+      id: E2E_LEAGUE.id,
+      name: 'E2E City 5s',
+      scope: 'E2E',
+      format: '5-a-side',
+      stage: 'signup',
+      capacity: 8,
+      season_weeks: 6,
+      kind: 'league',
+      parent_league_id: null,
+      start_date: '2026-11-06',
+    });
+  });
+
+  it('four teams, one per player login, each its captain, with fixed ids in pairing order', () => {
+    const rows = e2eTeamRows(captainIds);
+    expect(rows.teams.map((t) => t.id)).toEqual([...E2E_TEAMS.map((t) => t.id)].sort());
+    expect(new Set(E2E_TEAMS.map((t) => t.captainEmail))).toEqual(new Set(E2E_USERS.map((u) => u.email)));
+    expect(rows.teams.every((t) => t.roster_size === 1 && t.name.startsWith('E2E '))).toBe(true);
+    expect(rows.members).toEqual(
+      E2E_TEAMS.map((t) => ({ team_id: t.id, profile_id: captainIds.get(t.captainEmail), role: 'captain' })),
+    );
+  });
+
+  it('every pairing once, each team 3 games', () => {
+    const pairs = new Set(E2E_LEAGUE_RESULTS.map((r) => [r.home, r.away].sort().join('-')));
+    expect(pairs.size).toBe(6);
+    for (let t = 0; t < 4; t++) {
+      expect(E2E_LEAGUE_RESULTS.filter((r) => r.home === t || r.away === t)).toHaveLength(3);
+    }
+    // sync_league_fixtures makes home the lower id.
+    expect(E2E_LEAGUE_RESULTS.every((r) => E2E_TEAMS[r.home].id < E2E_TEAMS[r.away].id)).toBe(true);
+  });
+
+  const start = addDays(cyprusToday(now), -E2E_LEAGUE.startDaysAgo);
+  const fixtures = E2E_LEAGUE_RESULTS.map((r, i) => ({
+    id: `f${i}`,
+    home_team_id: E2E_TEAMS[r.home].id,
+    away_team_id: E2E_TEAMS[r.away].id,
+    status: 'unscheduled',
+  }));
+
+  it('plays the six pairings 3 days apart from the start, all final well before the first run', () => {
+    const plan = e2eResultPlan(fixtures, start);
+    expect(plan.map((p) => p.fixtureId)).toEqual(['f0', 'f1', 'f2', 'f3', 'f4', 'f5']);
+    expect(plan.map((p) => p.scheduled_day)).toEqual([0, 3, 6, 9, 12, 15].map((d) => addDays(start, d)));
+    const last = cyprusWallTime(plan[5].scheduled_day, plan[5].scheduled_time);
+    // The match's end + 24 hours (its result deadline), with a day to spare.
+    expect(last.getTime() + (1 + 24 + 24) * 3_600_000).toBeLessThan(now.getTime());
+    expect(plan[0]).toMatchObject({ homeGoals: 2, awayGoals: 1 });
+  });
+
+  it('a second run leaves completed fixtures alone, and ignores the upcoming one', () => {
+    const upcoming = { id: 'up', home_team_id: E2E_TEAMS[1].id, away_team_id: E2E_TEAMS[0].id, status: 'agreed' };
+    const done = fixtures.map((f) => ({ ...f, status: 'completed' }));
+    expect(e2eResultPlan([...done, upcoming], start)).toEqual([]);
+    // A run that stopped halfway picks up the rest.
+    expect(e2eResultPlan([...done.slice(0, 4), ...fixtures.slice(4), upcoming], start).map((p) => p.fixtureId)).toEqual([
+      'f4',
+      'f5',
+    ]);
+  });
+
+  it('stops when a pairing is missing (the season is not ours)', () => {
+    expect(() => e2eResultPlan(fixtures.slice(1), start)).toThrow(/Stopping/);
+  });
+
+  it('the upcoming fixture: Android 1 at home to iOS 1, 3 days ahead in Cyprus, at the E2E Arena', () => {
+    expect(e2eUpcomingFixture('season-1', now)).toEqual({
+      league_id: 'season-1',
+      home_team_id: E2E_TEAMS[E2E_UPCOMING.home].id,
+      away_team_id: E2E_TEAMS[E2E_UPCOMING.away].id,
+      venue_id: E2E_VENUE.id,
+      scheduled_day: '2026-11-30',
+      scheduled_time: '20:00',
+      status: 'agreed',
+    });
+    expect(E2E_TEAMS[E2E_UPCOMING.home].id > E2E_TEAMS[E2E_UPCOMING.away].id).toBe(true);
+  });
+
+  it('a final result: confirmed by both captains, everyone checked in, the goals and ratings', () => {
+    const kickoff = '2026-11-06T17:00:00.000Z';
+    const players = [
+      { id: 'pa', profile_id: 'ua', side: 'a' },
+      { id: 'pb', profile_id: 'ub', side: 'b' },
+    ];
+    const rows = e2eMatchResult({ id: 'm1', kickoff_at: kickoff }, players, 2, 1);
+    expect(rows.match).toEqual({
+      status: 'confirmed',
+      side_a_score: 2,
+      side_b_score: 1,
+      confirmed_at: '2026-11-06T19:00:00.000Z',
+      confirmed_via: 'agreed',
+    });
+    expect(rows.attendance).toEqual([
+      { match_id: 'm1', profile_id: 'ua', checked_in_at: kickoff, method: 'qr', checked_in_by: 'ua' },
+      { match_id: 'm1', profile_id: 'ub', checked_in_at: kickoff, method: 'qr', checked_in_by: 'ub' },
+    ]);
+    expect(rows.goals.map((g) => [g.side, g.sort, g.scorer_player_id])).toEqual([
+      ['a', 1, 'pa'],
+      ['a', 2, 'pa'],
+      ['b', 3, 'pb'],
+    ]);
+    expect(rows.ratings).toEqual([
+      { match_id: 'm1', player_id: 'pa', profile_id: 'ua', rating: 8 },
+      { match_id: 'm1', player_id: 'pb', profile_id: 'ub', rating: 6 },
+    ]);
+    expect(e2eMatchResult({ id: 'm2', kickoff_at: kickoff }, players, 0, 0).ratings.map((r) => r.rating)).toEqual([7, 7]);
   });
 });
