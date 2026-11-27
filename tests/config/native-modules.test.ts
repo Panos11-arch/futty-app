@@ -72,10 +72,10 @@ describe('S16 native modules', () => {
     });
   });
 
-  it('AdMob: Google’s public TEST app IDs until Panos has real ones; measurement waits for consent; no tracking prompt', () => {
+  it('AdMob (G4a): Futty’s real app IDs from Panos (26 November); measurement waits for consent; no tracking prompt', () => {
     expect(plugin('react-native-google-mobile-ads')).toEqual({
-      androidAppId: 'ca-app-pub-3940256099942544~3347511713',
-      iosAppId: 'ca-app-pub-3940256099942544~1458002511',
+      androidAppId: 'ca-app-pub-2436288039660225~6647523498',
+      iosAppId: 'ca-app-pub-2436288039660225~4198161963',
       delayAppMeasurementInit: true,
     });
     expect(app.ios.infoPlist.NSUserTrackingUsageDescription).toBeUndefined();

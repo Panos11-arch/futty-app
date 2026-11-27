@@ -4,6 +4,7 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProfileCard } from '@/app/(tabs)/profile';
+import { AdBanner } from '@/components/ads/ad-banner';
 import { PlayerMatchSections } from '@/components/match/player-match-sections';
 import { StreakBadges } from '@/components/stats/streak-badges';
 import { Banner } from '@/components/ui/banner';
@@ -67,6 +68,8 @@ export default function PlayerProfileScreen() {
             {/* A11: their streak badges, greyed unless they are Premium. Your own are on your Profile tab. */}
             {state.profile.id === user?.id ? null : <StreakBadges profileId={state.profile.id} />}
             <PlayerMatchSections profileId={state.profile.id} own={state.profile.id === user?.id} />
+            {/* G4a: a banner ad on another player's profile, never your own. */}
+            {state.profile.id === user?.id ? null : <AdBanner testID="player-profile-ad" />}
           </>
         ) : null}
       </ScrollView>

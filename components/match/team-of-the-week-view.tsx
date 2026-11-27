@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { PlayerOfTheWeekCard } from '@/components/match/player-of-the-week-card';
 import { TotwPitch } from '@/components/match/totw-pitch';
 import { Banner } from '@/components/ui/banner';
@@ -232,6 +233,9 @@ export function TeamOfTheWeekView({ format, initialTeam, onSeePowerRanking }: Te
           />
         </View>
       ) : null}
+
+      {/* G4a: the banner ad, once a team shows (none on Premium Plus). */}
+      {week && teams.status === 'ready' && team ? <AdBanner testID="rankings-totw-ad" /> : null}
 
       <Sheet visible={picker === 'kind'} onClose={() => setPicker(null)} title="Team">
         <View style={styles.options}>

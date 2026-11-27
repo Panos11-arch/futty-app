@@ -16,10 +16,9 @@ describe('app-ads.txt', () => {
   it('uses the same publisher as the AdMob app IDs in app.json', () => {
     const appJson = readFileSync(join(__dirname, '..', '..', 'app.json'), 'utf8');
     const ids = appJson.match(/ca-app-pub-(\d{16})~\d+/g) ?? [];
-    for (const id of ids) {
-      // Google's public test IDs (pub-3940256099942544) are allowed until the real ones are set.
-      if (!id.startsWith('ca-app-pub-3940256099942544')) expect(id).toContain('2436288039660225');
-    }
+    // G4a: the real app IDs, both platforms; Google's test IDs never ship.
+    expect(ids).toHaveLength(2);
+    for (const id of ids) expect(id).toContain('2436288039660225');
   });
 
   it('is served as plain text', () => {

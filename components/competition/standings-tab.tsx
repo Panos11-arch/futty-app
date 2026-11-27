@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { TeamLink } from '@/components/competition/team-link';
 import { WaitingPool } from '@/components/match/league-sections';
 import { Banner } from '@/components/ui/banner';
@@ -202,6 +203,8 @@ export function StandingsTab({
           ))
         : null}
       {standings.status === 'ready' && standings.standings.tables.length > 0 ? <Rules text={standings.standings.rules} /> : null}
+      {/* G4a: the banner ad under the table (none on Premium Plus). */}
+      {standings.status === 'ready' && standings.standings.tables.length > 0 ? <AdBanner testID="competition-standings-ad" /> : null}
       {waitingPoolHubId ? <WaitingPool hubId={waitingPoolHubId} /> : null}
     </ScrollView>
   );

@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, RefreshControl, SectionList, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { DropdownButton } from '@/components/competition/dropdown-button';
 import { OptionSheet } from '@/components/competition/option-sheet';
 import { TeamLink } from '@/components/competition/team-link';
@@ -248,7 +249,11 @@ export function MatchesTab({
             );
           }}
           ListFooterComponent={
-            <Button label="My fixtures" variant="plain" onPress={() => router.push('/upcoming-fixtures')} testID="league-page-fixtures" />
+            <View style={styles.footer}>
+              <Button label="My fixtures" variant="plain" onPress={() => router.push('/upcoming-fixtures')} testID="league-page-fixtures" />
+              {/* G4a: the banner ad under the matches (none on Premium Plus). */}
+              {sections.length > 0 ? <AdBanner testID="competition-matches-ad" /> : null}
+            </View>
           }
         />
       )}
@@ -279,6 +284,7 @@ const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1 },
   content: { padding: space.lg, paddingBottom: space.xxl, gap: 0 },
   header: { gap: space.md, paddingBottom: space.md },
+  footer: { gap: space.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   sectionTitle: { paddingTop: space.md, paddingBottom: space.sm },
   card: { backgroundColor: colors.surface, borderLeftWidth: hairline, borderRightWidth: hairline, borderColor: colors.border },

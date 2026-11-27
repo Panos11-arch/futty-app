@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { InfoLine } from '@/components/competition/info-line';
 import { openPlayer, openTeam } from '@/components/competition/team-link';
 import { RatingBadge } from '@/components/match/rating-badge';
@@ -158,6 +159,8 @@ export function StatsTab({ seasonId, onSeeMatches }: { seasonId: string; onSeeMa
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
           ListHeaderComponent={header}
           ListEmptyComponent={<EmptyState icon="trophy.fill" message="No stats yet" action={{ label: 'See matches', onPress: onSeeMatches }} />}
+          // G4a: the banner ad under the cards (none on Premium Plus).
+          ListFooterComponent={cards.length > 0 ? <AdBanner testID="competition-stats-ad" /> : null}
           renderItem={({ item }) => {
             const look = STAT_CARDS[tab][item.category];
             return (

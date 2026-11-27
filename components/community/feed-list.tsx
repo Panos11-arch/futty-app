@@ -4,6 +4,7 @@
 import type { ReactElement } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { MatchResultCard } from '@/components/community/match-result-card';
 import { SquadPostCard } from '@/components/community/squad-post-card';
 import { Banner } from '@/components/ui/banner';
@@ -16,6 +17,9 @@ import type { FeedItem, FeedScope } from '@/lib/community';
 import { feedKey } from '@/lib/community-feed';
 import { useCommunityFeed } from '@/lib/use-community-feed';
 import { makeStyles, useTheme } from '@/lib/theme';
+
+/** G4a: one banner ad every 8 posts. */
+export const POSTS_PER_AD = 8;
 
 export function FeedSkeleton({ testID }: { testID: string }) {
   const styles = useStyles();
@@ -52,8 +56,17 @@ export function FeedList({
   const { colors } = useTheme();
   const feed = useCommunityFeed(scope);
 
-  function renderItem({ item }: { item: FeedItem }) {
-    return item.kind === 'squad_post' ? <SquadPostCard item={item} /> : <MatchResultCard item={item} />;
+  function renderItem({ item, index }: { item: FeedItem; index: number }) {
+    const card = item.kind === 'squad_post' ? <SquadPostCard item={item} /> : <MatchResultCard item={item} />;
+    const count = index + 1;
+    if (count % POSTS_PER_AD !== 0) return card;
+    // G4a (image 18): a banner ad after every 8 posts (none on Premium Plus).
+    return (
+      <View style={styles.withAd}>
+        {card}
+        <AdBanner testID={`community-feed-ad-${count}`} />
+      </View>
+    );
   }
 
   let emptyView: ReactElement | null = null;
@@ -88,6 +101,7 @@ export function FeedList({
 const useStyles = makeStyles(() => ({
   content: { gap: space.md, padding: space.lg, paddingBottom: space.xxl * 3 },
   list: { gap: space.md },
+  withAd: { gap: space.md },
   flex: { flex: 1 },
   skeletonCard: { gap: space.md },
   skeletonRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },

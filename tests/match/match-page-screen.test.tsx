@@ -8,6 +8,8 @@ import MatchScreen from '@/app/match/[id]';
 import { mockMatchLog } from '@/lib/match/log-score-mock';
 import { mockMatchPage, mockPagePlayer, mockResultMatch, mockRoster } from '@/lib/match/mock';
 
+import { testIdsInOrder } from '../ads/test-ids';
+
 let mockResult: Record<string, unknown>;
 let mockPage: Record<string, unknown>;
 let mockViewer = 'booker';
@@ -54,6 +56,8 @@ jest.mock('@/components/booking/check-in-panel', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { CheckInSection: ({ matchId }: { matchId: string }) => <Text>{`check-in for ${matchId}`}</Text> };
 });
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 jest.mock('@/components/offers/post-match-offers', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { PostMatchOffers: ({ matchId }: { matchId: string }) => <Text>{`offers for ${matchId}`}</Text> };
@@ -317,5 +321,38 @@ describe('Match page: "Check the score" (levels like Playtomic, Panos 25 Novembe
     mockPage = { status: 'ready', page: mockMatchPage({ scoreCheck: { ...open, state: 'accepted' } }) };
     await render(<MatchScreen />);
     expect(screen.queryByTestId('check-score-card-m1')).toBeNull();
+  });
+});
+
+describe('Match page: banner ad (G4a, after the game only)', () => {
+  it('a confirmed match ends with a banner ad, for members and strangers', async () => {
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'ready', page: mockMatchPage({}) };
+    await render(<MatchScreen />);
+    let ids = testIdsInOrder();
+    expect(ids).toContain('match-ad');
+    expect(ids[ids.length - 1]).toBe('match-ad');
+
+    mockViewer = 'stranger';
+    mockResult = { status: 'ready', match: null };
+    await render(<MatchScreen />);
+    ids = testIdsInOrder();
+    expect(ids[ids.length - 1]).toBe('match-ad');
+  });
+
+  it('before the game, while the page loads, or on an error: no banner ad', async () => {
+    mockResult = { status: 'ready', match: mockResultMatch({ status: 'scheduled' }) };
+    mockPage = { status: 'ready', page: mockMatchPage({ status: 'scheduled', kickoffAt: '2099-01-01T17:00:00.000Z' }) };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-ad')).toBeNull();
+
+    mockResult = { status: 'ready', match: confirmedResult() };
+    mockPage = { status: 'loading' };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-ad')).toBeNull();
+
+    mockPage = { status: 'error', message: 'boom' };
+    await render(<MatchScreen />);
+    expect(screen.queryByTestId('match-ad')).toBeNull();
   });
 });

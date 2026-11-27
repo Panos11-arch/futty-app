@@ -3,12 +3,15 @@
 // opens its breakdown in place; the badge and name open the team.
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import { PowerRankingList, rankingRowLabel } from '@/components/match/power-ranking-list';
+import { PowerRankingList, PowerRankingRows, rankingRowLabel } from '@/components/match/power-ranking-list';
+import { testIdsInOrder } from '../../tests/ads/test-ids';
 import type { PowerRankingRow } from '@/lib/match/power-ranking-api';
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../../tests/ads/test-ids').adBannerMarker());
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -154,5 +157,32 @@ describe('PowerRankingList', () => {
     expect(screen.getByText('−12')).toBeTruthy();
     await fireEvent.press(screen.getByText('Lost to Nicosia Foxes 0–1 · Non-league'));
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/team-profile', params: { teamId: 'nf' } });
+  });
+
+  it('G4a: a banner ad under the ranking (image 14)', async () => {
+    mockRanking = { status: 'ready', rows, reload: jest.fn() };
+    await render(<PowerRankingList format="5-a-side" onSeeTeamOfTheWeek={jest.fn()} />);
+    const ids = testIdsInOrder();
+    expect(ids).toEqual(expect.arrayContaining(['rankings-power-ad', 'power-ranking-row-nf']));
+    expect(ids.indexOf('rankings-power-ad')).toBeGreaterThan(ids.indexOf('power-ranking-row-nf'));
+  });
+
+  it('G4a: no banner ad while loading, on an error or with no teams', async () => {
+    for (const state of [
+      { status: 'loading', reload: jest.fn() },
+      { status: 'error', message: 'boom', reload: jest.fn() },
+      { status: 'ready', rows: [], reload: jest.fn() },
+    ]) {
+      mockRanking = state;
+      await render(<PowerRankingList format="5-a-side" onSeeTeamOfTheWeek={jest.fn()} />);
+      expect(screen.queryByTestId('rankings-power-ad')).toBeNull();
+    }
+  });
+
+  it('G4a: the competition page’s Power tab (same rows) has no banner of its own', async () => {
+    await render(
+      <PowerRankingRows state={{ status: 'ready', rows }} reload={jest.fn()} format="5-a-side" empty={{ message: 'x', action: { label: 'y', onPress: jest.fn() } }} />,
+    );
+    expect(screen.queryByTestId('rankings-power-ad')).toBeNull();
   });
 });

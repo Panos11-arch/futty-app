@@ -21,6 +21,11 @@ import type {
   StatsCategory,
 } from '@/lib/match/competition-api';
 
+import { testIdsInOrder } from '../ads/test-ids';
+
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
+
 loadWithFile(Modal);
 
 const g = globalThis as { mockSearchParams?: Record<string, string> };
@@ -785,5 +790,69 @@ describe('Power rankings', () => {
     await openTab('power');
     await fireEvent.press(screen.getByRole('button', { name: 'See standings' }));
     expect(screen.getByTestId('competition-panel-standings')).toBeTruthy();
+  });
+});
+
+// ---- Banner ads (G4a) ---------------------------------------------------------
+
+describe('Banner ads (G4a)', () => {
+  const before = (a: string, b: string) => {
+    const ids = testIdsInOrder();
+    expect(ids).toEqual(expect.arrayContaining([a, b]));
+    expect(ids.indexOf(a)).toBeLessThan(ids.indexOf(b));
+  };
+
+  it('Overview: between Power rankings and Team of the season (image 13)', async () => {
+    await render(<CompetitionPage />);
+    before('competition-power-top', 'competition-overview-ad');
+    before('competition-overview-ad', 'competition-team-of-season');
+  });
+
+  it('Matches: under the matches; none while loading, on an error or with none', async () => {
+    await render(<CompetitionPage />);
+    await openTab('matches');
+    before('competition-match-f1', 'competition-matches-ad');
+    for (const matches of [{ status: 'loading' }, { status: 'error', message: 'x' }, { status: 'ready', matches: [] }]) {
+      await screen.unmount();
+      mockState.matches = matches;
+      await render(<CompetitionPage />);
+      await openTab('matches');
+      expect(screen.queryByTestId('competition-matches-ad')).toBeNull();
+    }
+  });
+
+  it('Standings: under the table and its rules; none while loading, on an error or with no table', async () => {
+    await render(<CompetitionPage />);
+    await openTab('standings');
+    before('standings-table', 'competition-standings-ad');
+    before('standings-rules', 'competition-standings-ad');
+    for (const standings of [{ status: 'loading' }, { status: 'error', message: 'x' }, { status: 'ready', standings: { rules: '', tables: [] } }]) {
+      await screen.unmount();
+      mockState.standings = standings;
+      await render(<CompetitionPage />);
+      await openTab('standings');
+      expect(screen.queryByTestId('competition-standings-ad')).toBeNull();
+    }
+  });
+
+  it('Stats: under the cards; none while loading, on an error or with no stats', async () => {
+    await render(<CompetitionPage />);
+    await openTab('stats');
+    before('competition-stats-card-goals', 'competition-stats-ad');
+    for (const stats of [{ status: 'loading' }, { status: 'error', message: 'x' }, { status: 'ready', categories: [] }]) {
+      await screen.unmount();
+      mockState.stats = stats;
+      await render(<CompetitionPage />);
+      await openTab('stats');
+      expect(screen.queryByTestId('competition-stats-ad')).toBeNull();
+    }
+  });
+
+  it('Player stats and Power rankings: no banner of their own', async () => {
+    await render(<CompetitionPage />);
+    const playerStats = await openTab('player-stats');
+    const powerPanel = await openTab('power');
+    expect(within(playerStats).queryByTestId(/-ad$/)).toBeNull();
+    expect(within(powerPanel).queryByTestId(/-ad$/)).toBeNull();
   });
 });
