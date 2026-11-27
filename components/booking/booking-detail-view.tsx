@@ -21,6 +21,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { GipedoPanel } from '@/components/booking/gipedo-panel';
+import { InviteMany, type InviteManyProps } from '@/components/booking/invite-many';
 import { NoOpponentPanel } from '@/components/booking/no-opponent-panel';
 import { SwitchFormat } from '@/components/booking/switch-format';
 import { space } from '@/constants/futty-theme';
@@ -101,6 +102,8 @@ export type BookingDetailViewProps = {
   /** B1d (Losers pay, decided 23 and 24 November): a player leaves, or a
    *  captain pulls his side out, on its own screen with the server's amounts. */
   onLosersPay?: (action: 'leave' | 'pull_out') => void;
+  /** S20A (b): Invite all friends and Invite a team (left out: not shown). */
+  inviteMany?: Omit<InviteManyProps, 'testIDPrefix'>;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -164,6 +167,7 @@ function BookingDetailReady({
   onPayWhole,
   onCancelFree,
   onLosersPay,
+  inviteMany,
   now: nowOverride,
 }: Omit<BookingDetailViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const styles = useStyles();
@@ -509,6 +513,7 @@ function BookingDetailReady({
         {isBooker && live && detail.venueTakingPlayers !== false ? (
           <View style={styles.section}>
             <SectionHeader title="Invite a player" />
+            {inviteMany ? <InviteMany testIDPrefix="booking-detail" {...inviteMany} /> : null}
             <TextField
               label="Username"
               value={username}

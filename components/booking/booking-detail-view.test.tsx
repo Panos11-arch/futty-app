@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { Modal, Text } from 'react-native';
 
 import { BookingDetailView, OLD_RULES_WORDS, type BookingDetailViewProps } from '@/components/booking/booking-detail-view';
@@ -402,6 +402,23 @@ describe("BookingDetailView: a venue that isn't taking new players (P7)", () => 
     expect(screen.getByText('Invite a player')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Invite' })).toBeTruthy();
     expect(screen.queryByText("This venue isn't taking new players on Futty right now.")).toBeNull();
+  });
+
+  it('S20A (b): Invite all friends and Invite a team sit with the invite', async () => {
+    const inviteMany = {
+      teams: [{ id: 't1', name: 'Kato United' }],
+      onInviteAllFriends: jest.fn().mockResolvedValue({ count: 2, error: null }),
+      onInviteTeam: jest.fn().mockResolvedValue({ count: 1, error: null }),
+    };
+    await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: true }), { inviteMany })} />);
+    await fireEvent.press(screen.getByTestId('booking-detail-invite-all-friends'));
+    await waitFor(() => expect(inviteMany.onInviteAllFriends).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('booking-detail-invite-team')).toBeTruthy();
+  });
+
+  it('S20A (b): left out, no quick invites', async () => {
+    await render(<BookingDetailView {...props(bookerDetail({ venueTakingPlayers: true }))} />);
+    expect(screen.queryByTestId('booking-detail-invite-all-friends')).toBeNull();
   });
 
   it("not known: the invite stays (the server still decides)", async () => {

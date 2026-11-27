@@ -35,6 +35,8 @@ export type PayShareViewProps = {
   error: string | null;
   /** Opens "Pay what I owe" from the debt line. */
   onPayOwed?: () => void;
+  /** S20A (b): "Pay by HH:MM or your spot is released." while an invited card player's spot waits. */
+  payByLine?: string | null;
   /** For tests; the screen uses the clock. */
   now?: Date;
 };
@@ -74,6 +76,7 @@ function PayShareReady({
   paying,
   error,
   onPayOwed,
+  payByLine = null,
   now: nowOverride,
 }: Omit<PayShareViewProps, 'data' | 'onRetry'> & { data: PayShareData }) {
   const styles = useStyles();
@@ -117,6 +120,7 @@ function PayShareReady({
         {me && !pending ? <Text variant="headline">{SETTLED[me.status] ?? 'Nothing to pay for this spot.'}</Text> : null}
 
         {me && pending && blocked ? <Banner tone="danger" message={DEBT_LINE} action={payOwedAction(onPayOwed)} /> : null}
+        {me && pending && payByLine ? <Banner tone="warning" message={payByLine} /> : null}
 
         {me && pending ? (
           <View style={styles.section}>

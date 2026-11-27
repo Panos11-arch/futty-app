@@ -28,7 +28,9 @@ export type NotificationType =
   | 'friend_request'
   | 'friend_accepted'
   | 'team_member_removed'
-  | 'team_captain';
+  | 'team_captain'
+  // S20A (b): an invited card player didn't pay in time (always sent).
+  | 'booking_spot_lapsed';
 
 /** Sent to venue staff only (venue_notifications_tick, PR #99). They open the
  *  venue dashboard, never My Bookings, and only staff see them in settings. */
@@ -164,6 +166,7 @@ export const NOTIFICATION_LABELS: Record<string, string> = {
   venue_closed_new_bookings: 'A venue stops taking bookings',
   guarantee_hold_failed: 'A card hold didn’t work',
   booking_spot_released: 'Your spot is released',
+  booking_spot_lapsed: 'Your game spot lapses',
   cancellation_fee_failed: 'A cancellation fee didn’t go through',
   short_game_warning: 'A game is short of players',
   top_up_charged: 'A top-up is charged',

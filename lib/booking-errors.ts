@@ -198,8 +198,19 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
       return "They've already been invited.";
     case 'already_in_booking':
       return "They're already in this game.";
+    // Panos, 27 November: a player who left after paying can't rejoin.
+    case 'player_left_game':
+      return 'This player left this game.';
     case 'player_not_found':
       return 'No player with that username.';
+    // S20A (b): player invites.
+    case 'invites_closed':
+      return 'The game has started. Invites are closed.';
+    case 'not_member':
+      return "You're not in that team.";
+    case 'team_deleted':
+    case 'team_not_found':
+      return 'That team was deleted.';
     // S20, Book together: the friend can no longer be invited this way.
     case 'not_friends':
       return "You're no longer friends. Invite by username.";

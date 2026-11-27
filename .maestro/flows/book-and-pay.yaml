@@ -133,13 +133,29 @@ env:
       PAY_AMOUNT: '65\.50'
 
 # ---- The screen after paying (B3) ----------------------------------------
-# Invite friends and publish are there; this journey goes on to the booking.
+# Invite friends and publish are there. S20A (b): Invite all friends invites
+# this platform's seeded friend (scripts/e2e-seed); then on to the booking.
 - extendedWaitUntil:
     visible:
       id: after-pay-done
     timeout: 60000
 - assertNotVisible:
     id: checkout-error
+- scrollUntilVisible:
+    element:
+      id: after-pay-invite-all-friends
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: after-pay-invite-all-friends
+- extendedWaitUntil:
+    visible: '(Invited \d+ friends?\.|Nobody new to invite\.)'
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      id: after-pay-done
+    direction: DOWN
+    timeout: 10000
 - tapOn:
     id: after-pay-done
 

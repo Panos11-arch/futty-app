@@ -34,6 +34,15 @@ const CASH_CHIP = 'Pay the pitch in cash at the venue';
 const isDisabled =(name: string | RegExp) => screen.getByRole('button', { name }).props.accessibilityState?.disabled === true;
 
 describe('PayShareView', () => {
+  // S20A (b): an invited card player's 15 minutes, one warning line.
+  it('shows the pay-by line while the share is unpaid; none without one', async () => {
+    await render(<PayShareView {...props({}, { payByLine: 'Pay by 19:15 or your spot is released.' })} />);
+    expect(screen.getByText('Pay by 19:15 or your spot is released.')).toBeTruthy();
+    await screen.unmount();
+    await render(<PayShareView {...props()} />);
+    expect(screen.queryByText(/or your spot is released/)).toBeNull();
+  });
+
   it('shows the player’s own share exactly as the server sent it (680 → €6.80)', async () => {
     const p = props();
     await render(<PayShareView {...p} />);

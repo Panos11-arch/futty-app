@@ -142,6 +142,22 @@ describe('B1d: Losers pay, in words', () => {
   });
 });
 
+// S20A (b): inviting players (spec 13 "Player invites").
+describe('Player invite refusals', () => {
+  it.each([
+    ['invites_closed', 'The game has started. Invites are closed.'],
+    ['not_member', "You're not in that team."],
+    ['team_deleted', 'That team was deleted.'],
+    ['team_not_found', 'That team was deleted.'],
+    ['side_not_paid', 'Pay for your side first, then publish.'],
+    // Panos, 27 November: a player who left after paying can't rejoin.
+    ['player_left_game', 'This player left this game.'],
+  ])('%s: one line, at most 10 words', (code, line) => {
+    expect(describeBookingErrorMessage(code)).toBe(line);
+    expect(line.split(' ').length).toBeLessThanOrEqual(10);
+  });
+});
+
 // S20, Book together: inviting a preselected friend the server no longer allows.
 describe('Book together refusals', () => {
   it.each([

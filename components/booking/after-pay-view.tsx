@@ -21,6 +21,7 @@ import {
   Text,
   TextField,
 } from '@/components/ui';
+import { InviteMany, type InviteManyProps } from '@/components/booking/invite-many';
 import { AmenityIcons, FoodCards } from '@/components/venue/venue-extras';
 import { space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
@@ -53,6 +54,8 @@ export type AfterPayViewProps = {
   onInviteFriendById?: (profileId: string) => Promise<string | null>;
   /** S20, Team vs team: the team already picked in the opposition invite. */
   preselectTeam?: PreselectTeam | null;
+  /** S20A (b): Invite all friends and Invite a team (left out: not shown). */
+  inviteMany?: Omit<InviteManyProps, 'testIDPrefix'>;
 };
 
 export function AfterPayView(props: AfterPayViewProps) {
@@ -158,6 +161,7 @@ function AfterPayReady({
   preselectFriend = null,
   onInviteFriendById,
   preselectTeam = null,
+  inviteMany,
 }: Omit<AfterPayViewProps, 'state' | 'onRetry'> & { detail: BookingDetailData }) {
   const styles = useStyles();
   const { booking, venue } = detail;
@@ -291,6 +295,7 @@ function AfterPayReady({
         {captain ? (
           <View style={styles.section} testID="after-pay-invite-friends">
             <SectionHeader title="Invite friends" />
+            {inviteMany ? <InviteMany testIDPrefix="after-pay" {...inviteMany} /> : null}
             {friend && onInviteFriendById ? (
               <View style={styles.inline}>
                 <Chip

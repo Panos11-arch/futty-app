@@ -236,6 +236,42 @@ describe('Notifications', () => {
     expect(mockAccept).toHaveBeenCalledWith('inv1');
     expect(mockMarkRead).toHaveBeenCalledWith('n3');
   });
+
+  // S20A (b), section 1 (waiting on Panos): where cash is allowed, accepting
+  // says how he pays: cash keeps the spot, card gives him 15 minutes.
+  it.each([
+    ['Pay in cash', 'cash'],
+    ['Pay by card', 'card'],
+  ])('cash allowed: %s accepts with %s, then goes on to pay', async (label, method) => {
+    mockAccept.mockResolvedValue({ error: null });
+    mockInviteStatuses = new Map([['inv1', 'pending']]);
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('n3', '2026-11-17T09:00:00Z', { type: 'booking_invite', data: { inviteId: 'inv1', bookingId: 'b9', cashOk: true } })],
+    };
+    await render(<NotificationsScreen />);
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: label }));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith({ pathname: '/booking-payment', params: { bookingId: 'b9' } })
+    );
+    expect(mockAccept).toHaveBeenCalledWith('inv1', method);
+    expect(await screen.findByText('Accepted')).toBeTruthy();
+  });
+
+  it.each([
+    ['expired', 'Expired'],
+    ['lapsed', 'Lapsed'],
+  ])('S20A (b): a %s invite says so, with no buttons', async (status, words) => {
+    mockInviteStatuses = new Map([['inv1', status]]);
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('n3', '2026-11-17T09:00:00Z', { type: 'booking_invite', data: { inviteId: 'inv1', bookingId: 'b9' } })],
+    };
+    await render(<NotificationsScreen />);
+    expect(await screen.findByText(words)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+  });
 });
 
 describe('Account menu (S2: the header menu opens it)', () => {

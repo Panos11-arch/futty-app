@@ -1,6 +1,6 @@
 import { usePaymentSheet } from '@stripe/stripe-react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { CheckoutView } from '@/components/booking/checkout-view';
 import { PayShareView } from '@/components/booking/pay-share-view';
@@ -13,6 +13,7 @@ import { useRules } from '@/lib/use-rules';
 import { useSlotCheckout } from '@/lib/use-slot-checkout';
 import { useGameWeather } from '@/lib/use-weather';
 import { haptic } from '@/lib/haptics';
+import { myPayBy, payByLine } from '@/lib/invites';
 
 const openPayOwed = () => router.push('/account/payments/owed');
 
@@ -99,6 +100,20 @@ function PayMyShare({ bookingId, sheet }: { bookingId: string; sheet: PaymentShe
   useReloadOnReturn(data.reload, data.state.status === 'ready' && data.state.data.blocked);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // S20A (b): an invited card player's 15 minutes.
+  const shareId = data.state.status === 'ready' ? (data.state.data.detail.me?.share_id ?? null) : null;
+  const [payBy, setPayBy] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (shareId) {
+      void myPayBy(shareId).then((at) => {
+        if (live) setPayBy(at);
+      });
+    }
+    return () => {
+      live = false;
+    };
+  }, [shareId]);
 
   async function pay(options: PayOptions) {
     if (data.state.status !== 'ready' || !data.state.data.detail.me) return;
@@ -124,6 +139,7 @@ function PayMyShare({ bookingId, sheet }: { bookingId: string; sheet: PaymentShe
         paying={paying}
         error={error}
         onPayOwed={openPayOwed}
+        payByLine={payByLine(payBy)}
       />
     </>
   );

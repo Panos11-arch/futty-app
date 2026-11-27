@@ -35,6 +35,7 @@ import { chooseNoOpponent, pullOutOfGipedo } from '@/lib/booking-gipedo';
 import { cancelFree, payOtherHalf, playWholeFromHolds } from '@/lib/booking-opposition';
 import { useLoad } from '@/lib/booking-search';
 import { addBookingPlayer } from '@/lib/booking-shares';
+import { useInviteMany } from '@/lib/use-invite-many';
 import { switchPlayersPerSide } from '@/lib/booking-switch';
 import { isBookingInCalendar, removeBookingFromCalendar } from '@/lib/calendar';
 import { describeFunctionError } from '@/lib/edge-functions';
@@ -50,6 +51,7 @@ export default function BookingDetailScreen() {
   const { id = '' } = useLocalSearchParams<{ id: string }>();
   const load = useCallback(() => fetchBookingDetail(id), [id]);
   const { state, reload } = useLoad(id || null, load);
+  const inviteMany = useInviteMany(id);
   const { handleNextAction, initPaymentSheet, presentPaymentSheet } = useStripe();
   const [notice, setNotice] = useState<string | null>(null);
   const [inCalendar, setInCalendar] = useState(() => (id ? isBookingInCalendar(id) : false));
@@ -210,6 +212,7 @@ export default function BookingDetailScreen() {
         onQuote={quote}
         onConfirmCancel={confirmCancel}
         onInvite={invite}
+        inviteMany={inviteMany}
         onShare={share}
         onAddToCalendar={addToCalendar}
         inCalendar={inCalendar}
