@@ -10,7 +10,7 @@ import path from 'node:path';
 import { loadAll } from 'js-yaml';
 
 import { payLabel } from '@/components/booking/checkout-parts';
-import { cancelledMessage, describeQuote } from '@/lib/booking-detail';
+import { cancelledMessage, describeQuote, noticeUnderCancelledTitle } from '@/lib/booking-detail';
 import type { CancellationQuote } from '@/lib/booking-actions';
 
 import { E2E_PRICE_CENTS, E2E_STAFF, E2E_STAFF_BOOKING, E2E_VENUE } from '../../scripts/e2e-seed/config';
@@ -295,11 +295,18 @@ describe('cancel checks the words on screen', () => {
     expect(JSON.stringify(steps())).not.toContain('containsDescendants');
   });
 
-  it('asserts both cancelled messages by their text', () => {
-    const texts = steps()
+  // QA 27 November (Panos): the cancelled screen said it twice. The flow
+  // checks the title by its text and that the repeat is gone.
+  it('asserts the cancelled title by its text, and never the repeat', () => {
+    const shown = steps()
       .filter((s) => 'assertVisible' in s)
       .map((s) => (s.assertVisible as { text?: string }).text);
-    expect(texts).toEqual(expect.arrayContaining(['The booking is cancelled\\.', 'This booking was cancelled\\.']));
+    const hidden = steps()
+      .filter((s) => 'assertNotVisible' in s)
+      .map((s) => (s.assertNotVisible as { text?: string }).text);
+    expect(shown).toContain('This booking was cancelled\\.');
+    expect(shown).not.toContain('The booking is cancelled\\.');
+    expect(hidden).toContain('The booking is cancelled\\.');
   });
 });
 
@@ -358,9 +365,15 @@ describe('what the flows expect is what the app shows', () => {
     expect(expected('flows/cancel.yaml', /id: cancel-quote-line-\d+\r?\n\s+text: '([^']+)'/g)).toEqual(lines);
     expect(read(path.join(maestroDir, 'flows/cancel.yaml'))).toContain(`id: cancel-quote-line-${lines.length}`);
 
+    // No charge in the free hour: under the title nothing is left, so the
+    // screen shows "This booking was cancelled." alone (QA 27 November), and
+    // the flow checks the server's notice is not shown as well.
     const notice = cancelledMessage('whole_team', { cancelled: true, fee: null });
     expect(notice).toBe('The booking is cancelled.');
-    expect(expected('flows/cancel.yaml', /text: '(The booking is cancelled\\\.)'/g)).toEqual([notice]);
+    expect(noticeUnderCancelledTitle(notice)).toBeNull();
+    const flow = read(path.join(maestroDir, 'flows/cancel.yaml'));
+    expect(flow).toMatch(/assertNotVisible:\r?\n\s+text: 'The booking is cancelled\\\.'/);
+    expect(flow).toMatch(/assertVisible:\r?\n\s+text: 'This booking was cancelled\\\.'/);
   });
 });
 

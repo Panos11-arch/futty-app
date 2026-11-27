@@ -6,7 +6,8 @@
 # refunds": "Within 1 hour of paying ... the hold is cancelled"; "A booker
 # who paid for everyone can only cancel the whole booking"). The server's
 # quote releases the whole €65.50 hold, and the app words it as below
-# (lib/booking-detail.ts describeQuote and cancelledMessage). Run straight
+# (lib/booking-detail.ts describeQuote, cancelledMessage and
+# noticeUnderCancelledTitle). Run straight
 # after book-and-pay: an hour later the quote, and so this flow, differ.
 appId: com.panosalepis.futtyapp
 name: cancel
@@ -57,16 +58,18 @@ env:
     visible:
       id: booking-detail-notice
     timeout: 30000
-# The words themselves: on iOS the banner's text isn't a child of the
-# notice's view in the tree Maestro reads, so containsDescendants misses it.
-- assertVisible:
-    text: 'The booking is cancelled\.'
 - extendedWaitUntil:
     visible:
       id: booking-detail-cancelled
     timeout: 30000
+# The words themselves: on iOS the banner's text isn't a child of the
+# notice's view in the tree Maestro reads, so containsDescendants misses it.
+# Said once (QA 27 November): the title, never "The booking is cancelled."
+# under it (no charge in the free hour, so nothing else).
 - assertVisible:
     text: 'This booking was cancelled\.'
+- assertNotVisible:
+    text: 'The booking is cancelled\.'
 - assertNotVisible:
     id: cancel-error
 - takeScreenshot: cancel-${PLATFORM}

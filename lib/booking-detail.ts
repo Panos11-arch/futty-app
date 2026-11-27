@@ -337,6 +337,19 @@ export function cancelledMessage(scope: CancelScope, result: CancelResult): stri
   );
 }
 
+const BOOKING_CANCELLED = 'The booking is cancelled.';
+
+/** QA 27 November (Panos): the notice as it reads under the cancelled
+ *  booking's "This booking was cancelled." title, without saying it twice.
+ *  Drops the leading "The booking is cancelled." and keeps everything after
+ *  it word for word (the charge sentences). "Your spot is cancelled." isn't
+ *  a repeat, so it stays. Null when nothing is left. */
+export function noticeUnderCancelledTitle(notice: string | null | undefined): string | null {
+  if (!notice) return null;
+  const rest = notice.startsWith(BOOKING_CANCELLED) ? notice.slice(BOOKING_CANCELLED.length).trim() : notice;
+  return rest === '' ? null : rest;
+}
+
 // ---- Cancelling: quote first, confirm second ---------------------------
 
 export type DetailCancelScope = 'my_spot' | 'whole_team';

@@ -513,13 +513,42 @@ describe('BookingDetailView: testIDs for the Maestro tests (.maestro)', () => {
     expect(screen.getByTestId('booking-detail-cancelled')).toBeTruthy();
     expect(screen.getByTestId('booking-detail-notice')).toBeTruthy();
     expect(screen.getByText('This booking was cancelled.')).toBeTruthy();
-    expect(screen.getByText('The booking is cancelled.')).toBeTruthy();
+    // QA 27 November (Panos): said once, never twice.
+    expect(screen.queryByText(/The booking is cancelled\./)).toBeNull();
     const money = within(screen.getByTestId('booking-detail-cancelled-money'));
     expect(money.getByText('Nothing comes back. €0.80 is kept.')).toBeTruthy();
     expect(money.getByText('Your €60.00 guarantee hold is released.')).toBeTruthy();
     expect(screen.queryByText(/spots taken/)).toBeNull();
     expect(screen.queryByText("Who's playing")).toBeNull();
     expect(screen.queryByText(/Pays cash/)).toBeNull();
+  });
+
+  // QA 27 November (Panos): a paid-in-full whole-team booking cancelled in
+  // the free window showed "This booking was cancelled." and "The booking is
+  // cancelled." Said once now, with any charge sentence unchanged under it.
+  it.each([
+    ['no charge', 'The booking is cancelled.', null],
+    ['a charge', 'The booking is cancelled. €6.00 was charged to your card.', '€6.00 was charged to your card.'],
+    ['a charge in progress', 'The booking is cancelled. The €6.00 charge is being processed.', 'The €6.00 charge is being processed.'],
+  ])('just cancelled (%s): the cancelled screen never shows both sentences', async (_name, notice, rest) => {
+    const detail = bookerDetail();
+    await render(<BookingDetailView {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } }, { notice })} />);
+    expect(screen.getAllByTestId('banner')).toHaveLength(1);
+    const banner = within(screen.getByTestId('booking-detail-notice'));
+    expect(banner.getByText('This booking was cancelled.')).toBeTruthy();
+    expect(screen.queryByText(/The booking is cancelled\./)).toBeNull();
+    expect(screen.getAllByText(/cancelled\./)).toHaveLength(1);
+    if (rest) expect(banner.getByText(rest)).toBeTruthy();
+  });
+
+  it('only my spot, then the booking cancelled: "Your spot is cancelled." stays under the title', async () => {
+    const detail = playerDetail();
+    await render(
+      <BookingDetailView {...props({ ...detail, booking: { ...detail.booking, status: 'cancelled' } }, { notice: 'Your spot is cancelled.' })} />,
+    );
+    const banner = within(screen.getByTestId('booking-detail-notice'));
+    expect(banner.getByText('This booking was cancelled.')).toBeTruthy();
+    expect(banner.getByText('Your spot is cancelled.')).toBeTruthy();
   });
 
   it('a cancelled booking opened later: one banner, no notice', async () => {
