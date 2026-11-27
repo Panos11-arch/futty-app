@@ -34,7 +34,10 @@
 //  10. Booking v2 (B1c): side B's captain who didn't pay or hold his part
 //      within the 15-minute payment window loses side B and the invite
 //      reopens (booking_side_b_lapse_due). It runs before step 3, so what
-//      he started at Stripe is released in the same run. 24 hours before
+//      he started at Stripe is released in the same run. S20A (b): the same
+//      for a card player who accepted an invite (booking_player_lapse_due,
+//      15 minutes or kickoff), and unanswered player invites expire at
+//      kickoff (booking_invites_expire_due). 24 hours before
 //      kickoff with no side B, the lone captain is asked to choose
 //      (booking_no_opponent_due), and reminded once 2 hours before the
 //      6-hour cut-off (B3, booking_no_opponent_reminder_due, the lead from
@@ -85,7 +88,7 @@ export async function runPaymentJobs(deps: Deps) {
     creditReleased: 0,
     matchSynced: 0, matchSyncFailed: 0,
     gipedoSettled: 0, gipedoFailed: 0,
-    sideBLapsed: 0, noOpponent: 0, noOpponentReminded: 0, noOpponentCancelled: 0, oddCent: 0, losersPayGuarantees: 0,
+    sideBLapsed: 0, playerLapsed: 0, invitesExpired: 0, noOpponent: 0, noOpponentReminded: 0, noOpponentCancelled: 0, oddCent: 0, losersPayGuarantees: 0,
   };
 
   for (const share of await rpc<DueShare[]>(deps.db, 'shares_due_for_capture')) {
@@ -142,6 +145,9 @@ export async function runPaymentJobs(deps: Deps) {
 
   for (const [key, fn] of [
     ['sideBLapsed', 'booking_side_b_lapse_due'],
+    // S20A (b): an invited card player's 15 minutes; unanswered invites at kickoff.
+    ['playerLapsed', 'booking_player_lapse_due'],
+    ['invitesExpired', 'booking_invites_expire_due'],
     ['noOpponent', 'booking_no_opponent_due'],
     ['noOpponentReminded', 'booking_no_opponent_reminder_due'],
     ['noOpponentCancelled', 'booking_no_opponent_auto_cancel_due'],

@@ -163,6 +163,22 @@ Deno.test('money taken late on a cancelled share of a live booking refunds only 
   deepStrictEqual(db.callsTo('record_intent_refund')[0].args.p_reason, 'share_cancelled');
 });
 
+// S20A (b): an invited player's acceptance lapsed (booking_player_lapse_due),
+// then the hold he had started arrives. The game is still on: only his hold
+// is released.
+Deno.test("a hold arriving after a player's lapse on a live booking releases only that hold", async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('share_payment_held', { result: 'release', reason: 'share_cancelled', booking_id: 'b1', share_id: 's1' });
+  stripe.respond('paymentIntents.retrieve', intent('pi_late', 'requires_capture'));
+  stripe.respond('paymentIntents.cancel', { id: 'pi_late', status: 'canceled' });
+
+  await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', intent('pi_late', 'requires_capture')), deps);
+
+  deepStrictEqual(stripe.callsTo('paymentIntents.cancel').map((c) => c.id), ['pi_late'], 'only his hold is released');
+  strictEqual(db.callsTo('booking_money_to_release').length, 0, 'the rest of the booking is never released');
+  strictEqual(stripe.callsTo('refunds.create').length, 0, 'nothing is refunded');
+});
+
 Deno.test('a replaced intent on a live booking releases only that intent', async () => {
   const { db, stripe, deps } = setup();
   db.respond('share_payment_held', { result: 'release', reason: 'replaced_intent', booking_id: 'b1', share_id: 's1' });

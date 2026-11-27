@@ -44,7 +44,7 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlements_due', []);
-  for (const fn of ['booking_side_b_lapse_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due', 'losers_pay_count_guarantees']) {
+  for (const fn of ['booking_side_b_lapse_due', 'booking_player_lapse_due', 'booking_invites_expire_due', 'booking_no_opponent_due', 'booking_no_opponent_reminder_due', 'booking_no_opponent_auto_cancel_due', 'booking_odd_cent_due', 'losers_pay_count_guarantees']) {
     db.respond(fn, 0);
   }
   db.respond('gipedo_settlement_done', (args: Record<string, unknown>) => ({ result: args.p_outcome }));
@@ -547,6 +547,36 @@ Deno.test('a failing side B lapse step never stops the other jobs', async () => 
   const summary = await runPaymentJobs(deps);
 
   strictEqual(summary.sideBLapsed, 0);
+  strictEqual(db.calls.some((c) => c.fn === 'money_releases_due'), true, 'the release queue still runs');
+});
+
+// S20A (b): a card player who accepted an invite and didn't pay or hold
+// within 15 minutes (or by kickoff) loses his spot; the payment he started is
+// released by the release queue in the same run. At kickoff, unanswered
+// player invites expire.
+Deno.test('lapses invited players who did not pay in time, before the release queue runs', async () => {
+  const { db, deps } = setup();
+  db.respond('booking_player_lapse_due', 3);
+  db.respond('booking_invites_expire_due', 4);
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.playerLapsed, 3);
+  strictEqual(summary.invitesExpired, 4);
+  const order = db.calls.map((c) => c.fn);
+  strictEqual(order.indexOf('booking_player_lapse_due') < order.indexOf('money_releases_due'), true, 'lapse first');
+});
+
+Deno.test('a failing player lapse step never stops the other jobs', async () => {
+  const { db, deps } = setup();
+  db.fail('booking_player_lapse_due', 'boom');
+  db.fail('booking_invites_expire_due', 'boom');
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(summary.playerLapsed, 0);
+  strictEqual(summary.invitesExpired, 0);
+  strictEqual(db.calls.some((c) => c.fn === 'booking_side_b_lapse_due'), true, 'side B still lapses');
   strictEqual(db.calls.some((c) => c.fn === 'money_releases_due'), true, 'the release queue still runs');
 });
 
