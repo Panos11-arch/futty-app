@@ -162,6 +162,29 @@ describe('Notifications', () => {
     expect(mockMarkRead).toHaveBeenCalledWith('f1');
   });
 
+  it('S20A: a team_captain row opens the team', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('c1', '2026-11-17T09:00:00Z', { type: 'team_captain', data: { teamId: 't1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title c1. Body c1' }));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith({ pathname: '/play', params: { segment: 'teams', teamId: 't1' } }),
+    );
+  });
+
+  it('S20A: an invite the captain cancelled says so, with no buttons', async () => {
+    mockInviteStatuses = new Map([['inv9', 'cancelled']]);
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('n9', '2026-11-17T09:00:00Z', { type: 'team_invite', data: { inviteId: 'inv9', teamId: 't1' } })],
+    };
+    await render(<NotificationsScreen />);
+    expect(await screen.findByText('Cancelled')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+  });
+
   it('a friend_accepted row opens the chat', async () => {
     mockNotifications = {
       status: 'ready',

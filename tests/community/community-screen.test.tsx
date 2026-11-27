@@ -37,11 +37,15 @@ jest.mock('@/lib/community', () => ({
 jest.mock('@/lib/booking-opposition', () => ({ searchTeams: (...a: unknown[]) => mockSearchTeams(...a) }));
 jest.mock('@/lib/teams', () => ({
   ...jest.requireActual('@/lib/teams'),
-  createTeam: (...a: unknown[]) => mockCreateTeam(...a),
+  createMyTeam: (...a: unknown[]) => mockCreateTeam(...a),
 }));
 jest.mock('@/lib/use-messages', () => ({ useUnreadMessages: () => mockUnread }));
 let mockRequests = 0;
-jest.mock('@/lib/use-friends', () => ({ useFriendRequestCount: () => mockRequests }));
+jest.mock('@/lib/use-friends', () => ({
+  useFriendRequestCount: () => mockRequests,
+  // S20A: New team picks friends.
+  useFriends: () => ({ state: { status: 'ready', rows: [] }, reload: jest.fn() }),
+}));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 jest.mock('@/lib/use-follows', () => ({
   useFollows: () => ({
@@ -400,7 +404,14 @@ describe('Community screen (image 18)', () => {
       await act(async () => {
         await fireEvent.press(screen.getByRole('button', { name: 'Create team' }));
       });
-      expect(mockCreateTeam).toHaveBeenCalledWith('Kato United', 'Limassol', 11, 0);
+      expect(mockCreateTeam).toHaveBeenCalledWith({
+        name: 'Kato United',
+        city: 'Limassol',
+        kitColour: 'kitRed',
+        rosterSize: 11,
+        substituteSlots: 0,
+        memberIds: [],
+      });
       await waitFor(() =>
         expect(router.push).toHaveBeenCalledWith({ pathname: '/team-profile', params: { teamId: 'tm9' } }),
       );

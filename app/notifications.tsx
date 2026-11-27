@@ -54,6 +54,8 @@ const ICON_BY_TYPE: Record<NotificationType, React.ComponentProps<typeof IconSym
   saved_search_match: 'magnifyingglass',
   friend_request: 'person.crop.circle.badge.plus',
   friend_accepted: 'person.2.fill',
+  team_captain: 'shield.fill',
+  team_member_removed: 'person.2.fill',
 };
 
 /** B3 (Booking v2): opened where routeForPushData says. */
@@ -117,7 +119,8 @@ async function openNotification(notification: AppNotification) {
   }
 
   // S20: a friend request opens Friends; an accepted one, the friend chat.
-  if (notification.type === 'friend_request' || notification.type === 'friend_accepted') {
+  // S20A: becoming captain opens the team.
+  if (notification.type === 'friend_request' || notification.type === 'friend_accepted' || notification.type === 'team_captain') {
     router.push(routeForPushData({ ...data, type: notification.type }));
     return;
   }
@@ -189,7 +192,7 @@ function InviteActions({
   if (status !== 'pending') {
     return (
       <Text variant="callout" tone="inkMuted">
-        {status === 'accepted' ? 'Accepted' : 'Declined'}
+        {status === 'accepted' ? 'Accepted' : status === 'cancelled' ? 'Cancelled' : 'Declined'}
       </Text>
     );
   }

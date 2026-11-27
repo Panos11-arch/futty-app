@@ -105,6 +105,7 @@ describe('server calls', () => {
     const chain = {
       select: jest.fn().mockReturnThis(),
       ilike: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockResolvedValue({
         data: [
@@ -120,6 +121,7 @@ describe('server calls', () => {
       { id: 't1', name: 'Apollon', city: null },
     ]);
     expect(chain.ilike).toHaveBeenCalledWith('name', '%apo%');
+    expect(chain.is).toHaveBeenCalledWith('deleted_at', null);
   });
 
   it('a short search asks the server nothing', async () => {

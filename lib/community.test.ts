@@ -106,10 +106,12 @@ describe('follows and teams (unchanged)', () => {
 
   it('lists teams by name', async () => {
     const order = jest.fn().mockResolvedValue({ data: [], error: null });
-    const select = jest.fn(() => ({ order }));
+    const is = jest.fn(() => ({ order }));
+    const select = jest.fn(() => ({ is }));
     mockFrom.mockReturnValue({ select });
     await listTeams();
     expect(mockFrom).toHaveBeenCalledWith('teams');
+    expect(is).toHaveBeenCalledWith('deleted_at', null);
     expect(order).toHaveBeenCalledWith('name');
   });
 });
