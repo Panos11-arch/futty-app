@@ -38,6 +38,7 @@ function row(over: Partial<MatchRow> = {}): MatchRow {
       { id: 'u1', name: 'Andreas' },
       { id: null, name: 'Staff Sam' },
     ],
+    booking_id: null,
     ...over,
   };
 }
