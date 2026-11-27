@@ -13,7 +13,16 @@ import { payLabel } from '@/components/booking/checkout-parts';
 import { cancelledMessage, describeQuote } from '@/lib/booking-detail';
 import type { CancellationQuote } from '@/lib/booking-actions';
 
-import { E2E_PRICE_CENTS, E2E_STAFF, E2E_STAFF_BOOKING, E2E_VENUE } from '../../scripts/e2e-seed/config';
+import {
+  E2E_LEAGUE,
+  E2E_LEAGUE_RESULTS,
+  E2E_PRICE_CENTS,
+  E2E_STAFF,
+  E2E_STAFF_BOOKING,
+  E2E_TEAMS,
+  E2E_VENUE,
+} from '../../scripts/e2e-seed/config';
+import { normaliseScope } from '@/lib/match/league-directory';
 import { clashTime, clashTitle, counterClashSummary, type CounterClash } from '@/lib/venue-today';
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
@@ -61,6 +70,9 @@ function appTestIds(): RegExp[] {
     .join('\n');
   const literal = [...sources.matchAll(/(?:testID|actionTestID|tabBarButtonTestID)[=:]\s*\{?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
   const templates = [...sources.matchAll(/(?:testID|actionTestID)[=:]\s*\{?\s*`([^`]+)`/g)].map((m) => m[1]);
+  // A choice of two: testID={mine ? 'standings-row-mine' : 'standings-row'}.
+  const ternaries = [...sources.matchAll(/testID=\{[^{}?]+\?\s*'([^']+)'\s*:\s*'([^']+)'\s*\}/g)].flatMap((m) => [m[1], m[2]]);
+  literal.push(...ternaries);
   const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return [
     ...literal.map((s) => new RegExp(`^${escape(s)}$`)),
@@ -127,6 +139,31 @@ describe('.maestro', () => {
     expect(text).toContain('tapOn:\n    id: book-venue-${VENUE_ID}-time-${DAY}-${START}');
     expect(text).not.toMatch(/tapOn:\n {4}id: free-venue-\$\{VENUE_ID\}\n/);
     expect(text.indexOf('id: book-day-${TODAY}')).toBeGreaterThan(text.indexOf('id: book-day-${DAY}'));
+  });
+
+  // S10: competition.yaml opens the league the seed makes (step 8) and
+  // walks every tab, never the Coming soon screen.
+  it('competition opens the seeded e2e league and expects the full page', () => {
+    const text = read(path.join(maestroDir, 'flows', 'competition.yaml'));
+    const scope = normaliseScope(E2E_LEAGUE.scope);
+    expect(text).toContain(`id: leagues-group-${scope}`);
+    expect(text).toContain(`id: leagues-row-child-${scope}-${E2E_LEAGUE.format}`);
+    expect(text).not.toContain('coming-soon');
+    for (const tab of ['overview', 'matches', 'standings', 'player-stats', 'stats', 'power']) {
+      expect(text).toContain(`id: competition-tab-${tab}`);
+    }
+    // TOP_TEAM_ID is the team the seeded results put first.
+    const points = E2E_TEAMS.map(() => 0);
+    for (const r of E2E_LEAGUE_RESULTS) {
+      const d = Math.sign(r.homeGoals - r.awayGoals);
+      points[r.home] += d > 0 ? 3 : d === 0 ? 1 : 0;
+      points[r.away] += d < 0 ? 3 : d === 0 ? 1 : 0;
+    }
+    const top = points.indexOf(Math.max(...points));
+    expect(points.filter((p) => p === points[top])).toHaveLength(1);
+    expect(text).toContain(`TOP_TEAM_ID: ${E2E_TEAMS[top].id}`);
+    // The power ranking fills from match_jobs_tick, so its rows are optional.
+    expect(text.replace(/\r\n/g, '\n')).toContain('id: power-ranking-row-${TOP_TEAM_ID}\n    optional: true');
   });
 
   it('every id a flow uses is a testID the app has', () => {

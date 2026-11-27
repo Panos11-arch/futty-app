@@ -23,7 +23,15 @@
 //      for its score (S13B, log-score.yaml), made again from scratch;
 //   7. per platform, a venue-staff login's own test venue (not live) with a
 //      phone booking tomorrow, not paid, for block-clashes.yaml (doc 28):
-//      its blocks cleared and open walk-ins cancelled first.
+//      its blocks cleared and open walk-ins cancelled first;
+//   8. a live city league in the e2e-only city "E2E" (S10, competition.yaml):
+//      four teams, each captained by one player login; Season 1 started by
+//      league_start_season; all six pairings played and final (their matches
+//      confirmed, levels applied), made once and kept; one upcoming fixture
+//      moved to 3 days ahead on every run. The power ranking picks the
+//      results up on staging's next match_jobs_tick (every 15 minutes):
+//      power_ranking_tick can't run through the API (pg_safeupdate refuses
+//      its unqualified DELETE).
 // Money rows (ledger, payments, cancellations) are never deleted.
 //
 // With E2E_SEED_OUTPUT set it writes { slot_day, ios_start, android_start,
@@ -44,19 +52,31 @@ import {
   E2E_DATE_OF_BIRTH,
   E2E_EMAIL_DOMAIN,
   E2E_FORMAT,
+  E2E_LEAGUE,
+  E2E_LEAGUE_KICKOFF,
+  E2E_LEAGUE_RESULTS,
   E2E_LOG_MATCHES,
   E2E_OPENING_HOURS,
   E2E_PITCHES,
   E2E_PRICE_CENTS,
   E2E_STAFF,
   E2E_STAFF_BOOKING,
+  E2E_TEAMS,
+  E2E_UPCOMING,
   E2E_USERS,
   E2E_VENUE,
   type E2eStaff,
   type Platform,
 } from './config';
-import { assertE2eVenue, selectBookingsToCancel, selectE2eUsers, type BookingRow } from './reset';
-import { addDays, cyprusToday, e2eSlot } from './slot';
+import {
+  assertE2eLeague,
+  assertE2eTeams,
+  assertE2eVenue,
+  selectBookingsToCancel,
+  selectE2eUsers,
+  type BookingRow,
+} from './reset';
+import { addDays, cyprusToday, cyprusWallTime, e2eSlot } from './slot';
 
 export type SeedEnv = { url: string; serviceKey: string; stripeKey: string; password: string };
 
@@ -237,6 +257,131 @@ export function e2eStaffBooking(staff: E2eStaff, now: Date) {
     p_contact_name: E2E_STAFF_BOOKING.contactName,
     p_contact_phone: E2E_STAFF_BOOKING.phone,
     p_pitch_id: staff.pitchId,
+  };
+}
+
+/** S10: the e2e league's top-level row (the hub). In sign-up, as a city
+ *  league stays while its season runs; Season 1 starts on start_date. */
+export function e2eLeagueHub(now: Date) {
+  return {
+    id: E2E_LEAGUE.id,
+    name: E2E_LEAGUE.name,
+    scope: E2E_LEAGUE.scope,
+    format: E2E_LEAGUE.format,
+    stage: 'signup',
+    capacity: E2E_LEAGUE.capacity,
+    season_weeks: E2E_LEAGUE.seasonWeeks,
+    kind: 'league',
+    parent_league_id: null,
+    start_date: addDays(cyprusToday(now), -E2E_LEAGUE.startDaysAgo),
+  };
+}
+
+/** The four e2e teams, each with its captain as its only player. */
+export function e2eTeamRows(idsByEmail: ReadonlyMap<string, string>) {
+  const captain = (email: string) => {
+    const id = idsByEmail.get(email);
+    if (!id) throw new Error(`e2e seed: no login for ${email}.`);
+    return id;
+  };
+  return {
+    teams: [...E2E_TEAMS]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((t) => ({ id: t.id, name: t.name, city: E2E_LEAGUE.scope, roster_size: 1, created_by: captain(t.captainEmail) })),
+    members: E2E_TEAMS.map((t) => ({ team_id: t.id, profile_id: captain(t.captainEmail), role: 'captain' })),
+  };
+}
+
+export type E2eFixtureRow = { id: string; home_team_id: string | null; away_team_id: string | null; status: string | null };
+
+export type E2eResultStep = {
+  fixtureId: string;
+  scheduled_day: string;
+  scheduled_time: string;
+  homeGoals: number;
+  awayGoals: number;
+};
+
+/** The pairings still to play and finalise: the i-th result on Season 1's
+ *  start + 3·i days. Completed ones are kept as they are (a second run
+ *  changes nothing); the upcoming fixture isn't one of them. */
+export function e2eResultPlan(fixtures: readonly E2eFixtureRow[], seasonStart: string): E2eResultStep[] {
+  const steps: E2eResultStep[] = [];
+  E2E_LEAGUE_RESULTS.forEach((r, i) => {
+    const home = E2E_TEAMS[r.home].id;
+    const away = E2E_TEAMS[r.away].id;
+    const fixture = fixtures.find((f) => f.home_team_id === home && f.away_team_id === away);
+    if (!fixture) {
+      throw new Error(`e2e seed: Season 1 has no fixture ${E2E_TEAMS[r.home].name} v ${E2E_TEAMS[r.away].name}. Stopping.`);
+    }
+    if (fixture.status === 'completed') return;
+    steps.push({
+      fixtureId: fixture.id,
+      scheduled_day: addDays(seasonStart, 3 * i),
+      scheduled_time: E2E_LEAGUE_KICKOFF,
+      homeGoals: r.homeGoals,
+      awayGoals: r.awayGoals,
+    });
+  });
+  return steps;
+}
+
+/** The upcoming fixture (the reverse of iOS 1 v Android 1), 3 days ahead. */
+export function e2eUpcomingFixture(seasonId: string, now: Date) {
+  return {
+    league_id: seasonId,
+    home_team_id: E2E_TEAMS[E2E_UPCOMING.home].id,
+    away_team_id: E2E_TEAMS[E2E_UPCOMING.away].id,
+    venue_id: E2E_VENUE.id,
+    scheduled_day: addDays(cyprusToday(now), E2E_UPCOMING.daysAhead),
+    scheduled_time: E2E_UPCOMING.time,
+    status: 'agreed',
+  };
+}
+
+type E2eMatchPlayer = { id: string; profile_id: string | null; side: string | null };
+
+/** A league match's final result, as both captains agreeing it would leave
+ *  it (supabase/tests/helpers.sql tests.s10_result and s10_play): side a =
+ *  home; every player checked in; each side's goals by its captain (its
+ *  only player); a rating of 8 for a win, 7 a draw, 6 a loss. */
+export function e2eMatchResult(
+  match: { id: string; kickoff_at: string },
+  players: readonly E2eMatchPlayer[],
+  homeGoals: number,
+  awayGoals: number,
+) {
+  const played = players.filter((p): p is E2eMatchPlayer & { profile_id: string } => !!p.profile_id);
+  const goalsFor = (side: string) => (side === 'a' ? homeGoals : awayGoals);
+  const goalsAgainst = (side: string) => (side === 'a' ? awayGoals : homeGoals);
+  const goals: { match_id: string; side: string; sort: number; scorer_player_id: string; entered_by: string }[] = [];
+  for (const side of ['a', 'b']) {
+    const scorer = played.find((p) => p.side === side);
+    if (!scorer) continue;
+    for (let n = 0; n < goalsFor(side); n++) {
+      goals.push({ match_id: match.id, side, sort: goals.length + 1, scorer_player_id: scorer.id, entered_by: scorer.profile_id });
+    }
+  }
+  return {
+    match: {
+      status: 'confirmed',
+      side_a_score: homeGoals,
+      side_b_score: awayGoals,
+      confirmed_at: new Date(new Date(match.kickoff_at).getTime() + 2 * 3_600_000).toISOString(),
+      confirmed_via: 'agreed',
+    },
+    attendance: played.map((p) => ({
+      match_id: match.id,
+      profile_id: p.profile_id,
+      checked_in_at: match.kickoff_at,
+      method: 'qr',
+      checked_in_by: p.profile_id,
+    })),
+    goals,
+    ratings: played.map((p) => {
+      const diff = goalsFor(p.side ?? 'a') - goalsAgainst(p.side ?? 'a');
+      return { match_id: match.id, player_id: p.id, profile_id: p.profile_id, rating: diff > 0 ? 8 : diff === 0 ? 7 : 6 };
+    }),
   };
 }
 
@@ -475,6 +620,12 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
   }
   log(`staff venues: ${E2E_STAFF.map((s) => `${s.venue.name} (${s.venue.id})`).join(', ')}`);
 
+  // ---- 8. The e2e league (S10, competition.yaml) --------------------------------
+  await seedLeague(admin, ids, now);
+  // Its matches' triggers may notify the logins; other flows start clean.
+  check(await admin.from('notifications').delete().in('profile_id', [...e2eUserIds]), 'clearing e2e notifications');
+  log(`league: ${E2E_LEAGUE.name} (${E2E_LEAGUE.id}), ${E2E_TEAMS.length} teams, ${E2E_LEAGUE_RESULTS.length} results, 1 upcoming`);
+
   // ---- The slots, which must be free now -----------------------------------
   const slots = { ios: e2eSlot('ios', now), android: e2eSlot('android', now) };
   for (const platform of ['ios', 'android'] as Platform[]) {
@@ -495,6 +646,124 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
     }
   }
   return { slot_day: slots.ios.day, ios_start: slots.ios.start, android_start: slots.android.start, venue_id: E2E_VENUE.id };
+}
+
+/** Step 8: the e2e league. Made once and kept: a second run finds Season 1
+ *  and its completed fixtures and leaves them alone, and only moves the
+ *  upcoming fixture to 3 days ahead. Every row is checked to be ours first. */
+export async function seedLeague(admin: SupabaseClient, ids: ReadonlyMap<string, string>, now: Date) {
+  const teamRows = e2eTeamRows(ids);
+  assertE2eTeams(
+    check(
+      await admin.from('teams').select('id, name').in('id', teamRows.teams.map((t) => t.id)),
+      'reading the e2e teams',
+    ) as { id: string; name: string }[],
+  );
+  check(await admin.from('teams').upsert(teamRows.teams), 'writing the e2e teams');
+  check(
+    await admin.from('team_members').upsert(teamRows.members, { onConflict: 'team_id,profile_id' }),
+    'writing the e2e captains',
+  );
+
+  const hub = check(
+    await admin.from('leagues').select('name, scope, parent_league_id').eq('id', E2E_LEAGUE.id).maybeSingle(),
+    'reading the e2e league',
+  ) as { name: string; scope: string; parent_league_id: string | null } | null;
+  assertE2eLeague(hub);
+
+  const findSeason = async () =>
+    check(
+      await admin
+        .from('leagues')
+        .select('id, start_date')
+        .eq('parent_league_id', E2E_LEAGUE.id)
+        .eq('kind', 'season')
+        .eq('season_number', 1)
+        .maybeSingle(),
+      'reading Season 1',
+    ) as { id: string; start_date: string } | null;
+
+  let season = hub ? await findSeason() : null;
+  if (!season) {
+    // Sign-up, then Season 1 the way a full sign-up starts it.
+    check(await admin.from('leagues').upsert(e2eLeagueHub(now)), 'writing the e2e league');
+    check(
+      await admin
+        .from('league_teams')
+        .upsert(E2E_TEAMS.map((t) => ({ league_id: E2E_LEAGUE.id, team_id: t.id })), {
+          onConflict: 'league_id,team_id',
+          ignoreDuplicates: true,
+        }),
+      'signing up the e2e teams',
+    );
+    check(await admin.rpc('league_start_season', { p_hub_id: E2E_LEAGUE.id }), 'starting Season 1');
+    season = await findSeason();
+    if (!season) throw new Error('e2e seed: Season 1 was not created. Stopping.');
+  }
+
+  // The six results, each final once.
+  const fixtures = check(
+    await admin.from('league_fixtures').select('id, home_team_id, away_team_id, status').eq('league_id', season.id),
+    'reading the e2e fixtures',
+  ) as E2eFixtureRow[];
+  const plan = e2eResultPlan(fixtures, season.start_date);
+  for (const step of plan) {
+    check(
+      await admin
+        .from('league_fixtures')
+        .update({
+          venue_id: E2E_VENUE.id,
+          scheduled_day: step.scheduled_day,
+          scheduled_time: step.scheduled_time,
+          status: 'agreed',
+        })
+        .eq('id', step.fixtureId),
+      `scheduling fixture ${step.fixtureId}`,
+    );
+    const match = check(
+      await admin.from('matches').select('id, kickoff_at').eq('league_fixture_id', step.fixtureId).single(),
+      `reading fixture ${step.fixtureId}'s match`,
+    ) as { id: string; kickoff_at: string };
+    const players = check(
+      await admin.from('match_players').select('id, profile_id, side').eq('match_id', match.id).is('left_at', null),
+      `reading match ${match.id}'s players`,
+    ) as { id: string; profile_id: string | null; side: string | null }[];
+    const rows = e2eMatchResult(match, players, step.homeGoals, step.awayGoals);
+    check(await admin.from('matches').update(rows.match).eq('id', match.id), `confirming match ${match.id}`);
+    check(
+      await admin.from('match_attendance').upsert(rows.attendance, { onConflict: 'match_id,profile_id', ignoreDuplicates: true }),
+      `checking in match ${match.id}`,
+    );
+    check(await admin.from('match_goals').delete().eq('match_id', match.id), `clearing match ${match.id}'s goals`);
+    if (rows.goals.length > 0) check(await admin.from('match_goals').insert(rows.goals), `writing match ${match.id}'s goals`);
+    check(
+      await admin.from('match_player_ratings').upsert(rows.ratings, { onConflict: 'match_id,player_id' }),
+      `rating match ${match.id}`,
+    );
+    // The final moment, as match_levels_tick runs it: levels move and the
+    // fixture takes the match's score (matches_league_fixture_final).
+    check(
+      await admin.rpc('apply_match_levels', { p_match_id: match.id, p_now: now.toISOString() }),
+      `making match ${match.id} final`,
+    );
+    const done = check(
+      await admin.from('league_fixtures').select('status').eq('id', step.fixtureId).single(),
+      `reading fixture ${step.fixtureId}`,
+    ) as { status: string };
+    if (done.status !== 'completed') {
+      throw new Error(`e2e seed: fixture ${step.fixtureId} is "${done.status}" after its match went final. Stopping.`);
+    }
+  }
+
+  // The upcoming fixture: made once, moved every run (its match follows).
+  const upcoming = e2eUpcomingFixture(season.id, now);
+  if (cyprusWallTime(upcoming.scheduled_day, upcoming.scheduled_time).getTime() <= now.getTime()) {
+    throw new Error('e2e seed: the upcoming fixture would be in the past. Stopping.');
+  }
+  check(
+    await admin.from('league_fixtures').upsert(upcoming, { onConflict: 'league_id,home_team_id,away_team_id' }),
+    'writing the upcoming fixture',
+  );
 }
 
 /** As the app does it (lib/booking-detail.ts confirmCancellation): the
