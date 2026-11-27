@@ -20,8 +20,8 @@
 --   team_pending_invites the team's open invites, for its captain
 --   team_competitions    the leagues a team plays in, for its public page
 --
--- Tournaments (S10A, #237) aren't merged yet, so delete_team doesn't check
--- them; S20A's follow-up adds tournament_teams to team_in_competition.
+-- delete_team is refused while the team is in a league or a tournament
+-- (S10A) that isn't finished (team_in_competition).
 
 -- ---- Columns ---------------------------------------------------------------------
 
@@ -63,7 +63,8 @@ as $$
 $$;
 
 -- The team is in a league, season or division that isn't finished
--- (sign-up counts; decided by Anghelo, 27 November), or waiting in one's pool.
+-- (sign-up counts; decided by Anghelo, 27 November), or waiting in one's
+-- pool, or registered for a tournament that isn't finished (S10A).
 create function public.team_in_competition(p_team_id uuid)
 returns boolean
 language sql
@@ -76,7 +77,10 @@ as $$
       where lt.team_id = p_team_id and coalesce(l.stage, 'signup') <> 'finished')
     or exists (
       select 1 from public.level_pool lp join public.leagues l on l.id = lp.league_id
-      where lp.team_id = p_team_id and coalesce(l.stage, 'signup') <> 'finished');
+      where lp.team_id = p_team_id and coalesce(l.stage, 'signup') <> 'finished')
+    or exists (
+      select 1 from public.tournament_teams tt join public.tournaments t on t.id = tt.tournament_id
+      where tt.team_id = p_team_id and t.status <> 'finished');
 $$;
 
 -- The team has a booking that isn't cancelled and hasn't kicked off.

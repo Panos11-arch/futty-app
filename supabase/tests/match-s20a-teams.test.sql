@@ -385,6 +385,32 @@ begin
   assert (select deleted_at from public.teams where id = team) is not null, 'finished: deleted';
 end $$;
 
+-- Refused while the team is in a tournament that isn't finished (S10A); allowed once it is.
+do $$
+declare
+  ana uuid := (select v from s20a where k = 'ana');
+  team uuid := tests.s20a_team(ana, 'Cup FC');
+  cup uuid;
+  st text;
+  e text;
+begin
+  insert into public.tournaments (name, area, format, max_teams, entry_fee_cents, match_minutes, status)
+  values ('S20A Cup', 'Nicosia', '5-a-side', 16, 0, 50, 'registration')
+  returning id into cup;
+  insert into public.tournament_teams (tournament_id, team_id, kit_colour) values (cup, team, 'kitBlue');
+  foreach st in array array['coming_soon', 'registration', 'groups', 'knockout'] loop
+    update public.tournaments set status = st where id = cup;
+    e := tests.error_as(ana, format('select public.delete_team(%L)', team));
+    assert e = 'team_in_competition', format('tournament %s: %s', st, e);
+  end loop;
+  assert (select deleted_at from public.teams where id = team) is null, 'still there';
+  update public.tournaments set status = 'finished' where id = cup;
+  perform tests.s20a_value(ana, format('select public.delete_team(%L)', team));
+  assert (select deleted_at from public.teams where id = team) is not null, 'tournament finished: deleted';
+  assert exists (select 1 from public.tournament_teams where tournament_id = cup and team_id = team),
+    'its tournament entry stays (history)';
+end $$;
+
 -- Refused while the team has an upcoming booking; a past or cancelled one doesn't block.
 do $$
 declare
