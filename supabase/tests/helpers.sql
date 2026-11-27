@@ -1670,3 +1670,300 @@ set search_path = ''
 as $$
   select array_agg(s.team_id order by s.pos) from public.league_standings(p_league) s;
 $$;
+
+-- S10A (tournaments, match-record.md decision 1o).
+
+-- A new user who is an admin (app_admins, written as postgres: only
+-- service_role and the dashboard add admins).
+create or replace function tests.s10a_admin(p_email text)
+returns uuid
+language plpgsql
+as $$
+declare
+  v uuid := tests.create_user(p_email);
+begin
+  insert into public.app_admins (profile_id) values (v);
+  return v;
+end;
+$$;
+
+-- A 16-team 5-a-side tournament created by p_admin (50-minute matches, €5
+-- entry per player), with registration open unless p_open is false.
+create or replace function tests.s10a_tournament(p_admin uuid, p_open boolean default true,
+                                                 p_deadline timestamptz default null)
+returns uuid
+language plpgsql
+as $$
+declare
+  v uuid;
+begin
+  perform tests.act_as(p_admin);
+  v := public.admin_create_tournament(jsonb_build_object(
+    'name', 'S10A Cup', 'area', 'Limassol', 'format', '5-a-side', 'maxTeams', 16,
+    'entryFeeCents', 500, 'matchMinutes', 50, 'registrationDeadline', p_deadline));
+  if p_open then
+    perform public.admin_open_registration(v);
+  end if;
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- A team called p_name with p_size members, each a new user; the first is
+-- its captain.
+create or replace function tests.s10a_team(p_name text, p_size integer default 5)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_cap uuid := tests.create_user(format('s10a-cap-%s@futty.test', gen_random_uuid()));
+  v_players uuid[] := '{}';
+begin
+  for i in 2 .. p_size loop
+    v_players := v_players || tests.create_user(format('s10a-p%s-%s@futty.test', i, gen_random_uuid()));
+  end loop;
+  return tests.s10_team(p_name, v_cap, v_players);
+end;
+$$;
+
+-- p_team's members, captain first.
+create or replace function tests.s10a_members(p_team uuid)
+returns uuid[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select array_agg(profile_id order by (role <> 'captain'), joined_at, id) from public.team_members where team_id = p_team;
+$$;
+
+-- p_team's captain.
+create or replace function tests.s10a_captain(p_team uuid)
+returns uuid
+language sql
+stable
+as $$
+  select (tests.s10a_members(p_team))[1];
+$$;
+
+-- p_team's captain registers it for p_tournament with p_squad (its first
+-- five members by default); returns the error, or null.
+create or replace function tests.s10a_register(p_tournament uuid, p_team uuid, p_squad uuid[] default null,
+                                               p_kit text default 'kitRed')
+returns text
+language sql
+as $$
+  select tests.error_as(tests.s10a_captain(p_team),
+    format('select public.register_team_for_tournament(%L, %L, %L, %L)', p_tournament, p_team, p_kit,
+           coalesce(p_squad, (tests.s10a_members(p_team))[1:5])));
+$$;
+
+-- Registers new teams of five until p_tournament has 16; returns every
+-- registered team in registration order.
+create or replace function tests.s10a_fill(p_tournament uuid)
+returns uuid[]
+language plpgsql
+as $$
+declare
+  v_team uuid;
+  v_error text;
+begin
+  while (select count(*) from public.tournament_teams where tournament_id = p_tournament) < 16 loop
+    v_team := tests.s10a_team(format('S10A T%s',
+      lpad(((select count(*) from public.tournament_teams where tournament_id = p_tournament) + 1)::text, 2, '0')));
+    v_error := tests.s10a_register(p_tournament, v_team);
+    assert v_error is null, 'registered, got ' || coalesce(v_error, '');
+  end loop;
+  return (select array_agg(team_id order by registered_at, team_id) from public.tournament_teams
+          where tournament_id = p_tournament);
+end;
+$$;
+
+-- p_teams (16) placed in order: 1–4 in group A (positions 1–4), 5–8 in B,
+-- 9–12 in C and 13–16 in D, by p_admin.
+create or replace function tests.s10a_set_groups(p_admin uuid, p_tournament uuid, p_teams uuid[])
+returns text
+language sql
+as $$
+  select tests.error_as(p_admin, format('select public.admin_set_groups(%L, %L)', p_tournament,
+    jsonb_build_object('A', to_jsonb(p_teams[1:4]), 'B', to_jsonb(p_teams[5:8]),
+                       'C', to_jsonb(p_teams[9:12]), 'D', to_jsonb(p_teams[13:16]))));
+$$;
+
+-- A tournament with 16 teams in groups set in registration order (see
+-- s10a_set_groups); returns the teams in that order.
+create or replace function tests.s10a_groups(p_admin uuid, p_tournament uuid)
+returns uuid[]
+language plpgsql
+as $$
+declare
+  v_teams uuid[] := tests.s10a_fill(p_tournament);
+  v_error text := tests.s10a_set_groups(p_admin, p_tournament, v_teams);
+begin
+  assert v_error is null, 'groups set, got ' || coalesce(v_error, '');
+  return v_teams;
+end;
+$$;
+
+-- The fixture in slot p_slot ('A-1' … 'D-6', 'QF1' … 'QF4', 'SF1', 'SF2', 'F').
+create or replace function tests.s10a_slot(p_tournament uuid, p_slot text)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select id from public.tournament_fixtures where tournament_id = p_tournament and slot = p_slot;
+$$;
+
+-- The group fixture between p_a and p_b, either way round.
+create or replace function tests.s10a_fixture(p_tournament uuid, p_a uuid, p_b uuid)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select id from public.tournament_fixtures
+  where tournament_id = p_tournament
+    and ((home_team_id = p_a and away_team_id = p_b) or (home_team_id = p_b and away_team_id = p_a));
+$$;
+
+-- p_admin enters p_home:p_away (and pens) on p_fixture; returns the error,
+-- or null.
+create or replace function tests.s10a_result(p_admin uuid, p_fixture uuid, p_home integer, p_away integer,
+                                             p_home_pens integer default null, p_away_pens integer default null)
+returns text
+language sql
+as $$
+  select tests.error_as(p_admin, format('select public.admin_set_result(%L, %s, %s, %s, %s)', p_fixture, p_home,
+                                        p_away, coalesce(p_home_pens::text, 'null'), coalesce(p_away_pens::text, 'null')));
+$$;
+
+-- p_fixture completed p_home:p_away straight away (no match), for the
+-- standings tests.
+create or replace function tests.s10a_score(p_fixture uuid, p_home integer, p_away integer)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.tournament_fixtures
+  set status = 'completed', home_score = p_home, away_score = p_away, decided_by = 'organiser'
+  where id = p_fixture;
+$$;
+
+-- Every group fixture through p_admin: the team placed higher in the group
+-- wins 1–0, so each group finishes in its placing order.
+create or replace function tests.s10a_play_groups(p_admin uuid, p_tournament uuid)
+returns void
+language plpgsql
+as $$
+declare
+  f record;
+  v_error text;
+begin
+  for f in
+    select tf.id, th.group_pos as home_pos, ta.group_pos as away_pos
+    from public.tournament_fixtures tf
+    join public.tournament_teams th on th.tournament_id = tf.tournament_id and th.team_id = tf.home_team_id
+    join public.tournament_teams ta on ta.tournament_id = tf.tournament_id and ta.team_id = tf.away_team_id
+    where tf.tournament_id = p_tournament and tf.stage = 'group' and tf.status <> 'completed'
+    order by tf.slot
+  loop
+    v_error := tests.s10a_result(p_admin, f.id, case when f.home_pos < f.away_pos then 1 else 0 end,
+                                 case when f.home_pos < f.away_pos then 0 else 1 end);
+    assert v_error is null, 'group result entered, got ' || coalesce(v_error, '');
+  end loop;
+end;
+$$;
+
+-- The team at p_pos (1–4) of group p_group in the placing (group_pos).
+create or replace function tests.s10a_placed(p_tournament uuid, p_group text, p_pos integer)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select team_id from public.tournament_teams
+  where tournament_id = p_tournament and group_letter = p_group and group_pos = p_pos;
+$$;
+
+-- p_admin sets p_fixture's kickoff; returns its match.
+create or replace function tests.s10a_time(p_admin uuid, p_fixture uuid, p_kickoff timestamptz)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_error text := tests.error_as(p_admin, format('select public.admin_set_fixture_time(%L, %L)', p_fixture, p_kickoff));
+begin
+  assert v_error is null, 'time set, got ' || coalesce(v_error, '');
+  return (select id from public.matches where tournament_fixture_id = p_fixture);
+end;
+$$;
+
+-- p_user logs p_a:p_b (and pens) on p_match with his sides' goals as own
+-- goals, as tests.log_result does; returns log_match_result's answer.
+create or replace function tests.s10a_log(p_user uuid, p_match uuid, p_a integer, p_b integer,
+                                          p_pa integer default null, p_pb integer default null)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_stats jsonb := '{}';
+  v_side text;
+  v jsonb;
+begin
+  foreach v_side in array coalesce(public.match_side_writer(p_match, p_user), '{}') loop
+    v_stats := v_stats || jsonb_build_object(v_side, jsonb_build_object(
+      'players', '[]'::jsonb, 'ownGoals', case v_side when 'a' then p_a else p_b end));
+  end loop;
+  perform tests.act_as(p_user);
+  v := public.log_match_result(p_match, p_a, p_b, v_stats, p_pa, p_pb);
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- The error tests.s10a_log raises, or null.
+create or replace function tests.s10a_log_error(p_user uuid, p_match uuid, p_a integer, p_b integer,
+                                                p_pa integer default null, p_pb integer default null)
+returns text
+language plpgsql
+as $$
+begin
+  perform tests.s10a_log(p_user, p_match, p_a, p_b, p_pa, p_pb);
+  return null;
+exception when others then
+  perform tests.act_as_postgres();
+  return sqlerrm;
+end;
+$$;
+
+-- p_x scored p_gx and p_y scored p_gy in their group fixture, written
+-- straight in whichever way round it is.
+create or replace function tests.s10a_pair(p_tournament uuid, p_x uuid, p_y uuid, p_gx integer, p_gy integer)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update public.tournament_fixtures
+  set status = 'completed', decided_by = 'organiser',
+      home_score = case when home_team_id = p_x then p_gx else p_gy end,
+      away_score = case when home_team_id = p_x then p_gy else p_gx end
+  where tournament_id = p_tournament
+    and ((home_team_id = p_x and away_team_id = p_y) or (home_team_id = p_y and away_team_id = p_x));
+$$;
+
+-- Group p_group's team ids in standings order.
+create or replace function tests.s10a_order(p_tournament uuid, p_group text)
+returns uuid[]
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select array_agg(s.team_id order by s.pos) from public.tournament_group_standings(p_tournament, p_group) s;
+$$;
