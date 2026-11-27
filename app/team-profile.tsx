@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { FollowButton } from '@/components/match/follow-button';
 import { FormChips } from '@/components/match/form-chips';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
@@ -167,6 +168,8 @@ export default function TeamProfileScreen() {
                 </Card>
               )}
             </View>
+            {/* G4a: a banner ad on another team's page, never one you play for. */}
+            {myTeams.status === 'ready' && !isMember ? <AdBanner testID="team-profile-ad" /> : null}
           </>
         ) : null}
       </ScrollView>

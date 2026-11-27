@@ -5,7 +5,11 @@ import { router } from 'expo-router';
 
 import CommunityScreen, { CommunityContent } from '@/app/(tabs)/community';
 
+import { testIdsInOrder } from '../ads/test-ids';
 import { post, result, suggestion } from './fixtures';
+
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 
 const mockFetchFeed = jest.fn();
 const mockFetchSuggestions = jest.fn();
@@ -154,6 +158,27 @@ describe('Community screen (image 18)', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Your posts' }));
       await waitFor(() => expect(mockFetchFeed).toHaveBeenCalledWith('mine'));
       expect(screen.getByTestId('community-feed-mine')).toBeTruthy();
+    });
+
+    // G4a (image 18): one banner ad after every 8 posts, never before the 8th.
+    it('a banner ad after every 8th post', async () => {
+      const posts = Array.from({ length: 17 }, (_, i) => post({ item_id: `p${i + 1}` }));
+      mockFetchFeed.mockResolvedValue({ data: posts, error: null });
+      await render(<CommunityContent />);
+      await screen.findByTestId('feed-post-p1');
+      const ids = testIdsInOrder();
+      expect(ids).toEqual(expect.arrayContaining(['feed-post-p8', 'feed-post-p9', 'community-feed-ad-8']));
+      expect(ids.indexOf('community-feed-ad-8')).toBeGreaterThan(ids.indexOf('feed-post-p8'));
+      expect(ids.indexOf('community-feed-ad-8')).toBeLessThan(ids.indexOf('feed-post-p9'));
+      expect(ids.filter((id) => id.startsWith('community-feed-ad-')).every((id) => /-(8|16)$/.test(id))).toBe(true);
+    });
+
+    it('fewer than 8 posts: no banner ad', async () => {
+      const posts = Array.from({ length: 7 }, (_, i) => post({ item_id: `p${i + 1}` }));
+      mockFetchFeed.mockResolvedValue({ data: posts, error: null });
+      await render(<CommunityContent />);
+      await screen.findByTestId('feed-post-p7');
+      expect(testIdsInOrder().some((id) => id.startsWith('community-feed-ad-'))).toBe(false);
     });
   });
 

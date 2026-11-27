@@ -1,13 +1,15 @@
 // Overview (image 13; SofaScore 07-10), top to bottom: the season card (with
 // the join flow while sign-up is open), Player of the season, Power
-// rankings top 4, Team of the season, the featured match and Titles. No
-// Discussion (S7b), no ads (G4a), no Media. Empty sections are hidden;
+// rankings top 4, the banner ad (G4a, none on Premium Plus), Team of the
+// season, the featured match and Titles. No Discussion (S7b), no Media.
+// Empty sections are hidden;
 // Player of the season shows image 13's placeholder until someone has 3
 // matches.
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { DropdownButton } from '@/components/competition/dropdown-button';
 import { InfoLine } from '@/components/competition/info-line';
 import { OptionSheet } from '@/components/competition/option-sheet';
@@ -319,6 +321,7 @@ export function OverviewTab({
       <SeasonCard competition={competition} hub={hub} leagues={leagues} onChanged={onChanged} />
       <PlayerOfTheSeason awards={awards} onSeeMore={() => onGoTab('stats')} />
       <PowerTop seasonId={seasonId} onGo={() => onGoTab('power')} />
+      <AdBanner testID="competition-overview-ad" />
       <TeamOfTheSeason awards={awards} matchday={matchday} onMatchday={setMatchday} />
       {awards.status === 'error' ? (
         <Banner tone="danger" message="Couldn’t load the awards." action={{ label: 'Try again', onPress: awards.reload }} />

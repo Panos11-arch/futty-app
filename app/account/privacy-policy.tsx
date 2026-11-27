@@ -179,7 +179,16 @@ function PrivacyPolicyEn() {
         reminders, if you choose them). These providers process data on our behalf.
       </DocBullet>
       <DocBullet>
-        We do not sell your data, and we do not use third-party advertising or tracking SDKs.
+        Ads: Basic and Premium players see small banner ads from Google AdMob on some screens;
+        Premium Plus players see none. Every ad is non-personalised. Google receives your IP
+        address, device information and advertising identifier (where your phone allows it) to
+        show, count and limit ads and to prevent fraud, under Google&apos;s privacy policy. In the
+        EU, Google&apos;s consent form asks you first. For players under 18, every ad request is
+        marked as coming from someone under the age of consent.
+      </DocBullet>
+      <DocBullet>
+        We do not sell your data, and we do not track you across other companies&apos; apps or
+        websites.
       </DocBullet>
 
       <DocHeading>Blocking and reporting</DocHeading>
@@ -460,8 +469,18 @@ function PrivacyPolicyEl() {
         δεδομένα για λογαριασμό μας.
       </DocBullet>
       <DocBullet>
-        Δεν πουλάμε τα δεδομένα σας και δεν χρησιμοποιούμε εργαλεία διαφήμισης ή παρακολούθησης
-        τρίτων.
+        Διαφημίσεις: οι παίκτες Basic και Premium βλέπουν μικρές διαφημίσεις banner από το Google
+        AdMob σε ορισμένες οθόνες· οι παίκτες Premium Plus δεν βλέπουν καμία. Όλες οι διαφημίσεις
+        είναι μη εξατομικευμένες. Η Google λαμβάνει τη διεύθυνση IP σας, πληροφορίες της συσκευής
+        και το αναγνωριστικό διαφήμισης (όπου το επιτρέπει το τηλέφωνό σας) για να εμφανίζει, να
+        μετρά και να περιορίζει τις διαφημίσεις και για να αποτρέπει την απάτη, σύμφωνα με την
+        πολιτική απορρήτου της Google. Στην ΕΕ, η φόρμα συγκατάθεσης της Google σας ρωτά πρώτα. Για
+        παίκτες κάτω των 18, κάθε αίτημα διαφήμισης σημειώνεται ως αίτημα ατόμου κάτω από την ηλικία
+        συγκατάθεσης.
+      </DocBullet>
+      <DocBullet>
+        Δεν πουλάμε τα δεδομένα σας και δεν σας παρακολουθούμε σε εφαρμογές ή ιστότοπους άλλων
+        εταιρειών.
       </DocBullet>
 
       <DocHeading>Αποκλεισμός και αναφορές</DocHeading>

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import PlayerProfileScreen from '@/app/player-profile';
+import { testIdsInOrder } from '../ads/test-ids';
 
 const mockGetPublicProfile = jest.fn();
 let mockForm: Record<string, unknown>;
@@ -14,6 +15,8 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ profileId: mockProfileId }),
 }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 jest.mock('react-native-safe-area-context', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { SafeAreaView: View };
@@ -166,5 +169,31 @@ describe('Player profile', () => {
     await waitFor(() => expect(screen.getByText('Form')).toBeTruthy());
     expect(screen.queryByText('Streak badges')).toBeNull();
     expect(mockStreakCalls).toEqual([]);
+  });
+
+  it('G4a: another player’s profile ends with a banner ad', async () => {
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Form')).toBeTruthy());
+    const ids = testIdsInOrder();
+    expect(ids).toContain('player-profile-ad');
+    expect(ids[ids.length - 1]).toBe('player-profile-ad');
+  });
+
+  it('G4a: never on the viewer’s own profile', async () => {
+    mockProfileId = 'me';
+    mockGetPublicProfile.mockResolvedValue({ data: { id: 'me', username: 'me' }, error: null });
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Form')).toBeTruthy());
+    expect(screen.queryByTestId('player-profile-ad')).toBeNull();
+  });
+
+  it('G4a: no banner ad while loading or when the profile fails', async () => {
+    mockGetPublicProfile.mockReturnValueOnce(new Promise(() => {}));
+    await render(<PlayerProfileScreen />);
+    expect(screen.queryByTestId('player-profile-ad')).toBeNull();
+    mockGetPublicProfile.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    await render(<PlayerProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Try again')).toBeTruthy());
+    expect(screen.queryByTestId('player-profile-ad')).toBeNull();
   });
 });

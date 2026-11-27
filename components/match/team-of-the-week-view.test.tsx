@@ -5,11 +5,14 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { TeamOfTheWeekView } from '@/components/match/team-of-the-week-view';
+import { testIdsInOrder } from '../../tests/ads/test-ids';
 import type { TeamOfTheWeek, TeamOfTheWeekPlayer, TeamShape } from '@/lib/match/stats-api';
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../../tests/ads/test-ids').adBannerMarker());
 jest.mock('@/components/ui/icon-symbol', () =>
   jest.requireActual<typeof import('@/components/ui/test-utils')>('@/components/ui/test-utils').iconSymbolMock(),
 );
@@ -197,5 +200,27 @@ describe('TeamOfTheWeekView', () => {
     ready();
     await view();
     expect(screen.queryByTestId('totw-premium-banner')).toBeNull();
+  });
+
+  it('G4a: a banner ad at the end, under the Player of the week and the Premium line (image 15)', async () => {
+    ready();
+    mockProfile = { status: 'ready', profile: { city: 'Limassol', is_premium: false } };
+    await view();
+    const ids = testIdsInOrder();
+    expect(ids).toEqual(expect.arrayContaining(['rankings-totw-ad', 'potw-card', 'totw-premium-banner']));
+    expect(ids.indexOf('rankings-totw-ad')).toBeGreaterThan(ids.indexOf('potw-card'));
+    expect(ids.indexOf('rankings-totw-ad')).toBeGreaterThan(ids.indexOf('totw-premium-banner'));
+  });
+
+  it('G4a: no banner ad while loading, on an error or with no team (hidden empty section)', async () => {
+    mockWeeks = { status: 'loading', reload: jest.fn() };
+    await view();
+    expect(screen.queryByTestId('rankings-totw-ad')).toBeNull();
+    mockWeeks = { status: 'error', message: 'boom', reload: jest.fn() };
+    await view();
+    expect(screen.queryByTestId('rankings-totw-ad')).toBeNull();
+    mockWeeks = { status: 'ready', weeks: [], reload: jest.fn() };
+    await view();
+    expect(screen.queryByTestId('rankings-totw-ad')).toBeNull();
   });
 });

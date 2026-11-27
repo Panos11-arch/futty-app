@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { NoOpponentChoices } from '@/components/booking/no-opponent-choices';
 import { FeaturedEvent } from '@/components/home/featured-event';
 import { GamesNeedingPlayers } from '@/components/home/games-needing-players';
@@ -55,6 +56,8 @@ export default function HomeScreen() {
         <LogScoreSection refreshSignal={refreshSignal} />
         <UpcomingMatches refreshSignal={refreshSignal} />
         <GamesNeedingPlayers refreshSignal={refreshSignal} />
+        {/* G4a: the banner ad (none on Premium Plus). */}
+        <AdBanner testID="home-ad" />
         <FeaturedEvent refreshSignal={refreshSignal} />
         <HomeBanner />
       </ScrollView>

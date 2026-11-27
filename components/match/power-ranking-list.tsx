@@ -5,9 +5,10 @@
 // in place: each counted game, the points it won or lost and the expected
 // win chance. The badge and name open the team page.
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { Avatar } from '@/components/ui/avatar';
 import { Banner } from '@/components/ui/banner';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -133,11 +134,13 @@ export type PowerRankingRowsProps = {
   format: string;
   /** The empty state's one line and one button. */
   empty: { message: string; action: { label: string; onPress: () => void } };
+  /** Under the rows, only when there are some (the Rankings tab's banner ad, G4a). */
+  footer?: ReactElement;
 };
 
 /** The ranked rows with their breakdowns: the Rankings tab and S10's
  *  competition page (which lists that competition's teams in app-wide order). */
-export function PowerRankingRows({ state, reload, format, empty }: PowerRankingRowsProps) {
+export function PowerRankingRows({ state, reload, format, empty, footer }: PowerRankingRowsProps) {
   const styles = useStyles();
   const [openId, setOpenId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -173,6 +176,7 @@ export function PowerRankingRows({ state, reload, format, empty }: PowerRankingR
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
       ListEmptyComponent={<EmptyState icon="trophy.fill" message={empty.message} action={empty.action} />}
+      ListFooterComponent={footer && rows.length > 0 ? <View style={styles.footer}>{footer}</View> : null}
       renderItem={({ item, index }) => (
         <Row
           row={item}
@@ -195,12 +199,14 @@ export function PowerRankingList({ format, onSeeTeamOfTheWeek }: { format: strin
       reload={ranking.reload}
       format={format}
       empty={{ message: 'No ranked teams yet', action: { label: 'See Team of the Week', onPress: onSeeTeamOfTheWeek } }}
+      footer={<AdBanner testID="rankings-power-ad" />}
     />
   );
 }
 
 const useStyles = makeStyles(({ colors }) => ({
   content: { padding: space.lg, paddingBottom: space.xxl, gap: 0 },
+  footer: { marginTop: space.lg },
   card: { backgroundColor: colors.surface, borderLeftWidth: hairline, borderRightWidth: hairline, borderColor: colors.border },
   cardFirst: { borderTopWidth: hairline, borderTopLeftRadius: radius.card, borderTopRightRadius: radius.card },
   cardLast: { borderBottomWidth: hairline, borderBottomLeftRadius: radius.card, borderBottomRightRadius: radius.card, overflow: 'hidden' },

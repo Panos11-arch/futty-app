@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 import TeamProfileScreen from '@/app/team-profile';
+import { testIdsInOrder } from '../ads/test-ids';
 
 const team = {
   id: 'tigers',
@@ -50,6 +51,8 @@ jest.mock('@/lib/teams', () => ({
     }),
 }));
 jest.mock('@/lib/use-my-teams', () => ({ useMyTeams: () => mockMyTeams }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 jest.mock('@/lib/use-follows', () => ({
   useFollows: () => ({ status: 'ready', isFollowing: () => false, toggle: mockToggle, reload: jest.fn() }),
 }));
@@ -210,5 +213,22 @@ describe('Team profile', () => {
     await renderReady();
     await fireEvent.press(screen.getByText('Try again'));
     expect(reload).toHaveBeenCalled();
+  });
+
+  it('G4a: another team’s page ends with a banner ad', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    await renderReady();
+    const ids = testIdsInOrder();
+    expect(ids).toContain('team-profile-ad');
+    expect(ids[ids.length - 1]).toBe('team-profile-ad');
+  });
+
+  it('G4a: never on a team the viewer plays for, nor before that is known', async () => {
+    mockMyTeams = { status: 'ready', teams: [{ team, role: 'player' }] };
+    await renderReady();
+    expect(screen.queryByTestId('team-profile-ad')).toBeNull();
+    mockMyTeams = { status: 'loading' };
+    await renderReady();
+    expect(screen.queryByTestId('team-profile-ad')).toBeNull();
   });
 });

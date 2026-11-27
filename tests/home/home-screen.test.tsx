@@ -78,6 +78,8 @@ jest.mock('@/lib/use-fixtures', () => ({
   useMyCaptainTeamIds: () => [],
 }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 jest.mock('@/components/booking-result-form', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { BookingResultForm: ({ booking }: { booking: { id: string } }) => <Text>{`old booking form ${booking.id}`}</Text> };
@@ -303,7 +305,8 @@ describe('Home (S3, image 01)', () => {
   });
 
   // spec 15 section 0.6 order; the owed banner sits under the quick actions so
-  // money owed always shows (not in image 01).
+  // money owed always shows (not in image 01). G4a: the banner ad between
+  // Games needing players and Featured event.
   it('keeps the agreed order', async () => {
     mockBookings = { status: 'ready', bookings: [booking] };
     mockOpenMatches = [toLog()];
@@ -323,6 +326,7 @@ describe('Home (S3, image 01)', () => {
       '"home-log-score-section"',
       '"home-upcoming"',
       '"home-games-row"',
+      '"home-ad"',
       '"home-featured-event"',
       '"home-banner"',
     ].map((id) => tree.indexOf(id));
