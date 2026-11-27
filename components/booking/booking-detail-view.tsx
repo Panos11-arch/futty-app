@@ -32,6 +32,7 @@ import {
   countdownLabel,
   cutoffPassed,
   describeQuote,
+  noticeUnderCancelledTitle,
   openVenueOffers,
   paymentDeadlineLabel,
   rosterRow,
@@ -171,6 +172,7 @@ function BookingDetailReady({
   const { booking, venue, me, roster, is_booker: isBooker } = detail;
 
   const cancelled = booking.status === 'cancelled';
+  const underTitle = noticeUnderCancelledTitle(notice);
   const meActive = me !== null && me.status !== 'cancelled' && me.status !== 'refunded';
   const started = now.getTime() >= Date.parse(booking.kickoff_at);
   const live = !cancelled && !started;
@@ -328,12 +330,17 @@ function BookingDetailReady({
 
         {cancelled ? (
           // QA 24 November (T4, S5): one banner. Just after cancelling it
-          // carries the screen's notice too; the words stay as the Maestro
-          // cancel flow checks them. Then what happened to the money.
+          // carries the screen's notice too, said once (QA 27 November): the
+          // title only, or the title and any charge sentence. Then what
+          // happened to the money.
           <View testID="booking-detail-cancelled" style={styles.list}>
             {notice ? (
               <View testID="booking-detail-notice">
-                <Banner tone="info" title="This booking was cancelled." message={notice} />
+                {underTitle ? (
+                  <Banner tone="info" title="This booking was cancelled." message={underTitle} />
+                ) : (
+                  <Banner tone="info" message="This booking was cancelled." />
+                )}
               </View>
             ) : (
               <Banner tone="info" message="This booking was cancelled." />
