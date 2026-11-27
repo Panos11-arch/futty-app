@@ -275,11 +275,17 @@ export function tournamentDates(t: Pick<TournamentHeader, 'startDate' | 'endDate
     : `${dayLabel(t.startDate)} – ${dayLabel(t.endDate)}`;
 }
 
-/** "€12 per player, paid to the organiser" (decision 1o): shown only,
- *  nothing is collected in the app. Whole euros drop the cents. */
-export function entryFeeLine(entryFeeCents: number): string {
+/** "€12 per player" (Home's featured card, S10B): the server's cents, shown
+ *  only. Whole euros drop the cents. */
+export function entryFeeAmount(entryFeeCents: number): string {
   const euros = formatEuros(entryFeeCents);
-  return `${entryFeeCents % 100 === 0 ? euros.replace(/\.00$/, '') : euros} per player, paid to the organiser`;
+  return `${entryFeeCents % 100 === 0 ? euros.replace(/\.00$/, '') : euros} per player`;
+}
+
+/** "€12 per player, paid to the organiser" (decision 1o): shown only,
+ *  nothing is collected in the app. */
+export function entryFeeLine(entryFeeCents: number): string {
+  return `${entryFeeAmount(entryFeeCents)}, paid to the organiser`;
 }
 
 const STATUS_LABEL: Record<TournamentStatus, string> = {

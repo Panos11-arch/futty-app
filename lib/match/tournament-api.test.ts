@@ -9,6 +9,7 @@ import {
   adminSetResult,
   adminUpdateTournament,
   bracketHalves,
+  entryFeeAmount,
   entryFeeLine,
   fixtureDateLabel,
   fixtureStatusLabel,
@@ -196,6 +197,12 @@ describe('labels', () => {
     expect(entryFeeLine(1200)).toBe('€12 per player, paid to the organiser');
     expect(entryFeeLine(650)).toBe('€6.50 per player, paid to the organiser');
     expect(entryFeeLine(0)).toBe('€0 per player, paid to the organiser');
+  });
+
+  it('S10B: the short fee (Home card) is the same amount without the organiser part', () => {
+    expect(entryFeeAmount(1200)).toBe('€12 per player');
+    expect(entryFeeAmount(650)).toBe('€6.50 per player');
+    expect(entryFeeAmount(1)).toBe('€0.01 per player');
   });
 
   it('status, stage and badge labels', () => {
