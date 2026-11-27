@@ -26,10 +26,13 @@ export type Fixture = {
   home_team: { id: string; name: string } | null;
   away_team: { id: string; name: string } | null;
   venue: { id: string; name: string; city: string } | null;
+  /** S10: true for fixtures made since S10, scored through their match
+   *  ("Log the score"); false keeps the old score_attempts path. */
+  match_flow?: boolean;
 };
 
 const FIXTURE_SELECT = `
-  id, league_id, division_name, home_team_id, away_team_id, venue_id, scheduled_day, scheduled_time, status, score_attempts, score_locked, created_at, home_score, away_score,
+  id, league_id, division_name, home_team_id, away_team_id, venue_id, scheduled_day, scheduled_time, status, score_attempts, score_locked, created_at, home_score, away_score, match_flow,
   home_team:teams!league_fixtures_home_team_id_fkey(id, name),
   away_team:teams!league_fixtures_away_team_id_fkey(id, name),
   venue:venues(id, name, city)

@@ -1,8 +1,8 @@
 // Home's "Featured event" (S3; spec 15 section 0.6, image 01). There is no
 // events data yet (S10B builds the events list), so for now an event is a
 // league still in sign-up: the soonest one that starts today or later in
-// Cyprus. S10B swaps only the source (lib/use-featured-event.ts) and S10 only
-// featuredEventRoute. Leagues have no photo and no price per player, so the
+// Cyprus. S10B swaps only the source (lib/use-featured-event.ts); S10 pointed
+// featuredEventRoute at the competition page. Leagues have no photo and no price per player, so the
 // card shows neither.
 import type { League } from '@/lib/leagues';
 import { leagueFormatOpen } from '@/lib/premium';
@@ -42,7 +42,8 @@ export function getFeaturedEvent(
   };
 }
 
-/** Where "Join" goes: the Leagues screen until S10 adds a competition page. */
-export function featuredEventRoute(_event: FeaturedEvent) {
-  return '/leagues' as const;
+/** Where "Join" goes: the league's competition page (S10), where the season
+ *  card holds the join flow while sign-up is open. */
+export function featuredEventRoute(event: FeaturedEvent) {
+  return { pathname: '/leagues/[id]' as const, params: { id: event.id } };
 }
