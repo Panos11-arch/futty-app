@@ -770,4 +770,111 @@ begin
   assert v = 0, 'nobody twice';
 end $$;
 
+-- ---- 9. Panos's review of 27 November ------------------------------------------------------
+-- A player in debt whose share lapsed is invited again: refuse_debtor_share
+-- runs only on insert, so the revived share is checked too. Accepting says
+-- player_in_debt, his share stays cancelled and the invite stays pending.
+do $$
+declare
+  b record := tests.s20b_book();
+  p uuid := tests.s20b_user('lapsed-debtor');
+  v_share uuid;
+  v_attempt integer;
+  v_invite uuid;
+begin
+  perform tests.s20b_accept(tests.s20b_invite(b.booking, b.booker, p), p);
+  v_share := (tests.share_of(b.booking, p)).id;
+  assert tests.s20b_lapse_now(v_share) = 1, 'lapsed';
+  v_attempt := (select offer_attempt from public.booking_payment_shares where id = v_share);
+  insert into public.venue_debts (profile_id, owed_to, venue_id, booking_id, amount_cents, venue_cents, futty_cents, reason)
+  values (p, 'venue', (select venue_id from public.venue_bookings where id = b.booking), gen_random_uuid(), 680, 600, 80,
+          'unpaid_share');
+  v_invite := tests.s20b_invite(b.booking, b.booker, p);
+  assert tests.error_as(p, format('select public.accept_invite(%L)', v_invite)) = 'player_in_debt',
+    'a debtor can''t take his lapsed spot back';
+  assert (select status from public.booking_payment_shares where id = v_share) = 'cancelled', 'his share stays cancelled';
+  assert (select offer_attempt from public.booking_payment_shares where id = v_share) is not distinct from v_attempt,
+    'no new attempt';
+  assert tests.s20b_invite_status(v_invite) = 'pending', 'the invite stays pending';
+end $$;
+
+-- A player who left after paying can't rejoin (Panos, 27 November, for now):
+-- a refunded, credited or forfeited share in this booking refuses the invite
+-- (player_left_game), and Invite a team / Invite all friends skip him without
+-- counting him. A lapsed player (cancelled, never paid) can still be invited.
+create function tests.s20b_left_players(out booking uuid, out booker uuid, out refunded uuid, out credited uuid,
+                                        out forfeited uuid, out lapsed uuid)
+language plpgsql
+as $$
+declare
+  b record := tests.s20b_book();
+begin
+  booking := b.booking;
+  booker := b.booker;
+  refunded := tests.s20b_user('left-refunded');
+  credited := tests.s20b_user('left-credited');
+  forfeited := tests.s20b_user('left-forfeited');
+  lapsed := tests.s20b_user('lapsed');
+  perform tests.join_booking(booking, refunded);
+  perform tests.join_booking(booking, credited);
+  perform tests.join_booking(booking, forfeited);
+  perform tests.join_booking(booking, lapsed);
+  update public.booking_payment_shares s
+  set status = case s.profile_id when refunded then 'refunded' when credited then 'credited'
+                                 when forfeited then 'forfeited' else 'cancelled' end
+  where s.booking_id = booking and s.profile_id in (refunded, credited, forfeited, lapsed);
+end;
+$$;
+
+do $$
+declare
+  r record := tests.s20b_left_players();
+  v_who uuid;
+begin
+  foreach v_who in array array[r.refunded, r.credited, r.forfeited] loop
+    assert tests.error_as(r.booker, format('select public.add_booking_player(%L, %L)', r.booking,
+                                           (select username from public.profiles where id = v_who))) = 'player_left_game',
+      format('a %s player can''t be invited', (tests.share_of(r.booking, v_who)).status);
+    assert not exists (select 1 from public.invites where booking_id = r.booking and invited_profile_id = v_who),
+      'and no invite is made';
+  end loop;
+  assert tests.s20b_invite(r.booking, r.booker, r.lapsed) is not null, 'a lapsed player still can';
+end $$;
+
+do $$
+declare
+  r record := tests.s20b_left_players();
+  v_team uuid;
+  v integer;
+begin
+  insert into public.teams (name, city, created_by) values ('S20b Left FC', 'Nicosia', r.booker) returning id into v_team;
+  perform tests.join_team(v_team, r.booker, 'captain');
+  perform tests.join_team(v_team, r.refunded);
+  perform tests.join_team(v_team, r.credited);
+  perform tests.join_team(v_team, r.forfeited);
+  perform tests.join_team(v_team, r.lapsed);
+  perform tests.act_as(r.booker);
+  v := public.invite_team_to_booking(r.booking, v_team);
+  perform tests.act_as_postgres();
+  assert v = 1, format('Invite a team: only the lapsed player, got %s', v);
+  assert (select array_agg(invited_profile_id) from public.invites where booking_id = r.booking) = array[r.lapsed],
+    'the players who left are skipped';
+end $$;
+
+do $$
+declare
+  r record := tests.s20b_left_players();
+  v integer;
+begin
+  insert into public.friendships (requester_id, addressee_id, status, accepted_at) values
+    (r.booker, r.refunded, 'accepted', now()), (r.booker, r.credited, 'accepted', now()),
+    (r.forfeited, r.booker, 'accepted', now()), (r.booker, r.lapsed, 'accepted', now());
+  perform tests.act_as(r.booker);
+  v := public.invite_all_friends_to_booking(r.booking);
+  perform tests.act_as_postgres();
+  assert v = 1, format('Invite all friends: only the lapsed player, got %s', v);
+  assert (select array_agg(invited_profile_id) from public.invites where booking_id = r.booking) = array[r.lapsed],
+    'the players who left are skipped';
+end $$;
+
 rollback;

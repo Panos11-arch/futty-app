@@ -181,8 +181,11 @@ begin
 end;
 $$;
 
--- Why p_profile can't be invited to p_booking (already in, already invited),
--- or null. Only an ACTIVE share counts: a lapsed player can be invited again.
+-- Why p_profile can't be invited to p_booking (already in, already invited,
+-- left the game), or null. Only an ACTIVE share counts as already in: a
+-- lapsed player (cancelled, never paid) can be invited again. A player who
+-- left after paying (refunded, credited or forfeited) can't rejoin
+-- (player_left_game; Panos, 27 November, for now).
 create function public.booking_invitee_refusal(p_booking_id uuid, p_inviter uuid, p_profile uuid)
 returns text
 language sql
@@ -196,6 +199,10 @@ as $$
                     where s.booking_id = p_booking_id and s.profile_id = p_profile
                       and s.status not in ('cancelled', 'refunded', 'credited', 'forfeited', 'refund_due'))
       then 'already_in_booking'
+    when exists (select 1 from public.booking_payment_shares s
+                 where s.booking_id = p_booking_id and s.profile_id = p_profile
+                   and s.status in ('refunded', 'credited', 'forfeited'))
+      then 'player_left_game'
     when exists (select 1 from public.invites i
                  where i.kind = 'booking' and i.booking_id = p_booking_id and i.invited_profile_id = p_profile
                    and i.status = 'pending')
@@ -271,6 +278,11 @@ begin
   where booking_id = p_booking_id and profile_id = p_profile_id for update;
   if v_share.id is null or v_share.status <> 'cancelled' then
     return false;
+  end if;
+  -- refuse_debtor_share runs on insert only; a revived share is checked here
+  -- (Panos, 27 November).
+  if public.profile_has_debt(p_profile_id) then
+    raise exception 'player_in_debt';
   end if;
 
   if p_side is null then

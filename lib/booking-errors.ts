@@ -198,6 +198,9 @@ export function describeBookingErrorMessage(message: string, detail?: string | n
       return "They've already been invited.";
     case 'already_in_booking':
       return "They're already in this game.";
+    // Panos, 27 November: a player who left after paying can't rejoin.
+    case 'player_left_game':
+      return 'This player left this game.';
     case 'player_not_found':
       return 'No player with that username.';
     // S20A (b): player invites.

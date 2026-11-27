@@ -150,6 +150,8 @@ describe('Player invite refusals', () => {
     ['team_deleted', 'That team was deleted.'],
     ['team_not_found', 'That team was deleted.'],
     ['side_not_paid', 'Pay for your side first, then publish.'],
+    // Panos, 27 November: a player who left after paying can't rejoin.
+    ['player_left_game', 'This player left this game.'],
   ])('%s: one line, at most 10 words', (code, line) => {
     expect(describeBookingErrorMessage(code)).toBe(line);
     expect(line.split(' ').length).toBeLessThanOrEqual(10);
