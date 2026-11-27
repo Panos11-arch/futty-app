@@ -630,7 +630,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
 /** Step 8: the e2e league. Made once and kept: a second run finds Season 1
  *  and its completed fixtures and leaves them alone, and only moves the
  *  upcoming fixture to 3 days ahead. Every row is checked to be ours first. */
-async function seedLeague(admin: SupabaseClient, ids: ReadonlyMap<string, string>, now: Date) {
+export async function seedLeague(admin: SupabaseClient, ids: ReadonlyMap<string, string>, now: Date) {
   const teamRows = e2eTeamRows(ids);
   assertE2eTeams(
     check(
