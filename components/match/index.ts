@@ -33,4 +33,5 @@ export {
   type SeasonStatsState,
 } from './season-stats';
 export { boardValue, LeaderboardList, type LeaderboardState } from './leaderboard-list';
-export { TeamOfTheWeekCard, type TeamOfTheWeekPlayersState } from './team-of-the-week-card';
+export { TotwPitch, NO_ELIGIBLE_PLAYER, type TotwPitchProps } from './totw-pitch';
+export { PlayerOfTheWeekCard } from './player-of-the-week-card';

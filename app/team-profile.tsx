@@ -8,6 +8,7 @@ import { FormChips } from '@/components/match/form-chips';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
 import { RecentMatches } from '@/components/match/recent-matches';
 import { SeasonPicker, TeamSeasonStatsView, type SeasonPick } from '@/components/match/season-stats';
+import { TeamPowerRanking } from '@/components/match/team-power-ranking';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
@@ -116,6 +117,8 @@ export default function TeamProfileScreen() {
                 <FollowButton targetType="team" targetId={state.team.id} name={state.team.name} />
               ) : null}
             </View>
+
+            <TeamPowerRanking teamId={state.team.id} />
 
             <TeamSeason teamId={state.team.id} />
 
