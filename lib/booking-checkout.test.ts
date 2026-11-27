@@ -107,6 +107,24 @@ describe('payShare', () => {
     expect(s.init).toHaveBeenCalledWith(expect.objectContaining({ setupIntentClientSecret: 'seti_secret' }));
   });
 
+  // A player in debt can't choose cash, but card still works (spec 13
+  // "Cash, debt and venue credit"); any other refusal keeps its own line.
+  it('a debtor who chose cash: settle first, or pay by card', async () => {
+    mockCreateSharePayment.mockResolvedValue({ data: null, error: new Error('player_in_debt') });
+    expect(await payShare('s1', { ...card, method: 'cash' }, sheet())).toEqual({
+      status: 'error',
+      message: 'Settle what you owe first, or pay by card.',
+      code: 'player_in_debt',
+    });
+  });
+
+  it('a debtor refused by card: card is not offered as the way out', async () => {
+    mockCreateSharePayment.mockResolvedValue({ data: null, error: new Error('player_in_debt') });
+    const outcome = await payShare('s1', card, sheet());
+    expect(outcome).toMatchObject({ status: 'error', code: 'player_in_debt' });
+    expect((outcome as { message: string }).message).not.toMatch(/pay by card/);
+  });
+
   it('shows Stripe’s message when the sheet fails', async () => {
     expect(await payShare('s1', card, sheet({ error: { code: 'Failed', message: 'Card declined' } }))).toEqual({
       status: 'error',

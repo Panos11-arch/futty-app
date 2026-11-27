@@ -37,6 +37,10 @@ export async function payShare(shareId: string, pay: PayOptions, sheet: PaymentS
   const { data, error } = await createSharePayment(shareId, pay);
   if (error || !data) {
     const code = error ? await describeFunctionError(error) : 'Something went wrong.';
+    // Cash refused for a player in debt (share_payment_plan): card still works.
+    if (code === 'player_in_debt' && pay.method === 'cash') {
+      return { status: 'error', message: 'Settle what you owe first, or pay by card.', code };
+    }
     return { status: 'error', message: describeBookingErrorMessage(code), code };
   }
   if (!data.clientSecret && !data.setupIntentClientSecret) return { status: 'paid' };

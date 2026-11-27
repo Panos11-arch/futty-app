@@ -85,7 +85,8 @@ describe('describeInviteError', () => {
     ['booking_full', 'This game is full.'],
     ['invite_expired', 'This invite expired. The game has started.'],
     ['cash_whole_pitch_only', 'Cash is for a whole pitch only. Pay by card.'],
-    ['player_in_debt', 'Settle what you owe first, or pay by card.'],
+    // Accepting: a debtor can't join by card either (refuse_debtor_share).
+    ['player_in_debt', 'Settle what you owe first.'],
   ])('%s', (code, words) => {
     expect(describeInviteError(err(code))).toBe(words);
   });

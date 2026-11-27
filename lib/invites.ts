@@ -80,8 +80,10 @@ export function describeInviteError(error: PostgrestError) {
       return 'This invite expired. The game has started.';
     case 'cash_whole_pitch_only':
       return 'Cash is for a whole pitch only. Pay by card.';
+    // Accepting: a debtor can't join at all (refuse_debtor_share, and the
+    // revive of a lapsed share), so card is no way out here.
     case 'player_in_debt':
-      return 'Settle what you owe first, or pay by card.';
+      return 'Settle what you owe first.';
     default:
       return error.message;
   }
