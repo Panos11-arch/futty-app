@@ -34,7 +34,7 @@ import {
   type Team,
 } from '@/lib/teams';
 import { makeStyles, useTheme } from '@/lib/theme';
-import { useLeagueStandings } from '@/lib/use-league-standings';
+import { useLeagueTeams } from '@/lib/use-league-teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
 
@@ -426,12 +426,12 @@ export function CompetitionJoin({
 
 /** The waiting pool of a city league in divisions: its team names. */
 export function WaitingPool({ hubId }: { hubId: string }) {
-  const standings = useLeagueStandings(hubId);
-  if (standings.status !== 'ready' || standings.rows.length === 0) return null;
+  const pool = useLeagueTeams(hubId);
+  if (pool.status !== 'ready' || pool.rows.length === 0) return null;
   return (
     <Card testID="standings-waiting-pool">
       <Text variant="headline">Waiting pool</Text>
-      {standings.rows.map((r) => (
+      {pool.rows.map((r) => (
         <Text key={r.team_id} variant="body">
           {r.team_name}
         </Text>

@@ -77,7 +77,7 @@ jest.mock('@/lib/use-leagues', () => ({ useLeagues: () => ({ ...mockLeagues, rel
 let mockMyTeams: HookState;
 jest.mock('@/lib/use-my-teams', () => ({ useMyTeams: () => ({ ...mockMyTeams, reload: jest.fn() }) }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
-jest.mock('@/lib/use-league-standings', () => ({ useLeagueStandings: () => ({ status: 'ready', rows: [], reload: jest.fn() }) }));
+jest.mock('@/lib/use-league-teams', () => ({ useLeagueTeams: () => ({ status: 'ready', rows: [], reload: jest.fn() }) }));
 jest.mock('@/lib/leagues', () => ({ registerTeamForLeague: jest.fn(), startLeagueSeason: jest.fn() }));
 jest.mock('@/lib/supabase', () => {
   const chain = { select: () => chain, in: () => Promise.resolve({ data: [] }) };

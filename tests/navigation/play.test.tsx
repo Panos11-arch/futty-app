@@ -26,8 +26,8 @@ jest.mock('@/lib/use-follows', () => ({
 jest.mock('@/lib/use-blocks', () => ({
   useBlocks: () => ({ status: 'ready', isBlocked: () => false, toggle: jest.fn(), reload: jest.fn() }),
 }));
-jest.mock('@/lib/use-league-standings', () => ({
-  useLeagueStandings: () => ({ status: 'ready', rows: [], reload: jest.fn() }),
+jest.mock('@/lib/use-league-teams', () => ({
+  useLeagueTeams: () => ({ status: 'ready', rows: [], reload: jest.fn() }),
 }));
 jest.mock('@/lib/community', () => ({ listTeams: () => new Promise(() => {}) }));
 
