@@ -20,7 +20,8 @@ export async function listPlayers() {
 }
 
 export async function listTeams() {
-  return supabase.from('teams').select('id, name, city').order('name');
+  // S20A: a deleted team is hidden.
+  return supabase.from('teams').select('id, name, city').is('deleted_at', null).order('name');
 }
 
 export type FollowTarget = 'player' | 'team';

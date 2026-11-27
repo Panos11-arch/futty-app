@@ -22,6 +22,8 @@ const team = {
 };
 const lions = { ...team, id: 'lions', name: 'Lions' };
 const pumas = { ...team, id: 'pumas', name: 'Pumas' };
+let mockTeamRow: Record<string, unknown> = team;
+const mockCompetitions = jest.fn();
 
 let mockMyTeams: Record<string, unknown>;
 const mockHeadToHeadCalls: unknown[][] = [];
@@ -36,11 +38,13 @@ jest.mock('@/lib/supabase', () => {
   const query = {
     select: () => query,
     eq: () => query,
-    maybeSingle: () => Promise.resolve({ data: team, error: null }),
+    maybeSingle: () => Promise.resolve({ data: mockTeamRow, error: null }),
   };
   return { supabase: { from: () => query } };
 });
 jest.mock('@/lib/teams', () => ({
+  ...jest.requireActual('@/lib/teams'),
+  fetchTeamCompetitions: (...a: unknown[]) => mockCompetitions(...a),
   getTeamRoster: () =>
     Promise.resolve({
       data: [
@@ -106,6 +110,8 @@ beforeEach(() => {
   mockPowerCalls.length = 0;
   mockPower = { status: 'ready', rows: [], reload: jest.fn() };
   mockToggle.mockReset().mockResolvedValue({ error: null });
+  mockTeamRow = team;
+  mockCompetitions.mockReset().mockResolvedValue([]);
 });
 
 async function renderReady() {
@@ -221,6 +227,64 @@ describe('Team profile', () => {
     const ids = testIdsInOrder();
     expect(ids).toContain('team-profile-ad');
     expect(ids[ids.length - 1]).toBe('team-profile-ad');
+  });
+
+  it('S20A: the team badge in its kit colour', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockTeamRow = { ...team, kit_colour: 'kitSky' };
+    await renderReady();
+    expect(screen.getByTestId('team-badge')).toBeTruthy();
+  });
+
+  it('S20A: a member opens their profile', async () => {
+    const { router } = jest.requireMock<{ router: { push: jest.Mock } }>('expo-router');
+    router.push.mockClear();
+    mockMyTeams = { status: 'ready', teams: [] };
+    await renderReady();
+    await fireEvent.press(screen.getByRole('button', { name: 'Bea Kyprianou, Player' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/player-profile', params: { profileId: 'b' } });
+  });
+
+  it('S20A: Leagues lists where it plays; a row opens the competition', async () => {
+    const { router } = jest.requireMock<{ router: { push: jest.Mock } }>('expo-router');
+    router.push.mockClear();
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockCompetitions.mockResolvedValue([
+      { league_id: 'l1', name: 'Nicosia 5s', format: '5-a-side', running: true },
+      { league_id: 'l2', name: 'Paphos 7s', format: '7-a-side', running: false },
+    ]);
+    await renderReady();
+    expect(await screen.findByText('Leagues')).toBeTruthy();
+    expect(mockCompetitions).toHaveBeenCalledWith('tigers');
+    await fireEvent.press(screen.getByTestId('team-league-l1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/leagues/[id]', params: { id: 'l1' } });
+    expect(screen.getByText('Paphos 7s')).toBeTruthy();
+  });
+
+  it('S20A: no Leagues section when it plays in none', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    await renderReady();
+    await waitFor(() => expect(mockCompetitions).toHaveBeenCalled());
+    expect(screen.queryByText('Leagues')).toBeNull();
+  });
+
+  it('S20A: Leagues can fail on its own, with Try again', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockCompetitions.mockRejectedValueOnce(new Error("Couldn't load. Try again."));
+    await renderReady();
+    expect(await screen.findByText("Couldn't load. Try again.")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('team-leagues-retry'));
+    await waitFor(() => expect(mockCompetitions).toHaveBeenCalledTimes(2));
+  });
+
+  it('S20A: a deleted team shows its history read-only, with no Follow', async () => {
+    mockMyTeams = { status: 'ready', teams: [] };
+    mockTeamRow = { ...team, deleted_at: '2026-11-27T10:00:00Z' };
+    await renderReady();
+    expect(screen.getByText('Deleted team')).toBeTruthy();
+    expect(screen.queryByTestId('follow-button')).toBeNull();
+    expect(screen.getByText('Recent matches')).toBeTruthy();
+    expect(mockCompetitions).not.toHaveBeenCalled();
   });
 
   it('G4a: never on a team the viewer plays for, nor before that is known', async () => {

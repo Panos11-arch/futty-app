@@ -207,7 +207,13 @@ export async function fetchFollowedTeamIds(userId: string): Promise<Set<string>>
 export async function searchTeams(query: string, followed: Set<string>): Promise<TeamResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const { data, error } = await supabase.from('teams').select('id, name, city').ilike('name', `%${q}%`).order('name').limit(20);
+  const { data, error } = await supabase
+    .from('teams')
+    .select('id, name, city')
+    .ilike('name', `%${q}%`)
+    .is('deleted_at', null) // S20A: a deleted team is hidden
+    .order('name')
+    .limit(20);
   if (error) throw new Error(words(error.message));
   const rows = (data ?? []) as TeamResult[];
   return [...rows.filter((t) => followed.has(t.id)), ...rows.filter((t) => !followed.has(t.id))];

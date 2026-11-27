@@ -277,3 +277,18 @@ describe('friend notifications', () => {
     expect(notificationLabel('friend_accepted')).toBe('Accepted friend requests');
   });
 });
+
+// S20A: becoming captain and being removed from a team are switchable, under Community.
+describe('team notifications', () => {
+  it('sit in Community with their labels', () => {
+    const groups = groupSwitchableTypes([
+      { type: 'team_invite', always_sent: false },
+      { type: 'team_captain', always_sent: false },
+      { type: 'team_member_removed', always_sent: false },
+    ] as Parameters<typeof groupSwitchableTypes>[0]);
+    const community = groups.find((g) => g.key === 'community');
+    expect(community?.types).toEqual(['team_invite', 'team_captain', 'team_member_removed']);
+    expect(notificationLabel('team_captain')).toBe('You become captain');
+    expect(notificationLabel('team_member_removed')).toBe('Removed from a team');
+  });
+});
