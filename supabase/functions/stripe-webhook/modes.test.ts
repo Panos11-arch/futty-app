@@ -147,6 +147,22 @@ Deno.test('money taken late on a cancelled booking is refunded, and the rest of 
   strictEqual(stripe.callsTo('paymentIntents.cancel')[0].id, 'pi_2');
 });
 
+// pay_captured_share_cancelled: a share cancelled on a game that's still on
+// (side B lapse, own spot) whose immediate charge arrives afterwards.
+Deno.test('money taken late on a cancelled share of a live booking refunds only that payment', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('share_payment_captured', { result: 'refund', reason: 'share_cancelled', booking_id: 'b1', share_id: 's1' });
+  stripe.respond('paymentIntents.retrieve', intent('pi_late', 'succeeded'));
+
+  await handlePaymentModeEvent(event('payment_intent.succeeded', intent('pi_late', 'succeeded')), deps);
+
+  deepStrictEqual(stripe.callsTo('refunds.create').map((c) => c.params?.payment_intent), ['pi_late'],
+    'only its own payment is refunded');
+  strictEqual(db.callsTo('booking_money_to_release').length, 0, 'the rest of the booking is never released');
+  strictEqual(stripe.callsTo('paymentIntents.cancel').length, 0, 'no other hold is cancelled');
+  deepStrictEqual(db.callsTo('record_intent_refund')[0].args.p_reason, 'share_cancelled');
+});
+
 Deno.test('a replaced intent on a live booking releases only that intent', async () => {
   const { db, stripe, deps } = setup();
   db.respond('share_payment_held', { result: 'release', reason: 'replaced_intent', booking_id: 'b1', share_id: 's1' });
