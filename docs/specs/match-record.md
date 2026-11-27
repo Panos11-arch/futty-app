@@ -301,12 +301,12 @@ An app-wide team ranking, like FIFA's world ranking. Built in S14b (`match_power
    - K by importance: **non-league 20** (called "friendly" until 25 November), league match 40, tournament group match 40, tournament knockout 50.
    - Worked examples (tests): equal teams, a league win is +20 and −20; a non-league win is +10; a knockout win is +25; a 20-point favourite losing a league match is −20.8; a draw between equal teams is 0.
    - Points are stored unrounded; the screen rounds them.
-3. **Penalty shootouts** (decided by Panos, 25 November). Futty can't record a shootout yet, so S14b builds win, draw and loss only. The shootout values (0.75 for the winner, 0.5 for the loser) are stored in `app_rules` (`power_ranking_w_shootout_win`, `power_ranking_w_shootout_loss`) with `power_ranking_shootouts` off. S10A adds recording shootouts and switches the weighting on.
+3. **Penalty shootouts** (decided by Panos, 25 November). S14b built win, draw and loss only and stored the shootout values (0.75 for the winner, 0.5 for the loser) in `app_rules` (`power_ranking_w_shootout_win`, `power_ranking_w_shootout_loss`). S10A records shootouts (decision 1o) and switches `power_ranking_shootouts` on: a drawn game decided on penalties scores W 0.75 for the winner and 0.5 for the loser. Worked example (test): between equal teams, a knockout shootout win is +12.5 for the winner and 0 for the loser.
 4. **Which games count.** Every confirmed game between two registered Futty teams, in any mode:
    - **Matches:** Competitive (a game switched to Friendly counts for nothing), not a forfeit, both sides a different registered team (`match_sides.team_id`), with a score. Category non-league.
    - **League fixtures:** league results still count through `league_fixtures`. Since S10 (decision 1n) a fixture gets a match when it's scheduled, and the match's final result is copied to the fixture, which then completes; fixtures made before S10 keep the old path. A completed fixture between two registered teams, without a forfeit or void result, counts in its league's format at K 40. Its kickoff is its scheduled day and time in Cyprus time; with no time, 00:00 on that day; with no day, when the fixture was created (decided by Anghelo, 26 November).
    - **Once only:** a match linked to a league fixture (`matches.league_fixture_id`) is left to the fixture.
-   - **Tournaments:** the group and knockout K are stored, but no game counts as a tournament game until S10A creates the tournament tables. S10A must use these K values.
+   - **Tournaments** (S10A, decision 1o): a completed tournament fixture between two registered teams counts in the tournament's format, group K 40, knockout K 50. Its kickoff is its kick-off time; a result the organiser enters without one counts when it was entered. A tournament match is left to its fixture (`matches.tournament_fixture_id`), so it counts once.
    - **Never:** pickup games without two registered teams, forfeits, disputed, void and no-result games.
 5. **When a game counts** (decided by Anghelo, 26 November): once it is final, at the same moment levels move (1l item 11): from the latest of `confirmed_at + 24 hours` and `result_deadline_at`, with a lone captain's score accepted (or 24 hours without an answer). A Rejected score that is never fixed never counts; corrected and final, it does.
 6. **Order and corrections.** Games apply in kickoff order, once each. The job (`power_ranking_tick`, run by `match_jobs_tick` every 15 minutes) recalculates a format from the earliest game that needs it: a game that became final after a later one was applied, or an applied game that changed (a corrected score, a new status, a removed game or team).
@@ -317,7 +317,7 @@ An app-wide team ranking, like FIFA's world ranking. Built in S14b (`match_power
 
 ## 1n. Competitions (S10; decided 26 November)
 
-Built in S10 (server: migrations `match_s10_league_seasons`, `match_s10_league_matches`, `match_s10_competition`; screens: the S10 page PR, image 13). Leagues only: the Knockout tab, By group, penalties (AP) and group tables come with S10A's tournament tables.
+Built in S10 (server: migrations `match_s10_league_seasons`, `match_s10_league_matches`, `match_s10_competition`; screens: the S10 page PR, image 13). Leagues only: tournaments (the Knockout tab, By group, penalties (AP) and group tables) are decision 1o.
 
 1. **League fixtures create matches** (decided by Panos, 26 November).
    - When a fixture gets its day and time it gets exactly one match: kind `named`, side a = the home team, side b = the away team, each side's captain = that team's captain, `league_fixture_id` set, `booking_id` null. No booking is linked to a fixture yet, so `booking_id` stays null for now.
@@ -342,6 +342,31 @@ Built in S10 (server: migrations `match_s10_league_seasons`, `match_s10_league_m
    - **No bells**, on the competition page or on match rows. Futty has no live events, so a bell would only say "kick-off". There is no subscriptions table and no new notification type; the star is S9's pin. A "Results of teams I follow" setting may come after launch.
    - **No Discussion section:** posts and their moderation come with S7b, which adds a competition's discussion.
    - **No followers count:** pins are private bookmarks, not follows (for Panos).
+
+## 1o. Tournaments (S10A; decided by Panos 21 November, changed 22, 24 and 25 November; Anghelo 27 November)
+
+Built in S10A (server: migrations `match_s10a_tournaments`, `match_s10a_tournament_play`, `match_s10a_power_shootouts`, `match_s10a_tournament_reads`; screens: the S10A page PR, images 13 and 17).
+
+1. **Admins** (decided by Anghelo, 27 November). Founders run tournaments from an admin screen. Admins are the rows of `app_admins`: only service_role adds or removes one (in the dashboard), so an admin can't make another admin. `is_app_admin()` reads the caller, and every admin function checks it on the server (`not_admin`), never the app.
+2. **A tournament** has a name, a venue (or none), an area, a country (`CY`), start and end dates, the team format, max teams, a squad, an entry fee per player, a registration deadline, the match length and a status: `coming_soon` (before sign-up opens), `registration`, `groups`, `knockout`, `finished`. The admin sets the match length and each kick-off time; nothing is in code.
+   - **Dates are optional** (decided 22 November). Without them the events list, Home and the competition page show "Coming soon" instead of a date. Until sign-up opens, tapping the tournament anywhere opens the same "Coming soon" screen as leagues (S9, image 17), and Home's featured card shows "Coming soon" instead of Join.
+   - **Entry fee** (decided by Anghelo, 27 November): stored in cents and shown only, as "€X per player, paid to the organiser". Nothing is collected in the app: no payment, ledger or payout. Collecting it would need new rules in spec 13 (who pays, the deadline, refunds), as a later step.
+   - **No booking:** Futty books the pitches with the venue by phone. No pitch choice, venue payment or payout in the app.
+3. **Registration.** A team's captain registers it while registration is open, before the deadline and while the tournament isn't full, with a kit colour and a squad.
+   - **Badge:** the team's kit colour with its initials. The colours are the player kit tokens (`kitRed` … `kitWhite`).
+   - **Squad** (decided by Anghelo, 27 November): the format's starters plus up to 2 subs (5 to 7 in 5-a-side), all members of the team. A player is in one squad per tournament (`player_in_other_squad`). The captain changes it until the registration deadline; after it only an admin can (an injury, say). Every change is logged (`tournament_squad_changes`). A tournament match's players are the two squads, not every member (unlike leagues).
+4. **The Nuevo Campo structure** (the only one built; any other size is refused, `unsupported_structure`): 16 five-a-side teams in 4 groups of 4 (A–D), set or drawn by the admin. Each team plays the other three once: 3 points a win, 1 a draw, 0 a loss. The top 2 of each group reach the quarter-finals.
+5. **Group ties:** points, goal difference, goals scored, head-to-head points between the teams still level (a mini-table when three are), then the organiser's draw, entered in the admin screen. The Rules line, word for word: "Teams level on points: goal difference, then goals scored, then head-to-head, then the organiser's draw." A tie for 1st or 2nd that only the draw can break holds the quarter-finals until the admin enters it.
+6. **Knockout** (fixed, never random): QF1 = A1 v D2, QF2 = A2 v B1, QF3 = B2 v C1, QF4 = C2 v D1. **Semi-finals changed (decided by Anghelo and Panos, 24 November):** SF1 = winner QF1 v winner QF3; SF2 = winner QF2 v winner QF4, so a group's two teams can only meet in the final. Then the final. The quarter-finals fill when every group game has a result; each later round fills as its winners are known. Closing the tournament records the champion.
+7. **Penalties.** A drawn knockout match goes to a penalty shootout (3 each, then sudden death), entered with the score. The server refuses a level knockout score without one (`shootout_required`), a shootout anywhere else (`shootout_not_allowed`) and one that can't happen (`invalid_shootout`: no winner, or a side above 3 not one ahead). Shown as "AP" with the shootout score.
+8. **Matches and results.** A fixture with a kick-off time gets one named match with no booking: side a = home, side b = away, each team's captain, always Competitive (`tournament_always_competitive`), the tournament's match length, the result deadline its end + 24 hours.
+   - Each captain logs the score, his team's scorers and assisters (S13B), plus the shootout in a drawn knockout game. Both scores and shootouts must match to confirm, with S13B's tries.
+   - A mismatch that ends disputed, or no result, goes to the organiser, who enters the result in the admin screen. He can also correct any result.
+   - A correction that would change a team already in a next-round game that has a result, or a logged score, is refused (`next_round_played`).
+   - When the match is final (the moment levels move, 1l item 11) its result completes the fixture.
+9. **Power ranking:** decision 1m items 3 and 4.
+10. **The page** reads a tournament like a season (1n): Player stats (Premium only), Stats, Player and Team of the tournament, and Power rankings, plus the group tables, matches by group or round with AP, and the Knockout tab with its sources ("A1", "Winner QF1") until the teams are known. A player sees his own team's squad only.
+11. **Flagged for Panos** (27 November): tournament games are named games without a league, so they feed the general Team of the Week, as other named games do. Not changed.
 
 ## 2. Time
 
