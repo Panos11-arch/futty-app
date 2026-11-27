@@ -52,6 +52,9 @@ jest.mock('@/lib/app-lock', () => ({
 jest.mock('@/lib/futty-ai', () => ({ FUTTY_AI_HREF: '/futty-ai' }));
 let mockCard: unknown = { status: 'ready', card: { username: 'ann', show_qr: true } };
 jest.mock('@/lib/player-card', () => ({ fetchMyPlayerCard: () => Promise.resolve(mockCard) }));
+// S10A: the admin screen's row, for Futty admins only.
+let mockAdmin = false;
+jest.mock('@/lib/match/use-tournament', () => ({ useIsAppAdmin: () => ({ admin: mockAdmin, reload: jest.fn() }) }));
 
 const note = (id: string, created_at: string, over: Record<string, unknown> = {}) => ({
   id,
@@ -287,6 +290,19 @@ describe('Account menu (S2: the header menu opens it)', () => {
     await render(<AccountMenuScreen />);
     expect(screen.queryByTestId('account-venue-dashboard')).toBeNull();
     expect(screen.queryByText('Venue dashboard')).toBeNull();
+  });
+
+  it('S10A: Tournaments (the admin screen) for Futty admins only', async () => {
+    mockProfile = { status: 'ready', profile: { username: 'ann', role: 'player', is_premium: false } };
+    mockAdmin = false;
+    const view = await render(<AccountMenuScreen />);
+    expect(screen.queryByTestId('account-tournaments-admin')).toBeNull();
+    await act(async () => view.unmount());
+    mockAdmin = true;
+    await render(<AccountMenuScreen />);
+    await fireEvent.press(screen.getByTestId('account-tournaments-admin'));
+    expect(router.push).toHaveBeenLastCalledWith('/admin/tournaments');
+    mockAdmin = false;
   });
 
   it('hides Venue dashboard while the profile loads', async () => {

@@ -107,6 +107,20 @@ describe('reads', () => {
     await expect(getTournamentKnockout('t1')).resolves.toEqual({ slots: [], error: null });
   });
 
+  it('is_app_admin that throws is not an admin', async () => {
+    const { supabase } = jest.requireMock<{ supabase: { rpc: unknown } }>('@/lib/supabase');
+    const rpc = supabase.rpc;
+    supabase.rpc = () => {
+      throw new Error('offline');
+    };
+    await expect(isAppAdmin()).resolves.toEqual({ admin: false, error: { message: 'offline' } });
+    supabase.rpc = () => {
+      throw 'odd';
+    };
+    await expect(isAppAdmin()).resolves.toEqual({ admin: false, error: { message: 'is_app_admin failed' } });
+    supabase.rpc = rpc;
+  });
+
   it('is_app_admin is true only for a true answer', async () => {
     mockAnswer = { data: true, error: null };
     await expect(isAppAdmin()).resolves.toEqual({ admin: true, error: null });

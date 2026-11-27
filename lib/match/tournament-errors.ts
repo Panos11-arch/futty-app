@@ -32,7 +32,7 @@ const WORDS: Record<string, string> = {
   unsupported_structure: 'Only 16-team tournaments are supported.',
   invalid_tournament: 'Add a name and an area.',
   invalid_entry_fee: 'Enter an entry fee of 0 or more.',
-  invalid_match_minutes: 'Match length must be 15 to 300 minutes.',
+  invalid_match_minutes: 'Check the match length.',
   invalid_dates: 'The end date can’t be before the start date.',
   invalid_venue: 'We couldn’t find that venue.',
   // Results the organiser enters.

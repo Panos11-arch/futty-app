@@ -167,7 +167,7 @@ export function buildLeagueDirectory(
   { teamPremiumEnabled, tournaments = [] }: { teamPremiumEnabled?: boolean; tournaments?: TournamentHeader[] } = {},
 ): LeagueDirectory {
   const pinnedKeys = new Set(
-    pins.filter((p) => p.target_type === 'league' && isLeagueFormat(p.format)).map((p) => competitionKey(p.scope, p.format)),
+    pins.flatMap((p) => (p.target_type === 'league' && isLeagueFormat(p.format) ? [competitionKey(p.scope, p.format)] : [])),
   );
 
   const topLevel = new Map<string, League>();

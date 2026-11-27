@@ -14,13 +14,27 @@ import { Text } from '@/components/ui/text';
 import { space } from '@/constants/futty-theme';
 import { makeStyles, useTheme } from '@/lib/theme';
 
-export type CompetitionTab = 'overview' | 'matches' | 'standings' | 'player-stats' | 'stats' | 'power';
+export type CompetitionTab = 'overview' | 'matches' | 'standings' | 'player-stats' | 'knockout' | 'stats' | 'power';
 
-export const COMPETITION_TABS: { value: CompetitionTab; label: string; premium?: boolean }[] = [
+export type CompetitionTabOption = { value: CompetitionTab; label: string; premium?: boolean };
+
+/** A league's tabs. */
+export const COMPETITION_TABS: CompetitionTabOption[] = [
   { value: 'overview', label: 'Overview' },
   { value: 'matches', label: 'Matches' },
   { value: 'standings', label: 'Standings' },
   { value: 'player-stats', label: 'Player stats', premium: true },
+  { value: 'stats', label: 'Stats' },
+  { value: 'power', label: 'Power rankings' },
+];
+
+/** S10A: a tournament's tabs (image 13): Knockout after Player stats. */
+export const TOURNAMENT_TABS: CompetitionTabOption[] = [
+  { value: 'overview', label: 'Overview' },
+  { value: 'matches', label: 'Matches' },
+  { value: 'standings', label: 'Standings' },
+  { value: 'player-stats', label: 'Player stats', premium: true },
+  { value: 'knockout', label: 'Knockout' },
   { value: 'stats', label: 'Stats' },
   { value: 'power', label: 'Power rankings' },
 ];
@@ -35,9 +49,11 @@ export type CompetitionHeaderProps = {
   season: { label: string; onPress: () => void } | null;
   tab: CompetitionTab;
   onTab: (tab: CompetitionTab) => void;
+  /** A league's tabs unless given (a tournament's, S10A). */
+  tabs?: CompetitionTabOption[];
 };
 
-export function CompetitionHeader({ name, subtitle, badge, onBack, pin, season, tab, onTab }: CompetitionHeaderProps) {
+export function CompetitionHeader({ name, subtitle, badge, onBack, pin, season, tab, onTab, tabs = COMPETITION_TABS }: CompetitionHeaderProps) {
   const styles = useStyles();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -92,7 +108,7 @@ export function CompetitionHeader({ name, subtitle, badge, onBack, pin, season, 
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" contentContainerStyle={styles.tabs}>
-        {COMPETITION_TABS.map((t) => {
+        {tabs.map((t) => {
           const selected = t.value === tab;
           return (
             <Pressable

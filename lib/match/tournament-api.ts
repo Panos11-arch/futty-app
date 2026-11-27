@@ -142,8 +142,13 @@ export async function getTournamentKnockout(tournamentId: string) {
 
 /** Shows or hides the admin screen; every admin call is checked on the server. */
 export async function isAppAdmin() {
-  const { data, error } = await supabase.rpc('is_app_admin');
-  return { admin: data === true, error: error as RpcError };
+  try {
+    const { data, error } = await supabase.rpc('is_app_admin');
+    return { admin: data === true, error: error as RpcError };
+  } catch (e) {
+    // Offline or signed out: no admin entry.
+    return { admin: false, error: { message: e instanceof Error ? e.message : 'is_app_admin failed' } };
+  }
 }
 
 // ---- Captains ------------------------------------------------------------
@@ -191,7 +196,8 @@ export async function adminCreateTournament(input: TournamentInput) {
   return { id: (data as string | null) ?? null, error: error as RpcError };
 }
 
-export async function adminUpdateTournament(tournamentId: string, input: TournamentInput) {
+/** Only the keys sent change (the server merges them). */
+export async function adminUpdateTournament(tournamentId: string, input: Partial<TournamentInput>) {
   const { error } = await supabase.rpc('admin_update_tournament', { p_tournament_id: tournamentId, p: input });
   return { error: error as RpcError };
 }

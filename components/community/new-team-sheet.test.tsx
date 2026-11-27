@@ -112,6 +112,19 @@ describe('New team sheet', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('S10A: from tournament registration, hands the new team back instead of opening it', async () => {
+    mockCreate.mockResolvedValue({ data: { id: 'tm9' }, error: null });
+    const onCreated = jest.fn();
+    await render(<NewTeamSheet visible onClose={onClose} onCreated={onCreated} />);
+    await fireEvent.changeText(screen.getByLabelText('Team name'), 'Kato United');
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Create team' }));
+    });
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('tm9'));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('defaults: Nicosia and a red kit, no friends needed', async () => {
     mockCreate.mockResolvedValue({ data: { id: 'tm1' }, error: null });
     await open();
