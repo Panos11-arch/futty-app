@@ -4,7 +4,7 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.panosalepis.futtyapp",
-      "sha256_cert_fingerprints": ["REPLACE_WITH_ANDROID_SHA256_FINGERPRINT"]
+      "sha256_cert_fingerprints": ["72:06:0E:E5:8A:AB:C4:AB:F0:EC:C0:45:B4:42:EA:22:A9:C2:AC:E9:3E:20:DD:27:AE:D8:D4:97:6B:DD:52:89"]
     }
   }
 ]
