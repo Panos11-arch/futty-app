@@ -93,7 +93,7 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 
 ### Player invites (S20A, decided 27 November)
 Invites to join a side: "Invite friends", "Invite a team", "Invite all friends", and a game invite carried in a futty.app/i link. Opposition invites are above and don't change.
-- **Player invites stay open until the side is full or kickoff, whichever comes first.** Invites nobody answered expire then. Opposition invites still close 24 hours before kickoff.
+- **Player invites stay open until kickoff (decided 27 November).** While the side is full, an invite shows "This game is full"; if a spot reopens (a lapsed or cancelled player), the invites already sent work again, so the captain doesn't invite again. Invites nobody answered expire at kickoff. Opposition invites still close 24 hours before kickoff.
 - **The spot is taken when the player accepts.** The server decides with a row lock, as for side B's captain; once the side is full, everyone else sees "This game is full" before paying. There is no "first to pay takes the spot".
 - **Card or cash (decided 27 November):** cash is picked when a player pays, not per booking. On a whole pitch whose way to pay is Pay for myself, accepting asks **Card or Cash**. Cash is never offered to a player in debt, and never with venue credit. Half pitch and Losers pay are card only, so accepting there asks nothing. On Pay for everyone there is nothing to pay, so accepting is joining.
 - **Every player who accepts has 15 minutes,** card or cash, the same window as the booker's and side B's captain's:
