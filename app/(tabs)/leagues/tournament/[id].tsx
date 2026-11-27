@@ -64,7 +64,7 @@ function Body({
   const standings = useTournamentStandings(tournament.id);
   const knockout = useTournamentKnockout(tournament.id);
 
-  const teams = myTeams.status === 'ready' ? myTeams.teams : [];
+  const teams = useMemo(() => (myTeams.status === 'ready' ? myTeams.teams : []), [myTeams]);
   const myTeamIds = useMemo(() => new Set(teams.map(({ team }) => team.id)), [teams]);
   const captainIds = teams.filter((m) => m.role === 'captain' && !m.team.deleted_at).map((m) => m.team.id);
   const action = registrationAction(tournament, captainIds);

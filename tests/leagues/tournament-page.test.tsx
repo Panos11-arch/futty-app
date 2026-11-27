@@ -3,7 +3,7 @@
 // captain's teams; the fixed knockout with AP; Coming soon even from a link.
 import './mocks';
 
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { Modal } from 'react-native';
 

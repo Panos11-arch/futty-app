@@ -14,12 +14,14 @@ import { cancelledMessage, describeQuote, noticeUnderCancelledTitle } from '@/li
 import type { CancellationQuote } from '@/lib/booking-actions';
 
 import {
+  E2E_ADMIN_EMAILS,
   E2E_LEAGUE,
   E2E_LEAGUE_RESULTS,
   E2E_PRICE_CENTS,
   E2E_STAFF,
   E2E_STAFF_BOOKING,
   E2E_TEAMS,
+  E2E_TOURNAMENTS,
   E2E_VENUE,
 } from '../../scripts/e2e-seed/config';
 import { normaliseScope } from '@/lib/match/league-directory';
@@ -85,7 +87,7 @@ function appTestIds(): RegExp[] {
 }
 
 describe('.maestro', () => {
-  it('has the twenty-two journeys and their subflows', () => {
+  it('has the twenty-four journeys and their subflows', () => {
     const names = flowFiles.map((f) => path.relative(maestroDir, f).replace(/\\/g, '/')).sort();
     expect(names).toEqual([
       'flows/appearance.yaml',
@@ -109,6 +111,8 @@ describe('.maestro', () => {
       'flows/rankings.yaml',
       'flows/sign-in.yaml',
       'flows/teams.yaml',
+      'flows/tournament-admin.yaml',
+      'flows/tournaments.yaml',
       'flows/venue-book-and-pay.yaml',
       'subflows/open-my-booking.yaml',
       'subflows/open-tab.yaml',
@@ -165,6 +169,26 @@ describe('.maestro', () => {
     expect(text).toContain(`TOP_TEAM_ID: ${E2E_TEAMS[top].id}`);
     // The power ranking fills from match_jobs_tick, so its rows are optional.
     expect(text.replace(/\r\n/g, '\n')).toContain('id: power-ranking-row-${TOP_TEAM_ID}\n    optional: true');
+  });
+
+  // S10A: tournaments.yaml and tournament-admin.yaml use the seed's two
+  // tournaments (step 9) and change nothing.
+  it('the tournament flows use the seeded tournaments and only look', () => {
+    const flow = read(path.join(maestroDir, 'flows', 'tournaments.yaml'));
+    const admin = read(path.join(maestroDir, 'flows', 'tournament-admin.yaml'));
+    expect(flow).toContain(`SOON_ID: ${E2E_TOURNAMENTS.comingSoon.id}`);
+    expect(flow).toContain(`OPEN_ID: ${E2E_TOURNAMENTS.open.id}`);
+    expect(admin).toContain(`OPEN_ID: ${E2E_TOURNAMENTS.open.id}`);
+    expect(flow).toContain('id: competition-tab-knockout');
+    expect(flow).toContain('id: coming-soon-screen');
+    // Register stays off and nothing is sent; no admin action is tapped.
+    expect(flow.replace(/\r\n/g, '\n')).not.toMatch(/tapOn:\n {4}id: tournament-register-submit/);
+    for (const id of ['admin-draw-groups', 'admin-set-groups', 'admin-open-registration', 'admin-close']) {
+      expect(admin.replace(/\r\n/g, '\n')).not.toContain(`tapOn:\n    id: ${id}`);
+    }
+    // The admin login is one the seed makes an admin (staging only).
+    expect(admin).toContain("EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}");
+    expect(E2E_ADMIN_EMAILS).toEqual(['e2e-ios-1@e2e.futty.app', 'e2e-android-1@e2e.futty.app']);
   });
 
   it('every id a flow uses is a testID the app has', () => {

@@ -367,6 +367,12 @@ Built in S10A (server: migrations `match_s10a_tournaments`, `match_s10a_tourname
 9. **Power ranking:** decision 1m items 3 and 4.
 10. **The page** reads a tournament like a season (1n): Player stats (Premium only), Stats, Player and Team of the tournament, and Power rankings, plus the group tables, matches by group or round with AP, and the Knockout tab with its sources ("A1", "Winner QF1") until the teams are known. A player sees his own team's squad only.
 11. **Flagged for Panos** (27 November): tournament games are named games without a league, so they feed the general Team of the Week, as other named games do. Not changed.
+12. **The app** (the S10A page PR, 27 November).
+   - **Pins** (decided by Anghelo, 27 November): a player pins a tournament on the Leagues screen or with its page's star. Tournament pins are their own table, `tournament_pins` (profile, tournament; owner-only select, insert and delete; no update; a pin goes with its tournament or its player). S9's `competition_pins` is unchanged and still holds league pins only; the app reads both.
+   - **Where it shows:** the Leagues screen's Tournaments group (last, image 12) and Pinned; the tournament page at `/leagues/tournament/<id>`, which opens Coming soon (image 17) while the tournament is `coming_soon`, even from a link. Home's featured card keeps leagues as its source until S10B.
+   - **Registration** picks one of the captain's own teams (S20A). With none, Make a team opens S20A's New team sheet and comes back to registration.
+   - **Shootout on Log the score:** the app asks for it after Score only when the match is a tournament knockout game and the score is level; it reads the stage with the captain's own access (`matches.tournament_fixture_id`, then `tournament_fixtures.stage`). The server still decides (item 7).
+   - **Admin screen:** Account → Tournaments, shown when `is_app_admin()` is true. Create and edit (only the fields changed are sent), open sign-up, draw or set the groups, set kick-off times (Cyprus time), enter, decide or correct results with the shootout, the organiser's draw, and close. Changing a squad as an admin (`admin_set_squad`) has no screen yet: an admin can't read other teams' squads.
 
 ## 2. Time
 

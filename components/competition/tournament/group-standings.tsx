@@ -15,7 +15,7 @@ import { ICON } from '@/components/ui/foundation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { SkeletonBlock } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
-import { hairline, radius, space } from '@/constants/futty-theme';
+import { radius, space } from '@/constants/futty-theme';
 import type { GroupStandings as Group, GroupRow } from '@/lib/match/tournament-api';
 import type { useTournamentStandings } from '@/lib/match/use-tournament';
 import { makeStyles, useTheme } from '@/lib/theme';
