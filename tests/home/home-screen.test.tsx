@@ -78,6 +78,8 @@ jest.mock('@/lib/use-fixtures', () => ({
   useMyCaptainTeamIds: () => [],
 }));
 jest.mock('@/lib/use-profile', () => ({ useProfile: () => ({ status: 'loading', reload: jest.fn() }) }));
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 jest.mock('@/components/booking-result-form', () => {
   const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
   return { BookingResultForm: ({ booking }: { booking: { id: string } }) => <Text>{`old booking form ${booking.id}`}</Text> };
@@ -152,6 +154,7 @@ const game: MatchCard = {
   level_min: null,
   level_max: null,
   people: [],
+  booking_id: null,
   day: '2026-11-14',
   time: '19:30',
   priceCents: 680,
@@ -291,8 +294,19 @@ describe('Home (S3, image 01)', () => {
     expect(screen.getByTestId('home-featured-event')).toHaveTextContent(/Limassol League/);
   });
 
+  // Bug 27 Nov (Panos): my own card opened the posts list, which never shows it.
+  it('a game card opens Join; my own card opens its booking', async () => {
+    mockGames = [game, { ...game, post_id: 'p2', mine: true, booking_id: 'b9' }];
+    await render(<HomeScreen />);
+    await fireEvent.press(await screen.findByTestId('home-game-p1'));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/join-squad-post', params: { postId: 'p1' } });
+    await fireEvent.press(screen.getByTestId('home-game-p2'));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: '/booking/[id]', params: { id: 'b9' } });
+  });
+
   // spec 15 section 0.6 order; the owed banner sits under the quick actions so
-  // money owed always shows (not in image 01).
+  // money owed always shows (not in image 01). G4a: the banner ad between
+  // Games needing players and Featured event.
   it('keeps the agreed order', async () => {
     mockBookings = { status: 'ready', bookings: [booking] };
     mockOpenMatches = [toLog()];
@@ -312,6 +326,7 @@ describe('Home (S3, image 01)', () => {
       '"home-log-score-section"',
       '"home-upcoming"',
       '"home-games-row"',
+      '"home-ad"',
       '"home-featured-event"',
       '"home-banner"',
     ].map((id) => tree.indexOf(id));

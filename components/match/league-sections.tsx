@@ -1,15 +1,13 @@
-// The league standings and join flow, moved unchanged from the old Play →
-// Leagues screen (app/(tabs)/leagues.tsx before S9). The temporary league
-// page (app/(tabs)/leagues/[id].tsx) shows them until S10 builds the
-// competition page.
-import type { PostgrestError } from '@supabase/supabase-js';
+// The league join flow, moved unchanged from the old Play → Leagues screen
+// (app/(tabs)/leagues.tsx before S9). S10's competition page shows it on its
+// season card while sign-up is open; its standings now come from the server
+// (get_competition_standings, components/competition/standings-tab.tsx).
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
 import { Chip } from '@/components/chip';
-import { MessageCaptainButton } from '@/components/messages/message-captain';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +20,7 @@ import { TextField } from '@/components/ui/text-field';
 import { hairline, space } from '@/constants/futty-theme';
 import { describeLeagueError } from '@/lib/league-errors';
 import { registerTeamForLeague, startLeagueSeason, type League } from '@/lib/leagues';
+import { ISLAND_WIDE, normaliseScope } from '@/lib/match/league-directory';
 import { leagueFormatOpen } from '@/lib/premium';
 import { supabase } from '@/lib/supabase';
 import {
@@ -35,13 +34,11 @@ import {
   type Team,
 } from '@/lib/teams';
 import { makeStyles, useTheme } from '@/lib/theme';
-import { useLeagueStandings, type StandingsRow } from '@/lib/use-league-standings';
+import { useLeagueTeams } from '@/lib/use-league-teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
 
 const CITIES = ['Nicosia', 'Limassol', 'Larnaca', 'Paphos'];
-
-const STAT_COLUMNS = ['P', 'W', 'D', 'L', 'F', 'A', 'GD', 'Pts'] as const;
 
 function ErrorText({ children }: { children: string }) {
   return (
@@ -56,84 +53,6 @@ function Note({ children }: { children: string }) {
     <Text variant="callout" tone="inkMuted">
       {children}
     </Text>
-  );
-}
-
-/** A league table. Rows whose team is in `highlightTeamIds` (the user's own
- *  teams) sit on brandSoft. */
-export function StandingsTable({ rows, highlightTeamIds }: { rows: StandingsRow[]; highlightTeamIds: Set<string> }) {
-  const styles = useStyles();
-  if (rows.length === 0) {
-    return <Note>No teams registered yet.</Note>;
-  }
-
-  return (
-    <Card padded={false} testID="standings-table">
-      <View style={styles.tableRow}>
-        <Text variant="caption" tone="inkMuted" style={styles.tableTeam}>
-          Team
-        </Text>
-        {STAT_COLUMNS.map((label) => (
-          <Text key={label} variant="caption" tone="inkMuted" numberOfLines={1} style={styles.tableStat}>
-            {label}
-          </Text>
-        ))}
-      </View>
-      {rows.map((row) => {
-        const pts = row.won * 3 + row.drawn + row.pts_adjustment;
-        const gd = row.goals_for - row.goals_against;
-        const isMine = highlightTeamIds.has(row.team_id);
-        const values = [
-          row.played,
-          row.won,
-          row.drawn,
-          row.lost,
-          row.goals_for,
-          row.goals_against,
-          gd >= 0 ? `+${gd}` : gd,
-        ];
-        return (
-          <View
-            key={row.id}
-            testID={isMine ? 'standings-row-mine' : 'standings-row'}
-            style={[styles.tableRow, styles.tableRowDivider, isMine && styles.tableRowMine]}>
-            <Text variant="callout" numberOfLines={1} style={styles.tableTeam}>
-              {row.team_name}
-            </Text>
-            {values.map((value, i) => (
-              <Text key={STAT_COLUMNS[i]} variant="callout" tabular numberOfLines={1} style={styles.tableStat}>
-                {String(value)}
-              </Text>
-            ))}
-            <Text variant="callout" tabular numberOfLines={1} style={[styles.tableStat, styles.tablePts]}>
-              {String(pts)}
-            </Text>
-          </View>
-        );
-      })}
-    </Card>
-  );
-}
-
-function DivisionCard({ division, highlightTeamIds }: { division: League; highlightTeamIds: Set<string> }) {
-  const styles = useStyles();
-  const standings = useLeagueStandings(division.id);
-
-  return (
-    <View style={styles.section}>
-      <Text variant="headline">{division.name}</Text>
-      {standings.status === 'loading' ? <SkeletonText lines={3} /> : null}
-      {standings.status === 'error' ? (
-        <Banner
-          tone="danger"
-          message={`Could not load: ${standings.message}`}
-          action={{ label: 'Try again', onPress: standings.reload }}
-        />
-      ) : null}
-      {standings.status === 'ready' ? (
-        <StandingsTable rows={standings.rows} highlightTeamIds={highlightTeamIds} />
-      ) : null}
-    </View>
   );
 }
 
@@ -435,171 +354,89 @@ function JoinLeagueControl({
   );
 }
 
-/** An island-wide (standard) league: its table and the join flow. */
-export function StandardLeagueSection({ league, myTeamIds }: { league: League; myTeamIds: Set<string> }) {
-  const styles = useStyles();
-  const format = league.format;
-  const standings = useLeagueStandings(league.id);
-
-  const registeredTeamIds = new Set(standings.status === 'ready' ? standings.rows.map((r) => r.team_id) : []);
-
-  return (
-    <View style={styles.section}>
-      {standings.status === 'loading' ? <SkeletonText lines={3} /> : null}
-      {standings.status === 'error' ? (
-        <Banner
-          tone="danger"
-          message={`Could not load: ${standings.message}`}
-          action={{ label: 'Try again', onPress: standings.reload }}
-        />
-      ) : null}
-      {standings.status === 'ready' ? (
-        <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
-      ) : null}
-
-      <JoinLeagueControl
-        leagueId={league.id}
-        format={format}
-        joinLabel="Join"
-        registeredTeamIds={registeredTeamIds}
-        onJoined={standings.reload}
-      />
-
-      <View style={styles.wrapRow}>
-        <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
-      </View>
-
-      {/* S13: last in the league; moves to the bottom of the league's Matches tab with S10. */}
-      <MessageCaptainButton leagueId={league.id} />
-    </View>
-  );
-}
-
-/** A city's Open League hub: its table (or divisions and waiting pool),
- *  and the join flow. */
-export function OpenLeagueSection({
+/**
+ * The join flow on the competition page's season card (S10), while sign-up
+ * is open: "Join" for an island-wide league, "Register" for a city league in
+ * sign-up, "Join waiting pool" once it is in divisions. The teams already
+ * anywhere under the league (the pool and every division) aren't offered.
+ */
+export function CompetitionJoin({
   hub,
   leagues,
-  reloadLeagues,
-  myTeamIds,
+  onChanged,
 }: {
   hub: League;
   leagues: League[];
-  reloadLeagues: () => void;
-  myTeamIds: Set<string>;
+  onChanged: () => void;
 }) {
   const styles = useStyles();
-  const format = hub.format;
-  const city = hub.scope.trim();
-  const standings = useLeagueStandings(hub.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Every team already placed anywhere under this hub — the pool AND every
-  // division — so a team already in Division 1 isn't also offered a pool spot.
   const [treeTeamIds, setTreeTeamIds] = useState<Set<string>>(new Set());
-
-  const divisions = leagues
-    .filter((l) => l.parent_league_id === hub.id)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const [loadKey, setLoadKey] = useState(0);
+  const standard = normaliseScope(hub.scope) === ISLAND_WIDE;
+  const treeIds = [hub.id, ...leagues.filter((l) => l.parent_league_id === hub.id).map((l) => l.id)];
+  const treeKey = treeIds.join(',');
 
   useEffect(() => {
-    const divisionIds = divisions.map((d) => d.id);
     supabase
       .from('league_teams')
       .select('team_id')
-      .in('league_id', [hub.id, ...divisionIds])
+      .in('league_id', treeKey.split(','))
       .then(({ data }) => setTreeTeamIds(new Set((data ?? []).map((row) => row.team_id))));
-    // divisions is derived fresh from `leagues` each render; comparing its ids
-    // (not the array reference) is what should actually trigger a refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hub.id, divisions.map((d) => d.id).join(',')]);
+  }, [treeKey, loadKey]);
 
-  async function runAction(action: () => Promise<{ error: PostgrestError | null }>) {
+  const changed = useCallback(() => {
+    setLoadKey((k) => k + 1);
+    onChanged();
+  }, [onChanged]);
+
+  if (!standard && hub.stage === 'season') return null;
+
+  async function startSeason() {
     setBusy(true);
     setError(null);
-    const { error: actionError } = await action();
+    const { error: actionError } = await startLeagueSeason(hub.id);
     setBusy(false);
-    if (actionError) {
-      setError(describeLeagueError(actionError));
-    } else {
-      standings.reload();
-      reloadLeagues();
-    }
+    if (actionError) setError(describeLeagueError(actionError));
+    else changed();
   }
 
   return (
     <View style={styles.section}>
-      <Text variant="callout" tone="inkMuted" tabular>
-        {hub.stage === 'signup' ? 'Open for signups' : hub.stage === 'season' ? 'Season in progress' : 'In divisions'}
-        {hub.capacity ? ` · ${hub.capacity} spots` : ''}
-      </Text>
-
-      {hub.stage !== 'divisions' && standings.status === 'ready' ? (
-        <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
-      ) : null}
-
-      {hub.stage === 'divisions' ? (
-        <>
-          {divisions.map((division) => (
-            <DivisionCard key={division.id} division={division} highlightTeamIds={myTeamIds} />
-          ))}
-          <Text variant="headline">Waiting pool</Text>
-          {standings.status === 'ready' ? (
-            <StandingsTable rows={standings.rows} highlightTeamIds={myTeamIds} />
-          ) : null}
-        </>
-      ) : null}
-
       {error ? <ErrorText>{error}</ErrorText> : null}
-
-      {hub.stage !== 'season' ? (
-        <JoinLeagueControl
-          leagueId={hub.id}
-          format={format}
-          joinLabel={hub.stage === 'divisions' ? 'Join waiting pool' : 'Register'}
-          registeredTeamIds={treeTeamIds}
-          defaultCity={city}
-          onJoined={() => {
-            standings.reload();
-            reloadLeagues();
-          }}
-        />
-      ) : null}
-
+      <JoinLeagueControl
+        leagueId={hub.id}
+        format={hub.format}
+        joinLabel={standard ? 'Join' : hub.stage === 'divisions' ? 'Join waiting pool' : 'Register'}
+        registeredTeamIds={treeTeamIds}
+        defaultCity={standard ? undefined : hub.scope.trim()}
+        onJoined={changed}
+      />
       {/* Dev-only: for real users a signup-stage league only moves to
        *  'season' once its capacity fills (see register_team_for_league) —
        *  there's no legitimate reason to skip that early, so this manual
        *  trigger must never reach production. */}
-      {__DEV__ && hub.stage === 'signup' ? (
-        <Button
-          label="Start season (dev only)"
-          variant="secondary"
-          onPress={() => runAction(() => startLeagueSeason(hub.id))}
-          loading={busy}
-        />
+      {__DEV__ && !standard && hub.stage === 'signup' ? (
+        <Button label="Start season (dev only)" variant="secondary" onPress={startSeason} loading={busy} />
       ) : null}
-
-      {hub.stage === 'season' ? (
-        <View style={styles.wrapRow}>
-          <Chip label="League divisions — coming soon" selected={false} disabled locked onPress={() => {}} />
-        </View>
-      ) : null}
-
-      {hub.stage === 'divisions' ? (
-        <View style={styles.wrapRow}>
-          <Chip
-            label="New divisions & promotion/relegation — coming soon"
-            selected={false}
-            disabled
-            locked
-            onPress={() => {}}
-          />
-        </View>
-      ) : null}
-
-      {/* S13: last in the league; moves to the bottom of the league's Matches tab with S10. */}
-      <MessageCaptainButton leagueId={hub.id} />
     </View>
+  );
+}
+
+/** The waiting pool of a city league in divisions: its team names. */
+export function WaitingPool({ hubId }: { hubId: string }) {
+  const pool = useLeagueTeams(hubId);
+  if (pool.status !== 'ready' || pool.rows.length === 0) return null;
+  return (
+    <Card testID="standings-waiting-pool">
+      <Text variant="headline">Waiting pool</Text>
+      {pool.rows.map((r) => (
+        <Text key={r.team_id} variant="body">
+          {r.team_name}
+        </Text>
+      ))}
+    </Card>
   );
 }
 

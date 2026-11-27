@@ -1,14 +1,18 @@
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { FollowButton } from '@/components/match/follow-button';
 import { FormChips } from '@/components/match/form-chips';
 import { TeamHeadToHead } from '@/components/match/head-to-head';
 import { RecentMatches } from '@/components/match/recent-matches';
 import { SeasonPicker, TeamSeasonStatsView, type SeasonPick } from '@/components/match/season-stats';
+import { TeamBadge } from '@/components/match/team-badge';
+import { TeamPowerRanking } from '@/components/match/team-power-ranking';
 import { Banner } from '@/components/ui/banner';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { ListRow } from '@/components/ui/list-row';
@@ -21,7 +25,8 @@ import { cyprusYear } from '@/lib/match/stats-api';
 import { useTeamForm } from '@/lib/match/use-profile-matches';
 import { useTeamRecentMatches, useTeamSeasonStats } from '@/lib/match/use-stats';
 import { supabase } from '@/lib/supabase';
-import { getTeamRoster, type RosterMember, type Team } from '@/lib/teams';
+import { profileHref } from '@/lib/messages';
+import { fetchTeamCompetitions, getTeamRoster, type RosterMember, type Team, type TeamCompetition } from '@/lib/teams';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { xpTier } from '@/lib/xp-tier';
 import { avatarLook } from '@/lib/avatar';
@@ -63,7 +68,7 @@ export default function TeamProfileScreen() {
       const [{ data: team, error: teamError }, { data: roster, error: rosterError }] = await Promise.all([
         supabase
           .from('teams')
-          .select('id, name, city, created_by, xp, played, won, drawn, lost, goals, roster_size, substitute_slots, premium_9aside, premium_11aside, created_at')
+          .select('id, name, city, created_by, xp, played, won, drawn, lost, goals, roster_size, substitute_slots, premium_9aside, premium_11aside, created_at, kit_colour, deleted_at')
           .eq('id', teamId)
           .maybeSingle(),
         getTeamRoster(teamId),
@@ -104,18 +109,25 @@ export default function TeamProfileScreen() {
         {state.status === 'ready' ? (
           <>
             <View style={styles.header}>
+              <TeamBadge name={state.team.name} kitColour={state.team.kit_colour} size={space.xxl + space.lg} />
               <View style={styles.headerText}>
                 <Text variant="title" accessibilityRole="header">
                   {state.team.name}
                 </Text>
                 <Text variant="callout" tone="inkMuted">
-                  {`${state.team.city ?? 'Unknown city'} · ${xpTier(state.team.xp)} tier`}
+                  {state.team.deleted_at
+                    ? 'Deleted team'
+                    : `${state.team.city ?? 'Unknown city'} · ${xpTier(state.team.xp)} tier`}
                 </Text>
               </View>
-              {myTeams.status === 'ready' && !isMember ? (
+              {myTeams.status === 'ready' && !isMember && !state.team.deleted_at ? (
                 <FollowButton targetType="team" targetId={state.team.id} name={state.team.name} />
               ) : null}
             </View>
+
+            <TeamPowerRanking teamId={state.team.id} />
+
+            {state.team.deleted_at ? null : <TeamLeagues teamId={state.team.id} />}
 
             <TeamSeason teamId={state.team.id} />
 
@@ -153,6 +165,9 @@ export default function TeamProfileScreen() {
                         key={member.profile_id}
                         title={name}
                         leading={{ avatar: { name, kit: avatarLook(member) } }}
+                        onPress={() => router.push(profileHref(member.profile_id))}
+                        accessibilityLabel={`${name}, ${capitalise(member.role)}`}
+                        testID={`team-member-${member.profile_id}`}
                         trailing={
                           <Text variant="caption" tone="inkMuted">
                             {capitalise(member.role)}
@@ -164,10 +179,61 @@ export default function TeamProfileScreen() {
                 </Card>
               )}
             </View>
+            {/* G4a: a banner ad on another team's page, never one you play for. */}
+            {myTeams.status === 'ready' && !isMember ? <AdBanner testID="team-profile-ad" /> : null}
           </>
         ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+type LeaguesState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; rows: TeamCompetition[] };
+
+/** S20A: the leagues the team plays in; each opens its competition page. Hidden when none. */
+function TeamLeagues({ teamId }: { teamId: string }) {
+  const styles = useStyles();
+  const [state, setState] = useState<LeaguesState>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setState({ status: 'loading' });
+    fetchTeamCompetitions(teamId).then(
+      (rows) => active && setState({ status: 'ready', rows }),
+      (e: Error) => active && setState({ status: 'error', message: e.message }),
+    );
+    return () => {
+      active = false;
+    };
+  }, [teamId, attempt]);
+
+  if (state.status === 'loading' || (state.status === 'ready' && state.rows.length === 0)) return null;
+  return (
+    <View style={styles.section} testID="team-leagues">
+      <SectionHeader title="Leagues" />
+      {state.status === 'error' ? (
+        <View style={styles.chips}>
+          <Text variant="callout" tone="danger">
+            {state.message}
+          </Text>
+          <Button label="Try again" variant="plain" onPress={() => setAttempt((n) => n + 1)} testID="team-leagues-retry" />
+        </View>
+      ) : (
+        <Card padded={false}>
+          {state.rows.map((league) => (
+            <ListRow
+              key={league.league_id}
+              title={league.name}
+              subtitle={league.format}
+              chevron
+              onPress={() => router.push({ pathname: '/leagues/[id]', params: { id: league.league_id } })}
+              testID={`team-league-${league.league_id}`}
+            />
+          ))}
+        </Card>
+      )}
+    </View>
   );
 }
 

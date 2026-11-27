@@ -1,7 +1,7 @@
 -- S14b power ranking (match-record.md decision 1m): the formula and its
 -- rules. new = old + K × (W − We), We = 1 / (10^(−d/600) + 1). Each worked
 -- example in the step is checked with the K and W values from app_rules.
--- Penalty shootouts are stored but off until S10A (decided 25 November).
+-- Penalty shootouts: stored by S14b, switched on by S10A (decided by Panos, 25 November).
 begin;
 
 do $$
@@ -20,9 +20,9 @@ begin
   assert r.power_ranking_min_matches = 3, 'listed after 3 matches';
   assert r.power_ranking_inactive_days = 60, 'inactive after 60 days';
 
-  -- Shootouts: stored for S10A, switched off.
+  -- Shootouts: switched on by S10A.
   assert r.power_ranking_w_shootout_win = 0.75 and r.power_ranking_w_shootout_loss = 0.5, 'shootout W 0.75 / 0.5 stored';
-  assert r.power_ranking_shootouts = false, 'shootout weighting off until S10A';
+  assert r.power_ranking_shootouts, 'shootout weighting on (S10A)';
 
   -- Equal teams: We = 0.5.
   assert public.power_ranking_expected(1000, 1000) = 0.5, 'equal teams: 50%';

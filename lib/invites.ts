@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 /** Team and booking invites (supabase/migrations/*_pay_guards_invites.sql).
  *  Each one arrives as a team_invite / booking_invite notification whose
  *  data.inviteId points here; only the invited player can answer it. */
-export type InviteStatus = 'pending' | 'accepted' | 'declined';
+export type InviteStatus = 'pending' | 'accepted' | 'declined' | 'cancelled';
 
 export async function acceptInvite(inviteId: string) {
   return supabase.rpc('accept_invite', { p_invite_id: inviteId });
@@ -44,6 +44,12 @@ export function describeInviteError(error: PostgrestError) {
       return 'That game has already started.';
     case 'venue_not_live':
       return "This venue isn't taking bookings on Futty right now.";
+    // S20A: team invites refused for a block, an adult-minor pair (A4) or a deleted team.
+    case 'blocked':
+    case 'age_pair_refused':
+      return "You can't join this team.";
+    case 'team_deleted':
+      return 'This team was deleted.';
     default:
       return error.message;
   }

@@ -3,20 +3,39 @@ import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, ScrollView, View } from 'react-native';
 
 import { AddPlayerRow } from '@/components/add-player-row';
-import { Avatar } from '@/components/ui/avatar';
+import { TeamBadge } from '@/components/match/team-badge';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { IconButton } from '@/components/ui/icon-button';
 import { ListRow } from '@/components/ui/list-row';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Sheet } from '@/components/ui/sheet';
 import { SkeletonBlock, SkeletonText } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { hairline, radius, space } from '@/constants/futty-theme';
+import { useAuth } from '@/lib/auth';
+import { haptic } from '@/lib/haptics';
+import { profileHref } from '@/lib/messages';
 import { makeStyles } from '@/lib/theme';
 import { TEAM_PREMIUM_ENABLED } from '@/lib/premium';
-import { getTeamRoster, hasTeamPremium, PREMIUM_FORMAT_PRICES, type RosterMember, type Team } from '@/lib/teams';
+import {
+  cancelTeamInvite,
+  deleteTeam,
+  describeTeamError,
+  fetchPendingTeamInvites,
+  getTeamRoster,
+  hasTeamPremium,
+  leaveTeam,
+  passCaptaincy,
+  PREMIUM_FORMAT_PRICES,
+  removeTeamMember,
+  type PendingTeamInvite,
+  type RosterMember,
+  type Team,
+} from '@/lib/teams';
 import { playHref } from '@/lib/play-segments';
 import { useMyTeams } from '@/lib/use-my-teams';
 import { useProfile } from '@/lib/use-profile';
@@ -117,12 +136,73 @@ function TeamPremiumSection({ team }: { team: Team }) {
   );
 }
 
+const memberName = (member: RosterMember) => member.full_name || member.username || 'Player';
+
+/** S20A: the confirm sheet's button for leaving or deleting the team. */
+const CONFIRM = {
+  leave: { label: 'Leave team', testID: 'team-leave-confirm' },
+  delete: { label: 'Delete team', testID: 'team-delete-confirm' },
+} as const;
+
+type PendingState = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; invites: PendingTeamInvite[] };
+
+/** S20A: the captain's open invites, each with Cancel. Hidden when there are none. */
+function PendingInvites({ state, onRetry, onCancel }: {
+  state: PendingState;
+  onRetry: () => void;
+  onCancel: (invite: PendingTeamInvite) => void;
+}) {
+  const styles = useStyles();
+  if (state.status === 'loading' || (state.status === 'ready' && state.invites.length === 0)) return null;
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Pending" />
+      {state.status === 'error' ? (
+        <View style={styles.inline}>
+          <Text variant="callout" tone="danger">
+            {state.message}
+          </Text>
+          <Button label="Try again" variant="plain" onPress={onRetry} testID="team-pending-retry" />
+        </View>
+      ) : (
+        <Card padded={false}>
+          {state.invites.map((invite, i) => (
+            <View key={invite.invite_id}>
+              {i > 0 ? <View style={styles.divider} /> : null}
+              <ListRow
+                title={invite.name}
+                leading={{ avatar: { name: invite.name } }}
+                onPress={() => router.push(profileHref(invite.profile_id))}
+                trailing={
+                  <IconButton
+                    icon="xmark"
+                    tone="inkMuted"
+                    onPress={() => onCancel(invite)}
+                    accessibilityLabel={`Cancel invite to ${invite.name}`}
+                    testID={`team-invite-cancel-${invite.invite_id}`}
+                  />
+                }
+              />
+            </View>
+          ))}
+        </Card>
+      )}
+    </View>
+  );
+}
+
 function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain: boolean; onTeamChanged: () => void }) {
   const styles = useStyles();
   const myProfile = useProfile();
+  const { user } = useAuth();
   const [roster, setRoster] = useState<RosterMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showRoster, setShowRoster] = useState(false);
+  const [pending, setPending] = useState<PendingState>({ status: 'loading' });
+  const [acting, setActing] = useState<RosterMember | null>(null);
+  const [confirm, setConfirm] = useState<'leave' | 'delete' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadRoster = useCallback(() => {
     setError(null);
@@ -132,11 +212,65 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
     });
   }, [team.id]);
 
+  const loadPending = useCallback(() => {
+    if (!isCaptain) return;
+    setPending({ status: 'loading' });
+    fetchPendingTeamInvites(team.id).then(
+      (invites) => setPending({ status: 'ready', invites }),
+      (e: Error) => setPending({ status: 'error', message: e.message }),
+    );
+  }, [team.id, isCaptain]);
+
   useEffect(() => {
     setRoster(null);
     setShowRoster(false);
     loadRoster();
   }, [team.id, loadRoster]);
+
+  useEffect(() => {
+    loadPending();
+  }, [loadPending]);
+
+  /** Runs a team action; on success refreshes, otherwise shows one line. */
+  async function run(action: () => Promise<{ error: { message: string } | null }>, after: () => void) {
+    if (busy) return;
+    setBusy(true);
+    setActionError(null);
+    const { error: actionErr } = await action();
+    setBusy(false);
+    if (actionErr) {
+      haptic.error();
+      setActionError(describeTeamError(actionErr));
+      return;
+    }
+    haptic.success();
+    after();
+  }
+
+  function closeSheets() {
+    setActing(null);
+    setConfirm(null);
+    setActionError(null);
+  }
+
+  const memberDone = () => {
+    closeSheets();
+    loadRoster();
+    onTeamChanged();
+  };
+
+  async function cancelInvite(invite: PendingTeamInvite) {
+    const { error: cancelError } = await cancelTeamInvite(invite.invite_id);
+    if (cancelError) {
+      haptic.error();
+      setPending({ status: 'error', message: describeTeamError(cancelError) });
+      return;
+    }
+    haptic.success();
+    setPending((p) => (p.status === 'ready' ? { ...p, invites: p.invites.filter((i) => i.invite_id !== invite.invite_id) } : p));
+  }
+
+  const isLastMember = isCaptain && roster?.length === 1;
 
   const winRate = team.played > 0 ? Math.round((team.won / team.played) * 100) : null;
   const inviterUsername = myProfile.status === 'ready' ? myProfile.profile.username : null;
@@ -150,6 +284,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
 
   function memberAdded() {
     loadRoster();
+    loadPending();
     onTeamChanged();
   }
 
@@ -157,7 +292,7 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
     <View style={styles.sections}>
       <Card style={styles.teamCard}>
         <View style={styles.teamHeader}>
-          <Avatar name={team.name} size={space.xxl + space.lg} />
+          <TeamBadge name={team.name} kitColour={team.kit_colour} size={space.xxl + space.lg} />
           <View style={styles.flex}>
             <Text variant="headline">{team.name}</Text>
             <Text variant="callout" tone="inkMuted">
@@ -229,17 +364,30 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
         {showRoster && roster ? (
           <Card padded={false}>
             {roster.map((member, i) => {
-              const name = member.username ?? 'unknown';
+              const name = memberName(member);
+              const canAct = isCaptain && member.profile_id !== user?.id;
               return (
                 <View key={member.profile_id}>
                   {i > 0 ? <View style={styles.divider} /> : null}
                   <ListRow
                     title={name}
                     leading={{ avatar: { name, kit: avatarLook(member) } }}
+                    onPress={() => router.push(profileHref(member.profile_id))}
+                    accessibilityLabel={name}
                     trailing={
-                      <Text variant="caption" tone="inkMuted">
-                        {roleLabel(member.role)}
-                      </Text>
+                      <View style={styles.inline}>
+                        <Text variant="caption" tone="inkMuted">
+                          {roleLabel(member.role)}
+                        </Text>
+                        {canAct ? (
+                          <IconButton
+                            icon="ellipsis"
+                            accessibilityLabel={`Options for ${name}`}
+                            onPress={() => setActing(member)}
+                            testID={`team-member-actions-${member.profile_id}`}
+                          />
+                        ) : null}
+                      </View>
                     }
                   />
                 </View>
@@ -248,6 +396,64 @@ function TeamDetail({ team, isCaptain, onTeamChanged }: { team: Team; isCaptain:
           </Card>
         ) : null}
       </View>
+
+      {isCaptain ? <PendingInvites state={pending} onRetry={loadPending} onCancel={cancelInvite} /> : null}
+
+      {roster ? (
+        isLastMember ? (
+          <Button label="Delete team" variant="destructive" onPress={() => setConfirm('delete')} testID="team-delete" />
+        ) : (
+          <Button label="Leave team" variant="secondary" onPress={() => setConfirm('leave')} testID="team-leave" />
+        )
+      ) : null}
+
+      <Sheet visible={acting !== null} onClose={closeSheets} title={acting ? memberName(acting) : ''}>
+        <View style={styles.sheetActions}>
+          <Button
+            label="Make captain"
+            variant="secondary"
+            loading={busy}
+            disabled={busy}
+            onPress={() => acting && run(() => passCaptaincy(team.id, acting.profile_id), memberDone)}
+            testID="team-member-make-captain"
+          />
+          <Button
+            label="Remove"
+            variant="destructive"
+            loading={busy}
+            disabled={busy}
+            onPress={() => acting && run(() => removeTeamMember(team.id, acting.profile_id), memberDone)}
+            testID="team-member-remove"
+          />
+          {actionError ? (
+            <Text variant="callout" tone="danger" accessibilityLiveRegion="polite">
+              {actionError}
+            </Text>
+          ) : null}
+        </View>
+      </Sheet>
+
+      <Sheet
+        visible={confirm !== null}
+        onClose={closeSheets}
+        title={CONFIRM[confirm ?? 'leave'].label}
+        primaryAction={{
+          ...CONFIRM[confirm ?? 'leave'],
+          loading: busy,
+          onPress: () =>
+            run(
+              () => (confirm === 'delete' ? deleteTeam(team.id) : leaveTeam(team.id)),
+              () => {
+                closeSheets();
+                onTeamChanged();
+              },
+            ),
+        }}
+        secondaryAction={{ label: 'Cancel' }}>
+        <Text variant="callout" tone={actionError ? 'danger' : 'inkMuted'} accessibilityLiveRegion="polite">
+          {actionError ?? team.name}
+        </Text>
+      </Sheet>
     </View>
   );
 }
@@ -346,5 +552,7 @@ const useStyles = makeStyles(({ colors }) => ({
     backgroundColor: colors.canvas,
   },
   premiumActive: { alignItems: 'flex-end' },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
+  sheetActions: { gap: space.sm },
   divider: { height: hairline, backgroundColor: colors.border, marginLeft: space.lg },
 }));

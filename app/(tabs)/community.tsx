@@ -1,6 +1,6 @@
 // S7 (image 18): the Community tab. S2's header (title, bell, menu) stays on
-// top; under it the dark band with Search, Messages (S13's inbox) and the
-// tabs For you | Following | Find players, then the + button.
+// top; under it the dark band with Search, Messages (S13's inbox), Friends
+// (S20) and the tabs For you | Following | Find players, then the + button.
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -13,8 +13,10 @@ import { NewSheet } from '@/components/community/new-sheet';
 import { NewTeamSheet } from '@/components/community/new-team-sheet';
 import { Chip } from '@/components/ui/chip';
 import { space } from '@/constants/futty-theme';
+import { FRIENDS_HREF } from '@/lib/friends';
 import { makeStyles } from '@/lib/theme';
 import { useFollows } from '@/lib/use-follows';
+import { useFriendRequestCount } from '@/lib/use-friends';
 import { useUnreadMessages } from '@/lib/use-messages';
 
 type ForYouView = 'all' | 'mine';
@@ -56,6 +58,7 @@ export function CommunityContent() {
   const [newOpen, setNewOpen] = useState(false);
   const [teamOpen, setTeamOpen] = useState(false);
   const unread = useUnreadMessages();
+  const requests = useFriendRequestCount();
   const follows = useFollows();
 
   function select(next: CommunityTab) {
@@ -78,6 +81,8 @@ export function CommunityContent() {
         onSearch={search}
         onMessages={() => router.push('/messages')}
         unread={unread}
+        onFriends={() => router.push(FRIENDS_HREF)}
+        requests={requests}
       />
       <View style={styles.flex}>
         <View style={tab === 'for_you' ? styles.flex : styles.hidden}>

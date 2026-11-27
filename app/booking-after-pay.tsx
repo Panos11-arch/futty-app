@@ -1,6 +1,8 @@
 // The screen after paying (B3, Booking v2): invite friends, on a half pitch
 // invite the opposition, publish the game. Wires AfterPayView to the server;
-// "Go to booking" opens the booking's detail.
+// "Go to booking" opens the booking's detail. S20: after Book together or
+// Team vs team (a friend chat), the friend or the friend's team is
+// preselected, if the server still allows it.
 import { router, Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share } from 'react-native';
@@ -18,8 +20,13 @@ import {
   unpublishPost,
   type BookingV2Info,
 } from '@/lib/booking-opposition';
+import {
+  fetchBookingPreselect,
+  takeBookingPreselect,
+  type BookingPreselect,
+} from '@/lib/booking-preselect';
 import { useLoad } from '@/lib/booking-search';
-import { addBookingPlayer } from '@/lib/booking-shares';
+import { addBookingPlayer, inviteFriendToBooking } from '@/lib/booking-shares';
 import { startMatchPublishKind, takeStartMatch, waitUntilConfirmed, type PublishKind } from '@/lib/start-match';
 import { useRules } from '@/lib/use-rules';
 import { fetchVenueExtras } from '@/lib/venue-extras';
@@ -63,6 +70,32 @@ export default function BookingAfterPayScreen() {
       // Kept as it was; the next switch tries again.
     }
   };
+
+  // S20: Book together / Team vs team, taken once right after paying. The
+  // server says which of the friend and team may still be preselected; the
+  // opposition invite opens once the payment webhook confirms the booking.
+  const [carried] = useState(() => (from === 'pay' ? takeBookingPreselect() : null));
+  const [picked, setPicked] = useState<BookingPreselect>({ friend: null, team: null });
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  useEffect(() => {
+    if (!carried || !bookingId) return;
+    let live = true;
+    void (async () => {
+      const allowed = await fetchBookingPreselect(carried);
+      if (!live) return;
+      setPicked(allowed);
+      if (!allowed.team) return;
+      const confirmed = await waitUntilConfirmed(
+        async () => (await fetchBookingDetail(bookingId)).booking.status === 'confirmed',
+        { tries: CONFIRM_TRIES, delayMs: CONFIRM_DELAY_MS },
+      );
+      if (live && confirmed) void reloadRef.current();
+    })();
+    return () => {
+      live = false;
+    };
+  }, [carried, bookingId]);
 
   const followed = useRef<Set<string> | null>(null);
 
@@ -109,6 +142,12 @@ export default function BookingAfterPayScreen() {
           const { error } = await addBookingPlayer(bookingId, username);
           return error ? describeBookingErrorMessage(error.message) : null;
         }}
+        preselectFriend={picked.friend}
+        onInviteFriendById={async (profileId) => {
+          const { error } = await inviteFriendToBooking(bookingId, profileId);
+          return error ? describeBookingErrorMessage(error.message) : null;
+        }}
+        preselectTeam={picked.team}
         onShare={() => {
           if (detail) void Share.share({ message: shareText(detail) }).catch(() => {});
         }}

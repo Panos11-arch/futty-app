@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Href } from 'expo-router';
 
 import { PITCH_FORMATS } from '@/lib/booking';
+import { bookingDetailHref } from '@/lib/booking-navigation';
 import { getBookingPostQuotes, type BookingPostQuote } from '@/lib/booking-posts';
 import {
   daysChipLabel,
@@ -146,6 +147,8 @@ export type MatchRow = {
   level_min: number | string | null;
   level_max: number | string | null;
   people: MatchPerson[];
+  /** The caller's own post's booking; null on anyone else's. */
+  booking_id: string | null;
 };
 
 export type MatchCard = MatchRow & {
@@ -264,10 +267,32 @@ export function groupByDay(cards: MatchCard[], today: string): MatchSection[] {
   return sections;
 }
 
-/** Where a card goes: the existing B4 join or "Accept as opponent" screens;
- *  the caller's own post and older opposition posts (offered from the
- *  posts list) to the posts list. */
-export function cardHref(card: Pick<MatchCard, 'post_id' | 'kind' | 'v2' | 'mine'>): Href {
+/** Where "Open post" on my own post goes: its booking (the screen My bookings
+ *  opens); a matched opposition post with no booking, its fixture; any other
+ *  post with no booking, nowhere (the posts list never shows my own post). */
+export function ownPostHref(item: {
+  item_id: string;
+  post_type: string;
+  post_status: string;
+  booking_id: string | null;
+}): Href | null {
+  if (item.booking_id) return bookingDetailHref(item.booking_id);
+  if (item.post_type === 'opposition' && item.post_status === 'matched') {
+    return { pathname: '/fixture-confirmed', params: { kind: 'squad', id: item.item_id } };
+  }
+  return null;
+}
+
+/** Where a card goes: my own post with a booking to that booking (as
+ *  ownPostHref); otherwise the existing B4 join or "Accept as opponent"
+ *  screens; the caller's own post without a booking and older opposition
+ *  posts (offered from the posts list) to the posts list. */
+export function cardHref(card: Pick<MatchCard, 'post_id' | 'kind' | 'v2' | 'mine' | 'booking_id'>): Href {
+  if (card.booking_id) {
+    // find_matches lists open posts only.
+    const own = ownPostHref({ item_id: card.post_id, post_type: card.kind, post_status: 'open', booking_id: card.booking_id });
+    if (own) return own;
+  }
   if (card.mine) return { pathname: '/squad-posts', params: { view: card.kind } };
   if (card.kind === 'players') return { pathname: '/join-squad-post', params: { postId: card.post_id } };
   if (card.v2) return { pathname: '/opposition-invite', params: { postId: card.post_id } };

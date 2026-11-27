@@ -1,6 +1,6 @@
 import './mocks';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
 
@@ -29,6 +29,12 @@ const mockReload = jest.fn();
 const mockGetRoster = jest.fn();
 const mockFind = jest.fn();
 const mockInvite = jest.fn();
+const mockPending = jest.fn();
+const mockCancelInvite = jest.fn();
+const mockRemove = jest.fn();
+const mockPass = jest.fn();
+const mockLeave = jest.fn();
+const mockDelete = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/use-my-teams', () => ({ useMyTeams: () => ({ ...mockTeams, reload: mockReload }) }));
@@ -41,7 +47,14 @@ jest.mock('@/lib/teams', () => ({
   getTeamRoster: (...args: unknown[]) => mockGetRoster(...args),
   findProfileByUsername: (...args: unknown[]) => mockFind(...args),
   inviteTeamMember: (...args: unknown[]) => mockInvite(...args),
+  fetchPendingTeamInvites: (...args: unknown[]) => mockPending(...args),
+  cancelTeamInvite: (...args: unknown[]) => mockCancelInvite(...args),
+  removeTeamMember: (...args: unknown[]) => mockRemove(...args),
+  passCaptaincy: (...args: unknown[]) => mockPass(...args),
+  leaveTeam: (...args: unknown[]) => mockLeave(...args),
+  deleteTeam: (...args: unknown[]) => mockDelete(...args),
 }));
+jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'a' } }) }));
 jest.mock('@/lib/invite', () => ({ shareTeamInvite: jest.fn() }));
 
 const originalOS = Platform.OS;
@@ -52,6 +65,144 @@ afterEach(() => {
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetRoster.mockResolvedValue({ data: [{ profile_id: 'a', username: 'cap', role: 'captain' }], error: null });
+  mockPending.mockResolvedValue([]);
+  for (const m of [mockCancelInvite, mockRemove, mockPass, mockLeave, mockDelete]) m.mockResolvedValue({ error: null });
+});
+
+const twoMembers = {
+  data: [
+    { profile_id: 'a', username: 'cap', full_name: 'Ana Cap', role: 'captain' },
+    { profile_id: 'b', username: 'ben', full_name: 'Ben Player', role: 'player' },
+  ],
+  error: null,
+};
+
+async function openRoster() {
+  await fireEvent.press(await screen.findByRole('button', { name: 'View team' }));
+}
+
+describe('S20A: members, captain tools, leave and delete', () => {
+  it('shows the team kit badge', async () => {
+    mockTeams = { status: 'ready', teams: [{ team: { ...team, kit_colour: 'kitRed' }, role: 'player' }] };
+    await render(<TeamContent />);
+    expect(await screen.findByTestId('team-badge')).toBeTruthy();
+  });
+
+  it('a member name opens their profile', async () => {
+    mockGetRoster.mockResolvedValue(twoMembers);
+    mockTeams = { status: 'ready', teams: [{ team, role: 'player' }] };
+    await render(<TeamContent />);
+    await openRoster();
+    await fireEvent.press(screen.getByRole('button', { name: 'Ben Player' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/player-profile', params: { profileId: 'b' } });
+  });
+
+  it('a player sees no captain tools and can leave', async () => {
+    mockGetRoster.mockResolvedValue(twoMembers);
+    mockTeams = { status: 'ready', teams: [{ team, role: 'player' }] };
+    await render(<TeamContent />);
+    await openRoster();
+    expect(screen.queryByTestId('team-member-actions-b')).toBeNull();
+    expect(mockPending).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId('team-leave'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-leave-confirm'));
+    });
+    expect(mockLeave).toHaveBeenCalledWith('t1');
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('captain: Make captain and Remove from a member row', async () => {
+    mockGetRoster.mockResolvedValue(twoMembers);
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    await render(<TeamContent />);
+    await openRoster();
+    expect(screen.queryByTestId('team-member-actions-a')).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Options for Ben Player' }));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-member-make-captain'));
+    });
+    expect(mockPass).toHaveBeenCalledWith('t1', 'b');
+    expect(mockReload).toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('team-member-actions-b'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-member-remove'));
+    });
+    expect(mockRemove).toHaveBeenCalledWith('t1', 'b');
+  });
+
+  it('captain: a refused action says why in one line', async () => {
+    mockGetRoster.mockResolvedValue(twoMembers);
+    mockRemove.mockResolvedValue({ error: { message: 'not_captain' } });
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    await render(<TeamContent />);
+    await openRoster();
+    await fireEvent.press(screen.getByTestId('team-member-actions-b'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-member-remove'));
+    });
+    expect(await screen.findByText('Only the captain can do that.')).toBeTruthy();
+  });
+
+  it('captain: Pending lists open invites and cancels one; hidden when none', async () => {
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    mockPending.mockResolvedValueOnce([{ invite_id: 'i1', profile_id: 'c', name: 'Cy Friend', role: 'player' }]);
+    await render(<TeamContent />);
+    expect(await screen.findByText('Pending')).toBeTruthy();
+    expect(mockPending).toHaveBeenCalledWith('t1');
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: 'Cancel invite to Cy Friend' }));
+    });
+    expect(mockCancelInvite).toHaveBeenCalledWith('i1');
+    await waitFor(() => expect(screen.queryByText('Pending')).toBeNull());
+  });
+
+  it('captain: Pending failed to load: one line and Try again', async () => {
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    mockPending.mockRejectedValueOnce(new Error("Couldn't load. Try again."));
+    await render(<TeamContent />);
+    expect(await screen.findByText("Couldn't load. Try again.")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('team-pending-retry'));
+    await waitFor(() => expect(mockPending).toHaveBeenCalledTimes(2));
+  });
+
+  it('the last member deletes the team instead of leaving', async () => {
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    await render(<TeamContent />);
+    await screen.findByRole('button', { name: 'View team' });
+    expect(screen.queryByTestId('team-leave')).toBeNull();
+    await fireEvent.press(screen.getByTestId('team-delete'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-delete-confirm'));
+    });
+    expect(mockDelete).toHaveBeenCalledWith('t1');
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('a refused delete says why and keeps the team', async () => {
+    mockDelete.mockResolvedValue({ error: { message: 'team_in_competition' } });
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    await render(<TeamContent />);
+    await fireEvent.press(await screen.findByTestId('team-delete'));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('team-delete-confirm'));
+    });
+    expect(await screen.findByText('This team is in a league. Try after it ends.')).toBeTruthy();
+    expect(mockReload).not.toHaveBeenCalled();
+  });
+
+  it('Words: buttons are 1-3 words', async () => {
+    mockGetRoster.mockResolvedValue(twoMembers);
+    mockTeams = { status: 'ready', teams: [{ team, role: 'captain' }] };
+    await render(<TeamContent />);
+    await openRoster();
+    for (const label of ['Leave team', 'Hide team']) {
+      expect(screen.getByRole('button', { name: label })).toBeTruthy();
+      expect(label.split(' ').length).toBeLessThanOrEqual(3);
+    }
+  });
 });
 
 describe('Teams segment', () => {

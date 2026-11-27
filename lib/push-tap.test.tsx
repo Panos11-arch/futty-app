@@ -143,6 +143,16 @@ describe('routeForPushData', () => {
     expect(routeForPushData({ type: 'squad_post', conversationId: 'c1' })).toBe('/notifications');
   });
 
+  // S20: an accepted friend request opens the chat; a new one opens Friends.
+  it('friend pushes', () => {
+    expect(routeForPushData({ type: 'friend_accepted', conversationId: 'c9', profileId: 'p1' })).toEqual({
+      pathname: '/messages/[id]',
+      params: { id: 'c9' },
+    });
+    expect(routeForPushData({ type: 'friend_accepted', profileId: 'p1' })).toBe('/friends');
+    expect(routeForPushData({ type: 'friend_request', profileId: 'p1', requestId: 'r1' })).toBe('/friends');
+  });
+
   it('the venue type wins over a match id too', () => {
     expect(routeForPushData({ type: 'venue_new_booking', matchId: 'm1', bookingId: 'b1' })).toBe('/venue-dashboard');
     expect(routeForPushData({ type: 'team_of_the_week', teamOfTheWeekId: 't1', weekStart: '2026-11-09', matchId: 'm1' })).toEqual({

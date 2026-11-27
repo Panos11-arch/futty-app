@@ -13,6 +13,7 @@ import {
   describeQuote,
   fetchCancellationOutcome,
   describeVenuePlayerAnswerError,
+  noticeUnderCancelledTitle,
   openVenueOffers,
   paymentDeadlineLabel,
   rosterRow,
@@ -309,6 +310,40 @@ describe('cancelledMessage', () => {
       "The booking is cancelled. The €6.00 charge didn't go through. We'll try your card again until kickoff. " +
         "Anything still unpaid then becomes a debt to Futty, and you can't book or join a game until it's paid.",
     );
+  });
+});
+
+// QA 27 November (Panos): under the "This booking was cancelled." title the
+// screen said "The booking is cancelled." again. Said once; money words unchanged.
+describe('noticeUnderCancelledTitle', () => {
+  const fee = (amountCents: number, status: string) =>
+    noticeUnderCancelledTitle(cancelledMessage('whole_team', { cancelled: true, fee: { amountCents, status } }));
+
+  it('nothing else to say: no line under the title', () => {
+    expect(noticeUnderCancelledTitle(cancelledMessage('whole_team', { cancelled: true }))).toBeNull();
+    expect(noticeUnderCancelledTitle(cancelledMessage('whole_team', { cancelled: true, fee: null }))).toBeNull();
+    expect(noticeUnderCancelledTitle(null)).toBeNull();
+    expect(noticeUnderCancelledTitle('')).toBeNull();
+  });
+
+  it('a charge: only the charge sentence, word for word, with the server’s amount', () => {
+    expect(fee(600, 'paid')).toBe('€6.00 was charged to your card.');
+    expect(fee(600, 'processing')).toBe('The €6.00 charge is being processed.');
+    expect(fee(600, 'failed')).toBe(
+      "The €6.00 charge didn't go through. We'll try your card again until kickoff. " +
+        "Anything still unpaid then becomes a debt to Futty, and you can't book or join a game until it's paid.",
+    );
+  });
+
+  it('only your spot: kept, it isn’t a repeat of the title', () => {
+    expect(noticeUnderCancelledTitle(cancelledMessage('my_spot', { cancelled: true }))).toBe('Your spot is cancelled.');
+    expect(noticeUnderCancelledTitle('Your spot is cancelled. €6.00 was charged to your card.')).toBe(
+      'Your spot is cancelled. €6.00 was charged to your card.',
+    );
+  });
+
+  it('never both sentences', () => {
+    for (const status of ['paid', 'processing', 'failed']) expect(fee(600, status)).not.toContain('The booking is cancelled.');
   });
 });
 

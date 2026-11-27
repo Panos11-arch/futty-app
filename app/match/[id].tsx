@@ -25,6 +25,7 @@ import { useCallback } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AdBanner } from '@/components/ads/ad-banner';
 import { CheckInSection } from '@/components/booking/check-in-panel';
 import { BalanceTeams } from '@/components/match/balance-teams';
 import { CheckScoreCard } from '@/components/match/check-score-card';
@@ -252,6 +253,8 @@ export default function MatchScreen() {
           </>
         )}
         {match && scoreEntered(match) ? <PostMatchOffers matchId={match.match.id} /> : null}
+        {/* G4a: a banner ad once the game is played and confirmed (none on Premium Plus). */}
+        {rated ? <AdBanner testID="match-ad" /> : null}
       </View>
     );
   }

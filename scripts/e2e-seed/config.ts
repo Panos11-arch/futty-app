@@ -108,3 +108,49 @@ export const E2E_STAFF_BOOKING = {
   contactName: 'E2E Caller',
   phone: '+35799000000',
 } as const;
+
+/** S10 (competition.yaml): a live city league in its own e2e-only city, so
+ *  every tab of the competition page has data. The hub stays in sign-up
+ *  while Season 1 (a child row, made by league_start_season) runs, as in
+ *  production. Scope 'E2E': the Leagues list shows a city group "E2E"
+ *  (testIDs leagues-group-e2e, leagues-row-child-e2e-5-a-side). */
+export const E2E_LEAGUE = {
+  id: 'e2e00000-0000-4000-8000-000000000071',
+  name: 'E2E City 5s',
+  scope: 'E2E',
+  format: E2E_FORMAT,
+  capacity: 8,
+  seasonWeeks: 6,
+  /** Season 1 starts this many days before the first seed run. */
+  startDaysAgo: 21,
+} as const;
+
+export type E2eTeam = { id: string; name: string; captainEmail: string };
+
+/** One team per player login, each its captain (and only player). The ids
+ *  sort in this order, so sync_league_fixtures makes home = the earlier
+ *  one in every pairing. */
+export const E2E_TEAMS: readonly E2eTeam[] = [
+  { id: 'e2e00000-0000-4000-8000-000000000061', name: 'E2E iOS 1 FC', captainEmail: `e2e-ios-1@${E2E_EMAIL_DOMAIN}` },
+  { id: 'e2e00000-0000-4000-8000-000000000062', name: 'E2E Android 1 FC', captainEmail: `e2e-android-1@${E2E_EMAIL_DOMAIN}` },
+  { id: 'e2e00000-0000-4000-8000-000000000063', name: 'E2E iOS 2 FC', captainEmail: `e2e-ios-2@${E2E_EMAIL_DOMAIN}` },
+  { id: 'e2e00000-0000-4000-8000-000000000064', name: 'E2E Android 2 FC', captainEmail: `e2e-android-2@${E2E_EMAIL_DOMAIN}` },
+];
+
+/** Every pairing's result (home = the first team), played 3 days apart from
+ *  Season 1's start, all long final. Indexes into E2E_TEAMS. */
+export const E2E_LEAGUE_RESULTS: readonly { home: number; away: number; homeGoals: number; awayGoals: number }[] = [
+  { home: 0, away: 1, homeGoals: 2, awayGoals: 1 },
+  { home: 0, away: 2, homeGoals: 1, awayGoals: 1 },
+  { home: 0, away: 3, homeGoals: 3, awayGoals: 0 },
+  { home: 1, away: 2, homeGoals: 2, awayGoals: 0 },
+  { home: 1, away: 3, homeGoals: 1, awayGoals: 2 },
+  { home: 2, away: 3, homeGoals: 0, awayGoals: 0 },
+];
+
+/** The upcoming fixture: Android 1 at home to iOS 1 (the reverse of their
+ *  first game), moved to this many days ahead on every run. */
+export const E2E_UPCOMING = { home: 1, away: 0, daysAhead: 3, time: '20:00' } as const;
+
+/** League kickoffs (Cyprus time). */
+export const E2E_LEAGUE_KICKOFF = '19:00';

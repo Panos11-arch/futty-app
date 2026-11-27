@@ -1,0 +1,83 @@
+# Journey (S20A): your own teams. From Community's + sheet, New team takes a
+# name, a kit colour and the seeded friend (the seed makes each platform's
+# two logins friends: scripts/e2e-seed/seed.ts, 6b), and Create team opens
+# the new team's page. Then Account > Play (Teams) opens it (the friend hasn't
+# accepted, so this login is its only member) and Delete team hides it, so
+# every run leaves nothing open behind (decided 27 November: a deleted team
+# is hidden and keeps its history).
+appId: com.panosalepis.futtyapp
+name: teams
+tags:
+  - e2e
+  - teams
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  TEAM: ${'E2E S20A ' + MAESTRO_E2E_PLATFORM}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+
+# ---- Community + → New team ---------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: community
+- tapOn:
+    id: community-fab
+- tapOn:
+    id: community-new-team
+- tapOn:
+    id: new-team-name
+- inputText: ${TEAM}
+- hideKeyboard
+- tapOn:
+    id: new-team-kit-sky
+- extendedWaitUntil:
+    visible:
+      id: 'new-team-friend-[0-9a-f-]{36}'
+    timeout: 30000
+- tapOn:
+    id: 'new-team-friend-[0-9a-f-]{36}'
+- takeScreenshot: teams-new-${PLATFORM}
+- tapOn:
+    id: new-team-create
+
+# ---- The new team's page --------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: team-season
+    timeout: 30000
+- assertVisible:
+    id: team-badge
+- assertVisible: ${TEAM}
+- takeScreenshot: teams-page-${PLATFORM}
+
+# ---- Account > Play (Teams first): delete it (the only member) -------------------------
+- back
+- tapOn:
+    id: header-menu
+- tapOn:
+    id: tab-play
+- extendedWaitUntil:
+    visible: ${TEAM}
+    timeout: 30000
+- tapOn: ${TEAM}
+- extendedWaitUntil:
+    visible:
+      id: team-delete
+    timeout: 30000
+- tapOn:
+    id: team-delete
+- tapOn:
+    id: team-delete-confirm
+- extendedWaitUntil:
+    notVisible: ${TEAM}
+    timeout: 30000
+- takeScreenshot: teams-${PLATFORM}

@@ -3,6 +3,7 @@ import {
   feedKey,
   mergePages,
   nextCursor,
+  ownPostHref,
   postLine,
   postSubtitle,
   resultSubtitle,
@@ -36,6 +37,7 @@ function post(over: Partial<SquadPostItem> = {}): SquadPostItem {
     v2: false,
     mine: false,
     can_message: false,
+    booking_id: null,
     ...over,
   };
 }
@@ -163,5 +165,36 @@ describe('paging', () => {
     const b = result({ item_id: 'b' });
     const c = post({ item_id: 'c' });
     expect(mergePages([a, b], [b, c]).map((i) => i.item_id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('ownPostHref (bug 27 Nov: Open post opens my game)', () => {
+  it.each([
+    ['players', 'open', false],
+    ['players', 'open', true],
+    ['opposition', 'open', true],
+    ['opposition', 'matched', false],
+    ['players', 'full', true],
+  ] as const)('a %s post (%s, v2 %s) with a booking opens that booking', (post_type, post_status, v2) => {
+    expect(ownPostHref(post({ mine: true, post_type, post_status, v2, booking_id: 'b1' }))).toEqual({
+      pathname: '/booking/[id]',
+      params: { id: 'b1' },
+    });
+  });
+
+  it('a matched opposition post with no booking opens its fixture', () => {
+    expect(ownPostHref(post({ mine: true, post_type: 'opposition', post_status: 'matched', booking_id: null }))).toEqual({
+      pathname: '/fixture-confirmed',
+      params: { kind: 'squad', id: 'p1' },
+    });
+  });
+
+  it.each([
+    ['players', 'open'],
+    ['players', 'matched'],
+    ['opposition', 'open'],
+    ['opposition', 'cancelled'],
+  ] as const)('a %s post (%s) with no booking has nothing to open', (post_type, post_status) => {
+    expect(ownPostHref(post({ mine: true, post_type, post_status, booking_id: null }))).toBeNull();
   });
 });

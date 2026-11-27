@@ -17,7 +17,7 @@ jest.mock('@/components/fixture-score-form', () => {
 });
 jest.mock('@/lib/match/use-match-result', () => ({ useMatchLinks: () => ({ ...mockLinks, reload: jest.fn() }) }));
 
-const fixture = { id: 'fx1' } as Fixture;
+const fixture = { id: 'fx1', match_flow: false } as Fixture;
 
 describe('FixtureScoreEntry', () => {
   it('a fixture recorded before A2 keeps the old form', async () => {
@@ -26,12 +26,19 @@ describe('FixtureScoreEntry', () => {
     expect(screen.getByText('old fixture form')).toBeTruthy();
   });
 
-  it('a fixture with a match opens the match screen instead', async () => {
+  it('a fixture with a match goes straight to its Log the score flow', async () => {
     mockLinks = { status: 'ready', links: { byLeagueFixtureId: new Map([['fx1', 'm9']]) } };
-    await render(<FixtureScoreEntry fixture={fixture} onSubmitted={jest.fn()} />);
+    await render(<FixtureScoreEntry fixture={{ ...fixture, match_flow: true }} onSubmitted={jest.fn()} />);
     expect(screen.queryByText('old fixture form')).toBeNull();
-    await fireEvent.press(screen.getByText('Enter or check the result'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/[id]', params: { id: 'm9' } });
+    await fireEvent.press(screen.getByRole('button', { name: 'Log the score' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/match/after-game', params: { id: 'm9' } });
+  });
+
+  it('a fixture made since S10 with no match yet shows no form (the server would refuse it)', async () => {
+    mockLinks = { status: 'ready', links: { byLeagueFixtureId: new Map() } };
+    await render(<FixtureScoreEntry fixture={{ ...fixture, match_flow: true }} onSubmitted={jest.fn()} />);
+    expect(screen.queryByText('old fixture form')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Log the score' })).toBeNull();
   });
 
   it('shows no form until it knows', async () => {

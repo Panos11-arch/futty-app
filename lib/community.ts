@@ -20,7 +20,8 @@ export async function listPlayers() {
 }
 
 export async function listTeams() {
-  return supabase.from('teams').select('id, name, city').order('name');
+  // S20A: a deleted team is hidden.
+  return supabase.from('teams').select('id, name, city').is('deleted_at', null).order('name');
 }
 
 export type FollowTarget = 'player' | 'team';
@@ -78,6 +79,9 @@ export type SquadPostItem = FeedRowBase & {
   v2: boolean;
   mine: boolean;
   can_message: boolean;
+  /** My own post's booking, the game "Open post" opens; null on anyone
+   *  else's post and on a post with no booking. */
+  booking_id: string | null;
 };
 
 export type MatchResultItem = FeedRowBase & {

@@ -1,0 +1,164 @@
+# S10 journey: Leagues → a league's competition page (image 13). Opens the
+# seeded e2e league (scripts/e2e-seed, step 8: "E2E City 5s" in the
+# e2e-only city "E2E", Season 1 running, six results final and one upcoming
+# game, Android 1 v iOS 1). Both platforms' logins captain a team in it.
+# Walks every tab with data: the overview's season card, Player and Team of
+# the season and the featured game; the fixtures; the standings (this login's
+# own row, in every view); player stats; the stats cards; the power ranking.
+# Pin then unpin with the star (this login's own pin row; the flow unpins
+# what it pins).
+#
+# The power ranking comes from staging's match_jobs_tick (every 15 minutes),
+# not the seed: on the very first run after the league is created it can be
+# empty for up to 15 minutes, so its rows are optional.
+appId: com.panosalepis.futtyapp
+name: competition
+tags:
+  - e2e
+  - leagues
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  # scripts/e2e-seed/config.ts E2E_TEAMS: iOS 1 FC tops the seeded table.
+  TOP_TEAM_ID: e2e00000-0000-4000-8000-000000000061
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- openLink: futtyapp://leagues
+- extendedWaitUntil:
+    visible:
+      id: leagues-list
+    timeout: 30000
+
+# The e2e city sits after the real ones.
+- scrollUntilVisible:
+    element:
+      id: leagues-group-e2e
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: leagues-group-e2e
+- scrollUntilVisible:
+    element:
+      id: leagues-row-child-e2e-5-a-side
+    direction: DOWN
+    timeout: 10000
+- tapOn:
+    id: leagues-row-child-e2e-5-a-side
+
+# ---- Overview ----------------------------------------------------------------------
+- extendedWaitUntil:
+    visible:
+      id: league-page
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: competition-tab-overview
+    timeout: 30000
+- assertVisible: '.*E2E City 5s.*'
+- assertVisible:
+    id: competition-season-card
+- extendedWaitUntil:
+    visible:
+      id: competition-player-of-season
+    timeout: 20000
+- takeScreenshot: competition-overview-${PLATFORM}
+- scrollUntilVisible:
+    element:
+      id: competition-team-of-season
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: competition-featured
+    direction: DOWN
+# The upcoming game (its card may read as one label on iOS).
+- assertVisible: '.*E2E Android 1 FC.*'
+- takeScreenshot: competition-overview-more-${PLATFORM}
+
+# Pin, then unpin: the star is S9's pin.
+- tapOn:
+    id: competition-pin
+- tapOn:
+    id: competition-pin
+
+# ---- Matches -----------------------------------------------------------------------
+- tapOn:
+    id: competition-tab-matches
+- assertVisible:
+    id: competition-matches-date
+- extendedWaitUntil:
+    visible: '.*E2E iOS 2 FC.*'
+    timeout: 20000
+- assertVisible:
+    id: league-page-fixtures
+- takeScreenshot: competition-matches-${PLATFORM}
+
+# ---- Standings: this login's team is in the table ------------------------------------
+- tapOn:
+    id: competition-tab-standings
+- extendedWaitUntil:
+    visible:
+      id: standings-table
+    timeout: 20000
+- assertVisible:
+    id: standings-row-mine
+- assertVisible:
+    id: standings-view-short
+- tapOn:
+    id: standings-view-full
+- assertVisible:
+    id: standings-row-mine
+- tapOn:
+    id: standings-view-form
+- assertVisible:
+    id: standings-row-mine
+- takeScreenshot: competition-standings-${PLATFORM}
+
+# ---- Player stats (Premium; the card to get it otherwise) ------------------------------
+- scrollUntilVisible:
+    element:
+      id: competition-tab-player-stats
+    direction: RIGHT
+- tapOn:
+    id: competition-tab-player-stats
+- extendedWaitUntil:
+    visible:
+      id: competition-panel-player-stats
+    timeout: 20000
+- takeScreenshot: competition-player-stats-${PLATFORM}
+
+# ---- Stats -------------------------------------------------------------------------
+- scrollUntilVisible:
+    element:
+      id: competition-tab-power
+    direction: RIGHT
+- tapOn:
+    id: competition-tab-stats
+- assertVisible:
+    id: competition-stats-players
+- extendedWaitUntil:
+    visible:
+      id: competition-stats-card-goals
+    timeout: 20000
+- takeScreenshot: competition-stats-${PLATFORM}
+
+# ---- Power ranking (optional rows: see the top of this file) ---------------------------
+- tapOn:
+    id: competition-tab-power
+- extendedWaitUntil:
+    visible:
+      id: power-ranking-list
+    timeout: 20000
+- assertVisible:
+    id: power-ranking-row-${TOP_TEAM_ID}
+    optional: true
+- takeScreenshot: competition-power-${PLATFORM}
+
+- tapOn:
+    id: league-page-back
+- assertVisible:
+    id: leagues-list

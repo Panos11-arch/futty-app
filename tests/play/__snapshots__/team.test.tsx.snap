@@ -804,6 +804,84 @@ exports[`Teams segment populated: team card, stats in tabular figures, roster on
           </Text>
         </View>
       </View>
+      <View
+        accessibilityLabel="Leave team"
+        accessibilityRole="button"
+        accessibilityState={
+          {
+            "busy": false,
+            "checked": undefined,
+            "disabled": false,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "alignSelf": "flex-start",
+              "borderRadius": 12,
+              "justifyContent": "center",
+              "minHeight": 44,
+              "paddingHorizontal": 16,
+              "paddingVertical": 8,
+            },
+            {
+              "backgroundColor": "#FFFFFF",
+              "borderColor": "#E4E7EB",
+              "borderWidth": 1,
+            },
+            false,
+            false,
+            false,
+            false,
+          ]
+        }
+        testID="team-leave"
+      >
+        <Text
+          maxFontSizeMultiplier={2}
+          style={
+            [
+              {
+                "fontFamily": "Inter_600SemiBold",
+                "fontSize": 17,
+                "lineHeight": 22,
+              },
+              {
+                "color": "#0B1215",
+              },
+              false,
+              {
+                "textAlign": "center",
+              },
+            ]
+          }
+        >
+          Leave team
+        </Text>
+      </View>
     </View>
   </View>
 </RCTScrollView>

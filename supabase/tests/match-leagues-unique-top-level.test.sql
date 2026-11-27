@@ -16,18 +16,24 @@ declare
 begin
   perform tests.join_team(v_team1, v_cap1, 'captain');
   perform tests.join_team(v_team2, v_cap2, 'captain');
+  -- S10: a season is a child row of the hub, and its divisions are
+  -- children of the next season.
   insert into public.leagues (format, scope, name, stage, capacity)
-  values ('7-a-side', 'UT City', 'UT City 7s', 'season', 8) returning id into v_hub;
-  insert into public.league_teams (league_id, team_id, played, won, drawn, lost, goals_for, goals_against, pts_adjustment)
-  values (v_hub, v_team1, 2, 2, 0, 0, 5, 1, 0), (v_hub, v_team2, 2, 0, 0, 2, 1, 5, 0);
+  values ('7-a-side', 'UT City', 'UT City 7s', 'signup', 8) returning id into v_hub;
+  insert into public.league_teams (league_id, team_id) values (v_hub, v_team1), (v_hub, v_team2);
+  v_error := tests.error_as(v_cap1, format('select public.start_league_season(%L)', v_hub));
+  assert v_error is null, 'the season starts, got ' || coalesce(v_error, '');
 
   v_error := tests.error_as(v_cap1, format('select public.end_season_to_divisions(%L)', v_hub));
   assert v_error is null, 'the split succeeds, got ' || coalesce(v_error, '');
 
-  assert (select array_agg(name order by name) from public.leagues where parent_league_id = v_hub)
-         = array['Division 1', 'Division 2'], 'two divisions under the hub';
+  assert (select array_agg(d.name order by d.name) from public.leagues d
+          join public.leagues s on s.id = d.parent_league_id
+          where s.parent_league_id = v_hub and s.season_number = 2)
+         = array['Division 1', 'Division 2'], 'two divisions under Season 2';
   assert not exists (
-    select 1 from public.leagues where parent_league_id = v_hub and (format <> '7-a-side' or scope <> 'UT City')
+    select 1 from public.leagues d join public.leagues s on s.id = d.parent_league_id
+    where s.parent_league_id = v_hub and (d.format <> '7-a-side' or d.scope <> 'UT City')
   ), 'the divisions keep the hub''s format and scope';
   assert (select stage from public.leagues where id = v_hub) = 'divisions', 'the hub moves to divisions';
 end $$;

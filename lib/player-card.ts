@@ -108,10 +108,9 @@ export function normaliseFavouritePlayer(text: string): string | null {
 }
 
 /**
- * Where the card's Scan button goes. Null until S20 builds scanning a
- * player card, so the card shows only Share and Edit (decided 25 November).
- * S20: return its scanner's route here and the button appears.
+ * Where the card's Scan button goes: S20's scanner (app/scan.tsx), which
+ * reads another player's card QR. Null would hide the button again.
  */
 export function scanRoute(): Href | null {
-  return null;
+  return '/scan';
 }

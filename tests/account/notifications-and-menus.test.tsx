@@ -150,6 +150,51 @@ describe('Notifications', () => {
     }
   );
 
+  // S20: a friend request opens Friends; an accepted one opens the friend chat.
+  it('a friend_request row opens Friends', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('f1', '2026-11-17T09:00:00Z', { type: 'friend_request', data: { profileId: 'p1', requestId: 'r1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title f1. Body f1' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/friends'));
+    expect(mockMarkRead).toHaveBeenCalledWith('f1');
+  });
+
+  it('S20A: a team_captain row opens the team', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('c1', '2026-11-17T09:00:00Z', { type: 'team_captain', data: { teamId: 't1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title c1. Body c1' }));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith({ pathname: '/play', params: { segment: 'teams', teamId: 't1' } }),
+    );
+  });
+
+  it('S20A: an invite the captain cancelled says so, with no buttons', async () => {
+    mockInviteStatuses = new Map([['inv9', 'cancelled']]);
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('n9', '2026-11-17T09:00:00Z', { type: 'team_invite', data: { inviteId: 'inv9', teamId: 't1' } })],
+    };
+    await render(<NotificationsScreen />);
+    expect(await screen.findByText('Cancelled')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Accept' })).toBeNull();
+  });
+
+  it('a friend_accepted row opens the chat', async () => {
+    mockNotifications = {
+      status: 'ready',
+      notifications: [note('f2', '2026-11-17T09:00:00Z', { type: 'friend_accepted', data: { profileId: 'p1', conversationId: 'c1' } })],
+    };
+    await render(<NotificationsScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Unread. Title f2. Body f2' }));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: '/messages/[id]', params: { id: 'c1' } }));
+  });
+
   it.each(['venue_player_offered', 'venue_player_withdrawn'])('a %s row opens the booking', async (type) => {
     mockNotifications = {
       status: 'ready',

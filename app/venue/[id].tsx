@@ -20,6 +20,7 @@ import { VenuePageView } from '@/components/venue/venue-page-view';
 import { WeatherStrip } from '@/components/venue/weather-strip';
 import { timeToMin } from '@/lib/booking';
 import type { PaymentSheet } from '@/lib/booking-checkout';
+import { initialKindFor, peekBookingPreselect } from '@/lib/booking-preselect';
 import { fetchSearchOptions, useLoad } from '@/lib/booking-search';
 import { futtyAiHref, NEW_CHAT } from '@/lib/futty-ai';
 import { useDebtBlock } from '@/lib/use-owed';
@@ -109,6 +110,9 @@ export default function VenueScreen() {
     [initPaymentSheet, presentPaymentSheet],
   );
   const checkout = useSlotCheckout(slot, stripe);
+  // S20, Team vs team (from a friend chat through Book a pitch): the
+  // checkout starts on half pitch, where the server offers it.
+  const [initialKind] = useState(() => initialKindFor(peekBookingPreselect()));
   const [sheetPitch, setSheetPitch] = useState<string | null>(null);
 
   const openDirections = () => {
@@ -173,6 +177,7 @@ export default function VenueScreen() {
           <CheckoutView
             variant="sheet"
             pitchKey={sheetPitch}
+            initialKind={initialKind}
             venueName={venue?.name ?? ''}
             quote={checkout.quote}
             pitches={checkout.pitches}

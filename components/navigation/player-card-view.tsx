@@ -6,7 +6,8 @@
 //   2. a dark band: Position · Strong foot, Favourite player, Teams, Member
 //      since (each hidden when empty);
 //   3. a white bottom: the QR for futty.app/p/<username> and "Tap to view
-//      full screen", only when the server says show_qr (never for a minor).
+//      full screen", only when the server says show_qr (never for a minor,
+//      and never on another player's card, S20).
 // Nothing private is on it. It's a View the Share button captures as a PNG.
 import { forwardRef } from 'react';
 import { Pressable, View } from 'react-native';
@@ -28,8 +29,10 @@ export type PlayerCardViewProps = {
   card: PlayerCard;
   /** The avatar and name open the player's profile. */
   onOpenProfile: () => void;
-  /** The QR opens it full screen. */
-  onOpenQr: () => void;
+  /** The QR opens it full screen (your own card only). */
+  onOpenQr?: () => void;
+  /** S20: another player's card uses its own testIDs; "my-card" by default. */
+  testIDPrefix?: string;
 };
 
 function Detail({ label, value, wide = false }: { label: string; value: string; wide?: boolean }) {
@@ -47,9 +50,11 @@ function Detail({ label, value, wide = false }: { label: string; value: string; 
 }
 
 export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function PlayerCardView(
-  { card, onOpenProfile, onOpenQr },
+  { card, onOpenProfile, onOpenQr, testIDPrefix: id = 'my-card' },
   ref,
 ) {
+  // The player's own card keeps its ids written out (.maestro checks them).
+  const mine = id === 'my-card';
   const styles = useStyles();
   const { colors } = useTheme();
   const name = card.full_name?.trim() || card.username || 'Player';
@@ -60,23 +65,23 @@ export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function Pla
   const hasDetails = !!(card.position || card.preferred_foot || card.favourite_player || teams || since);
 
   return (
-    <View ref={ref} collapsable={false} testID="my-card" style={styles.card}>
+    <View ref={ref} collapsable={false} {...(mine ? { testID: 'my-card' } : { testID: id })} style={styles.card}>
       <View style={styles.top}>
         <View style={styles.logo}>
           <FuttyLogo size={space.xxl} />
         </View>
         <Pressable
-          testID="my-card-open-profile"
+          {...(mine ? { testID: 'my-card-open-profile' } : { testID: `${id}-open-profile` })}
           accessibilityRole="button"
           accessibilityLabel={`${name}, open profile`}
           onPress={onOpenProfile}
           style={styles.who}>
           {look ? (
-            <View testID="my-card-avatar" style={[styles.avatar, styles.avatarLook]}>
+            <View {...(mine ? { testID: 'my-card-avatar' } : { testID: `${id}-avatar` })} style={[styles.avatar, styles.avatarLook]}>
               <Avatar name={name} kit={look} size={CARD_AVATAR} />
             </View>
           ) : (
-            <View testID="my-card-avatar" style={[styles.avatar, styles.avatarInitials]}>
+            <View {...(mine ? { testID: 'my-card-avatar' } : { testID: `${id}-avatar` })} style={[styles.avatar, styles.avatarInitials]}>
               <Text variant="title" tone="greenInk" numberOfLines={1} adjustsFontSizeToFit>
                 {initials(name)}
               </Text>
@@ -84,15 +89,15 @@ export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function Pla
           )}
           <View style={styles.names}>
             {card.username ? (
-              <Text testID="my-card-username" variant="callout" tone="onNightMuted" numberOfLines={1}>
+              <Text {...(mine ? { testID: 'my-card-username' } : { testID: `${id}-username` })} variant="callout" tone="onNightMuted" numberOfLines={1}>
                 {`@${card.username}`}
               </Text>
             ) : null}
-            <Text testID="my-card-name" variant="title" tone="onNight" numberOfLines={2}>
+            <Text {...(mine ? { testID: 'my-card-name' } : { testID: `${id}-name` })} variant="title" tone="onNight" numberOfLines={2}>
               {name}
             </Text>
             {level ? (
-              <View testID="my-card-level" style={styles.levelPill}>
+              <View {...(mine ? { testID: 'my-card-level' } : { testID: `${id}-level` })} style={styles.levelPill}>
                 <Text variant="caption" style={{ color: colors.green }}>
                   {level}
                 </Text>
@@ -103,7 +108,7 @@ export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function Pla
       </View>
 
       {hasDetails ? (
-        <View testID="my-card-details" style={styles.band}>
+        <View {...(mine ? { testID: 'my-card-details' } : { testID: `${id}-details` })} style={styles.band}>
           {card.position ? <Detail label="Position" value={card.position} /> : null}
           {card.preferred_foot ? <Detail label="Strong foot" value={card.preferred_foot} /> : null}
           {card.favourite_player ? <Detail label="Favourite player" value={card.favourite_player} /> : null}
@@ -112,9 +117,9 @@ export const PlayerCardView = forwardRef<View, PlayerCardViewProps>(function Pla
         </View>
       ) : null}
 
-      {card.show_qr && card.username ? (
+      {card.show_qr && card.username && onOpenQr ? (
         <Pressable
-          testID="my-card-qr"
+          {...(mine ? { testID: 'my-card-qr' } : { testID: `${id}-qr` })}
           accessibilityRole="button"
           accessibilityLabel="Your card's QR code. View full screen"
           onPress={onOpenQr}

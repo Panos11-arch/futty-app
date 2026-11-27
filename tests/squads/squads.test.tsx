@@ -380,7 +380,10 @@ describe('Squads: Booking v2 posts', () => {
     mockQuotes.mockResolvedValue(new Map([['pp1', v2Quote({ open: false })]]));
     mockPosts = { status: 'ready', posts: [playersPost] };
     await render(<SquadsScreen />);
-    expect(await screen.findByText('Nothing open right now — check back soon.')).toBeTruthy();
+    expect(await screen.findByText('No open games')).toBeTruthy();
+    expect(screen.queryByText('Nothing open right now — check back soon.')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Find a match' }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/squads', params: { view: 'players' } });
   });
 
   it('an opposition post: side B\'s price and Accept as opponent, never the old offer', async () => {

@@ -45,11 +45,11 @@ describe('Home "Featured event" (image 01; leagues in sign-up until S10B)', () =
     expect(card).not.toHaveTextContent(/€/);
   });
 
-  it('Join opens the event (Leagues until S10)', async () => {
+  it('Join opens the league’s competition page (S10)', async () => {
     mockState = { status: 'ready', event };
     await render(<FeaturedEvent refreshSignal={0} />);
     await fireEvent.press(screen.getByTestId('home-featured-join'));
-    expect(router.push).toHaveBeenCalledWith('/leagues');
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/leagues/[id]', params: { id: event.id } });
   });
 
   it('pull to refresh loads it again', async () => {

@@ -1,5 +1,5 @@
-import { E2E_STAFF, E2E_USERS, E2E_VENUE } from './config';
-import { assertE2eVenue, isE2eEmail, selectBookingsToCancel, selectE2eUsers, type BookingRow } from './reset';
+import { E2E_STAFF, E2E_TEAMS, E2E_USERS, E2E_VENUE } from './config';
+import { assertE2eLeague, assertE2eTeams, assertE2eVenue, isE2eEmail, selectBookingsToCancel, selectE2eUsers, type BookingRow } from './reset';
 
 describe('isE2eEmail: only the exact e2e domain', () => {
   it.each(['e2e-ios-1@e2e.futty.app', 'E2E-Android-1@E2E.Futty.App', ' e2e-ios-2@e2e.futty.app '])('%s is e2e', (email) => {
@@ -87,5 +87,33 @@ describe('assertE2eVenue', () => {
 
   it('stops on anybody else’s venue at that id', () => {
     expect(() => assertE2eVenue({ name: 'Nuevo Campo' })).toThrow(/Stopping/);
+  });
+});
+
+describe('assertE2eLeague', () => {
+  const ours = { name: 'E2E City 5s', scope: 'E2E', parent_league_id: null };
+
+  it('passes a new league or our own', () => {
+    expect(() => assertE2eLeague(null)).not.toThrow();
+    expect(() => assertE2eLeague(ours)).not.toThrow();
+  });
+
+  it.each([
+    ['a real league', { ...ours, name: 'Nicosia 5s', scope: 'Nicosia' }],
+    ['another scope', { ...ours, scope: 'Limassol' }],
+    ['a season or division row', { ...ours, parent_league_id: 'e2e00000-0000-4000-8000-000000000099' }],
+  ])('stops on %s at that id', (_name, row) => {
+    expect(() => assertE2eLeague(row)).toThrow(/Stopping/);
+  });
+});
+
+describe('assertE2eTeams', () => {
+  it('passes our own teams', () => {
+    expect(() => assertE2eTeams([])).not.toThrow();
+    expect(() => assertE2eTeams(E2E_TEAMS.map((t) => ({ id: t.id, name: t.name })))).not.toThrow();
+  });
+
+  it('stops on a real team at an e2e id', () => {
+    expect(() => assertE2eTeams([{ id: E2E_TEAMS[0].id, name: 'Lions FC' }])).toThrow(/Stopping/);
   });
 });

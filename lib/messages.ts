@@ -82,6 +82,8 @@ export type CaptainContact = AvatarColumns & {
   team_name: string;
   captain_id: string;
   captain_name: string;
+  /** S10: false when the chat would be refused (a block either way, or an adult and a minor). */
+  can_message?: boolean;
 };
 
 type RpcError = { message: string } | null;
@@ -181,7 +183,7 @@ export async function openMatchCaptainConversation(matchId: string) {
   return { conversationId: typeof data === 'string' ? data : null, error: error as RpcError };
 }
 
-/** Closed until S20 adds friends: the server answers not_friends. */
+/** Friends only (S20): anyone else gets not_friends from the server. */
 export async function openFriendConversation(profileId: string) {
   const { data, error } = await supabase.rpc('open_friend_conversation', { p_profile_id: profileId });
   return { conversationId: typeof data === 'string' ? data : null, error: error as RpcError };
@@ -417,9 +419,8 @@ export function teamHref(teamId: string): Href {
 export const FORMER_PLAYER = 'Former player';
 
 /**
- * Friend chats, "Book together": Book a pitch. For S20 (friends): the
- * checkout's invite step picks the friend from `inviteProfileId`; until then
- * it opens Book a pitch as it is.
+ * Friend chats, "Book together": Book a pitch, and after paying the friend
+ * is preselected in Invite friends (S20, lib/booking-preselect.ts).
  */
 export function bookTogetherHref(friendProfileId: string): Href {
   return { pathname: '/book', params: { inviteProfileId: friendProfileId } };
@@ -427,9 +428,8 @@ export function bookTogetherHref(friendProfileId: string): Href {
 
 /**
  * Friend chats where both are captains, "Team vs team": a half-pitch booking
- * with the friend's team invited as opposition (Booking v2). For S20: the
- * opposition step preselects `oppositionTeamId`; until then it opens Book a
- * pitch as it is.
+ * (the checkout starts on half) with the friend's team preselected in the
+ * opposition invite after paying (S20, lib/booking-preselect.ts).
  */
 export function teamVsTeamHref(friendTeamId: string): Href {
   return { pathname: '/book', params: { oppositionTeamId: friendTeamId } };

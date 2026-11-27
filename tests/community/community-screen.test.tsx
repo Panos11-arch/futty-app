@@ -5,7 +5,11 @@ import { router } from 'expo-router';
 
 import CommunityScreen, { CommunityContent } from '@/app/(tabs)/community';
 
+import { testIdsInOrder } from '../ads/test-ids';
 import { post, result, suggestion } from './fixtures';
+
+// G4a: the shared banner as a marker (its own rules: components/ads/ad-banner.test.tsx).
+jest.mock('@/components/ads/ad-banner', () => jest.requireActual('../ads/test-ids').adBannerMarker());
 
 const mockFetchFeed = jest.fn();
 const mockFetchSuggestions = jest.fn();
@@ -33,9 +37,15 @@ jest.mock('@/lib/community', () => ({
 jest.mock('@/lib/booking-opposition', () => ({ searchTeams: (...a: unknown[]) => mockSearchTeams(...a) }));
 jest.mock('@/lib/teams', () => ({
   ...jest.requireActual('@/lib/teams'),
-  createTeam: (...a: unknown[]) => mockCreateTeam(...a),
+  createMyTeam: (...a: unknown[]) => mockCreateTeam(...a),
 }));
 jest.mock('@/lib/use-messages', () => ({ useUnreadMessages: () => mockUnread }));
+let mockRequests = 0;
+jest.mock('@/lib/use-friends', () => ({
+  useFriendRequestCount: () => mockRequests,
+  // S20A: New team picks friends.
+  useFriends: () => ({ state: { status: 'ready', rows: [] }, reload: jest.fn() }),
+}));
 jest.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { id: 'me' } }) }));
 jest.mock('@/lib/use-follows', () => ({
   useFollows: () => ({
@@ -59,6 +69,7 @@ const cy = { id: 'c3', name: 'Cy Tan', phones: [], match: null };
 beforeEach(() => {
   jest.clearAllMocks();
   mockUnread = 0;
+  mockRequests = 0;
   mockContacts = { status: 'loading' };
   mockFetchFeed.mockResolvedValue({ data: [], error: null });
   mockFetchSuggestions.mockResolvedValue({ data: [], error: null });
@@ -89,6 +100,28 @@ describe('Community screen (image 18)', () => {
     await render(<CommunityContent />);
     await fireEvent.press(screen.getByRole('button', { name: 'Messages, 2 unread' }));
     expect(router.push).toHaveBeenCalledWith('/messages');
+  });
+
+  it('S20: Friends, next to Messages, opens Friends with the requests waiting', async () => {
+    mockRequests = 3;
+    await render(<CommunityContent />);
+    // The count is in the button's label for VoiceOver; the badge itself is hidden from it.
+    expect(screen.getByTestId('community-friends-badge', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Friends, 3 friend requests' }));
+    expect(router.push).toHaveBeenCalledWith('/friends');
+  });
+
+  it('S20: no badge without requests; one request reads in the singular', async () => {
+    await render(<CommunityContent />);
+    expect(screen.getByTestId('community-friends')).toBeTruthy();
+    expect(screen.queryByTestId('community-friends-badge', { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Friends' })).toBeTruthy();
+  });
+
+  it('S20: one request', async () => {
+    mockRequests = 1;
+    await render(<CommunityContent />);
+    expect(screen.getByRole('button', { name: 'Friends, 1 friend request' })).toBeTruthy();
   });
 
   describe('For you', () => {
@@ -129,6 +162,27 @@ describe('Community screen (image 18)', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Your posts' }));
       await waitFor(() => expect(mockFetchFeed).toHaveBeenCalledWith('mine'));
       expect(screen.getByTestId('community-feed-mine')).toBeTruthy();
+    });
+
+    // G4a (image 18): one banner ad after every 8 posts, never before the 8th.
+    it('a banner ad after every 8th post', async () => {
+      const posts = Array.from({ length: 17 }, (_, i) => post({ item_id: `p${i + 1}` }));
+      mockFetchFeed.mockResolvedValue({ data: posts, error: null });
+      await render(<CommunityContent />);
+      await screen.findByTestId('feed-post-p1');
+      const ids = testIdsInOrder();
+      expect(ids).toEqual(expect.arrayContaining(['feed-post-p8', 'feed-post-p9', 'community-feed-ad-8']));
+      expect(ids.indexOf('community-feed-ad-8')).toBeGreaterThan(ids.indexOf('feed-post-p8'));
+      expect(ids.indexOf('community-feed-ad-8')).toBeLessThan(ids.indexOf('feed-post-p9'));
+      expect(ids.filter((id) => id.startsWith('community-feed-ad-')).every((id) => /-(8|16)$/.test(id))).toBe(true);
+    });
+
+    it('fewer than 8 posts: no banner ad', async () => {
+      const posts = Array.from({ length: 7 }, (_, i) => post({ item_id: `p${i + 1}` }));
+      mockFetchFeed.mockResolvedValue({ data: posts, error: null });
+      await render(<CommunityContent />);
+      await screen.findByTestId('feed-post-p7');
+      expect(testIdsInOrder().some((id) => id.startsWith('community-feed-ad-'))).toBe(false);
     });
   });
 
@@ -350,7 +404,14 @@ describe('Community screen (image 18)', () => {
       await act(async () => {
         await fireEvent.press(screen.getByRole('button', { name: 'Create team' }));
       });
-      expect(mockCreateTeam).toHaveBeenCalledWith('Kato United', 'Limassol', 11, 0);
+      expect(mockCreateTeam).toHaveBeenCalledWith({
+        name: 'Kato United',
+        city: 'Limassol',
+        kitColour: 'kitRed',
+        rosterSize: 11,
+        substituteSlots: 0,
+        memberIds: [],
+      });
       await waitFor(() =>
         expect(router.push).toHaveBeenCalledWith({ pathname: '/team-profile', params: { teamId: 'tm9' } }),
       );

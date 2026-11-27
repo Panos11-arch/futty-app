@@ -1,0 +1,88 @@
+# Journey (S20): friends. The seed makes each platform's two logins friends
+# (scripts/e2e-seed/seed.ts, 6b). Community's band opens Friends; the friend's
+# row has Message, which opens the friend chat with Book together; Book
+# together opens Book a pitch (the friend is preselected after paying, which
+# Jest covers: book-and-pay.yaml already pays for this login's seeded slot).
+# Then the card's Scan opens the scanner; the simulator has no camera, so the
+# flow checks the screen and cancels.
+appId: com.panosalepis.futtyapp
+name: friends
+tags:
+  - e2e
+  - friends
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+- assertVisible:
+    id: home-screen
+
+# ---- Community → Friends ---------------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: community
+- assertVisible:
+    id: community-band
+- tapOn:
+    id: community-friends
+- extendedWaitUntil:
+    visible:
+      id: friends-list
+    timeout: 30000
+- assertVisible:
+    id: friends-section-friends
+- takeScreenshot: friends-${PLATFORM}
+
+# ---- The friend's sheet ------------------------------------------------------------
+- tapOn:
+    id: 'friends-row-[0-9a-f-]{36}'
+- extendedWaitUntil:
+    visible:
+      id: profile-sheet-season
+    timeout: 30000
+- assertVisible:
+    id: profile-sheet-friend
+- assertVisible:
+    id: profile-sheet-message
+- takeScreenshot: friends-sheet-${PLATFORM}
+- tapOn:
+    id: profile-sheet-backdrop
+
+# ---- Message → the friend chat → Book together ----------------------------------------
+- tapOn:
+    id: 'friends-message-[0-9a-f-]{36}'
+- extendedWaitUntil:
+    visible:
+      id: chat-book-together
+    timeout: 30000
+- takeScreenshot: friends-chat-${PLATFORM}
+- tapOn:
+    id: chat-book-together
+- extendedWaitUntil:
+    visible:
+      id: book-search-field
+    timeout: 30000
+- back
+- back
+
+# ---- The card's Scan opens the scanner -------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: card
+- assertVisible:
+    id: my-card-scan
+- tapOn:
+    id: my-card-scan
+- assertVisible:
+    id: scan-screen
+- takeScreenshot: scan-${PLATFORM}
+- tapOn:
+    id: scan-cancel

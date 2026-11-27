@@ -66,6 +66,7 @@ function card(over: Partial<MatchCard> = {}): MatchCard {
     level_min: '5.00',
     level_max: '7.00',
     people: [{ id: 'u1', name: 'Maria' }],
+    booking_id: null,
     day: '2026-11-27',
     time: '19:00',
     priceCents: 680,
@@ -110,6 +111,18 @@ describe('Find a match screen', () => {
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/player-profile', params: { profileId: 'u1' } });
     await fireEvent.press(screen.getByTestId('find-match-organiser-p2'));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/team-profile', params: { teamId: 't1' } });
+  });
+
+  // Bug 27 Nov (Panos): my own card opened the posts list, which never shows it.
+  it('my own card opens its booking; anyone else’s still opens Join', async () => {
+    mockSaved = filters;
+    mockFetchMatches.mockResolvedValue([card(), card({ post_id: 'p2', mine: true, booking_id: 'b9' })]);
+    await render(<FindMatchScreen />);
+    await waitFor(() => expect(screen.getByTestId('find-match-card-p2')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('find-match-card-p2'));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/booking/[id]', params: { id: 'b9' } });
+    await fireEvent.press(screen.getByTestId('find-match-card-p1'));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: '/join-squad-post', params: { postId: 'p1' } });
   });
 
   it('a failed load shows one line and "Try again" loads again', async () => {
