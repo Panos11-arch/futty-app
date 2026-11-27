@@ -91,6 +91,16 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
   - **If he cancels afterwards, both payments count as one "pay for everyone" booking (decided 23 November):** between 24 and 6 hours before kickoff, €1 per player is kept (€10 on a 5 v 5) and the rest becomes credit at that venue.
   - **The other half is the half rounded down,** as every Booking v2 split (Futty absorbs an odd cent): on a €45.55 pitch, €22.77 plus the fees. "Cancel free" gives everything back to the card it came from, as Gipedo Pano's free cancel.
 
+### Player invites (S20A, decided 27 November)
+Invites to join a side: "Invite friends", "Invite a team", "Invite all friends", and a game invite carried in a futty.app/i link. Opposition invites are above and don't change.
+- **Player invites stay open until the side is full or kickoff, whichever comes first.** Invites nobody answered expire then. Opposition invites still close 24 hours before kickoff.
+- **The spot is taken when the player accepts.** The server decides with a row lock, as for side B's captain; once the side is full, everyone else sees "This game is full" before paying. There is no "first to pay takes the spot".
+- **A card player who accepts has 15 minutes to pay or hold his share,** the same window as the booker's and side B's captain's. Otherwise his acceptance lapses, his share is cancelled and the spot reopens for the others.
+  - **Accepting less than 15 minutes before kickoff:** the acceptance lapses at kickoff instead (Dimitris).
+- **A cash player keeps the spot from the moment he accepts,** as today; an unticked cash spot is covered as in "Cash at the venue".
+- **The money rules don't change for late joiners:** a share paid less than 6 hours before kickoff is taken straight away after the "This booking is non-refundable" notice (step 2 of "When money is held and taken"), and in Losers pay a late joiner is held at once.
+- **futty.app/i links:** opening a link sends a friend request to its owner; nobody becomes a friend until the owner accepts. **A game invite carried in the link only appears after the owner accepts** (Dimitris). Blocks and the adult↔minor rules apply as for any friend request.
+
 ### Publish game
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.
 - Joiners pay as that side pays (nothing if the side paid for everyone).
