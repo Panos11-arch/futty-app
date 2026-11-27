@@ -19,6 +19,13 @@ describe('describeTournamentError', () => {
     expect(describeTournamentError({ message: code })).toBe(words);
   });
 
+  it('every code the admin squad read and save raise has its own line', () => {
+    for (const code of ['not_admin', 'tournament_not_found', 'invalid_status', 'not_registered', 'squad_size',
+                        'not_team_member', 'player_in_other_squad']) {
+      expect(TOURNAMENT_ERROR_CODES).toContain(code);
+    }
+  });
+
   it('an unknown code falls back to one line', () => {
     expect(describeTournamentError({ message: 'boom' })).toBe('That didn’t go through. Try again.');
   });

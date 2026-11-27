@@ -14,20 +14,21 @@ import AdminTournamentsScreen from '@/app/admin/tournaments';
 import NewTournamentScreen from '@/app/admin/tournaments/new';
 import { groupsComplete, placeTeam } from '@/components/competition/tournament/admin-groups-sheet';
 import { loadWithFile } from '@/components/ui/test-utils';
-import type { Tournament, TournamentFixture, TournamentHeader } from '@/lib/match/tournament-api';
+import type { AdminSquads, AdminSquadTeam, Tournament, TournamentFixture, TournamentHeader } from '@/lib/match/tournament-api';
 
 loadWithFile(Modal);
 
 const g = globalThis as { mockSearchParams?: Record<string, string> };
 
 type HookState = Record<string, unknown>;
-const mockState: { list: HookState; tournament: HookState; matches: HookState; standings: HookState } = {} as never;
+const mockState: { list: HookState; tournament: HookState; matches: HookState; standings: HookState; squads: HookState } = {} as never;
 const mockReload = jest.fn(() => Promise.resolve());
 jest.mock('@/lib/match/use-tournament', () => ({
   useTournaments: () => ({ ...mockState.list, reload: mockReload }),
   useTournament: () => ({ ...mockState.tournament, reload: mockReload }),
   useTournamentMatches: () => ({ ...mockState.matches, reload: mockReload }),
   useTournamentStandings: () => ({ ...mockState.standings, reload: mockReload }),
+  useAdminTournamentSquads: () => ({ ...mockState.squads, reload: mockReload }),
 }));
 const mockApi: Record<string, jest.Mock> = {
   adminCreateTournament: jest.fn(),
@@ -39,6 +40,7 @@ const mockApi: Record<string, jest.Mock> = {
   adminSetResult: jest.fn(),
   adminSetDrawOrder: jest.fn(),
   adminCloseTournament: jest.fn(),
+  adminSetSquad: jest.fn(),
 };
 jest.mock('@/lib/match/tournament-api', () => {
   const actual = jest.requireActual('@/lib/match/tournament-api');
@@ -54,6 +56,7 @@ jest.mock('@/lib/match/tournament-api', () => {
     adminSetResult: wrap('adminSetResult'),
     adminSetDrawOrder: wrap('adminSetDrawOrder'),
     adminCloseTournament: wrap('adminCloseTournament'),
+    adminSetSquad: wrap('adminSetSquad'),
   };
 });
 jest.mock('@/lib/use-venues', () => ({
@@ -119,6 +122,7 @@ beforeEach(() => {
   mockState.tournament = { status: 'ready', tournament: header() as Tournament };
   mockState.matches = { status: 'ready', matches: [] };
   mockState.standings = { status: 'ready', standings: { rules: '', groups: [] } };
+  mockState.squads = { status: 'ready', squads: { squadMin: 5, squadMax: 7, teams: [] } };
   for (const fn of Object.values(mockApi)) fn.mockResolvedValue({ error: null });
   mockApi.adminCreateTournament.mockResolvedValue({ id: 'NEW', error: null });
 });
@@ -370,5 +374,200 @@ describe('Run a tournament', () => {
     await render(<AdminTournamentScreen />);
     await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
     expect(mockReload).toHaveBeenCalled();
+  });
+});
+
+describe('Squads', () => {
+  const player = (id: string, name: string) => ({
+    profileId: id,
+    name,
+    avatarStyle: null,
+    avatarKitColour: null,
+    avatarNumber: null,
+    avatarIllustration: null,
+  });
+  const lions = (over: Partial<AdminSquadTeam> = {}): AdminSquadTeam => ({
+    teamId: 'ta',
+    teamName: 'Kato United',
+    kitColour: 'kitRed',
+    squad: ['p1', 'p2', 'p3', 'p4', 'p5'].map((id, i) => player(id, `Player ${i + 1}`)),
+    candidates: [player('p6', 'Player 6'), player('p7', 'Player 7'), player('p8', 'Player 8')],
+    changes: [
+      { player: player('p5', 'Player 5'), change: 'added', byAdmin: true, changedBy: player('ad', 'Panos'), changedAt: '2026-12-06T17:05:00Z' },
+      { player: player('p9', 'Player 9'), change: 'removed', byAdmin: false, changedBy: player('p1', 'Player 1'), changedAt: '2026-12-01T08:00:00Z' },
+    ],
+    ...over,
+  });
+  const squads = (teams: AdminSquadTeam[]): AdminSquads => ({ squadMin: 5, squadMax: 7, teams });
+  const running = (status: Tournament['status'] = 'groups') => {
+    mockState.tournament = { status: 'ready', tournament: header({ status, comingSoon: false, teamsCount: 2 }) as Tournament };
+  };
+  const ids = (container: ReturnType<typeof screen.getByTestId>, prefix: string) =>
+    within(container)
+      .queryAllByTestId(new RegExp(`^${prefix}`))
+      .map((n) => (n.props.testID as string).slice(prefix.length));
+
+  it('one row per team with its count against min and max; tap opens its sheet', async () => {
+    running();
+    mockState.squads = {
+      status: 'ready',
+      squads: squads([lions(), lions({ teamId: 'tb', teamName: 'Paphos 5', kitColour: 'kitBlue', squad: [player('q1', 'Q 1')] })]),
+    };
+    await render(<AdminTournamentScreen />);
+    const section = screen.getByTestId('admin-squads');
+    expect(within(section).getByText('Squads')).toBeTruthy();
+    expect(within(screen.getByTestId('admin-squad-team-ta')).getByText('5 of 5–7')).toBeTruthy();
+    expect(within(screen.getByTestId('admin-squad-team-tb')).getByText('1 of 5–7')).toBeTruthy();
+    await press('admin-squad-team-ta');
+    const sheet = screen.getByTestId('admin-squad-sheet');
+    expect(within(sheet).getByText('Squad 5 of 5–7')).toBeTruthy();
+    expect(ids(sheet, 'admin-squad-player-')).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(ids(sheet, 'admin-squad-candidate-')).toEqual(['p6', 'p7', 'p8']);
+  });
+
+  it('loading, error with Try again, empty, and hidden before sign-up opens', async () => {
+    running();
+    mockState.squads = { status: 'loading' };
+    let view = await render(<AdminTournamentScreen />);
+    expect(screen.getByTestId('admin-squads-skeleton')).toBeTruthy();
+    await act(async () => view.unmount());
+
+    mockState.squads = { status: 'error', message: 'offline' };
+    view = await render(<AdminTournamentScreen />);
+    expect(screen.getByTestId('admin-squads-error')).toBeTruthy();
+    await fireEvent.press(within(screen.getByTestId('admin-squads-error')).getByRole('button', { name: 'Try again' }));
+    expect(mockReload).toHaveBeenCalled();
+    await act(async () => view.unmount());
+
+    mockState.squads = { status: 'ready', squads: squads([]) };
+    view = await render(<AdminTournamentScreen />);
+    expect(screen.getByTestId('admin-squads-empty')).toHaveTextContent('No teams yet.');
+    await act(async () => view.unmount());
+
+    mockState.tournament = { status: 'ready', tournament: header() as Tournament };
+    await render(<AdminTournamentScreen />);
+    expect(screen.queryByTestId('admin-squads')).toBeNull();
+  });
+
+  it('hidden for a non-admin (the server says not_admin)', async () => {
+    running();
+    mockState.squads = { status: 'error', message: 'not_admin' };
+    await render(<AdminTournamentScreen />);
+    expect(screen.queryByTestId('admin-squads')).toBeNull();
+    expect(screen.queryByTestId('admin-squads-error')).toBeNull();
+  });
+
+  it('remove and add move players; the counter follows; Save only within min and max and when changed', async () => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions()]) };
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    const save = () => screen.getByTestId('admin-squad-save');
+    // Unchanged: nothing to save.
+    expect(save()).toBeDisabled();
+    // Remove one: 4 is below the minimum.
+    await press('admin-squad-player-p5');
+    const sheet = screen.getByTestId('admin-squad-sheet');
+    expect(within(sheet).getByText('Squad 4 of 5–7')).toBeTruthy();
+    expect(ids(sheet, 'admin-squad-candidate-')).toEqual(['p5', 'p6', 'p7', 'p8']);
+    expect(save()).toBeDisabled();
+    // Add three: 7, the maximum.
+    await press('admin-squad-candidate-p6');
+    await press('admin-squad-candidate-p7');
+    await press('admin-squad-candidate-p8');
+    expect(within(sheet).getByText('Squad 7 of 5–7')).toBeTruthy();
+    expect(save()).not.toBeDisabled();
+    // One more would be 8: above the maximum.
+    await press('admin-squad-candidate-p5');
+    expect(within(sheet).getByText('Squad 8 of 5–7')).toBeTruthy();
+    expect(save()).toBeDisabled();
+  });
+
+  it('Save squad sends the squad to admin_set_squad, then reloads and closes', async () => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions()]) };
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    await press('admin-squad-player-p5');
+    await press('admin-squad-candidate-p6');
+    await pressAsync('admin-squad-save');
+    expect(mockApi.adminSetSquad).toHaveBeenCalledWith('T1', 'ta', ['p1', 'p2', 'p3', 'p4', 'p6']);
+    expect(mockReload).toHaveBeenCalled();
+    // Closed: the sheet slides away with no team in it.
+    expect(screen.queryByTestId('admin-squad-player-p1')).toBeNull();
+  });
+
+  it.each([
+    ['player_in_other_squad', 'A player is already in another squad. Remove them.'],
+    ['squad_size', 'Pick the right number of players for the squad.'],
+    ['invalid_status', 'Not possible at this stage of the tournament.'],
+    ['not_admin', 'Only Futty admins can do this.'],
+  ])('a refused save (%s) shows one line and stays open', async (code, words) => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions()]) };
+    mockApi.adminSetSquad.mockResolvedValue({ error: { message: code } });
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    await press('admin-squad-candidate-p6');
+    await pressAsync('admin-squad-save');
+    expect(screen.getByTestId('admin-squad-error')).toHaveTextContent(words);
+    expect(screen.getByTestId('admin-squad-sheet')).toBeTruthy();
+  });
+
+  it('the change log: newest first, with what, who and when; hidden when empty', async () => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions(), lions({ teamId: 'tb', teamName: 'Paphos 5', changes: [] })]) };
+    const view = await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    const log = screen.getByTestId('admin-squad-log');
+    expect(within(log).getByText('Changes')).toBeTruthy();
+    const titles = within(log).getAllByText(/^(Added|Removed) /).map((n) => n.props.children);
+    expect(titles).toEqual(['Added Player 5', 'Removed Player 9']);
+    expect(within(log).getByText('Admin Panos · 06/12/26 19:05')).toBeTruthy();
+    expect(within(log).getByText('Captain Player 1 · 01/12/26 10:00')).toBeTruthy();
+    await act(async () => view.unmount());
+
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-tb');
+    expect(screen.queryByTestId('admin-squad-log')).toBeNull();
+  });
+
+  it('no one left to add: one line', async () => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions({ candidates: [] })]) };
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    expect(screen.getByTestId('admin-squad-no-candidates')).toHaveTextContent('No players to add.');
+  });
+
+  it('a finished tournament: read-only, the squad and the log, no add, remove or Save', async () => {
+    running('finished');
+    mockState.squads = { status: 'ready', squads: squads([lions()]) };
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    const sheet = screen.getByTestId('admin-squad-sheet');
+    expect(within(sheet).getByText('Squad 5 of 5–7')).toBeTruthy();
+    expect(within(sheet).getByText('Player 1')).toBeTruthy();
+    expect(screen.getByTestId('admin-squad-log')).toBeTruthy();
+    expect(screen.queryByTestId('admin-squad-save')).toBeNull();
+    expect(ids(sheet, 'admin-squad-candidate-')).toEqual([]);
+    expect(within(sheet).queryByText('Add players')).toBeNull();
+    // The squad rows aren't buttons: tapping does nothing.
+    expect(ids(sheet, 'admin-squad-player-')).toEqual([]);
+    await fireEvent.press(within(sheet).getByText('Player 1'));
+    expect(within(sheet).getByText('Squad 5 of 5–7')).toBeTruthy();
+    expect(mockApi.adminSetSquad).not.toHaveBeenCalled();
+  });
+
+  it('words: headings of 1 to 3 words, the button starts with a verb', async () => {
+    running();
+    mockState.squads = { status: 'ready', squads: squads([lions()]) };
+    await render(<AdminTournamentScreen />);
+    await press('admin-squad-team-ta');
+    for (const h of screen.getAllByRole('header')) {
+      const text = String(h.props.children).replace(/\d+( of \d+(–\d+)?)?/, '').trim();
+      expect(text.split(/\s+/).length).toBeLessThanOrEqual(3);
+    }
+    expect(screen.getByTestId('admin-squad-save')).toHaveTextContent('Save squad');
   });
 });

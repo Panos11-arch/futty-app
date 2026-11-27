@@ -2,12 +2,14 @@
 // lib/match/use-competition.ts does for leagues: loading, error (with
 // reload) or ready. A tab's hooks run when that tab first mounts.
 import {
+  adminGetTournamentSquads,
   getTournament,
   getTournamentKnockout,
   getTournamentMatches,
   getTournamentStandings,
   isAppAdmin,
   listTournaments,
+  type AdminSquads,
   type KnockoutSlot,
   type Tournament,
   type TournamentFixture,
@@ -68,4 +70,13 @@ export function useIsAppAdmin() {
     return error ? { error: error.message } : { value: { admin } };
   }, 'is-app-admin');
   return { admin: state.status === 'ready' && state.admin, reload };
+}
+
+/** The admin screen's Squads section (admins only; not_admin otherwise). */
+export function useAdminTournamentSquads(tournamentId: string) {
+  const { state, reload } = useLoad<{ squads: AdminSquads }>(async () => {
+    const { squads, error } = await adminGetTournamentSquads(tournamentId);
+    return error || !squads ? { error: error?.message ?? 'no_squads' } : { value: { squads } };
+  }, `squads|${tournamentId}`);
+  return { ...state, reload };
 }

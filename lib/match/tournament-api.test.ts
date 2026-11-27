@@ -2,11 +2,13 @@ import {
   adminCloseTournament,
   adminCreateTournament,
   adminDrawGroups,
+  adminGetTournamentSquads,
   adminOpenRegistration,
   adminSetDrawOrder,
   adminSetFixtureTime,
   adminSetGroups,
   adminSetResult,
+  adminSetSquad,
   adminUpdateTournament,
   bracketHalves,
   entryFeeLine,
@@ -26,11 +28,15 @@ import {
   setSquad,
   shootoutText,
   slotSide,
+  squadChangeMeta,
+  squadChangeTitle,
+  squadCountLabel,
   stageTitle,
   tournamentBadge,
   tournamentDates,
   tournamentStatusLabel,
   type KnockoutSlot,
+  type SquadChange,
   type TournamentFixture,
 } from '@/lib/match/tournament-api';
 
@@ -325,5 +331,73 @@ describe('registrationAction', () => {
     expect(registrationAction({ ...base, status: 'groups' }, ['c1'])).toBeNull();
     const member = { teamId: 'c1', teamName: 'X', kitColour: 'kitRed', isCaptain: false, canEditSquad: false, squad: [] };
     expect(registrationAction({ ...base, myTeams: [member] }, ['c1'])).toBeNull();
+  });
+});
+
+describe('admin squads', () => {
+  const player = (id: string, name: string) => ({
+    profileId: id,
+    name,
+    avatarStyle: null,
+    avatarKitColour: null,
+    avatarNumber: null,
+    avatarIllustration: null,
+  });
+
+  it('reads every team’s squad with admin_get_tournament_squads', async () => {
+    const answer = {
+      squadMin: 5,
+      squadMax: 7,
+      teams: [{ teamId: 'a', teamName: 'Lions', kitColour: 'kitRed', squad: [player('p1', 'Nikos')], candidates: [], changes: [] }],
+    };
+    mockAnswer = { data: answer, error: null };
+    const { squads, error } = await adminGetTournamentSquads('t1');
+    expect(mockCalls).toEqual([['admin_get_tournament_squads', { p_tournament_id: 't1' }]]);
+    expect(error).toBeNull();
+    expect(squads).toEqual(answer);
+  });
+
+  it('a refusal passes the code on with no squads', async () => {
+    mockAnswer = { data: null, error: { message: 'not_admin' } };
+    const { squads, error } = await adminGetTournamentSquads('t1');
+    expect(squads).toBeNull();
+    expect(error).toEqual({ message: 'not_admin' });
+  });
+
+  it('defaults the lists when the server leaves them out', async () => {
+    mockAnswer = { data: { squadMin: 5, squadMax: 7, teams: [{ teamId: 'a', teamName: 'Lions', kitColour: 'kitRed' }] }, error: null };
+    const { squads } = await adminGetTournamentSquads('t1');
+    expect(squads?.teams[0]).toMatchObject({ squad: [], candidates: [], changes: [] });
+    mockAnswer = { data: { squadMin: 5, squadMax: 7 }, error: null };
+    expect((await adminGetTournamentSquads('t1')).squads?.teams).toEqual([]);
+  });
+
+  it('saves a squad with admin_set_squad', async () => {
+    await adminSetSquad('t1', 'team-a', ['p1', 'p2']);
+    expect(mockCalls).toEqual([['admin_set_squad', { p_tournament_id: 't1', p_team_id: 'team-a', p_squad: ['p1', 'p2'] }]]);
+    mockAnswer = { data: null, error: { message: 'squad_size' } };
+    expect((await adminSetSquad('t1', 'team-a', [])).error).toEqual({ message: 'squad_size' });
+  });
+
+  it('the count against min and max', () => {
+    expect(squadCountLabel(6, 5, 7)).toBe('6 of 5–7');
+    expect(squadCountLabel(0, 5, 7)).toBe('0 of 5–7');
+    expect(squadCountLabel(5, 5, 5)).toBe('5 of 5');
+  });
+
+  it('a change: what, then who and when in Cyprus time', () => {
+    const change: SquadChange = {
+      player: player('p1', 'Nikos'),
+      change: 'added',
+      byAdmin: true,
+      changedBy: player('ad', 'Panos'),
+      changedAt: '2026-12-06T17:05:00Z',
+    };
+    expect(squadChangeTitle(change)).toBe('Added Nikos');
+    expect(squadChangeMeta(change)).toBe('Admin Panos · 06/12/26 19:05');
+    expect(squadChangeTitle({ ...change, change: 'removed' })).toBe('Removed Nikos');
+    expect(squadChangeMeta({ ...change, byAdmin: false, changedBy: player('c', 'Andreas') })).toBe('Captain Andreas · 06/12/26 19:05');
+    // A deleted account: the role only.
+    expect(squadChangeMeta({ ...change, changedBy: null })).toBe('Admin · 06/12/26 19:05');
   });
 });

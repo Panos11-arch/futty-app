@@ -2,7 +2,9 @@
 // its stage: Open sign-up, then Draw groups (or Set groups), then Close once
 // the final is played. Groups that only the organiser's draw can separate
 // come first, then matches that need a result, then every match by round:
-// tap one to set its kick-off or enter, decide or correct its result. The
+// tap one to set its kick-off or enter, decide or correct its result.
+// Squads (once sign-up opens): one row per team with its squad size; tap
+// one to change its squad, or see it once the tournament is finished. The
 // server checks every call (is_app_admin) and every rule.
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -12,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AdminDrawSheet } from '@/components/competition/tournament/admin-draw-sheet';
 import { AdminFixtureSheet } from '@/components/competition/tournament/admin-fixture-sheet';
 import { AdminGroupsSheet } from '@/components/competition/tournament/admin-groups-sheet';
+import { AdminSquadSheet } from '@/components/competition/tournament/admin-squad-sheet';
+import { TeamBadge } from '@/components/match/team-badge';
 import { Banner } from '@/components/ui/banner';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,14 +32,21 @@ import {
   fixtureStatusLabel,
   groupFixturesByRound,
   shootoutText,
+  squadCountLabel,
   tournamentDates,
   tournamentStatusLabel,
+  type AdminSquadTeam,
   type GroupStandings,
   type Tournament,
   type TournamentFixture,
 } from '@/lib/match/tournament-api';
 import { describeTournamentError } from '@/lib/match/tournament-errors';
-import { useTournament, useTournamentMatches, useTournamentStandings } from '@/lib/match/use-tournament';
+import {
+  useAdminTournamentSquads,
+  useTournament,
+  useTournamentMatches,
+  useTournamentStandings,
+} from '@/lib/match/use-tournament';
 import { makeStyles } from '@/lib/theme';
 
 type MainAction = { label: string; testID: string; run: () => Promise<{ error: { message: string } | null }> };
@@ -69,6 +80,8 @@ export default function AdminTournamentScreen() {
   const tournament = useTournament(id);
   const matches = useTournamentMatches(id, null);
   const standings = useTournamentStandings(id);
+  const squads = useAdminTournamentSquads(id);
+  const [squadTeam, setSquadTeam] = useState<AdminSquadTeam | null>(null);
   const [fixture, setFixture] = useState<TournamentFixture | null>(null);
   const [settingGroups, setSettingGroups] = useState(false);
   const [drawGroup, setDrawGroup] = useState<GroupStandings | null>(null);
@@ -89,7 +102,7 @@ export default function AdminTournamentScreen() {
   }, [fixtures]);
 
   const reloadAll = async () => {
-    await Promise.all([tournament.reload(), matches.reload(), standings.reload()]);
+    await Promise.all([tournament.reload(), matches.reload(), standings.reload(), squads.reload()]);
   };
   const refresh = async () => {
     setRefreshing(true);
@@ -164,6 +177,7 @@ export default function AdminTournamentScreen() {
           />
         </Card>
       ))}
+      {t.status !== 'coming_soon' ? <SquadsSection squads={squads} onOpen={setSquadTeam} /> : null}
       {matches.status === 'error' ? (
         <Banner tone="danger" message="Couldn’t load the matches." action={{ label: 'Try again', onPress: matches.reload }} />
       ) : null}
@@ -207,9 +221,66 @@ export default function AdminTournamentScreen() {
         onDone={() => void reloadAll()}
       />
       <AdminDrawSheet tournamentId={t.id} group={drawGroup} onClose={() => setDrawGroup(null)} onDone={() => void reloadAll()} />
+      <AdminSquadSheet
+        tournamentId={t.id}
+        team={squadTeam}
+        min={squads.status === 'ready' ? squads.squads.squadMin : 0}
+        max={squads.status === 'ready' ? squads.squads.squadMax : 0}
+        readOnly={t.status === 'finished'}
+        onClose={() => setSquadTeam(null)}
+        onDone={() => void squads.reload()}
+      />
     </SafeAreaView>
   );
 }
+
+/** Squads: one row per registered team, its squad against min and max. A
+ *  non-admin (not_admin) sees nothing; the server refuses him anyway. */
+function SquadsSection({
+  squads,
+  onOpen,
+}: {
+  squads: ReturnType<typeof useAdminTournamentSquads>;
+  onOpen: (team: AdminSquadTeam) => void;
+}) {
+  if (squads.status === 'error' && squads.message === 'not_admin') return null;
+  return (
+    <View testID="admin-squads" style={sectionGap}>
+      <Text variant="callout" tone="inkMuted" accessibilityRole="header">
+        Squads
+      </Text>
+      {squads.status === 'loading' ? (
+        <Card testID="admin-squads-skeleton">
+          <SkeletonText lines={3} />
+        </Card>
+      ) : squads.status === 'error' ? (
+        <View testID="admin-squads-error">
+          <Banner tone="danger" message="Couldn’t load the squads." action={{ label: 'Try again', onPress: squads.reload }} />
+        </View>
+      ) : squads.squads.teams.length === 0 ? (
+        <Text variant="callout" testID="admin-squads-empty">
+          No teams yet.
+        </Text>
+      ) : (
+        <Card padded={false}>
+          {squads.squads.teams.map((team) => (
+            <ListRow
+              key={team.teamId}
+              testID={`admin-squad-team-${team.teamId}`}
+              title={team.teamName}
+              subtitle={squadCountLabel(team.squad.length, squads.squads.squadMin, squads.squads.squadMax)}
+              trailing={<TeamBadge name={team.teamName} kitColour={team.kitColour} size={24} />}
+              chevron
+              onPress={() => onOpen(team)}
+            />
+          ))}
+        </Card>
+      )}
+    </View>
+  );
+}
+
+const sectionGap = { gap: space.sm };
 
 const useStyles = makeStyles(({ colors }) => ({
   screen: { flex: 1, backgroundColor: colors.canvas },

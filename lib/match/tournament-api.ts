@@ -256,6 +256,56 @@ export async function adminCloseTournament(tournamentId: string) {
   return { error: error as RpcError };
 }
 
+// ---- Admin squads ---------------------------------------------------------
+
+/** One squad change (tournament_squad_changes), as the admin reads it. */
+export type SquadChange = {
+  player: CompetitionPlayer;
+  change: 'added' | 'removed';
+  byAdmin: boolean;
+  /** null when that account is gone. */
+  changedBy: CompetitionPlayer | null;
+  changedAt: string;
+};
+
+export type AdminSquadTeam = {
+  teamId: string;
+  teamName: string;
+  kitColour: string;
+  squad: CompetitionPlayer[];
+  /** The team's members in no squad of this tournament. */
+  candidates: CompetitionPlayer[];
+  /** The last 20, newest first. */
+  changes: SquadChange[];
+};
+
+export type AdminSquads = { squadMin: number; squadMax: number; teams: AdminSquadTeam[] };
+
+/** Every registered team's squad, its possible additions and its log
+ *  (admins only; the server refuses anyone else with not_admin). */
+export async function adminGetTournamentSquads(tournamentId: string) {
+  const { data, error } = await supabase.rpc('admin_get_tournament_squads', { p_tournament_id: tournamentId });
+  if (error || !data) return { squads: null, error: error as RpcError };
+  const raw = data as Partial<AdminSquads>;
+  const squads: AdminSquads = {
+    squadMin: raw.squadMin ?? 0,
+    squadMax: raw.squadMax ?? 0,
+    teams: (raw.teams ?? []).map((t) => ({ ...t, squad: t.squad ?? [], candidates: t.candidates ?? [], changes: t.changes ?? [] })),
+  };
+  return { squads, error: null as RpcError };
+}
+
+/** An admin sets a team's squad at any stage before the tournament ends;
+ *  the server checks the size, membership and one squad per player. */
+export async function adminSetSquad(tournamentId: string, teamId: string, squad: string[]) {
+  const { error } = await supabase.rpc('admin_set_squad', {
+    p_tournament_id: tournamentId,
+    p_team_id: teamId,
+    p_squad: squad,
+  });
+  return { error: error as RpcError };
+}
+
 // ---- Helpers -------------------------------------------------------------
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -428,4 +478,21 @@ export function registrationAction(
   if (t.teamsCount >= t.maxTeams) return null;
   if (captainTeamIds.length === 0 || captainTeamIds.some((id) => !registered.has(id))) return 'register';
   return null;
+}
+
+/** "6 of 5–7": the squad against the tournament's min and max. */
+export function squadCountLabel(count: number, min: number, max: number): string {
+  return `${count} of ${min === max ? min : `${min}–${max}`}`;
+}
+
+/** "Added Nikos" or "Removed Nikos". */
+export function squadChangeTitle(c: Pick<SquadChange, 'player' | 'change'>): string {
+  return `${c.change === 'added' ? 'Added' : 'Removed'} ${c.player.name}`;
+}
+
+/** "Admin Panos · 06/12/26 19:05": who (and as what), then when in Cyprus time. */
+export function squadChangeMeta(c: Pick<SquadChange, 'byAdmin' | 'changedBy' | 'changedAt'>): string {
+  const who = [c.byAdmin ? 'Admin' : 'Captain', c.changedBy?.name].filter(Boolean).join(' ');
+  const p = parts(c.changedAt);
+  return `${who} · ${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
