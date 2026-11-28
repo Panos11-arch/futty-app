@@ -232,11 +232,19 @@ Decided by Panos, 21 and 27 November, and his answers on #254 (28 November). Thi
 - **The deadline is required when there's a fee.** Opening sign-up is refused when the entry fee is above €0.00 and the tournament has no registration deadline.
 - **When the deadline can be:** in the future, and before the tournament's first match.
 - **The fee is fixed** from "Open sign-up", so every player pays the same. The admin can't change it after that.
+- **Moving the deadline** (decided by Panos, 28 November).
+  - While sign-up is open, the admin can move the deadline later only, never earlier, to a time still in the future and before the first match.
+  - Every registered and waiting team is told the new deadline.
+  - Payments made so far stay as they are.
 - **A free tournament (€0.00):** nothing to pay. A team is confirmed when it registers, and nobody is dropped at the deadline.
 
 **Registration** (unchanged from S10A, match-record.md 1o item 3)
 - The captain registers one of his teams, or makes a new one with S20A's New team sheet and invites players to it.
 - The squad is the format's starters plus up to 2 subs, all members of the team. The captain changes it until the registration deadline.
+- **Starters and subs** (decided by Panos, 28 November).
+  - The captain marks each squad member as a starter or a sub, and can change it until the deadline. An admin changing a squad marks them too.
+  - The squad screen shows "Starter" or "Sub" next to each name.
+  - "Its starters have paid" means the members marked as starters: in T2, 5 people paid (4 starters and a sub) and the team is still released.
 
 **The entry fee**
 - **Who pays:** every squad member pays the tournament's entry fee per player (`tournaments.entry_fee_cents`, set by the admin) himself, the captain and subs included.
@@ -244,7 +252,7 @@ Decided by Panos, 21 and 27 November, and his answers on #254 (28 November). Thi
 - **Where the money goes:** entirely to Futty's own Stripe account. No Connect transfer, no venue payout, no venue revenue row.
 - **When:** charged at once, not held. A hold can't last until the deadline.
 - **What the app shows:** each squad member as paid or unpaid. Amounts come only from the server: the fee is read from the tournament on the server, and the app never sends an amount.
-- **Not after the deadline** (decided by Panos, 28 November). No entry payment can start once the deadline has passed; the server refuses it.
+- **Not after the deadline** (decided by Panos, 28 November). No entry payment can start once the deadline has passed, waiting teams included; the server refuses it. There is no grace period.
 - **Money owed** (decided by Panos, 28 November) blocks paying an entry, as it blocks booking ("You owe €X.XX. Pay it from Payments, then try again.").
 
 **Confirmation and the waiting list**
