@@ -82,8 +82,10 @@ begin
   assert (select status from public.tournaments where id = v_t) = 'coming_soon', 'created as coming_soon';
   assert (select start_date is null and end_date is null and country = 'CY' and entry_fee_cents = 500
                  and match_minutes = 50 and max_teams = 16 from public.tournaments where id = v_t), 'stored as given';
+  -- S10B: a fee needs a deadline before the first match to open sign-up.
   v_error := tests.error_as(v_admin, format('select public.admin_update_tournament(%L, %L)', v_t,
-                                            '{"startDate":"2027-03-06","endDate":"2027-03-07","entryFeeCents":600}'));
+                                            jsonb_build_object('startDate', '2027-03-06', 'endDate', '2027-03-07', 'entryFeeCents', 600,
+                                                               'registrationDeadline', now() + interval '1 day')));
   assert v_error is null, 'dates and fee updated, got ' || coalesce(v_error, '');
   assert (select (start_date, end_date, entry_fee_cents) = ('2027-03-06'::date, '2027-03-07'::date, 600)
           from public.tournaments where id = v_t), 'updated';

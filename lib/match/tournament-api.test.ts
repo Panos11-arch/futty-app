@@ -130,17 +130,18 @@ describe('reads', () => {
 });
 
 describe('captain writes', () => {
-  it('registers a team with its kit colour and squad', async () => {
+  // S10B: the squad comes with its subs (the rest are starters).
+  it('registers a team with its kit colour, squad and subs', async () => {
     mockAnswer = { data: null, error: { message: 'squad_size' } };
-    await expect(registerTeam('t1', 'team1', 'kitGreen', ['p1', 'p2'])).resolves.toEqual({ error: { message: 'squad_size' } });
+    await expect(registerTeam('t1', 'team1', 'kitGreen', ['p1', 'p2'], ['p2'])).resolves.toEqual({ error: { message: 'squad_size' } });
     expect(mockCalls).toEqual([
-      ['register_team_for_tournament', { p_tournament_id: 't1', p_team_id: 'team1', p_kit_colour: 'kitGreen', p_squad: ['p1', 'p2'] }],
+      ['register_team_for_tournament', { p_tournament_id: 't1', p_team_id: 'team1', p_kit_colour: 'kitGreen', p_squad: ['p1', 'p2'], p_subs: ['p2'] }],
     ]);
   });
 
-  it('saves a squad', async () => {
-    await expect(setSquad('t1', 'team1', ['p1'])).resolves.toEqual({ error: null });
-    expect(mockCalls).toEqual([['set_tournament_squad', { p_tournament_id: 't1', p_team_id: 'team1', p_squad: ['p1'] }]]);
+  it('saves a squad with its subs', async () => {
+    await expect(setSquad('t1', 'team1', ['p1'], [])).resolves.toEqual({ error: null });
+    expect(mockCalls).toEqual([['set_tournament_squad', { p_tournament_id: 't1', p_team_id: 'team1', p_squad: ['p1'], p_subs: [] }]]);
   });
 });
 
@@ -193,9 +194,10 @@ describe('labels', () => {
   });
 
   it('the entry fee line formats the server cents', () => {
-    expect(entryFeeLine(1200)).toBe('€12 per player, paid to the organiser');
-    expect(entryFeeLine(650)).toBe('€6.50 per player, paid to the organiser');
-    expect(entryFeeLine(0)).toBe('€0 per player, paid to the organiser');
+    // S10B: collected in the app, so no longer "paid to the organiser".
+    expect(entryFeeLine(1200)).toBe('€12 per player');
+    expect(entryFeeLine(650)).toBe('€6.50 per player');
+    expect(entryFeeLine(0)).toBe('Free');
   });
 
   it('status, stage and badge labels', () => {

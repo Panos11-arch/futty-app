@@ -72,3 +72,23 @@ Deno.test('money on an upcoming game they joined blocks it; a pending share does
     false,
   );
 });
+
+// S10B (spec 13 "Tournament entry", decided by Panos 28 November): a paid
+// entry in a tournament that hasn't finished blocks it, as an upcoming game does.
+Deno.test('a paid tournament entry blocks it until the tournament finishes or is cancelled', async () => {
+  const entry = (status: string, tournament: string) => ({
+    id: crypto.randomUUID(),
+    profile_id: 'u1',
+    status,
+    tournaments: { status: tournament },
+  });
+  const check = (rows: Record<string, unknown>[]) =>
+    hasUpcomingGames(fakeDb({ booking_payment_shares: [], venue_bookings: [], tournament_entry_payments: rows }), 'u1', today);
+  strictEqual(await check([entry('paid', 'registration')]), true);
+  strictEqual(await check([entry('paid', 'knockout')]), true);
+  strictEqual(await check([entry('paid', 'finished')]), false);
+  strictEqual(await check([entry('paid', 'cancelled')]), false);
+  strictEqual(await check([entry('refunded', 'registration')]), false);
+  strictEqual(await check([entry('pending', 'registration')]), false);
+  strictEqual(await check([{ ...entry('paid', 'groups'), profile_id: 'u2' }]), false);
+});

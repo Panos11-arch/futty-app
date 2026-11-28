@@ -94,11 +94,12 @@ begin
   v_error := tests.error_as(v_admin, format('select public.admin_set_squad(%L, %L, %L)', v_t, v_big, v_m[1:4]));
   assert v_error = 'squad_size', 'admin keeps the size too, got ' || coalesce(v_error, 'no error');
 
-  -- Full at 16.
+  -- Full at 16: since S10B a 17th team waits (spec 13 "Tournament entry (S10B)").
   v_full := tests.s10a_tournament(v_admin);
   perform tests.s10a_fill(v_full);
   v_error := tests.s10a_register(v_full, v_late);
-  assert v_error = 'tournament_full', '17th refused, got ' || coalesce(v_error, 'no error');
+  assert v_error is null, '17th waits, got ' || coalesce(v_error, '');
+  assert (select place from public.tournament_teams where tournament_id = v_full and team_id = v_late) = 'waiting', 'waiting';
 end $$;
 
 rollback;

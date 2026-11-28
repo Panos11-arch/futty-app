@@ -1701,10 +1701,16 @@ begin
   v := public.admin_create_tournament(jsonb_build_object(
     'name', 'S10A Cup', 'area', 'Limassol', 'format', '5-a-side', 'maxTeams', 16,
     'entryFeeCents', 500, 'matchMinutes', 50, 'registrationDeadline', p_deadline));
-  if p_open then
+  if p_open and p_deadline is not null then
     perform public.admin_open_registration(v);
   end if;
   perform tests.act_as_postgres();
+  -- S10B: a fee needs a deadline to open sign-up. S10A's tests that play
+  -- groups and knockouts need neither, so without a deadline sign-up is
+  -- opened directly, as it stood before S10B.
+  if p_open and p_deadline is null then
+    update public.tournaments set status = 'registration' where id = v;
+  end if;
   return v;
 end;
 $$;
@@ -1966,4 +1972,137 @@ security definer
 set search_path = ''
 as $$
   select array_agg(s.team_id order by s.pos) from public.tournament_group_standings(p_tournament, p_group) s;
+$$;
+
+-- ---- S10B: tournament entry (spec 13 "Tournament entry (S10B)") --------------------------
+
+-- A tournament at p_fee per player (€12.00 by default, the worked
+-- examples), sign-up open with a deadline 2 days ahead.
+create or replace function tests.s10b_tournament(p_admin uuid, p_fee integer default 1200,
+                                                 p_deadline timestamptz default now() + interval '2 days',
+                                                 p_open boolean default true)
+returns uuid
+language plpgsql
+as $$
+declare
+  v uuid;
+begin
+  perform tests.act_as(p_admin);
+  v := public.admin_create_tournament(jsonb_build_object(
+    'name', 'S10B Cup', 'area', 'Limassol', 'format', '5-a-side', 'maxTeams', 16,
+    'entryFeeCents', p_fee, 'matchMinutes', 50, 'registrationDeadline', p_deadline));
+  if p_open then
+    perform public.admin_open_registration(v);
+  end if;
+  perform tests.act_as_postgres();
+  return v;
+end;
+$$;
+
+-- A new team of p_starters + p_subs, registered for p_tournament by its
+-- captain: the first p_starters members are starters, the rest subs.
+create or replace function tests.s10b_team(p_tournament uuid, p_name text, p_subs integer default 0)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_team uuid := tests.s10a_team(p_name, 5 + p_subs);
+  v_m uuid[] := tests.s10a_members(v_team);
+  v_error text;
+begin
+  v_error := tests.error_as(v_m[1], format('select public.register_team_for_tournament(%L, %L, %L, %L, %L)',
+    p_tournament, v_team, 'kitRed', v_m[1:5 + p_subs], coalesce(v_m[6:5 + p_subs], '{}'::uuid[])));
+  assert v_error is null, 'registered, got ' || coalesce(v_error, '');
+  return v_team;
+end;
+$$;
+
+-- p_profile starts paying p_tournament's entry, as create-tournament-payment
+-- does for its verified caller; returns the error, or null.
+create or replace function tests.s10b_start_error(p_profile uuid, p_tournament uuid)
+returns text
+language plpgsql
+as $$
+begin
+  perform public.plan_tournament_entry(p_tournament, p_profile);
+  return null;
+exception when others then
+  return sqlerrm;
+end;
+$$;
+
+-- p_profile pays p_tournament's entry: started as him, then the intent and
+-- Stripe's webhook as the server would (Stripe keeps p_stripe_fee). Returns
+-- the payment's id.
+create or replace function tests.s10b_pay(p_profile uuid, p_tournament uuid, p_stripe_fee integer default 43)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_plan jsonb;
+  v_id uuid;
+  v_intent text;
+begin
+  v_plan := public.plan_tournament_entry(p_tournament, p_profile);
+  v_id := (v_plan ->> 'payment_id')::uuid;
+  v_intent := 'pi_s10b_' || replace(v_id::text, '-', '');
+  perform public.attach_tournament_entry_intent(v_id, p_profile, v_intent);
+  perform public.tournament_entry_paid(v_intent, (v_plan ->> 'amount_cents')::integer, p_stripe_fee);
+  return v_id;
+end;
+$$;
+
+-- The deadline passes and run-payment-jobs' deadline step runs.
+create or replace function tests.s10b_deadline(p_tournament uuid)
+returns void
+language plpgsql
+as $$
+begin
+  update public.tournaments set registration_deadline = now() - interval '1 second' where id = p_tournament;
+  perform public.tournament_deadline_tick();
+end;
+$$;
+
+-- Every refund that is due, made as run-payment-jobs would (re_<payment>).
+create or replace function tests.s10b_refund_all()
+returns integer
+language plpgsql
+as $$
+declare
+  r record;
+  n integer := 0;
+begin
+  for r in select * from public.tournament_entry_refunds_due() loop
+    perform public.tournament_entry_refunded(r.payment_id, 're_s10b_' || replace(r.payment_id::text, '-', ''));
+    n := n + 1;
+  end loop;
+  return n;
+end;
+$$;
+
+-- Money refunded to p_tournament's players (ledger, cents).
+-- (plpgsql, so helpers.sql loads before the S10B tables exist.)
+create or replace function tests.s10b_refunded(p_tournament uuid)
+returns integer
+language plpgsql
+stable
+as $$
+begin
+  return (select coalesce(sum(l.amount_cents), 0)::integer from public.money_ledger l
+          join public.tournament_entry_payments p on p.id = l.tournament_payment_id
+          where p.tournament_id = p_tournament and l.kind = 'refund' and l.reason = 'tournament_entry_refund');
+end;
+$$;
+
+-- Money taken from p_tournament's players (ledger, cents).
+create or replace function tests.s10b_taken(p_tournament uuid)
+returns integer
+language plpgsql
+stable
+as $$
+begin
+  return (select coalesce(sum(l.amount_cents), 0)::integer from public.money_ledger l
+          join public.tournament_entry_payments p on p.id = l.tournament_payment_id
+          where p.tournament_id = p_tournament and l.kind = 'capture' and l.reason = 'tournament_entry');
+end;
 $$;

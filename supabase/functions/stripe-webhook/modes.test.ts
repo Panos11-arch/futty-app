@@ -405,3 +405,37 @@ Deno.test('other events for an other-half payment are acknowledged and move noth
   strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', { ...open, status: 'canceled' }), deps), true);
   strictEqual(db.calls.length, 0);
 });
+
+// ---- S10B: tournament entries (spec 13 "Tournament entry (S10B)") -------------------------
+
+Deno.test('a tournament entry paid: recorded with Stripe\'s actual fee, never as a share or a booking', async () => {
+  const { db, stripe, deps } = setup();
+  const paid = intent('pi_entry', 'succeeded', {
+    amount: 1200, stripeFee: 43, captureMethod: 'automatic',
+    metadata: { kind: 'tournament_entry', payment_id: 'tp1', tournament_id: 't1', profile_id: 'p1' },
+  });
+  stripe.respond('paymentIntents.retrieve', paid);
+  db.respond('tournament_entry_paid', { result: 'paid' });
+
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.succeeded', paid), deps), true);
+
+  deepStrictEqual(db.callsTo('tournament_entry_paid')[0].args, { p_intent_id: 'pi_entry', p_amount_cents: 1200, p_stripe_fee_cents: 43 });
+  strictEqual(db.callsTo('share_payment_captured').length, 0, 'never a share');
+  strictEqual(stripe.callsTo('refunds.create').length, 0, 'the database queues any late refund; nothing here');
+});
+
+Deno.test('a tournament entry\'s other events need nothing; a cancelled one is marked failed', async () => {
+  const { db, deps } = setup();
+  const metadata = { kind: 'tournament_entry', payment_id: 'tp1', tournament_id: 't1', profile_id: 'p1' };
+  db.respond('tournament_entry_failed', null);
+
+  strictEqual(await handlePaymentModeEvent(event('payment_intent.canceled', intent('pi_entry', 'canceled', { metadata })), deps), true);
+  deepStrictEqual(db.callsTo('tournament_entry_failed')[0].args, { p_intent_id: 'pi_entry' });
+
+  // Charged at once, never held: an amount_capturable_updated event is ignored.
+  strictEqual(
+    await handlePaymentModeEvent(event('payment_intent.amount_capturable_updated', intent('pi_entry', 'requires_capture', { metadata })), deps),
+    true,
+  );
+  strictEqual(db.callsTo('tournament_entry_paid').length, 0);
+});
