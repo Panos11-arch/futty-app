@@ -27,7 +27,10 @@ declare
                       tests.s10_team('S11-2 C', tests.create_user('s11-2-c@futty.test')),
                       tests.s10_team('S11-2 D', tests.create_user('s11-2-d@futty.test'))];
   v_season uuid := tests.s10_season(tests.s10_league(), array[t_h] || t_o);
-  v_start date := (now() at time zone 'Asia/Nicosia')::date - 27;
+  -- A Monday, so each game (start + 1 day, + 7 per week) falls in its own
+  -- Monday-to-Sunday matchday. From a Sunday start (today a Saturday) game 1
+  -- would land on the next Monday, matchday 2, and every game would shift.
+  v_start date := date_trunc('week', (now() at time zone 'Asia/Nicosia')::date - 27)::date;
   v_matches uuid[] := '{}';
   v_fixture uuid;
   v_match uuid;
