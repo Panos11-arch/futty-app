@@ -226,7 +226,13 @@ The booker picks one of three ways to pay when booking. **Agreed.** The choice d
 
 ### Tournament entry (S10B)
 
-Decided by Panos, 21 and 27 November. This replaces match-record.md decision 1o item 2's "Entry fee: shown only, paid to the organiser". From S10B the fee is collected in the app. Items marked **Proposed** wait for Panos and are not built until he answers.
+Decided by Panos, 21 and 27 November, and his answers on #254 (28 November). This replaces match-record.md decision 1o item 2's "Entry fee: shown only, paid to the organiser": from S10B the fee is collected in the app.
+
+**Opening sign-up** (decided by Panos, 28 November)
+- **The deadline is required when there's a fee.** Opening sign-up is refused when the entry fee is above €0.00 and the tournament has no registration deadline.
+- **When the deadline can be:** in the future, and before the tournament's first match.
+- **The fee is fixed** from "Open sign-up", so every player pays the same. The admin can't change it after that.
+- **A free tournament (€0.00):** nothing to pay. A team is confirmed when it registers, and nobody is dropped at the deadline.
 
 **Registration** (unchanged from S10A, match-record.md 1o item 3)
 - The captain registers one of his teams, or makes a new one with S20A's New team sheet and invites players to it.
@@ -238,6 +244,8 @@ Decided by Panos, 21 and 27 November. This replaces match-record.md decision 1o 
 - **Where the money goes:** entirely to Futty's own Stripe account. No Connect transfer, no venue payout, no venue revenue row.
 - **When:** charged at once, not held. A hold can't last until the deadline.
 - **What the app shows:** each squad member as paid or unpaid. Amounts come only from the server: the fee is read from the tournament on the server, and the app never sends an amount.
+- **Not after the deadline** (decided by Panos, 28 November). No entry payment can start once the deadline has passed; the server refuses it.
+- **Money owed** (decided by Panos, 28 November) blocks paying an entry, as it blocks booking ("You owe €X.XX. Pay it from Payments, then try again.").
 
 **Confirmation and the waiting list**
 - **Confirmed:** a team is confirmed when its starters (5 in 5-a-side) have paid by the registration deadline.
@@ -247,16 +255,28 @@ Decided by Panos, 21 and 27 November. This replaces match-record.md decision 1o 
 - **Waiting list:**
   - Teams beyond the maximum wait in registration order.
   - When a spot frees before the deadline, the first waiting team moves up at once and is told. It still has to pay by the deadline.
-- **Proposed (open, for Panos): a spot released at the deadline.** There's no time left to pay, so:
+- **A spot released at the deadline** (decided by Panos, 28 November):
   - waiting teams' players may pay while they wait;
   - at the deadline, released spots go in registration order to waiting teams whose starters have all paid (their unpaid subs are dropped, as above);
   - every waiting team left without a spot is refunded in full automatically;
   - a waiting team whose starters haven't all paid is refunded in full, as a released team is.
+- **Withdrawing a team** (decided by Panos, 28 November):
+  - The captain can withdraw his team until the deadline. Every paid player is refunded in full, and the first waiting team moves up.
+  - A withdrawn team can register again, at the back of the waiting list.
+  - After the deadline, a team can't withdraw and nobody is refunded.
 
 **Refunds**
 - **Before the deadline:** a paid player the captain removes from the squad is refunded in full automatically.
-- **After the deadline:** no refunds, except a full refund to every paid player when the organiser cancels the tournament (at any time).
+- **After the deadline:** no refunds, except a full refund to every paid player when the organiser cancels the tournament.
+- **Cancelling a tournament** (decided by Panos, 28 November): the admin can cancel it from any status before `finished` (status `cancelled`). Its matches are cancelled, and every paid player is refunded in full.
+- **A payment that lands late** (decided by Panos, 28 November). If a payment succeeds after the deadline job has run (paid at the last second, the webhook came later) and his team was released or he was a dropped sub, it is refunded in full automatically.
 - **Stripe's fee:** on every full refund Futty absorbs it. Stripe keeps its fee on the original payment, and the player gets back everything he paid.
+
+**An admin squad change after the deadline** (an injury; 1o item 3; decided by Panos, 28 November)
+- The replacement pays nothing in the app. The spot is already paid by the player he replaces, who isn't refunded.
+- There is no payment outside the app.
+
+**Deleting an account** (decided by Panos, 28 November): a paid entry in a tournament that hasn't finished blocks deleting the account, as an upcoming game does ("Deleting an account").
 
 **Money rules** (CLAUDE.md)
 - **Amounts:** integer cents.
@@ -282,30 +302,7 @@ Decided by Panos, 21 and 27 November. This replaces match-record.md decision 1o 
 | T3 | The organiser cancels after the deadline: a confirmed team of 6 who all paid | 6 × €12.00 = **€72.00** back |
 | T4 | The captain removes a paid player before the deadline | **€12.00** refunded |
 | T5 | A sub unpaid at the deadline | dropped, **€0.00** moves, the team stays confirmed |
-
-**Proposed (missing from the rules above, for Panos).** S10A has none of these, and the money rules depend on them.
-1. **The deadline is required.**
-   - S10A lets a tournament have no registration deadline (`registration_deadline` is optional).
-   - Proposal: opening sign-up is refused without a deadline when the fee is above €0.00.
-2. **A free tournament (€0.00).**
-   - Proposal: nothing to pay; a team is confirmed when it registers, and nobody is dropped at the deadline.
-3. **The fee can't change once sign-up opens.**
-   - S10A lets the admin edit `entry_fee_cents` at any time.
-   - Proposal: it's fixed from "Open sign-up", so every player pays the same.
-4. **A captain withdraws his team before the deadline.**
-   - S10A has no way to; it's the only way a spot frees before the deadline (rule above).
-   - Proposal: "Withdraw team" for the captain until the deadline; every paid player is refunded in full; the first waiting team moves up.
-   - After the deadline, a team can't withdraw and nobody is refunded.
-5. **Cancelling a tournament.**
-   - S10A has no cancelled status.
-   - Proposal: a `cancelled` status the admin sets from any status before `finished`; its matches are cancelled and every paid player is refunded in full.
-6. **An admin squad change after the deadline** (an injury; 1o item 3).
-   - Proposal: the player removed isn't refunded (no refunds after the deadline); the player added pays nothing in the app, and the organiser settles with him outside it.
-7. **A payment that succeeds after the deadline job has run** (paid at the last second; the webhook comes later).
-   - Proposal: if his team was released, or he was a dropped sub, it is refunded in full automatically.
-8. **Money owed and deleting an account.**
-   - Proposal: money owed blocks paying an entry, as it blocks booking ("You owe €X.XX. Pay it from Payments, then try again.").
-   - A paid entry in a tournament that hasn't finished blocks deleting the account, as an upcoming game does ("Deleting an account").
+| T6 | A team of 6 that all paid withdraws before the deadline | 6 × €12.00 = **€72.00** refunded in full |
 
 ## When money is held and taken
 
