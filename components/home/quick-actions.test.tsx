@@ -28,7 +28,8 @@ describe('Home quick actions (image 01)', () => {
     ['home-action-find-match', { pathname: '/squads', params: { view: 'players' } }],
     ['home-action-leagues', '/leagues'],
     // S10B: Join an event opens Leagues until the events list exists.
-    ['home-action-event', '/leagues'],
+    // S10B: Join an event opens the Events list.
+    ['home-action-event', '/events'],
   ])('%s opens its screen once, with a light haptic', async (testID, href) => {
     jest.mocked(Haptics.impactAsync).mockClear();
     await render(<QuickActions />);

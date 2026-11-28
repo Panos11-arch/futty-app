@@ -12,9 +12,10 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/use-featured-event', () => ({ useFeaturedEvent: () => ({ ...mockState, reload: mockReload }) }));
 
-const event: Event = { id: 'l1', kind: 'league', name: 'Limassol League', format: '5-a-side', startDate: '2026-12-05' };
+// S10B: the source is tournaments in sign-up.
+const event: Event = { id: 't1', kind: 'tournament', name: 'Nuevo Campo Cup', format: '5-a-side', startDate: '2026-12-05', comingSoon: false };
 
-describe('Home "Featured event" (image 01; leagues in sign-up until S10B)', () => {
+describe('Home "Featured event" (image 01; tournaments from S10B)', () => {
   beforeEach(() => {
     jest.mocked(router.push).mockClear();
     mockReload.mockClear();
@@ -35,21 +36,27 @@ describe('Home "Featured event" (image 01; leagues in sign-up until S10B)', () =
     expect(screen.queryByTestId('home-featured-event')).toBeNull();
   });
 
-  it('an event: its kind, name and line, no photo and no price', async () => {
+  it('an event: its kind, name and line', async () => {
     mockState = { status: 'ready', event };
     await render(<FeaturedEvent refreshSignal={0} />);
     const card = screen.getByTestId('home-featured-event');
-    expect(card).toHaveTextContent(/League · Sign-up open/);
-    expect(card).toHaveTextContent(/Limassol League/);
+    expect(card).toHaveTextContent(/Tournament · Sign-up open/);
+    expect(card).toHaveTextContent(/Nuevo Campo Cup/);
     expect(card).toHaveTextContent(/5-a-side · Sat 5 Dec/);
-    expect(card).not.toHaveTextContent(/€/);
   });
 
-  it('Join opens the league’s competition page (S10)', async () => {
+  it('Join opens the tournament page', async () => {
     mockState = { status: 'ready', event };
     await render(<FeaturedEvent refreshSignal={0} />);
     await fireEvent.press(screen.getByTestId('home-featured-join'));
-    expect(router.push).toHaveBeenCalledWith({ pathname: '/leagues/[id]', params: { id: event.id } });
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/leagues/tournament/[id]', params: { id: event.id } });
+  });
+
+  it('Coming soon (no dates yet): Coming soon instead of Join (1o item 2)', async () => {
+    mockState = { status: 'ready', event: { ...event, comingSoon: true, startDate: null } };
+    await render(<FeaturedEvent refreshSignal={0} />);
+    expect(screen.getByTestId('home-featured-event')).toHaveTextContent(/Coming soon/);
+    expect(screen.queryByTestId('home-featured-join')).toBeNull();
   });
 
   it('pull to refresh loads it again', async () => {

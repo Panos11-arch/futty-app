@@ -224,6 +224,94 @@ The booker picks one of three ways to pay when booking. **Agreed.** The choice d
 - **If the booker is responsible but doesn't show** while the team plays, a teammate covers his share or he pays it in the app. Otherwise his hold covers it.
 - **The mode is always chosen (decided 9 November).** The server refuses a booking without one (`mode_required`); there is no default.
 
+### Tournament entry (S10B)
+
+Decided by Panos, 21 and 27 November, and his answers on #254 (28 November). This replaces match-record.md decision 1o item 2's "Entry fee: shown only, paid to the organiser": from S10B the fee is collected in the app.
+
+**Opening sign-up** (decided by Panos, 28 November)
+- **The deadline is required when there's a fee.** Opening sign-up is refused when the entry fee is above €0.00 and the tournament has no registration deadline.
+- **When the deadline can be:** in the future, and before the tournament's first match.
+- **The fee is fixed** from "Open sign-up", so every player pays the same. The admin can't change it after that.
+- **Moving the deadline** (decided by Panos, 28 November).
+  - While sign-up is open, the admin can move the deadline later only, never earlier, to a time still in the future and before the first match.
+  - Every registered and waiting team is told the new deadline.
+  - Payments made so far stay as they are.
+- **A free tournament (€0.00):** nothing to pay. A team is confirmed when it registers, and nobody is dropped at the deadline.
+
+**Registration** (unchanged from S10A, match-record.md 1o item 3)
+- The captain registers one of his teams, or makes a new one with S20A's New team sheet and invites players to it.
+- The squad is the format's starters plus up to 2 subs, all members of the team. The captain changes it until the registration deadline.
+- **Starters and subs** (decided by Panos, 28 November).
+  - The captain marks each squad member as a starter or a sub, and can change it until the deadline. An admin changing a squad marks them too.
+  - The squad screen shows "Starter" or "Sub" next to each name.
+  - "Its starters have paid" means the members marked as starters: in T2, 5 people paid (4 starters and a sub) and the team is still released.
+
+**The entry fee**
+- **Who pays:** every squad member pays the tournament's entry fee per player (`tournaments.entry_fee_cents`, set by the admin) himself, the captain and subs included.
+- **How:** card, Apple Pay or Google Pay. No service fee, no Premium discount, no venue credit, no cash.
+- **Where the money goes:** entirely to Futty's own Stripe account. No Connect transfer, no venue payout, no venue revenue row.
+- **When:** charged at once, not held. A hold can't last until the deadline.
+- **What the app shows:** each squad member as paid or unpaid. Amounts come only from the server: the fee is read from the tournament on the server, and the app never sends an amount.
+- **Not after the deadline** (decided by Panos, 28 November). No entry payment can start once the deadline has passed, waiting teams included; the server refuses it. There is no grace period.
+- **Money owed** (decided by Panos, 28 November) blocks paying an entry, as it blocks booking ("You owe €X.XX. Pay it from Payments, then try again.").
+
+**Confirmation and the waiting list**
+- **Confirmed:** a team is confirmed when its starters (5 in 5-a-side) have paid by the registration deadline.
+- **At the deadline:**
+  - A sub who hasn't paid is dropped from the squad and told; the team stays confirmed.
+  - A team whose starters haven't all paid is released, and everyone in it who paid is refunded in full automatically.
+- **Waiting list:**
+  - Teams beyond the maximum wait in registration order.
+  - When a spot frees before the deadline, the first waiting team moves up at once and is told. It still has to pay by the deadline.
+- **A spot released at the deadline** (decided by Panos, 28 November):
+  - waiting teams' players may pay while they wait;
+  - at the deadline, released spots go in registration order to waiting teams whose starters have all paid (their unpaid subs are dropped, as above);
+  - every waiting team left without a spot is refunded in full automatically;
+  - a waiting team whose starters haven't all paid is refunded in full, as a released team is.
+- **Withdrawing a team** (decided by Panos, 28 November):
+  - The captain can withdraw his team until the deadline. Every paid player is refunded in full, and the first waiting team moves up.
+  - A withdrawn team can register again, at the back of the waiting list.
+  - After the deadline, a team can't withdraw and nobody is refunded.
+
+**Refunds**
+- **Before the deadline:** a paid player the captain removes from the squad is refunded in full automatically.
+- **After the deadline:** no refunds, except a full refund to every paid player when the organiser cancels the tournament.
+- **Cancelling a tournament** (decided by Panos, 28 November): the admin can cancel it from any status before `finished` (status `cancelled`). Its matches are cancelled, and every paid player is refunded in full.
+- **A payment that lands late** (decided by Panos, 28 November). If a payment succeeds after the deadline job has run (paid at the last second, the webhook came later) and his team was released or he was a dropped sub, it is refunded in full automatically.
+- **Stripe's fee:** on every full refund Futty absorbs it. Stripe keeps its fee on the original payment, and the player gets back everything he paid.
+
+**An admin squad change after the deadline** (an injury; 1o item 3; decided by Panos, 28 November)
+- The replacement pays nothing in the app. The spot is already paid by the player he replaces, who isn't refunded.
+- There is no payment outside the app.
+
+**Deleting an account** (decided by Panos, 28 November): a paid entry in a tournament that hasn't finished blocks deleting the account, as an upcoming game does ("Deleting an account").
+
+**Money rules** (CLAUDE.md)
+- **Amounts:** integer cents.
+- **Stripe:**
+  - Every Stripe call has an idempotency key built from our row ids.
+  - Payment state changes only from verified webhooks.
+- **Ledger:**
+  - Every payment is written to the money ledger with reason `tournament_entry`, and every refund with reason `tournament_entry_refund`.
+  - The daily balance check covers them: Futty + Stripe + refunds = taken, with no venue part.
+- **Database:**
+  - Every new table has RLS.
+  - Security definer functions use `search_path = ''`.
+  - Internal functions are for service_role only.
+  - The server checks that the caller is the squad member paying.
+- **Deadline job:** dropping unpaid subs, releasing unconfirmed teams, the refunds and the waiting list run in the existing `run-payment-jobs`, not a new schedule.
+
+**Worked examples** (at €12.00 per player; each is a test with these exact amounts)
+
+| # | Case | Money |
+| :-- | :-- | :-- |
+| T1 | A full team, 5 starters + 2 subs, all pay | 7 × €12.00 = **€84.00** taken, all Futty's; no venue row |
+| T2 | Released at the deadline: 4 of 5 starters and 1 sub paid | 5 × €12.00 = **€60.00** refunded in full; the team's spot goes to the waiting list |
+| T3 | The organiser cancels after the deadline: a confirmed team of 6 who all paid | 6 × €12.00 = **€72.00** back |
+| T4 | The captain removes a paid player before the deadline | **€12.00** refunded |
+| T5 | A sub unpaid at the deadline | dropped, **€0.00** moves, the team stays confirmed |
+| T6 | A team of 6 that all paid withdraws before the deadline | 6 × €12.00 = **€72.00** refunded in full |
+
 ## When money is held and taken
 
 A payment is held when the player pays and taken 1 hour later. Everything still unpaid is collected 2 hours after the match. **Agreed.**

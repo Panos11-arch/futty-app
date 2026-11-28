@@ -59,6 +59,18 @@ jest.mock('@/lib/match/tournament-api', () => ({
   registerTeam: (...a: unknown[]) => mockRegister(...a),
   setSquad: (...a: unknown[]) => mockSetSquad(...a),
 }));
+const mockStartEntry = jest.fn();
+const mockWithdraw = jest.fn();
+jest.mock('@/lib/tournament-entry', () => ({
+  ...jest.requireActual('@/lib/tournament-entry'),
+  startEntryPayment: (...a: unknown[]) => mockStartEntry(...a),
+  withdrawTeam: (...a: unknown[]) => mockWithdraw(...a),
+}));
+const mockInitSheet = jest.fn(() => Promise.resolve({}));
+const mockPresentSheet = jest.fn(() => Promise.resolve({}));
+jest.mock('@stripe/stripe-react-native', () => ({
+  usePaymentSheet: () => ({ initPaymentSheet: mockInitSheet, presentPaymentSheet: mockPresentSheet }),
+}));
 const mockRoster = jest.fn();
 jest.mock('@/lib/teams', () => ({
   ...jest.requireActual('@/lib/teams'),
@@ -281,7 +293,7 @@ describe('Overview', () => {
     expect(within(screen.getByTestId('tournament-stage-card')).getByText('Sign-up open')).toBeTruthy();
     expect(within(screen.getByTestId('tournament-stage-card')).getByText('Coming soon')).toBeTruthy();
     expect(screen.getByTestId('tournament-dates')).toHaveTextContent('Coming soon');
-    expect(screen.getByTestId('tournament-entry-fee')).toHaveTextContent('€12 per player, paid to the organiser');
+    expect(screen.getByTestId('tournament-entry-fee')).toHaveTextContent('€12 per player');
     expect(screen.getByTestId('tournament-teams-count')).toHaveTextContent('3 of 16 teams');
     expect(screen.getByTestId('tournament-register')).toBeTruthy();
     // No awards before the groups start.
@@ -358,7 +370,7 @@ describe('Registration', () => {
     await act(async () => {
       await fireEvent.press(screen.getByTestId('tournament-register-submit'));
     });
-    expect(mockRegister).toHaveBeenCalledWith('T1', 'c1', 'kitSky', ['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(mockRegister).toHaveBeenCalledWith('T1', 'c1', 'kitSky', ['p1', 'p2', 'p3', 'p4', 'p5'], []);
     expect(mockHaptic.success).toHaveBeenCalled();
     expect(mockReload).toHaveBeenCalled();
   });
@@ -415,7 +427,7 @@ describe('Registration', () => {
     await act(async () => {
       await fireEvent.press(screen.getByTestId('tournament-register-submit'));
     });
-    expect(mockSetSquad).toHaveBeenCalledWith('T1', 'c1', ['p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+    expect(mockSetSquad).toHaveBeenCalledWith('T1', 'c1', ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], ['p6']);
     expect(mockRegister).not.toHaveBeenCalled();
   });
 
@@ -651,5 +663,156 @@ describe('Words', () => {
       screen.getByTestId('tournament-register').props.accessibilityLabel as string,
     ];
     for (const label of labels) expect(label.trim().split(/\s+/).length).toBeLessThanOrEqual(3);
+  });
+});
+
+// ---- S10B: the entry fee, starters and subs, the waiting list, withdrawing ---
+// (spec 13 "Tournament entry (S10B)")
+
+const squadMember = (id: string, name: string, role: 'starter' | 'sub', paid: boolean) => ({ ...player(id, name), role, paid });
+
+const mySquad = (over: Record<string, unknown> = {}) => ({
+  teamId: 'c1',
+  teamName: 'Kato United',
+  kitColour: 'kitGreen',
+  isCaptain: true,
+  canEditSquad: true,
+  canWithdraw: true,
+  place: 'spot',
+  waitingPosition: null,
+  squad: [squadMember('p1', 'Andreas', 'starter', true), squadMember('p6', 'Marios', 'sub', false)],
+  ...over,
+});
+
+describe('S10B: the squad and paying', () => {
+  beforeEach(() => {
+    mockStartEntry.mockReset();
+    mockWithdraw.mockReset();
+    mockInitSheet.mockClear();
+    mockPresentSheet.mockClear();
+  });
+
+  it('each member: Starter or Sub, and a paid or unpaid tick', async () => {
+    mockState.tournament = { status: 'ready', tournament: tournament({ myTeams: [mySquad()] as never }) };
+    await openPage();
+    expect(screen.getByTestId('tournament-squad-p1-role')).toHaveTextContent('Starter');
+    expect(screen.getByTestId('tournament-squad-p6-role')).toHaveTextContent('Sub');
+    expect(screen.getByTestId('tournament-squad-p1-paid').props.accessibilityLabel).toBe('Paid');
+    expect(screen.getByTestId('tournament-squad-p6-paid').props.accessibilityLabel).toBe('Unpaid');
+  });
+
+  it('an unpaid member sees Pay €12.00 and the deadline in Cyprus time, both from the server', async () => {
+    mockState.tournament = {
+      status: 'ready',
+      tournament: tournament({
+        myTeams: [mySquad()] as never,
+        myEntry: { canPay: true, paid: false, amountCents: 1200, deadline: '2026-12-05T16:00:00Z' },
+      } as never),
+    };
+    await openPage();
+    expect(screen.getByTestId('tournament-pay')).toHaveTextContent('Pay €12.00');
+    expect(screen.getByTestId('tournament-pay-deadline')).toHaveTextContent('By Sat 5 Dec, 18:00');
+  });
+
+  it('Pay: the server starts the payment, Stripe's sheet takes it, then the page reloads', async () => {
+    mockStartEntry.mockResolvedValue({ ok: true, clientSecret: 'pi_secret', customerId: 'cus_1', amountCents: 1200 });
+    mockState.tournament = {
+      status: 'ready',
+      tournament: tournament({
+        myTeams: [mySquad()] as never,
+        myEntry: { canPay: true, paid: false, amountCents: 1200, deadline: '2026-12-05T16:00:00Z' },
+      } as never),
+    };
+    await openPage();
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('tournament-pay'));
+    });
+    expect(mockStartEntry).toHaveBeenCalledWith('T1');
+    expect(mockInitSheet).toHaveBeenCalledWith(expect.objectContaining({ paymentIntentClientSecret: 'pi_secret', customerId: 'cus_1' }));
+    expect(mockPresentSheet).toHaveBeenCalled();
+    expect(mockHaptic.success).toHaveBeenCalled();
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('a refusal: one line, no payment sheet', async () => {
+    mockStartEntry.mockResolvedValue({ ok: false, message: 'The deadline has passed.' });
+    mockState.tournament = {
+      status: 'ready',
+      tournament: tournament({
+        myTeams: [mySquad()] as never,
+        myEntry: { canPay: true, paid: false, amountCents: 1200, deadline: '2026-12-05T16:00:00Z' },
+      } as never),
+    };
+    await openPage();
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('tournament-pay'));
+    });
+    expect(screen.getByTestId('tournament-pay-error')).toHaveTextContent('The deadline has passed.');
+    expect(mockPresentSheet).not.toHaveBeenCalled();
+  });
+
+  it('paid, or nothing to pay: no Pay button', async () => {
+    mockState.tournament = {
+      status: 'ready',
+      tournament: tournament({ myTeams: [mySquad()] as never, myEntry: { canPay: false, paid: true, amountCents: 1200, deadline: null } } as never),
+    };
+    await openPage();
+    expect(screen.queryByTestId('tournament-pay')).toBeNull();
+  });
+
+  it('a waiting team shows its place in line', async () => {
+    mockState.tournament = {
+      status: 'ready',
+      tournament: tournament({ myTeams: [mySquad({ place: 'waiting', waitingPosition: 2 })] as never }),
+    };
+    await openPage();
+    expect(screen.getByTestId('tournament-waiting')).toHaveTextContent('Waiting · 2nd');
+  });
+
+  it('the captain withdraws his team after confirming; the page reloads', async () => {
+    mockWithdraw.mockResolvedValue({ ok: true });
+    mockState.tournament = { status: 'ready', tournament: tournament({ myTeams: [mySquad()] as never }) };
+    await openPage();
+    await fireEvent.press(screen.getByTestId('tournament-withdraw'));
+    expect(mockWithdraw).not.toHaveBeenCalled();
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('tournament-withdraw-confirm'));
+    });
+    expect(mockWithdraw).toHaveBeenCalledWith('T1', 'c1');
+    expect(mockReload).toHaveBeenCalled();
+  });
+
+  it('no Withdraw when the server says it can't (after the deadline, or not the captain)', async () => {
+    mockState.tournament = { status: 'ready', tournament: tournament({ myTeams: [mySquad({ canWithdraw: false })] as never }) };
+    await openPage();
+    expect(screen.queryByTestId('tournament-withdraw')).toBeNull();
+  });
+});
+
+describe('S10B: marking subs when registering', () => {
+  it('the first five picked are starters; a tap makes one a sub, and Register sends the subs', async () => {
+    await openPage();
+    await fireEvent.press(screen.getByTestId('tournament-register'));
+    await screen.findByTestId('tournament-register-roster');
+    expect(screen.getByTestId('tournament-register-role-p1')).toHaveTextContent('Starter');
+    expect(screen.getByTestId('tournament-register-role-p6')).toHaveTextContent('Sub');
+    // Swap: p6 a starter, p5 a sub.
+    await fireEvent.press(screen.getByTestId('tournament-register-role-p5'));
+    await fireEvent.press(screen.getByTestId('tournament-register-role-p6'));
+    expect(screen.getByTestId('tournament-register-role-p5')).toHaveTextContent('Sub');
+    expect(screen.getByTestId('tournament-register-role-p6')).toHaveTextContent('Starter');
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId('tournament-register-submit'));
+    });
+    expect(mockRegister).toHaveBeenCalledWith('T1', 'c1', 'kitGreen', ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'], ['p5']);
+  });
+
+  it('Register needs exactly five starters', async () => {
+    await openPage();
+    await fireEvent.press(screen.getByTestId('tournament-register'));
+    await screen.findByTestId('tournament-register-roster');
+    await fireEvent.press(screen.getByTestId('tournament-register-role-p1'));
+    expect(screen.getByText('4 starters, 2 subs')).toBeTruthy();
+    expect(screen.getByTestId('tournament-register-submit')).toBeDisabled();
   });
 });

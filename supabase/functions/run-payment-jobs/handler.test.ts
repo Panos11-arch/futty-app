@@ -51,6 +51,10 @@ function setup({ shares = [] as unknown[], guarantees = [] as unknown[], expirin
   for (const fn of ['record_money_movement', 'record_intent_capture', 'record_intent_refund', 'record_intent_cancelled']) {
     db.respond(fn, true);
   }
+  db.respond('tournament_deadline_tick', { tournaments: 1 });
+  db.respond('tournament_entry_refunds_due', []);
+  db.respond('tournament_entry_refunded', true);
+  db.respond('tournament_entry_refund_failed', null);
   db.respond('money_release_done', null);
   db.respond('queue_money_release', 'r1');
   const stripe = createStripeFake();
@@ -603,4 +607,19 @@ Deno.test('counts Losers pay guarantees before placing guarantee holds', async (
   strictEqual(summary.losersPayGuarantees, 2);
   const order = db.calls.map((c) => c.fn);
   strictEqual(order.indexOf('losers_pay_count_guarantees') < order.indexOf('guarantees_due_for_hold'), true);
+});
+
+// S10B (spec 13 "Tournament entry (S10B)"): the tournament deadline and its
+// refunds run here, not on a schedule of their own (_shared/tournament-entry.ts).
+Deno.test('runs the tournament deadline and sends its refunds', async () => {
+  const { db, stripe, deps } = setup();
+  db.respond('tournament_entry_refunds_due', [{ payment_id: 'tp1', stripe_intent_id: 'pi_tp1', amount_cents: 1200 }]);
+  stripe.respond('refunds.create', { id: 're_tp1', status: 'succeeded', amount: 1200 });
+
+  const summary = await runPaymentJobs(deps);
+
+  strictEqual(db.callsTo('tournament_deadline_tick').length, 1);
+  strictEqual(stripe.callsTo('refunds.create')[0].idempotencyKey, 'tournament-entry-refund-tp1');
+  strictEqual(summary.tournamentsAtDeadline, 1);
+  strictEqual(summary.entryRefunds, 1);
 });
