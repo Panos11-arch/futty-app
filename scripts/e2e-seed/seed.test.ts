@@ -31,6 +31,7 @@ import {
   e2eStaffBooking,
   e2eStaffVenue,
   e2eStartingLevel,
+  e2eVenue,
   readSeedEnv,
   seedMain,
   stripeRest,
@@ -288,6 +289,20 @@ describe('the venue staff’s test venue and its phone booking', () => {
     });
     // 00:30 on 25 November in Cyprus (22:30 UTC on the 24th): tomorrow is the 26th.
     expect(e2eStaffBooking(E2E_STAFF[1], new Date('2026-11-24T22:30:00Z')).p_day).toBe('2026-11-26');
+  });
+});
+
+describe('the E2E venue (S17: on the map and with weather, staging only)', () => {
+  it('has coordinates in Nicosia, both or neither, inside Cyprus (spec 13 "Coordinates")', () => {
+    const row = e2eVenue();
+    expect(row).toMatchObject({ id: E2E_VENUE.id, name: 'E2E Arena', city: 'Nicosia', is_live: true, allows_6v6_on_5s: false });
+    expect(row.latitude).toBe(35.165);
+    expect(row.longitude).toBe(33.36);
+    // Inside Cyprus, roughly: 34.5 to 35.7 N, 32.2 to 34.6 E.
+    expect(row.latitude).toBeGreaterThan(34.5);
+    expect(row.latitude).toBeLessThan(35.7);
+    expect(row.longitude).toBeGreaterThan(32.2);
+    expect(row.longitude).toBeLessThan(34.6);
   });
 });
 

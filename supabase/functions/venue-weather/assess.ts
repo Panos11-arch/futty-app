@@ -16,6 +16,10 @@ export type Forecast = {
   thunderstorm: boolean;
   heavy_rain: boolean;
   warnings: Warning[];
+  /** S17: Apple's condition (conditionCode, e.g. 'Clear') for the game's first
+   *  hour, or the hour it's in now once under way. The app shows it in words
+   *  ("22° · Clear at 20:00", image 03); it plays no part in any warning. */
+  condition: string;
 };
 
 export type Assessment = { status: 'forecast'; forecast: Forecast } | { status: 'out_of_range' } | { status: 'past' };
@@ -129,6 +133,8 @@ export function assess(
       thunderstorm,
       heavy_rain: heavyRain,
       warnings,
+      // inGame is in Apple's order (by time); its first hour is the start, or now.
+      condition: inGame[0].conditionCode,
     },
   };
 }

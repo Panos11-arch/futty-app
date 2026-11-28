@@ -16,7 +16,7 @@
 //   3. the e2e logins' notifications and saved searches, and the venue's
 //      blocks and closures, deleted;
 //   4. the venue "E2E Arena": two 5-a-side pitches, one €60 price, open
-//      07:00 to midnight every day, live;
+//      07:00 to midnight every day, live, with coordinates in Nicosia (S17);
 //   5. its Stripe TEST connected account, made the way connect-onboarding
 //      makes it (same parameters and idempotency key), kept once it exists;
 //   6. per platform, a pickup played 2 hours ago at the E2E venue, waiting
@@ -214,6 +214,21 @@ export function e2eLogScoreMatch(platform: Platform, captainId: string, otherId:
       { id: ids.captainPlayerId, match_id: ids.matchId, profile_id: captainId, side: 'a' },
       { id: ids.otherPlayerId, match_id: ids.matchId, profile_id: otherId, side: 'b' },
     ],
+  };
+}
+
+/** The E2E Arena's row: live, with coordinates (S17: its map pin, distance
+ *  and weather). */
+export function e2eVenue() {
+  return {
+    id: E2E_VENUE.id,
+    name: E2E_VENUE.name,
+    city: E2E_VENUE.city,
+    address: E2E_VENUE.address,
+    latitude: E2E_VENUE.latitude,
+    longitude: E2E_VENUE.longitude,
+    is_live: true,
+    allows_6v6_on_5s: false,
   };
 }
 
@@ -499,14 +514,7 @@ export async function runSeed(deps: SeedDeps): Promise<SeedOutput> {
 
   // ---- 4. The venue --------------------------------------------------------
   check(
-    await admin.from('venues').upsert({
-      id: E2E_VENUE.id,
-      name: E2E_VENUE.name,
-      city: E2E_VENUE.city,
-      address: E2E_VENUE.address,
-      is_live: true,
-      allows_6v6_on_5s: false,
-    }),
+    await admin.from('venues').upsert(e2eVenue()),
     'writing the E2E venue',
   );
   check(

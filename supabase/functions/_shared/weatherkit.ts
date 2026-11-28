@@ -69,8 +69,19 @@ export type WeatherSource = {
 
 type FetchFn = (input: string, init: RequestInit) => Promise<Response>;
 
+/** The .p8 key as a PEM, however its lines were joined to fit a one-line
+ *  secret: line breaks written as "\n", as spaces, or dropped. */
+export function pemFromSecret(value: string): string {
+  const body = value
+    .replace(/\\n/g, '\n')
+    .replace(/-----(BEGIN|END) PRIVATE KEY-----/g, '')
+    .replace(/\s+/g, '');
+  const lines = body.match(/.{1,64}/g) ?? [];
+  return ['-----BEGIN PRIVATE KEY-----', ...lines, '-----END PRIVATE KEY-----'].join('\n');
+}
+
 export async function makeWeatherKitToken(config: WeatherKitConfig, now: Date = new Date()): Promise<string> {
-  const key = await importPKCS8(config.privateKeyPem, 'ES256');
+  const key = await importPKCS8(pemFromSecret(config.privateKeyPem), 'ES256');
   const iat = Math.floor(now.getTime() / 1000);
   return new SignJWT({})
     .setProtectedHeader({ alg: 'ES256', kid: config.keyId, id: `${config.teamId}.${config.serviceId}` })

@@ -25,6 +25,9 @@ export type Forecast = {
   heavy_rain: boolean;
   /** The app_rules thresholds this forecast meets. */
   warnings: Warning[];
+  /** S17: Apple's condition code for the game's first hour ('Clear',
+   *  'MostlyCloudy'). Missing from a venue-weather deployed before S17. */
+  condition?: string;
 };
 
 export type WeatherAttribution = {
@@ -114,6 +117,46 @@ export function warningWords(f: Forecast): string {
   };
   const text = f.warnings.map((w) => words[w]).join(', ');
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// ---- S17: the weather card ("22° · Clear at 20:00", image 03) ---------------
+
+/** Apple's condition code in words: 'MostlyClear' → 'Mostly clear'. */
+export function conditionWords(code: string | undefined): string | null {
+  if (!code || !/^[A-Za-z]+$/.test(code)) return null;
+  const words = code.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The card's first line: "22° · Clear at 20:00"; a range over a longer game. */
+export function headline(f: Forecast, start: string): string {
+  const temperature = f.temp_min_c === f.temp_max_c ? `${f.temp_max_c}°` : `${f.temp_min_c}–${f.temp_max_c}°`;
+  const condition = conditionWords(f.condition);
+  return `${condition ? `${temperature} · ${condition}` : temperature} at ${hhmm(start)}`;
+}
+
+/** The card's second line: rain, wind, and thunderstorms when forecast (spec 13). */
+export function detailLine(f: Forecast): string {
+  const rain = f.rain_mm > 0 ? `Rain ${f.rain_chance_pct}% · ${f.rain_mm} mm` : `Rain ${f.rain_chance_pct}%`;
+  return [rain, `Wind ${f.wind_kmh} km/h`, ...(f.thunderstorm ? ['Thunderstorms'] : [])].join(' · ');
+}
+
+const cyprusClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Nicosia',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+});
+
+/** The hour it is now in Cyprus, as a game window: the venue Home tab's "today". */
+export function nowWindow(now: Date): GameWindow {
+  const p: Record<string, string> = {};
+  for (const part of cyprusClock.formatToParts(now)) p[part.type] = part.value;
+  const hour = Number(p.hour);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return { day: `${p.year}-${p.month}-${p.day}`, start: `${pad(hour)}:00`, end: `${pad((hour + 1) % 24)}:00` };
 }
 
 export function nudgeTitle(slot: GameWindow, today: string): string {

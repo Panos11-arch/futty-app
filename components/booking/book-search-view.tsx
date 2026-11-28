@@ -4,6 +4,10 @@
 // "from €X.XX per player" (the server's cheapest price among the times the
 // card shows). A time opens that slot; a card opens the venue page.
 //
+// S17: "Around me" in the picker sorts by distance (on the phone; the
+// screen passes the sorted list and each card's distance), and "View map"
+// (the screen's header) shows the same venues as pins (VenuesMap).
+//
 // A player in debt (my_owed says blocked) sees a banner linking to "Pay
 // what I owe" and can't pick a time (spec 13, "Debt"); book_slot refuses
 // anyway.
@@ -17,6 +21,7 @@ import { FormatSheet } from '@/components/booking/book-search/format-sheet';
 import { MissingVenueSheet } from '@/components/booking/book-search/missing-venue-sheet';
 import { TimeSheet } from '@/components/booking/book-search/time-sheet';
 import { VenueResultCard } from '@/components/booking/book-search/venue-result-card';
+import { VenuesMap } from '@/components/booking/book-search/venues-map';
 import { WherePicker } from '@/components/booking/book-search/where-picker';
 import { Banner, Button, Chip, EmptyState, SkeletonBlock, Text } from '@/components/ui';
 import { ICON, MIN_TOUCH } from '@/components/ui/foundation';
@@ -37,6 +42,7 @@ import {
   type SearchOptions,
 } from '@/lib/booking-search';
 import { makeStyles, useTheme } from '@/lib/theme';
+import type { Coordinates } from '@/lib/venue-location';
 
 export type BookSearchViewProps = {
   options: LoadState<SearchOptions>;
@@ -65,6 +71,19 @@ export type BookSearchViewProps = {
   /** The debt banner's words when my_owed says the player is blocked. */
   debtMessage?: string | null;
   onPayOwed?: () => void;
+  /** S17: the list, or the venues as pins (the header's View map). */
+  view?: 'list' | 'map';
+  onViewChange?: (view: 'list' | 'map') => void;
+  /** S17: the picker's Around me; the screen asks for the location. */
+  onAroundMe?: () => void;
+  /** S17: Around me is on: the results come nearest first. */
+  nearMe?: boolean;
+  /** S17: each venue's distance ("3 km") while Around me is on. */
+  distances?: Record<string, string>;
+  /** S17: the results' coordinates, for the map. */
+  coordinates?: Record<string, Coordinates>;
+  /** S17: why Around me couldn't start, and what to do (one line). */
+  locationProblem?: { message: string; action: { label: string; onPress: () => void } } | null;
 };
 
 type Open = 'where' | 'format' | 'days' | 'time' | 'amenities' | 'filter' | 'missing' | null;
@@ -124,6 +143,13 @@ function BookSearchReady({
   onRequestVenue,
   debtMessage,
   onPayOwed,
+  view = 'list',
+  onViewChange,
+  onAroundMe,
+  nearMe = false,
+  distances = {},
+  coordinates = {},
+  locationProblem = null,
 }: Omit<BookSearchViewProps, 'options' | 'query'> & { options: SearchOptions; query: BookSearchQuery }) {
   const styles = useStyles();
   const { colors } = useTheme();
@@ -143,6 +169,8 @@ function BookSearchReady({
   const severalDays = query.days.length > 1;
 
   const close = () => setOpen(null);
+  const where = nearMe ? 'Around me' : placeLabel(query.place);
+  const placeLine = (r: BookResult) => [distances[r.venue_id], r.area, r.town].filter(Boolean).join(' · ');
 
   async function toggleFavourite(venueId: string, on: boolean) {
     setFavouriteError(null);
@@ -170,6 +198,11 @@ function BookSearchReady({
       ) : null}
       {favouriteError ? <Banner tone="danger" message={favouriteError} /> : null}
       {sent ? <Banner tone="info" message="Venue sent" /> : null}
+      {locationProblem ? (
+        <View testID="book-location-banner">
+          <Banner tone="warning" message={locationProblem.message} action={locationProblem.action} />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -180,12 +213,12 @@ function BookSearchReady({
           <Pressable
             testID="book-search-field"
             accessibilityRole="search"
-            accessibilityLabel={`Where: ${placeLabel(query.place)}`}
+            accessibilityLabel={`Where: ${where}`}
             onPress={() => setOpen('where')}
             style={styles.fieldPress}>
             <IconSymbol name="magnifyingglass" size={ICON.small} color={colors.inkMuted} />
             <Text variant="body" tone="inkMuted" numberOfLines={1} style={styles.fieldText}>
-              {placeLabel(query.place)}
+              {where}
             </Text>
           </Pressable>
           <Pressable
@@ -244,6 +277,17 @@ function BookSearchReady({
           {header}
           <ResultSkeletons />
         </View>
+      ) : view === 'map' ? (
+        <View style={styles.map}>
+          {header}
+          <VenuesMap
+            results={data}
+            coordinates={coordinates}
+            placeLine={placeLine}
+            onOpenVenue={onOpenVenue}
+            onList={() => onViewChange?.('list')}
+          />
+        </View>
       ) : (
         <FlatList
           testID="book-results"
@@ -278,6 +322,7 @@ function BookSearchReady({
                 if (!blocked) onTime(item, slot);
               }}
               onFavourite={(on) => toggleFavourite(item.venue_id, on)}
+              distance={distances[item.venue_id]}
             />
           )}
         />
@@ -293,6 +338,14 @@ function BookSearchReady({
           close();
           onPickPlace(place);
         }}
+        onAroundMe={
+          onAroundMe
+            ? () => {
+                close();
+                onAroundMe();
+              }
+            : undefined
+        }
         onMissingVenue={() => {
           // iOS can't show the sheet while the full-screen picker is still
           // closing: it opens once the picker has gone (onDismissed).
@@ -404,5 +457,6 @@ const useStyles = makeStyles(({ colors, hairline }) => ({
   chips: { gap: space.sm },
   banners: { gap: space.md },
   list: { padding: space.lg, gap: space.md, paddingBottom: space.xxl },
+  map: { flex: 1 },
   empty: { alignItems: 'center', gap: space.md, paddingVertical: space.xxl },
 }));

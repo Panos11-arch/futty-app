@@ -1,0 +1,126 @@
+# S17: Book a pitch's "Around me" and "View map". Books nothing.
+#
+# 1. Location refused (sign-in starts with every permission denied): Around
+#    me shows one line, "Location is off. Turn it on in Settings.".
+# 2. Relaunched with location allowed, at a set position next to E2E Arena
+#    (the staging e2e seed gives it coordinates, E2E_VENUE in
+#    scripts/e2e-seed/config.ts): the venue's card says it's 1 km away.
+# 3. View map shows the venues as pins; View list goes back. Tapping a pin
+#    isn't automated (Maestro can't reach map markers on Android); the Jest
+#    tests cover the pin's mini card.
+appId: com.panosalepis.futtyapp
+name: around-me
+tags:
+  - e2e
+  - booking
+env:
+  PLATFORM: ${MAESTRO_E2E_PLATFORM}
+  EMAIL: ${'e2e-' + MAESTRO_E2E_PLATFORM + '-1@e2e.futty.app'}
+  PASSWORD: ${MAESTRO_E2E_PASSWORD}
+  DAY: ${MAESTRO_E2E_DAY}
+  # Cyprus today: the seeded day less 2 (both are calendar dates, so UTC arithmetic is exact).
+  TODAY: ${new Date(Date.parse(MAESTRO_E2E_DAY) - 2 * 86400000).toISOString().slice(0, 10)}
+  VENUE_ID: e2e00000-0000-4000-8000-000000000001
+  # About 600 m from E2E Arena's seeded coordinates (35.165, 33.36).
+  HERE_LATITUDE: '35.17'
+  HERE_LONGITUDE: '33.36'
+---
+- runFlow:
+    file: ../subflows/sign-in.yaml
+    env:
+      EMAIL: ${EMAIL}
+      PASSWORD: ${PASSWORD}
+
+# ---- 1. Location refused --------------------------------------------------
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- tapOn:
+    id: tab-book
+- extendedWaitUntil:
+    visible:
+      id: book-search-field
+    timeout: 30000
+- tapOn:
+    id: book-search-field
+- tapOn:
+    id: book-where-around-me
+# Android asks even when the permission was revoked: say no.
+- tapOn:
+    text: "Don.t allow"
+    optional: true
+- tapOn:
+    text: 'Deny'
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: book-location-banner
+    timeout: 15000
+- assertVisible: 'Location is off. Turn it on in Settings.'
+
+# ---- 2. Location allowed, next to E2E Arena -------------------------------
+- launchApp:
+    permissions:
+      location: allow
+- setLocation:
+    latitude: ${HERE_LATITUDE}
+    longitude: ${HERE_LONGITUDE}
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 30000
+- runFlow:
+    file: ../subflows/open-tab.yaml
+    env:
+      TAB: home
+- tapOn:
+    id: tab-book
+- extendedWaitUntil:
+    visible:
+      id: book-search-field
+    timeout: 30000
+# The seeded day, which has free times (today may not, late in the day).
+- tapOn:
+    id: book-chip-date
+- extendedWaitUntil:
+    visible:
+      id: book-day-${DAY}
+    timeout: 10000
+- tapOn:
+    id: book-day-${DAY}
+- tapOn:
+    id: book-day-${TODAY}
+- tapOn:
+    id: book-days-see-results
+- tapOn:
+    id: book-search-field
+- tapOn:
+    id: book-where-around-me
+- assertNotVisible:
+    id: book-location-banner
+- assertVisible: 'Around me'
+- scrollUntilVisible:
+    element:
+      id: free-venue-${VENUE_ID}
+    direction: DOWN
+    timeout: 30000
+    centerElement: true
+- assertVisible:
+    text: '1 km · .*'
+
+# ---- 3. View map, then View list ------------------------------------------
+- tapOn:
+    id: book-view-map
+- extendedWaitUntil:
+    visible:
+      id: book-map
+    timeout: 15000
+- assertVisible: 'View list'
+- tapOn:
+    id: book-view-map
+- extendedWaitUntil:
+    visible:
+      id: book-results
+    timeout: 15000
+- takeScreenshot: around-me-${PLATFORM}

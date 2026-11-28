@@ -153,3 +153,16 @@ Deno.test('attribution: without Apple\'s mark it fails, so no forecast is shown 
   const { fetchFn } = fakeFetch(() => json({ serviceName: 'Apple Weather' }));
   await rejects(() => createWeatherKit(config, fetchFn).attribution(), /weatherkit_attribution_invalid/);
 });
+
+Deno.test('a .p8 key joined onto one line still signs (literal \\n, spaces, or nothing between lines)', async () => {
+  // Supabase secrets are set as one line: the key may arrive with its line
+  // breaks written as "\n", as spaces, or dropped.
+  const { config, publicPem } = await testConfig();
+  const now = new Date('2026-11-20T10:00:00Z');
+  const pem = config.privateKeyPem.trim();
+  const oneLine = [pem.replace(/\n/g, '\\n'), pem.replace(/\n/g, ' '), pem.replace(/\n/g, '')];
+  for (const privateKeyPem of oneLine) {
+    const token = await makeWeatherKitToken({ ...config, privateKeyPem }, now);
+    await jwtVerify(token, await importSPKI(publicPem, 'ES256'), { currentDate: now });
+  }
+});

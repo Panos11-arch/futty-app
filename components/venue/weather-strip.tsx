@@ -17,8 +17,9 @@ import { MIN_TOUCH } from '@/components/ui/foundation';
 import { space } from '@/constants/futty-theme';
 import {
   bannerText,
-  forecastLines,
+  detailLine,
   type GameWeather,
+  headline,
   OUT_OF_RANGE_TEXT,
   type WeatherAttribution,
 } from '@/lib/weather';
@@ -27,9 +28,13 @@ export type WeatherStripProps = {
   /** What venue-weather returned for the game's hours; null before it has. */
   weather: GameWeather | null;
   loading?: boolean;
+  /** A heading over the card: the venue Home tab's "Weather". The Book tab has none (image 03). */
+  title?: string;
 };
 
-export function WeatherStrip({ weather, loading = false }: WeatherStripProps) {
+// S17 (image 03): one card, "22° · Clear at 20:00", then rain and wind on a
+// second line (spec 13 shows rain, wind and temperature), then Apple's mark.
+export function WeatherStrip({ weather, loading = false, title }: WeatherStripProps) {
   if (!weather) {
     return loading ? (
       <View style={styles.section} testID="weather-strip-loading">
@@ -42,7 +47,7 @@ export function WeatherStrip({ weather, loading = false }: WeatherStripProps) {
   if (window.status === 'out_of_range') {
     return (
       <View style={styles.section} testID="weather-strip">
-        <SectionHeader title="Weather" />
+        {title ? <SectionHeader title={title} /> : null}
         <Card>
           <Text variant="callout" tone="inkMuted">
             {OUT_OF_RANGE_TEXT}
@@ -55,17 +60,20 @@ export function WeatherStrip({ weather, loading = false }: WeatherStripProps) {
 
   const { forecast } = window;
   const banner = bannerText(forecast);
+  const first = headline(forecast, window.start);
+  const second = detailLine(forecast);
   return (
     <View style={styles.section} testID="weather-strip">
-      <SectionHeader title="Weather" />
+      {title ? <SectionHeader title={title} /> : null}
       {banner ? <Banner tone="warning" message={banner} /> : null}
       <Card>
-        <View style={styles.lines}>
-          {forecastLines(forecast).map((line) => (
-            <Text key={line} variant="callout" tabular>
-              {line}
-            </Text>
-          ))}
+        <View style={styles.lines} accessible accessibilityLabel={`${first}. ${second}`}>
+          <Text variant="headline" tabular>
+            {first}
+          </Text>
+          <Text variant="callout" tone="inkMuted" tabular>
+            {second}
+          </Text>
         </View>
         <AppleWeatherMark attribution={attribution} />
       </Card>
@@ -100,7 +108,7 @@ export function AppleWeatherMark({ attribution }: { attribution: WeatherAttribut
 
 const styles = StyleSheet.create({
   section: { gap: space.sm },
-  lines: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg, rowGap: space.xs },
+  lines: { gap: space.xs },
   mark: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md },
   // Apple's mark at a legible size (its artwork is about 5:1).
   logo: { height: space.lg, width: space.lg * 5 },
