@@ -10,6 +10,12 @@ const files = [
   'app/(tabs)/leagues/index.tsx',
   'app/(tabs)/leagues/coming-soon.tsx',
   'app/(tabs)/leagues/[id].tsx',
+  // S10A: the tournament page and the admin screens.
+  'app/(tabs)/leagues/tournament/[id].tsx',
+  'app/admin/tournaments/index.tsx',
+  'app/admin/tournaments/new.tsx',
+  'app/admin/tournaments/[id]/index.tsx',
+  'app/admin/tournaments/[id]/edit.tsx',
   'app/(tabs)/community.tsx',
   'app/upcoming-fixtures.tsx',
   'app/previous-games.tsx',

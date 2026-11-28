@@ -10,6 +10,8 @@ import { makeStyles } from '@/lib/theme';
 export function ProgressHeader({ step }: { step: LogStep }) {
   const styles = useStyles();
   const progress = STEP_PROGRESS[step];
+  // The shootout (S10A) is part of Score.
+  const label = step === 'shootout' ? 'score' : step;
   return (
     <View style={styles.wrap} testID="log-score-progress">
       <View
@@ -24,7 +26,7 @@ export function ProgressHeader({ step }: { step: LogStep }) {
       </View>
       <View style={styles.labels}>
         {LOG_STEPS.map((s) => (
-          <Text key={s} variant="callout" tone={s === step ? 'ink' : 'inkMuted'} style={s === step ? styles.current : undefined}>
+          <Text key={s} variant="callout" tone={s === label ? 'ink' : 'inkMuted'} style={s === label ? styles.current : undefined}>
             {STEP_TITLES[s]}
           </Text>
         ))}

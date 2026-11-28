@@ -47,6 +47,10 @@ const mockListPins = jest.fn();
 const mockPin = jest.fn();
 const mockUnpin = jest.fn();
 const mockFixturesOnDay = jest.fn();
+const mockPinT = jest.fn();
+const mockUnpinT = jest.fn();
+let mockTournaments: Record<string, unknown>;
+const mockTournamentsReload = jest.fn();
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/lib/haptics', () => ({ haptic: { tap: jest.fn(), success: jest.fn(), error: jest.fn() } }));
@@ -63,6 +67,11 @@ jest.mock('@/lib/match/pins', () => ({
   listPins: () => mockListPins(),
   pinCompetition: (...a: unknown[]) => mockPin(...a),
   unpinCompetition: (...a: unknown[]) => mockUnpin(...a),
+  pinTournament: (...a: unknown[]) => mockPinT(...a),
+  unpinTournament: (...a: unknown[]) => mockUnpinT(...a),
+}));
+jest.mock('@/lib/match/use-tournament', () => ({
+  useTournaments: () => ({ ...mockTournaments, reload: mockTournamentsReload }),
 }));
 jest.mock('@/lib/match/day-fixtures', () => ({
   ...jest.requireActual('@/lib/match/day-fixtures'),
@@ -88,6 +97,28 @@ beforeEach(() => {
   mockPin.mockResolvedValue({ error: null });
   mockUnpin.mockResolvedValue({ error: null });
   mockFixturesOnDay.mockResolvedValue({ fixtures: [], error: null });
+  mockPinT.mockResolvedValue({ error: null });
+  mockUnpinT.mockResolvedValue({ error: null });
+  mockTournaments = { status: 'ready', tournaments: [] };
+});
+
+const tournament = (over: Record<string, unknown> = {}) => ({
+  id: 't1',
+  name: 'Nuevo Campo Cup',
+  area: 'Limassol',
+  country: 'CY',
+  format: '5-a-side',
+  status: 'coming_soon',
+  comingSoon: true,
+  startDate: null,
+  endDate: null,
+  venueId: null,
+  venueName: null,
+  maxTeams: 16,
+  teamsCount: 0,
+  entryFeeCents: 1200,
+  championTeamId: null,
+  ...over,
 });
 
 async function openLeagues() {
@@ -256,6 +287,89 @@ describe('LEAGUES tab', () => {
     await openLeagues();
     expect(screen.queryByText('Tournaments')).toBeNull();
     expect(screen.queryByText('EFEK')).toBeNull();
+  });
+});
+
+describe('LEAGUES tab: tournaments (S10A)', () => {
+  it('a tournaments error is a load error; Try again reloads them', async () => {
+    mockTournaments = { status: 'error', message: 'offline' };
+    await render(<LeaguesScreen />);
+    expect(screen.getByText('Could not load leagues.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(mockTournamentsReload).toHaveBeenCalled();
+  });
+
+  it('loading tournaments shows the skeleton', async () => {
+    mockTournaments = { status: 'loading' };
+    await render(<LeaguesScreen />);
+    expect(screen.getByTestId('leagues-skeleton')).toBeTruthy();
+  });
+
+  it('the Tournaments group, last, opens to its tournaments (image 12)', async () => {
+    mockTournaments = { status: 'ready', tournaments: [tournament()] };
+    await openLeagues();
+    expect(screen.getByText('Tournaments')).toBeTruthy();
+    expect(screen.getByText('1 coming soon')).toBeTruthy();
+    expect(screen.queryByTestId('leagues-row-child-tournament-t1')).toBeNull();
+    await expand('tournaments');
+    expect(within(screen.getByTestId('leagues-row-child-tournament-t1')).getByText('Tournament · Coming soon')).toBeTruthy();
+  });
+
+  it('a Coming soon tournament opens Coming soon with 16 teams', async () => {
+    mockTournaments = { status: 'ready', tournaments: [tournament()] };
+    await openLeagues();
+    await expand('tournaments');
+    await fireEvent.press(screen.getByTestId('leagues-row-child-tournament-t1'));
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: '/leagues/coming-soon',
+      params: { kind: 'tournament', name: 'Nuevo Campo Cup', scope: 'limassol', format: '5-a-side', teams: '16' },
+    });
+  });
+
+  it('once sign-up opens, a tournament opens its page', async () => {
+    mockTournaments = { status: 'ready', tournaments: [tournament({ status: 'registration', comingSoon: false })] };
+    await openLeagues();
+    await expand('tournaments');
+    expect(screen.getByText('Tournament · Sign-up open')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('leagues-row-child-tournament-t1'));
+    expect(router.push).toHaveBeenCalledWith({ pathname: '/leagues/tournament/[id]', params: { id: 't1' } });
+  });
+
+  it('Pin saves a tournament pin and shows it under Pinned; unpin removes it', async () => {
+    mockTournaments = { status: 'ready', tournaments: [tournament()] };
+    await openLeagues();
+    await expand('tournaments');
+    await fireEvent.press(screen.getByTestId('leagues-pin-child-tournament-t1'));
+    expect(mockPinT).toHaveBeenCalledWith('t1');
+    expect(mockPin).not.toHaveBeenCalled();
+    expect(screen.getByText('PINNED (1)')).toBeTruthy();
+    const pinned = screen.getByTestId('leagues-row-pinned-tournament-t1');
+    expect(within(pinned).getByText('Nuevo Campo Cup')).toBeTruthy();
+    expect(within(pinned).getByText('NC', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('leagues-pin-pinned-tournament-t1'));
+    expect(mockUnpinT).toHaveBeenCalledWith('t1');
+    expect(screen.queryByTestId('leagues-row-pinned-tournament-t1')).toBeNull();
+  });
+
+  it('a tournament pin from the server shows beside league pins', async () => {
+    mockTournaments = { status: 'ready', tournaments: [tournament()] };
+    mockListPins.mockResolvedValue({
+      pins: [
+        { target_type: 'league', scope: 'limassol', format: '5-a-side' },
+        { target_type: 'tournament', tournament_id: 't1' },
+      ],
+      error: null,
+    });
+    await openLeagues();
+    expect(screen.getByText('PINNED (2)')).toBeTruthy();
+    expect(screen.getByTestId('leagues-row-pinned-limassol-5-a-side')).toBeTruthy();
+    expect(screen.getByTestId('leagues-row-pinned-tournament-t1')).toBeTruthy();
+  });
+
+  it('pull to refresh reloads tournaments too', async () => {
+    await openLeagues();
+    await fireEvent(screen.getByTestId('leagues-list'), 'refresh');
+    expect(mockTournamentsReload).toHaveBeenCalled();
   });
 });
 

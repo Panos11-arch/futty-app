@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MenuRow, MenuSection } from '@/components/menu-row';
 import { useAuth } from '@/lib/auth';
 import { fetchMyPlayerCard } from '@/lib/player-card';
+import { useIsAppAdmin } from '@/lib/match/use-tournament';
 import { isPremiumPlayer } from '@/lib/premium';
 import { useUnreadMessages } from '@/lib/use-messages';
 import { useProfile } from '@/lib/use-profile';
@@ -17,7 +18,8 @@ import { makeStyles } from '@/lib/theme';
  * Account, opened from the menu button in every tab's header (S2, spec 15
  * section 0.5): My bookings, Payments, Saved searches, Premium, Settings,
  * Help, and Venue dashboard for venue staff only. Messages (S13) shows the
- * unread count.
+ * unread count. Tournaments (S10A, the admin screen) for Futty admins only;
+ * the server checks every admin call.
  * "More" holds what has no other place yet (spec 15 section 0.9): Play
  * (Teams, Matches, Leagues) until S6–S9, Leaderboards until S15, and Your
  * activity until S8. Terms, Privacy policy and How Futty works are in Help.
@@ -29,6 +31,7 @@ export default function AccountMenuScreen() {
   const profile = useProfile();
   const premium = isPremiumPlayer(profile) === true;
   const unread = useUnreadMessages();
+  const { admin } = useIsAppAdmin();
   // Share follows the player card (S8): no Share for a minor or a player
   // without a username (my_player_card's show_qr). Hidden until it's known.
   const [canShare, setCanShare] = useState(false);
@@ -104,6 +107,14 @@ export default function AccountMenuScreen() {
               icon="building.columns.fill"
               label="Venue dashboard"
               onPress={() => router.push('/venue-dashboard')}
+            />
+          ) : null}
+          {admin ? (
+            <MenuRow
+              testID="account-tournaments-admin"
+              icon="trophy.fill"
+              label="Tournaments"
+              onPress={() => router.push('/admin/tournaments')}
             />
           ) : null}
         </MenuSection>

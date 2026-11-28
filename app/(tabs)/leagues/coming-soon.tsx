@@ -8,9 +8,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/text';
 import { hairline, radius, space } from '@/constants/futty-theme';
 import { competitionBadge, competitionName, ISLAND_WIDE, normaliseScope, scopeLabel } from '@/lib/match/league-directory';
+import { tournamentBadge } from '@/lib/match/tournament-api';
 import { makeStyles, useTheme } from '@/lib/theme';
 
-type Params = { kind?: string; name?: string; scope?: string; format?: string };
+type Params = { kind?: string; name?: string; scope?: string; format?: string; teams?: string };
 
 /** Back to the Leagues screen, or open it when this was the first screen. */
 function backToLeagues() {
@@ -32,14 +33,15 @@ export default function ComingSoonScreen() {
   const format = params.format ?? '';
   const area = scope === ISLAND_WIDE ? 'Island-wide' : scopeLabel(scope);
   const name = params.name || competitionName(scope, format);
-  const subtitle = [area, `${format} ${tournament ? 'tournament' : 'league'}`].filter(Boolean).join(' · ');
+  const teams = tournament && params.teams ? `${params.teams} teams` : null;
+  const subtitle = [area, `${format} ${tournament ? 'tournament' : 'league'}`, teams].filter(Boolean).join(' · ');
 
   return (
     <View testID="coming-soon-screen" style={styles.screen}>
       <NightHeader
         title={name}
         subtitle={subtitle}
-        badge={competitionBadge(scope || name, format)}
+        badge={tournament ? tournamentBadge(name) : competitionBadge(scope || name, format)}
         back={{ label: 'Leagues', onPress: backToLeagues, testID: 'coming-soon-header-back' }}
       />
       <ScrollView contentContainerStyle={styles.body}>

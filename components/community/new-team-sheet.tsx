@@ -34,7 +34,16 @@ export function kitLabel(kit: KitColourName) {
   return kit.slice(3);
 }
 
-export function NewTeamSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function NewTeamSheet({
+  visible,
+  onClose,
+  onCreated,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** S10A: tournament registration stays where it is with the new team; otherwise the team page opens. */
+  onCreated?: (teamId: string) => void;
+}) {
   const styles = useStyles();
   const [name, setName] = useState('');
   const [city, setCity] = useState<string>(TEAM_CITIES[0]);
@@ -75,7 +84,8 @@ export function NewTeamSheet({ visible, onClose }: { visible: boolean; onClose: 
     }
     haptic.success();
     close();
-    router.push(teamHref(teamId));
+    if (onCreated) onCreated(teamId);
+    else router.push(teamHref(teamId));
   }
 
   return (

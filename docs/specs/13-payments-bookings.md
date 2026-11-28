@@ -93,13 +93,18 @@ Chosen by the booker for side A (or the whole pitch), and by side B's captain fo
 
 ### Player invites (S20A, decided 27 November)
 Invites to join a side: "Invite friends", "Invite a team", "Invite all friends", and a game invite carried in a futty.app/i link. Opposition invites are above and don't change.
-- **Player invites stay open until the side is full or kickoff, whichever comes first.** Invites nobody answered expire then. Opposition invites still close 24 hours before kickoff.
+- **Player invites stay open until kickoff (decided 27 November).** While the side is full, an invite shows "This game is full"; if a spot reopens (a lapsed or cancelled player), the invites already sent work again, so the captain doesn't invite again. Invites nobody answered expire at kickoff. Opposition invites still close 24 hours before kickoff.
 - **The spot is taken when the player accepts.** The server decides with a row lock, as for side B's captain; once the side is full, everyone else sees "This game is full" before paying. There is no "first to pay takes the spot".
-- **A card player who accepts has 15 minutes to pay or hold his share,** the same window as the booker's and side B's captain's. Otherwise his acceptance lapses, his share is cancelled and the spot reopens for the others.
-  - **Accepting less than 15 minutes before kickoff:** the acceptance lapses at kickoff instead (Dimitris).
-- **A cash player keeps the spot from the moment he accepts,** as today; an unticked cash spot is covered as in "Cash at the venue".
+- **Card or cash (decided 27 November):** cash is picked when a player pays, not per booking. On a whole pitch whose way to pay is Pay for myself, accepting asks **Card or Cash**. Cash is never offered to a player in debt, and never with venue credit. Half pitch and Losers pay are card only, so accepting there asks nothing. On Pay for everyone there is nothing to pay, so accepting is joining.
+- **Every player who accepts has 15 minutes,** card or cash, the same window as the booker's and side B's captain's:
+  - **Card:** he pays or holds his share.
+  - **Cash:** he pays the €0.80 service fee by card and saves his card, as every cash player does when joining (see "Cash at the venue"). A Premium player pays no fee but still saves his card.
+  - Otherwise his acceptance lapses, his share is cancelled and the spot reopens for the others.
+  - **Accepting less than 15 minutes before kickoff:** the acceptance lapses at kickoff instead (Anghelo).
+  - **Losers pay too:** a card player who accepts a Losers pay game has the same 15 minutes to place his hold (twice his share, see "Losers pay"); otherwise his acceptance lapses and the spot reopens. Losers pay has no cash, so every player is a card player here.
+- **Once a cash player has paid the €0.80 (or saved his card, if Premium), his spot never lapses.** An unticked cash spot is covered as in "Cash at the venue": by the booker's guarantee 2 hours after the match.
 - **The money rules don't change for late joiners:** a share paid less than 6 hours before kickoff is taken straight away after the "This booking is non-refundable" notice (step 2 of "When money is held and taken"), and in Losers pay a late joiner is held at once.
-- **futty.app/i links:** opening a link sends a friend request to its owner; nobody becomes a friend until the owner accepts. **A game invite carried in the link only appears after the owner accepts** (Dimitris). Blocks and the adult↔minor rules apply as for any friend request.
+- **futty.app/i links:** opening a link sends a friend request to its owner; nobody becomes a friend until the owner accepts. **A game invite carried in the link only appears after the owner accepts** (Anghelo). Blocks and the adult↔minor rules apply as for any friend request.
 
 ### Publish game
 - On any booking, the booker (or side B's captain, for side B's spots) can tap **"Publish"** to make open spots joinable by anyone in the posts section (the existing squad posts). The slot stays booked.

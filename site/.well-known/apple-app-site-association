@@ -3,7 +3,10 @@
     "details": [
       {
         "appIDs": ["5Y987W9KDK.com.panosalepis.futtyapp"],
-        "components": [{ "/": "/p/*", "comment": "A player card: futty.app/p/<username>" }]
+        "components": [
+          { "/": "/p/*", "comment": "A player card: futty.app/p/<username>" },
+          { "/": "/i/*", "comment": "An invite link (S20A): futty.app/i/<code>" }
+        ]
       }
     ]
   }

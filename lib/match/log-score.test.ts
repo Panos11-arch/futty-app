@@ -15,6 +15,7 @@ import {
   setScore,
   sideLabel,
   STEP_PROGRESS,
+  shootoutValid,
   stepsFor,
   toStatsPayload,
   togglePlayed,
@@ -27,8 +28,8 @@ import {
 import { mockLogPlayer, mockMatchLog, mockNamedLog } from '@/lib/match/log-score-mock';
 
 describe('log-score', () => {
-  it('the progress bar: 0, 33, 66, 100', () => {
-    expect(STEP_PROGRESS).toEqual({ score: 0, goals: 33, assists: 66, review: 100 });
+  it('the progress bar: 0, 33, 66, 100 (the S10A shootout is part of Score)', () => {
+    expect(STEP_PROGRESS).toEqual({ score: 0, shootout: 0, goals: 33, assists: 66, review: 100 });
   });
 
   it('starts from 0–0, or the score and stats already logged', () => {
@@ -101,6 +102,27 @@ describe('log-score', () => {
     expect(stepsFor(correction, draftFrom(correction))).toEqual(['score', 'goals', 'assists', 'review']);
     const named = mockNamedLog({ status: 'confirmed', score: { a: 1, b: 0 }, canLog: false, canCorrect: true });
     expect(stepsFor(named, draftFrom(named))).toEqual(['goals', 'assists', 'review']);
+  });
+
+  it('S10A: a level knockout score adds the shootout after Score; a group or other game never does', () => {
+    const log = mockNamedLog();
+    const level = setScore(setScore(draftFrom(log), 'a', 1), 'b', 1);
+    expect(stepsFor(log, level, true)).toEqual(['score', 'shootout', 'goals', 'assists', 'review']);
+    expect(stepsFor(log, level, false)).toEqual(['score', 'goals', 'assists', 'review']);
+    expect(stepsFor(log, level)).toEqual(['score', 'goals', 'assists', 'review']);
+    const won = setScore(level, 'a', 2);
+    expect(stepsFor(log, won, true)).toEqual(['score', 'goals', 'assists', 'review']);
+    const again = mockNamedLog({ myEntry: { a: 1, b: 1 }, theirEntry: { a: 1, b: 1 } });
+    expect(stepsFor(again, draftFrom(again), true)).toEqual(['score', 'shootout', 'review']);
+    // Two captains' correction has no score step, so no shootout.
+    const named = mockNamedLog({ status: 'confirmed', score: { a: 1, b: 1 }, canLog: false, canCorrect: true });
+    expect(stepsFor(named, draftFrom(named), true)).toEqual(['goals', 'assists', 'review']);
+  });
+
+  it('S10A: a shootout needs a winner', () => {
+    expect(shootoutValid({ a: 4, b: 3 })).toBe(true);
+    expect(shootoutValid({ a: 3, b: 3 })).toBe(false);
+    expect(shootoutValid({ a: -1, b: 3 })).toBe(false);
   });
 
   it('the payload: only the sides he logs, every player with goals, assists and played, own goals', () => {

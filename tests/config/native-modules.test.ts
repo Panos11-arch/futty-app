@@ -81,13 +81,16 @@ describe('S16 native modules', () => {
     expect(app.ios.infoPlist.NSUserTrackingUsageDescription).toBeUndefined();
   });
 
-  it('universal links: futty.app/p/<username> opens the app on iOS and Android', () => {
+  it('universal links: futty.app/p/<username> (S16) and futty.app/i/... (S20A) open the app on iOS and Android', () => {
     expect(app.ios.associatedDomains).toEqual(['applinks:futty.app']);
     expect(app.android.intentFilters).toEqual([
       {
         action: 'VIEW',
         autoVerify: true,
-        data: [{ scheme: 'https', host: 'futty.app', pathPrefix: '/p/' }],
+        data: [
+          { scheme: 'https', host: 'futty.app', pathPrefix: '/p/' },
+          { scheme: 'https', host: 'futty.app', pathPrefix: '/i/' },
+        ],
         category: ['BROWSABLE', 'DEFAULT'],
       },
     ]);

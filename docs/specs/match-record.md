@@ -340,7 +340,7 @@ Built in S10 (server: migrations `match_s10_league_seasons`, `match_s10_league_m
 8. **Power rankings tab:** the competition's teams in the order of their app-wide points for the format (1m). There is no separate count. ▲▼ is the change of place in this list since Monday 00:00 Cyprus time, the start of the current matchday.
 9. **Not built** (decided by Panos, 26 November):
    - **No bells**, on the competition page or on match rows. Futty has no live events, so a bell would only say "kick-off". There is no subscriptions table and no new notification type; the star is S9's pin. A "Results of teams I follow" setting may come after launch.
-   - **No Discussion section:** posts and their moderation come with S7b, which adds a competition's discussion.
+   - **No Discussion section** (decided by Panos, 27 November): a competition's Discussion comes later, after S7b's post moderation is proven. S7b itself only does posts (photos in posts; comments text only).
    - **No followers count:** pins are private bookmarks, not follows (for Panos).
 
 ## 1o. Tournaments (S10A; decided by Panos 21 November, changed 22, 24 and 25 November; Anghelo 27 November)
@@ -355,6 +355,7 @@ Built in S10A (server: migrations `match_s10a_tournaments`, `match_s10a_tourname
 3. **Registration.** A team's captain registers it while registration is open, before the deadline and while the tournament isn't full, with a kit colour and a squad.
    - **Badge:** the team's kit colour with its initials. The colours are the player kit tokens (`kitRed` … `kitWhite`).
    - **Squad** (decided by Anghelo, 27 November): the format's starters plus up to 2 subs (5 to 7 in 5-a-side), all members of the team. A player is in one squad per tournament (`player_in_other_squad`). The captain changes it until the registration deadline; after it only an admin can (an injury, say). Every change is logged (`tournament_squad_changes`). A tournament match's players are the two squads, not every member (unlike leagues).
+     - **An admin changing a squad** (decided by Panos, 27 November): a small follow-up to S10A, which has no screen for it (an admin can't read other teams' squads yet). It is needed before Nuevo Campo opens registration, not before.
 4. **The Nuevo Campo structure** (the only one built; any other size is refused, `unsupported_structure`): 16 five-a-side teams in 4 groups of 4 (A–D), set or drawn by the admin. Each team plays the other three once: 3 points a win, 1 a draw, 0 a loss. The top 2 of each group reach the quarter-finals.
 5. **Group ties:** points, goal difference, goals scored, head-to-head points between the teams still level (a mini-table when three are), then the organiser's draw, entered in the admin screen. The Rules line, word for word: "Teams level on points: goal difference, then goals scored, then head-to-head, then the organiser's draw." A tie for 1st or 2nd that only the draw can break holds the quarter-finals until the admin enters it.
 6. **Knockout** (fixed, never random): QF1 = A1 v D2, QF2 = A2 v B1, QF3 = B2 v C1, QF4 = C2 v D1. **Semi-finals changed (decided by Anghelo and Panos, 24 November):** SF1 = winner QF1 v winner QF3; SF2 = winner QF2 v winner QF4, so a group's two teams can only meet in the final. Then the final. The quarter-finals fill when every group game has a result; each later round fills as its winners are known. Closing the tournament records the champion.
@@ -367,6 +368,12 @@ Built in S10A (server: migrations `match_s10a_tournaments`, `match_s10a_tourname
 9. **Power ranking:** decision 1m items 3 and 4.
 10. **The page** reads a tournament like a season (1n): Player stats (Premium only), Stats, Player and Team of the tournament, and Power rankings, plus the group tables, matches by group or round with AP, and the Knockout tab with its sources ("A1", "Winner QF1") until the teams are known. A player sees his own team's squad only.
 11. **Flagged for Panos** (27 November): tournament games are named games without a league, so they feed the general Team of the Week, as other named games do. Not changed.
+12. **The app** (the S10A page PR, 27 November).
+   - **Pins** (decided by Anghelo, 27 November): a player pins a tournament on the Leagues screen or with its page's star. Tournament pins are their own table, `tournament_pins` (profile, tournament; owner-only select, insert and delete; no update; a pin goes with its tournament or its player). S9's `competition_pins` is unchanged and still holds league pins only; the app reads both.
+   - **Where it shows:** the Leagues screen's Tournaments group (last, image 12) and Pinned; the tournament page at `/leagues/tournament/<id>`, which opens Coming soon (image 17) while the tournament is `coming_soon`, even from a link. Home's featured card keeps leagues as its source until S10B.
+   - **Registration** picks one of the captain's own teams (S20A). With none, Make a team opens S20A's New team sheet and comes back to registration.
+   - **Shootout on Log the score:** the app asks for it after Score only when the match is a tournament knockout game and the score is level; it reads the stage with the captain's own access (`matches.tournament_fixture_id`, then `tournament_fixtures.stage`). The server still decides (item 7).
+   - **Admin screen:** Account → Tournaments, shown when `is_app_admin()` is true. Create and edit (only the fields changed are sent), open sign-up, draw or set the groups, set kick-off times (Cyprus time), enter, decide or correct results with the shootout, the organiser's draw, and close. Changing a squad as an admin (`admin_set_squad`) has no screen yet: an admin can't read other teams' squads.
 
 ## 2. Time
 

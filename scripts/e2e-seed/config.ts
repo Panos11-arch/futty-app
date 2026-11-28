@@ -154,3 +154,28 @@ export const E2E_UPCOMING = { home: 1, away: 0, daysAhead: 3, time: '20:00' } as
 
 /** League kickoffs (Cyprus time). */
 export const E2E_LEAGUE_KICKOFF = '19:00';
+
+/** S10A (tournaments.yaml, tournament-admin.yaml): two tournaments, fixed
+ *  ids. One Coming soon (no dates), one with sign-up open. Area "E2E" keeps
+ *  them apart from real ones. Nothing is registered: the flows look, never
+ *  change (a 5-a-side squad needs 5 players; e2e teams have one). */
+export const E2E_TOURNAMENTS = {
+  comingSoon: { id: 'e2e00000-0000-4000-8000-000000000081', name: 'E2E Coming Cup', status: 'coming_soon' },
+  open: { id: 'e2e00000-0000-4000-8000-000000000082', name: 'E2E Cup', status: 'registration' },
+} as const;
+
+/** The tournaments' fields (shown only; the fee is never collected). */
+export const E2E_TOURNAMENT_FIELDS = {
+  area: 'E2E',
+  format: E2E_FORMAT,
+  maxTeams: 16,
+  squadSubs: 2,
+  entryFeeCents: 500,
+  matchMinutes: 50,
+} as const;
+
+/** STAGING ONLY: the logins the admin flow signs in as are app admins there.
+ *  seedMain refuses a production URL or key before it makes any client
+ *  (lib/e2e-guard.ts), so this never reaches production; Panos adds the
+ *  founders on production himself. */
+export const E2E_ADMIN_EMAILS: readonly string[] = [`e2e-ios-1@${E2E_EMAIL_DOMAIN}`, `e2e-android-1@${E2E_EMAIL_DOMAIN}`];

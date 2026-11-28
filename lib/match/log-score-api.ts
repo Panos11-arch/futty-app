@@ -20,18 +20,22 @@ export async function getMatchLog(matchId: string): Promise<{ log: MatchLog | nu
 
 export type LogResult = { status: 'confirmed' | 'waiting' | 'mismatch' | 'disputed'; tries: number; maxTries: number };
 
-/** Logs both scores; stats only for the sides the caller writes (omitted when only the other side's score changed). */
+/** Logs both scores; stats only for the sides the caller writes (omitted when only the other side's score changed).
+ *  S10A: `pens` only for a drawn knockout tournament game; every other game sends exactly what it did before. */
 export async function logMatchResult(
   matchId: string,
   score: Score,
-  stats: Partial<Record<Side, SideStats>>
+  stats: Partial<Record<Side, SideStats>>,
+  pens: Score | null = null
 ): Promise<{ result: LogResult | null; error: ApiError | null }> {
-  const { data, error } = await supabase.rpc('log_match_result', {
+  const args = {
     p_match_id: matchId,
     p_side_a_score: score.a,
     p_side_b_score: score.b,
     p_stats: stats,
-  });
+    ...(pens ? { p_side_a_pens: pens.a, p_side_b_pens: pens.b } : {}),
+  };
+  const { data, error } = await supabase.rpc('log_match_result', args);
   if (error) return { result: null, error };
   return { result: data as LogResult, error: null };
 }

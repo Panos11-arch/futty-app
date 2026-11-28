@@ -42,6 +42,13 @@ describe('log-score-api', () => {
     expect(await logMatchResult('m1', { a: 1, b: 0 }, {})).toEqual({ result: null, error: { message: 'not_your_player' } });
   });
 
+  it('a drawn knockout game sends the shootout too (S10A)', async () => {
+    await logMatchResult('m1', { a: 1, b: 1 }, {}, { a: 4, b: 3 });
+    expect(mockCalls).toEqual([
+      ['log_match_result', { p_match_id: 'm1', p_side_a_score: 1, p_side_b_score: 1, p_stats: {}, p_side_a_pens: 4, p_side_b_pens: 3 }],
+    ]);
+  });
+
   it('corrects the stats', async () => {
     expect(await setMatchStats('m1', { a: { players: [], ownGoals: 1 } })).toEqual({ error: null });
     expect(mockCalls[0]).toEqual(['set_match_stats', { p_match_id: 'm1', p_stats: { a: { players: [], ownGoals: 1 } } }]);

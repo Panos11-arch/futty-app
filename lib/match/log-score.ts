@@ -9,15 +9,18 @@ import type { AvatarKit } from '@/lib/avatar';
 import { avatarKit } from '@/lib/avatar';
 import type { MatchKind, MatchStatus, Side } from '@/lib/match/types';
 
-export type LogStep = 'score' | 'goals' | 'assists' | 'review';
+/** 'shootout' (S10A): a drawn knockout tournament game's penalties, part of Score. */
+export type LogStep = 'score' | 'shootout' | 'goals' | 'assists' | 'review';
 
+/** The labels on the progress bar; the shootout sits under Score. */
 export const LOG_STEPS: readonly LogStep[] = ['score', 'goals', 'assists', 'review'];
 
 /** The progress bar's fill on each step (decided 22 November). */
-export const STEP_PROGRESS: Record<LogStep, number> = { score: 0, goals: 33, assists: 66, review: 100 };
+export const STEP_PROGRESS: Record<LogStep, number> = { score: 0, shootout: 0, goals: 33, assists: 66, review: 100 };
 
 export const STEP_TITLES: Record<LogStep, string> = {
   score: 'Score',
+  shootout: 'Penalties',
   goals: 'Goals',
   assists: 'Assists',
   review: 'Review',
@@ -233,12 +236,25 @@ export function needsStats(log: MatchLog, draft: Draft): boolean {
   return own !== undefined && draft.score[own] !== log.myEntry[own];
 }
 
-/** The steps of this pass, in order. */
-export function stepsFor(log: MatchLog, draft: Draft): LogStep[] {
+/** The steps of this pass, in order. `knockout` (S10A): a tournament
+ *  knockout game, where a level score adds the shootout after Score. */
+export function stepsFor(log: MatchLog, draft: Draft, knockout = false): LogStep[] {
   // A correction: a lone captain can fix the score too (decided 25 November);
   // two captains' agreed score is final.
-  if (log.canCorrect) return singleCaptain(log) ? ['score', 'goals', 'assists', 'review'] : ['goals', 'assists', 'review'];
-  return needsStats(log, draft) ? ['score', 'goals', 'assists', 'review'] : ['score', 'review'];
+  const steps: LogStep[] = log.canCorrect
+    ? singleCaptain(log)
+      ? ['score', 'goals', 'assists', 'review']
+      : ['goals', 'assists', 'review']
+    : needsStats(log, draft)
+      ? ['score', 'goals', 'assists', 'review']
+      : ['score', 'review'];
+  if (knockout && draft.score.a === draft.score.b && steps[0] === 'score') steps.splice(1, 0, 'shootout');
+  return steps;
+}
+
+/** A shootout always has a winner (decision 1o); the server checks the rest. */
+export function shootoutValid(pens: Score): boolean {
+  return pens.a >= 0 && pens.b >= 0 && pens.a !== pens.b;
 }
 
 /**

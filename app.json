@@ -51,6 +51,11 @@
               "scheme": "https",
               "host": "futty.app",
               "pathPrefix": "/p/"
+            },
+            {
+              "scheme": "https",
+              "host": "futty.app",
+              "pathPrefix": "/i/"
             }
           ],
           "category": [

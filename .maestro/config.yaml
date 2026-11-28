@@ -28,3 +28,5 @@ executionOrder:
     - profile
     - leagues
     - competition
+    - tournaments
+    - tournament-admin
